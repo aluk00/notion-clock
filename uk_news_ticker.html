@@ -38,7 +38,7 @@
         .ticker {
             display: inline-block;
             padding-left: 100%; /* Start off-screen right */
-            animation: ticker-scroll 125s linear infinite; /* Speed remains at 125s */
+            animation: ticker-scroll 75s linear infinite; /* Speed increased by 25% (100s * 0.75 = 75s) */
         }
 
         /* Individual Story Styling */
@@ -50,7 +50,7 @@
             margin-right: 24px; 
             text-transform: uppercase;
             letter-spacing: 0.02em;
-            line-height: 1.0; /* CRITICAL FIX: Ensures tight line spacing */
+            line-height: 1.0; 
         }
 
         /* The Link Styling */
@@ -110,12 +110,17 @@
     <script>
         // CONFIGURATION
         const RSS_URL = 'https://news.google.com/rss?hl=en-GB&gl=GB&ceid=GB:en';
+        // FIX: Removed &count=20 to bypass the API key requirement, relying on the default item count.
         const API_ENDPOINT = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
 
         const tickerContainer = document.getElementById('news-content');
 
+        // Maximum age allowed for a story (3 hours in milliseconds)
+        const MAX_AGE_MS = 3 * 60 * 60 * 1000;
+        // Target number of stories to display (Will display up to 15 of the available filtered stories)
+        const TARGET_STORIES = 15; 
+
         async function fetchNews() {
-            // [Code for fetching and rendering news remains the same]
             try {
                 const response = await fetch(API_ENDPOINT);
                 const data = await response.json();
@@ -124,7 +129,7 @@
                     renderNews(data.items);
                 } else {
                     console.error('Error fetching news:', data.message);
-                    tickerContainer.innerHTML = '<div class="ticker-item">Unable to load news feed</div>';
+                    tickerContainer.innerHTML = '<div class="ticker-item">Unable to load news feed. Check console for API error.</div>';
                 }
             } catch (error) {
                 console.error('Network error:', error);
@@ -132,12 +137,20 @@
         }
 
         function renderNews(items) {
+            // 1. Filter stories older than 3 hours
+            const now = new Date();
+            const filteredStories = items.filter(item => {
+                const pubDate = new Date(item.pubDate);
+                // Only keep stories that are 3 hours old or newer
+                return (now - pubDate) <= MAX_AGE_MS;
+            });
+            
             let html = '';
             
-            // Limit to top 10 stories to keep the DOM light
-            const stories = items.slice(0, 10);
+            // 2. Limit the filtered results to the target count (15)
+            const storiesToDisplay = filteredStories.slice(0, TARGET_STORIES);
 
-            stories.forEach(item => {
+            storiesToDisplay.forEach(item => {
                 let title = item.title;
                 let source = "News";
 
@@ -159,7 +172,11 @@
                 `;
             });
 
-            tickerContainer.innerHTML = html;
+            if (storiesToDisplay.length === 0) {
+                 tickerContainer.innerHTML = '<div class="ticker-item">No UK news found in the last 3 hours.</div>';
+            } else {
+                 tickerContainer.innerHTML = html;
+            }
         }
 
         function timeAgo(dateString) {
