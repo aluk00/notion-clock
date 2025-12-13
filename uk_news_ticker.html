@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK News Ticker</title>
+    <style>
+        /* RESET & LAYOUT 
+           - Removes all default margins/padding
+           - Sets background to black to match your screenshot
+           - Ensures no scrollbars on the body itself
+        */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000;
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center; /* Vertically centers the text */
+        }
+
+        /* Ticker Container */
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            box-sizing: border-box;
+            height: 40px; /* Fixed compact height */
+            display: flex;
+            align-items: center;
+        }
+
+        /* The Moving Part */
+        .ticker {
+            display: inline-block;
+            padding-left: 100%; /* Start off-screen right */
+            animation: ticker-scroll 90s linear infinite; /* Slowed down to 1m 30s */
+        }
+
+        /* Hover to pause REMOVED - Ticker will keep moving */
+
+        /* Individual Story Styling */
+        .ticker-item {
+            display: inline-block;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 40px; /* Space between stories */
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        /* The Link Styling */
+        .ticker-item a {
+            color: #ffffff;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .ticker-item a:hover {
+            color: #21a0d8; /* Hover color (matches your blue branding) */
+            text-decoration: none; /* No underline */
+        }
+
+        /* Source Tag Styling */
+        .source-tag {
+            color: #21a0d8; /* Blue */
+            font-weight: 700;
+            margin-right: 6px;
+            font-size: 0.65em; /* Reduced size (approx 30% smaller) */
+            vertical-align: middle; /* Aligns smaller text nicely */
+        }
+
+        /* Separator */
+        .separator {
+            color: #21a0d8;
+            margin-left: 15px;
+            font-size: 1.2em; /* Make dots slightly larger for visibility */
+            vertical-align: middle;
+            line-height: 0;
+        }
+
+        @keyframes ticker-scroll {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ticker-wrap">
+        <div class="ticker" id="news-content">
+            <!-- Loading State -->
+            <div class="ticker-item">Loading UK Headlines...</div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION
+        // RSS Feed for "Google News - UK" (geo=GB)
+        const RSS_URL = 'https://news.google.com/rss?hl=en-GB&gl=GB&ceid=GB:en';
+        
+        // We use rss2json to convert RSS XML to JSON so the browser can read it
+        // Note: Free tier of rss2json has limits, but works for personal/internal widgets.
+        const API_ENDPOINT = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
+
+        const tickerContainer = document.getElementById('news-content');
+
+        async function fetchNews() {
+            try {
+                const response = await fetch(API_ENDPOINT);
+                const data = await response.json();
+
+                if (data.status === 'ok') {
+                    renderNews(data.items);
+                } else {
+                    console.error('Error fetching news:', data.message);
+                    tickerContainer.innerHTML = '<div class="ticker-item">Unable to load news feed</div>';
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+            }
+        }
+
+        function renderNews(items) {
+            let html = '';
+            
+            // Limit to top 10 stories to keep the DOM light
+            const stories = items.slice(0, 10);
+
+            stories.forEach(item => {
+                // Google News titles are usually "Headline - Source"
+                // Let's try to split them for better formatting
+                let title = item.title;
+                let source = "News";
+
+                const splitIndex = title.lastIndexOf('-');
+                if (splitIndex > -1) {
+                    source = title.substring(splitIndex + 1).trim();
+                    title = title.substring(0, splitIndex).trim();
+                }
+
+                html += `
+                    <div class="ticker-item">
+                        <span class="source-tag">${source}</span>
+                        <a href="${item.link}" target="_blank">${title}</a>
+                        <span class="separator">&bull; &bull; &bull; &bull;</span>
+                    </div>
+                `;
+            });
+
+            tickerContainer.innerHTML = html;
+        }
+
+        // Initial Load
+        fetchNews();
+
+        // Refresh every 5 minutes (300,000 milliseconds)
+        setInterval(fetchNews, 300000);
+    </script>
+
+</body>
+</html>
