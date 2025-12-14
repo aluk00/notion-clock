@@ -18,7 +18,6 @@
         }
 
         /* --- THE CARD CONTAINER --- */
-        /* This wrapper gives the slick "App" feel */
         .widget-card {
             background: #ffffff;
             width: 100%;
@@ -27,8 +26,7 @@
             flex-direction: column;
             box-sizing: border-box;
             overflow: hidden;
-            /* Optional: Add border radius if you want it to look like a floating card */
-            /* border-radius: 12px; */ 
+            position: relative;
         }
 
         /* --- HEADER BAR (Visible in View Mode) --- */
@@ -68,13 +66,14 @@
             cursor: pointer;
             font-weight: 600;
             transition: color 0.2s;
+            text-decoration: underline;
         }
         .reset-btn:hover { color: #d32f2f; }
 
-        /* --- SETUP SCREEN (The "Nice" part) --- */
+        /* --- SETUP SCREEN --- */
         #setup-screen {
             flex-grow: 1;
-            display: flex;
+            display: flex; /* Flex by default, toggled via JS */
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -135,6 +134,16 @@
             box-shadow: 0 4px 20px rgba(156, 39, 176, 0.15);
         }
 
+        /* Error Message (Replaces Alert) */
+        .error-msg {
+            color: #d32f2f;
+            font-size: 12px;
+            font-weight: 600;
+            display: none;
+            margin-top: -8px;
+            margin-bottom: 5px;
+        }
+
         /* Main Action Button */
         .action-btn {
             background-color: #9C27B0;
@@ -183,22 +192,84 @@
             display: block;
         }
 
+        /* --- CUSTOM CONFIRM MODAL (Replaces blocked confirm()) --- */
+        #confirm-modal {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-content {
+            max-width: 300px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .modal-desc {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-confirm {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-cancel {
+            background-color: #eee;
+            color: #333;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
     </style>
 </head>
 <body>
 
     <div class="widget-card">
         
-        <!-- PERSISTENT HEADER (Visible when calendar is active) -->
+        <!-- PERSISTENT HEADER -->
         <div id="app-header" class="app-header">
             <div class="header-title">
-                <!-- Simple Calendar Icon -->
                 <svg class="header-icon" viewBox="0 0 24 24">
                     <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/>
                 </svg>
                 MY CALENDAR
             </div>
-            <button class="reset-btn" onclick="resetCalendar()">⚙ Settings</button>
+            <button class="reset-btn" onclick="openResetModal()">Change Link</button>
         </div>
 
         <!-- SETUP SCREEN -->
@@ -208,10 +279,11 @@
                 <path d="M0 0h24v24H0z" fill="none"/>
             </svg>
             <h2>Connect Your Outlook</h2>
-            <p>Paste your private HTML link to view your schedule securely in this dashboard.</p>
+            <p>Paste your private HTML link to view your schedule securely.</p>
             
             <div class="input-group">
                 <input type="text" id="calendarInput" placeholder="Paste HTML link here...">
+                <div id="error-message" class="error-msg">Please paste a valid link first.</div>
                 <button class="action-btn" onclick="saveCalendar()">Connect Calendar</button>
             </div>
 
@@ -225,6 +297,18 @@
             <iframe id="calendarFrame" src=""></iframe>
         </div>
 
+        <!-- CUSTOM MODAL (Replaces Confirm Popup) -->
+        <div id="confirm-modal">
+            <div class="modal-content">
+                <div class="modal-title">Disconnect Calendar?</div>
+                <div class="modal-desc">You will need to paste your link again to reconnect.</div>
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeResetModal()">Cancel</button>
+                    <button class="btn-confirm" onclick="confirmReset()">Disconnect</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -233,6 +317,8 @@
         const appHeader = document.getElementById('app-header');
         const calendarInput = document.getElementById('calendarInput');
         const calendarFrame = document.getElementById('calendarFrame');
+        const errorMsg = document.getElementById('error-message');
+        const confirmModal = document.getElementById('confirm-modal');
 
         // Load saved link
         const savedLink = localStorage.getItem('my_outlook_calendar_link');
@@ -242,11 +328,15 @@
 
         function saveCalendar() {
             const link = calendarInput.value.trim();
+            
             if (!link) {
-                alert("Please paste your calendar link first.");
+                // Show Error UI instead of alert()
+                errorMsg.style.display = 'block';
                 return;
             }
             
+            errorMsg.style.display = 'none';
+
             // Extract URL if they pasted a full iframe tag
             let cleanLink = link;
             const srcMatch = link.match(/src="([^"]+)"/);
@@ -261,19 +351,28 @@
         function showCalendar(url) {
             calendarFrame.src = url;
             setupScreen.style.display = 'none';
-            appHeader.style.display = 'flex'; // Show the clean header
+            appHeader.style.display = 'flex'; 
             calendarView.style.display = 'block';
         }
 
-        function resetCalendar() {
-            if(confirm("Disconnect this calendar?")) {
-                localStorage.removeItem('my_outlook_calendar_link');
-                calendarFrame.src = '';
-                calendarView.style.display = 'none';
-                appHeader.style.display = 'none';
-                setupScreen.style.display = 'flex';
-                calendarInput.value = '';
-            }
+        // Modal Functions (Replaces confirm())
+        function openResetModal() {
+            confirmModal.style.display = 'flex';
+        }
+
+        function closeResetModal() {
+            confirmModal.style.display = 'none';
+        }
+
+        function confirmReset() {
+            localStorage.removeItem('my_outlook_calendar_link');
+            calendarFrame.src = '';
+            calendarView.style.display = 'none';
+            appHeader.style.display = 'none';
+            setupScreen.style.display = 'flex';
+            calendarInput.value = '';
+            errorMsg.style.display = 'none';
+            closeResetModal();
         }
     </script>
 
