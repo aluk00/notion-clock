@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UK News Ticker</title>
     <style>
-        /* RESET & LAYOUT 
-           - Removes all default margins/padding
-           - Sets background to black to match your screenshot
-           - Ensures no scrollbars on the body itself
-        */
+        /* RESET & LAYOUT */
         body, html {
             margin: 0;
             padding: 0;
@@ -19,8 +15,8 @@
             overflow: hidden;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             display: flex;
-            align-items: center; /* Vertically centers the text */
-            line-height: 1.0; /* CRITICAL FIX: Ensures minimum line height */
+            align-items: center; 
+            line-height: 1; 
         }
 
         /* Ticker Container */
@@ -29,7 +25,7 @@
             overflow: hidden;
             white-space: nowrap;
             box-sizing: border-box;
-            height: 20px; /* AGGRESSIVELY REDUCED HEIGHT for a much thinner bar */
+            height: 18px; /* ULTRA THIN HEIGHT */
             display: flex;
             align-items: center;
         }
@@ -37,21 +33,22 @@
         /* The Moving Part */
         .ticker {
             display: inline-block;
-            padding-left: 100%; /* Start off-screen right */
-            animation: ticker-scroll 67.5s linear infinite; /* 10% faster: 75s * 0.9 = 67.5s */
-            animation-delay: -33.75s; /* Start halfway loaded (50% of 67.5s) */
+            padding-left: 100%; 
+            /* Speed: 60s (Faster). Delay: -30s (Starts halfway across screen) */
+            animation: ticker-scroll 60s linear infinite; 
+            animation-delay: -30s; 
         }
 
         /* Individual Story Styling */
         .ticker-item {
             display: inline-block;
             color: #ffffff;
-            font-size: 11px; /* REDUCED FONT SIZE */
+            font-size: 10px; /* SMALLER FONT */
             font-weight: 600;
             margin-right: 24px; 
             text-transform: uppercase;
             letter-spacing: 0.02em;
-            line-height: 1.0; 
+            line-height: 18px; /* Matches container height for vertical centering */
         }
 
         /* The Link Styling */
@@ -62,8 +59,8 @@
         }
 
         .ticker-item a:hover {
-            color: #21a0d8; /* Hover color (matches your blue branding) */
-            text-decoration: none; /* No underline */
+            color: #21a0d8; 
+            text-decoration: none; 
         }
 
         /* Source Tag Styling */
@@ -72,7 +69,6 @@
             font-weight: 700;
             margin-right: 6px;
             font-size: 0.9em; 
-            vertical-align: middle; 
         }
 
         /* Time Tag Styling */
@@ -81,7 +77,6 @@
             font-weight: 400;
             margin-left: 6px;
             font-size: 0.9em; 
-            vertical-align: middle;
         }
 
         /* Separator */
@@ -115,10 +110,9 @@
 
         const tickerContainer = document.getElementById('news-content');
 
-        // Maximum age allowed for a story (INCREASED to 6 hours from 3 hours to ensure more stories appear)
-        const MAX_AGE_MS = 6 * 60 * 60 * 1000;
-        // Target number of stories to display (Will display up to 15 of the available filtered stories)
-        const TARGET_STORIES = 15; 
+        // INCREASED to 24 hours to ensure the ticker is always full of stories
+        const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+        const TARGET_STORIES = 20; 
 
         async function fetchNews() {
             try {
@@ -129,7 +123,7 @@
                     renderNews(data.items);
                 } else {
                     console.error('Error fetching news:', data.message);
-                    tickerContainer.innerHTML = '<div class="ticker-item">Unable to load news feed. Check console for API error.</div>';
+                    tickerContainer.innerHTML = '<div class="ticker-item">Unable to load news feed. Check console.</div>';
                 }
             } catch (error) {
                 console.error('Network error:', error);
@@ -137,17 +131,16 @@
         }
 
         function renderNews(items) {
-            // 1. Filter stories older than 6 hours
+            // 1. Filter stories older than 24 hours (Was 6, increased to fill ticker)
             const now = new Date();
             const filteredStories = items.filter(item => {
                 const pubDate = new Date(item.pubDate);
-                // Only keep stories that are 6 hours old or newer
                 return (now - pubDate) <= MAX_AGE_MS;
             });
             
             let html = '';
             
-            // 2. Limit the filtered results to the target count (15)
+            // 2. Limit the filtered results
             const storiesToDisplay = filteredStories.slice(0, TARGET_STORIES);
 
             storiesToDisplay.forEach(item => {
@@ -173,7 +166,7 @@
             });
 
             if (storiesToDisplay.length === 0) {
-                 tickerContainer.innerHTML = '<div class="ticker-item">No UK news found in the last 6 hours.</div>';
+                 tickerContainer.innerHTML = '<div class="ticker-item">No UK news found in the last 24 hours.</div>';
             } else {
                  tickerContainer.innerHTML = html;
             }
@@ -199,7 +192,7 @@
         // Initial Load
         fetchNews();
 
-        // Refresh every 5 minutes (300,000 milliseconds)
+        // Refresh every 5 minutes
         setInterval(fetchNews, 300000);
     </script>
 
