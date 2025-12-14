@@ -3,528 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Personal Reminders</title>
+    <title>My Reminders Header</title>
     <style>
-        /* Core Styles */
+        /* Core Layout */
         body {
             margin: 0;
-            padding: 10px;
+            padding: 0;
+            display: flex;
+            justify-content: flex-start; 
+            align-items: center;
+            height: auto; 
+            background-color: transparent; 
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background-color: transparent;
-            display: flex;
-            flex-direction: column;
-            /* FIX: Changed from fixed 100vh to min-height to allow natural sizing */
-            min-height: 100vh;
-            height: auto;
-            box-sizing: border-box;
-            overflow-x: hidden; /* Prevent horizontal scroll */
-        }
-
-        /* --- CONTAINER CARD --- */
-        .widget-card {
-            background: #ffffff;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
             overflow: hidden;
-            border: 1px solid #f0f0f0;
-            /* FIX: Ensure it takes up space but doesn't stretch weirdly */
-            flex-grow: 1; 
+            padding-top: 2px;
+            padding-bottom: 2px;
         }
 
-        /* --- INPUT AREA --- */
-        .input-area {
-            padding: 15px;
-            background-color: #fcfcfc;
-            border-bottom: 1px solid #eee;
+        /* Container for the Lockup */
+        .header-container {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            align-items: center;
+            gap: 0.5rem; 
+            white-space: nowrap;
         }
 
-        label {
-            font-size: 11px;
-            font-weight: 700;
-            color: #999;
-            text-transform: uppercase;
-            margin-bottom: -4px;
+        /* Text Styling */
+        .title-text {
+            font-size: 1.5rem; /* Reduced to 1.5rem to prevent clipping */
+            font-weight: 800;
+            color: #000000;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            opacity: 0;
+            transform: translateY(5px);
+            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        input, textarea, select {
-            padding: 8px 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 13px;
-            font-family: inherit;
-            outline: none;
-            transition: border 0.2s;
+        .text-left { animation-delay: 0.1s; }
+        .text-right { animation-delay: 0.3s; }
+
+        /* The Dots Container */
+        .dots-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px; 
+            width: 18px; 
+            height: 18px; 
+        }
+
+        /* Individual Dot Styling */
+        .dot {
             width: 100%;
-            box-sizing: border-box;
-        }
-
-        input:focus, textarea:focus, select:focus {
-            border-color: #9C27B0;
-        }
-
-        #taskInput { font-weight: 600; }
-        
-        .date-time-group {
-            display: flex;
-            gap: 5px;
-        }
-        
-        input[type="date"], input[type="time"] {
-            color: #555;
-        }
-
-        #notesInput {
-            resize: none;
-            height: 50px;
-        }
-
-        /* Reminder Section */
-        .reminder-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 12px;
-            color: #666;
-            cursor: pointer;
-            padding: 5px 0;
-            user-select: none;
-        }
-        .reminder-toggle:hover { color: #9C27B0; }
-
-        .reminder-inputs-container {
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            gap: 6px;
-            padding-left: 5px;
-            border-left: 2px solid #eee;
-        }
-
-        .reminder-row {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .reminder-input { width: 50px; }
-        .reminder-select { flex-grow: 1; }
-        
-        .remove-reminder-btn {
-            background: none;
-            border: none;
-            color: #aaa;
-            cursor: pointer;
-            font-size: 14px;
-            padding: 0 4px;
-        }
-        .remove-reminder-btn:hover { color: #d32f2f; }
-
-        .add-more-btn {
-            background: none;
-            border: none;
-            color: #9C27B0;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            padding: 0;
-            margin-top: 4px;
-        }
-
-        /* Main Add Button */
-        .add-btn {
-            background-color: #9C27B0; 
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 13px;
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: background 0.2s;
-            margin-top: 5px;
-        }
-        .add-btn:hover { background-color: #7B1FA2; }
-
-        /* --- LIST AREA --- */
-        .list-container {
-            /* FIX: Allow it to grow, but min-height prevents collapse */
-            flex-grow: 1;
-            min-height: 100px;
-            padding: 0;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 30px 20px;
-            color: #aaa;
-            font-size: 12px;
-            font-style: italic;
-        }
-
-        .reminder-item {
-            display: flex;
-            flex-direction: column;
-            padding: 12px 15px;
-            border-bottom: 1px solid #f5f5f5;
-            transition: all 0.2s;
-            position: relative;
-            background: #fff;
-        }
-
-        /* Urgent Style (Red) */
-        .reminder-item.urgent {
-            border-left: 4px solid #d32f2f;
-            background-color: #fff5f5;
-        }
-        .reminder-item.urgent .task-title { color: #d32f2f; }
-        .reminder-item.urgent .check-circle { border-color: #d32f2f; }
-
-        .item-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-
-        .check-circle {
-            width: 16px;
-            height: 16px;
-            border: 2px solid #ddd;
+            height: 100%;
+            background-color: #9C27B0; /* PURPLE */
             border-radius: 50%;
-            cursor: pointer;
-            flex-shrink: 0;
-            margin-top: 3px;
-            transition: all 0.2s;
+            transform: scale(0);
+            animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
-        .check-circle:hover { border-color: #9C27B0; }
+
+        .dot:nth-child(1) { animation-delay: 0.2s; }
+        .dot:nth-child(2) { animation-delay: 0.3s; }
+        .dot:nth-child(3) { animation-delay: 0.3s; }
+        .dot:nth-child(4) { animation-delay: 0.4s; }
+
+        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { to { transform: scale(1); } }
         
-        .task-content { flex-grow: 1; }
-
-        .task-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 3px;
-            line-height: 1.3;
+        /* Ultra-Small Screens */
+        @media (max-width: 300px) {
+            .title-text { font-size: 1.2rem; }
+            .header-container { gap: 0.4rem; }
+            .dots-grid { width: 14px; height: 14px; }
         }
-
-        .task-meta {
-            font-size: 10px;
-            color: #999;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            font-weight: 600;
-            text-transform: uppercase;
-            align-items: center;
-        }
-
-        .reminder-badge {
-            color: #9C27B0;
-            background: #f3e5f5;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 9px;
-        }
-
-        .task-notes {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-            background: rgba(0,0,0,0.03);
-            padding: 6px 8px;
-            border-radius: 4px;
-            display: block;
-            white-space: pre-wrap;
-        }
-
-        .delete-btn {
-            background: none;
-            border: none;
-            color: #ddd;
-            cursor: pointer;
-            font-size: 16px;
-            padding: 0;
-            position: absolute;
-            top: 10px;
-            right: 10px;
-        }
-        .delete-btn:hover { color: #d32f2f; }
-
-        .perm-btn {
-            background: none; border: none; color: #9C27B0; text-decoration: underline; cursor: pointer; font-size: 10px; padding: 0;
-        }
-
     </style>
 </head>
 <body>
 
-    <div class="widget-card">
-        
-        <!-- Input Area -->
-        <div class="input-area">
-            <label>Title</label>
-            <input type="text" id="taskInput" placeholder="Task Name..." autocomplete="off">
-            
-            <label>Due Date & Time</label>
-            <div class="date-time-group">
-                <input type="date" id="dateInput">
-                <input type="time" id="timeInput">
-            </div>
-
-            <label>Notes</label>
-            <textarea id="notesInput" placeholder="Details..."></textarea>
-
-            <!-- Optional Reminders Toggle -->
-            <div class="reminder-toggle" onclick="toggleReminders()">
-                <span>🔔 Set Reminders (Optional)</span>
-                <span id="toggleIcon">+</span>
-            </div>
-
-            <div id="reminderContainer" class="reminder-inputs-container">
-                <div class="permission-notice" style="margin-bottom:5px;">
-                    <button id="reqPermBtn" class="perm-btn" onclick="reqPermission()" style="display:none;">Enable Browser Alerts</button>
-                </div>
-                <!-- Rows injected via JS -->
-                <button class="add-more-btn" onclick="addReminderRow()">+ Add another (Max 4)</button>
-            </div>
-            
-            <button class="add-btn" onclick="addReminder()">Add to List</button>
+    <div class="header-container">
+        <div class="title-text text-left">MY</div>
+        <div class="dots-grid">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
         </div>
-
-        <!-- List Area -->
-        <div id="reminderList" class="list-container"></div>
-
+        <div class="title-text text-right">REMINDERS</div>
     </div>
-
-    <script>
-        let tasks = JSON.parse(localStorage.getItem('my_personal_reminders_v2')) || [];
-        
-        // DOM Elements
-        const taskInput = document.getElementById('taskInput');
-        const dateInput = document.getElementById('dateInput');
-        const timeInput = document.getElementById('timeInput');
-        const notesInput = document.getElementById('notesInput');
-        const listContainer = document.getElementById('reminderList');
-        const reminderContainer = document.getElementById('reminderContainer');
-        const reqPermBtn = document.getElementById('reqPermBtn');
-
-        // Check Notification Permission
-        if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-            reqPermBtn.style.display = 'inline-block';
-        }
-
-        function reqPermission() {
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") reqPermBtn.style.display = 'none';
-            });
-        }
-
-        // Toggle UI
-        function toggleReminders() {
-            const isHidden = reminderContainer.style.display === 'none' || reminderContainer.style.display === '';
-            reminderContainer.style.display = isHidden ? 'flex' : 'none';
-            document.getElementById('toggleIcon').textContent = isHidden ? '−' : '+';
-            if(isHidden && document.querySelectorAll('.reminder-row').length === 0) {
-                addReminderRow(); // Add first row if empty
-            }
-        }
-
-        function addReminderRow() {
-            const currentRows = document.querySelectorAll('.reminder-row').length;
-            if (currentRows >= 4) return;
-
-            const div = document.createElement('div');
-            div.className = 'reminder-row';
-            div.innerHTML = `
-                <span>Remind me</span>
-                <input type="number" class="reminder-input" placeholder="15" min="1">
-                <select class="reminder-select">
-                    <option value="minutes">minutes</option>
-                    <option value="hours">hours</option>
-                    <option value="days">days</option>
-                </select>
-                <span>before</span>
-                <button class="remove-reminder-btn" onclick="this.parentElement.remove()">×</button>
-            `;
-            // Insert before the "Add more" button
-            reminderContainer.insertBefore(div, reminderContainer.lastElementChild);
-        }
-
-        // FIX: Renamed function to match HTML onclick
-        function addReminder() {
-            const title = taskInput.value.trim();
-            if (!title) return;
-
-            // Collect Reminders
-            const remindersList = [];
-            if (dateInput.value && timeInput.value) {
-                const dueStr = `${dateInput.value}T${timeInput.value}`;
-                const dueDate = new Date(dueStr);
-                
-                document.querySelectorAll('.reminder-row').forEach(row => {
-                    const val = parseInt(row.querySelector('.reminder-input').value);
-                    const unit = row.querySelector('.reminder-select').value;
-                    if (!val) return;
-
-                    const triggerDate = new Date(dueDate);
-                    if (unit === 'minutes') triggerDate.setMinutes(triggerDate.getMinutes() - val);
-                    if (unit === 'hours') triggerDate.setHours(triggerDate.getHours() - val);
-                    if (unit === 'days') triggerDate.setDate(triggerDate.getDate() - val);
-
-                    remindersList.push({
-                        val: val,
-                        unit: unit,
-                        triggerTime: triggerDate.getTime(),
-                        notified: false
-                    });
-                });
-            }
-
-            const newTask = {
-                id: Date.now(),
-                title: title,
-                date: dateInput.value,
-                time: timeInput.value,
-                notes: notesInput.value.trim(),
-                reminders: remindersList,
-                createdAt: Date.now()
-            };
-
-            tasks.push(newTask);
-            saveAndRender();
-            clearInputs();
-            
-            if (remindersList.length > 0 && Notification.permission !== "granted") {
-                reqPermission();
-            }
-        }
-
-        function deleteTask(id) {
-            tasks = tasks.filter(t => t.id !== id);
-            saveAndRender();
-        }
-
-        function saveAndRender() {
-            tasks.sort((a, b) => {
-                if (a.date && b.date) return new Date(a.date + ' ' + (a.time || '00:00')) - new Date(b.date + ' ' + (b.time || '00:00'));
-                if (a.date && !b.date) return -1;
-                if (!a.date && b.date) return 1;
-                return b.createdAt - a.createdAt;
-            });
-
-            localStorage.setItem('my_personal_reminders_v2', JSON.stringify(tasks));
-            // FIX: Corrected function call name
-            renderReminders();
-        }
-
-        // FIX: Renamed function to match initial call
-        function renderReminders() {
-            listContainer.innerHTML = '';
-            if (tasks.length === 0) {
-                listContainer.innerHTML = '<div class="empty-state">No reminders set.</div>';
-                return;
-            }
-
-            const now = new Date();
-            const todayStr = now.toISOString().split('T')[0];
-
-            tasks.forEach(item => {
-                // Determine Urgency (Red)
-                let isUrgent = false;
-                let dateDisplay = '';
-                
-                if (item.date) {
-                    const dateObj = new Date(item.date);
-                    dateDisplay = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                    
-                    // Logic: If date is today or in the past, render RED
-                    if (item.date <= todayStr) {
-                        isUrgent = true;
-                        if(item.date < todayStr) dateDisplay += " (Overdue)";
-                        else dateDisplay = "Today";
-                    }
-                }
-
-                let timeDisplay = item.time ? item.time : '';
-                
-                // Render Reminder Tags
-                let badgeHtml = '';
-                if (item.reminders && item.reminders.length > 0) {
-                    const pendingCount = item.reminders.filter(r => !r.notified).length;
-                    if(pendingCount > 0) badgeHtml = `<span class="reminder-badge">🔔 ${pendingCount} active alerts</span>`;
-                }
-
-                const html = `
-                    <div class="reminder-item ${isUrgent ? 'urgent' : ''}">
-                        <button class="delete-btn" onclick="deleteTask(${item.id})">×</button>
-                        <div class="item-header">
-                            <div class="check-circle" onclick="deleteTask(${item.id})"></div>
-                            <div class="task-content">
-                                <div class="task-title">${escapeHtml(item.title)}</div>
-                                
-                                ${(dateDisplay || timeDisplay || badgeHtml) ? `
-                                    <div class="task-meta">
-                                        ${dateDisplay ? `<span>📅 ${dateDisplay}</span>` : ''}
-                                        ${timeDisplay ? `<span>⏰ ${timeDisplay}</span>` : ''}
-                                        ${badgeHtml}
-                                    </div>
-                                ` : ''}
-
-                                ${item.notes ? `<div class="task-notes">${escapeHtml(item.notes)}</div>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-                listContainer.innerHTML += html;
-            });
-        }
-
-        // Background Check Loop
-        setInterval(() => {
-            const now = Date.now();
-            let changed = false;
-            
-            tasks.forEach(task => {
-                if(task.reminders) {
-                    task.reminders.forEach(r => {
-                        if (r.triggerTime && !r.notified && now >= r.triggerTime) {
-                            if (Notification.permission === "granted") {
-                                new Notification("Reminder: " + task.title, { body: task.notes || "Due now!" });
-                            }
-                            r.notified = true;
-                            changed = true;
-                        }
-                    });
-                }
-            });
-            if (changed) saveAndRender();
-        }, 30000);
-
-        function clearInputs() {
-            taskInput.value = '';
-            dateInput.value = '';
-            timeInput.value = '';
-            notesInput.value = '';
-            // Clear reminder rows but keep toggle state if user wants to add multiple tasks
-            document.querySelectorAll('.reminder-row').forEach(e => e.remove());
-            if(reminderContainer.style.display !== 'none') addReminderRow();
-        }
-
-        function escapeHtml(text) {
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-        }
-        
-        // Initial call
-        renderReminders();
-    </script>
 
 </body>
 </html>
