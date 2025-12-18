@@ -319,6 +319,32 @@
         .success-desc { font-size: 14px; color: var(--text-sub); max-width: 280px; line-height: 1.5; }
         .reset-link { margin-top: 30px; font-size: 12px; color: var(--text-sub); text-decoration: underline; cursor: pointer; }
 
+        /* HELPER LINK (Still here for emergency local overrides) */
+        .helper-link {
+            font-size: 11px;
+            color: var(--text-sub);
+            text-align: right;
+            margin-top: -8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+        .helper-link:hover { color: var(--brand-pink); }
+
+        /* MODAL FOR LOCAL ADD */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%; background: #fff;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 20; padding: 40px; box-sizing: border-box;
+        }
+        .overlay.active { opacity: 1; pointer-events: all; }
+        .modal-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; }
+        .modal-btn-row { display: flex; gap: 10px; width: 100%; margin-top: 10px; }
+        .btn-cancel { background: #eee; color: #333; flex: 1; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-save { background: var(--brand-black); color: #fff; flex: 1; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+
     </style>
 </head>
 <body>
@@ -341,14 +367,14 @@
                 </div>
             </div>
 
-            <!-- NAME SELECTOR (Updated with Full Staff List) -->
+            <!-- NAME SELECTOR (Populated with Master List) -->
             <div class="input-group">
                 <label class="input-label">Who Are You?</label>
                 <input type="text" id="staff-name" class="styled-input" list="staff-list" placeholder="Start typing your name...">
                 <datalist id="staff-list">
-                    <!-- MANAGERS (For when they need to submit) -->
+                    <!-- MANAGERS / LEADS -->
                     <option value="Josh Fabobi">
-                    <option value="Matthew Macleod">
+                    <option value="Matt Macleod">
                     <option value="Monty Vann">
                     <option value="Nick Bolwell">
                     <option value="Nick Moar">
@@ -356,6 +382,7 @@
                     <option value="Romy Grigg">
                     <option value="Sophia Stanford">
                     <option value="Stefan Burghila">
+                    
                     <!-- STAFF / CONTRIBUTORS -->
                     <option value="Abhinaya Sriram">
                     <option value="Abraham Eneh">
@@ -398,11 +425,14 @@
                 </datalist>
             </div>
 
-            <!-- MANAGER SELECTOR (Updated Line Managers) -->
+            <!-- MANAGER SELECTOR (Strict List) -->
             <div class="input-group">
                 <label class="input-label">Line Manager</label>
                 <select id="manager-select" class="styled-select">
                     <option value="" disabled selected>Select Manager...</option>
+                    <option value="Ellie Beetham">Ellie Beetham</option>
+                    <option value="Josh Fabobi">Josh Fabobi</option>
+                    <option value="Matt Macleod">Matt Macleod</option>
                     <option value="Monty Vann">Monty Vann</option>
                     <option value="Nick Bolwell">Nick Bolwell</option>
                     <option value="Nick Moar">Nick Moar</option>
@@ -410,10 +440,12 @@
                     <option value="Romy Grigg">Romy Grigg</option>
                     <option value="Sophia Stanford">Sophia Stanford</option>
                     <option value="Stefan Burghila">Stefan Burghila</option>
-                    <option value="Josh Fabobi">Josh Fabobi</option>
-                    <option value="Matthew Macleod">Matthew Macleod</option>
                 </select>
             </div>
+
+            <!-- OPTIONAL: Local Override Button -->
+            <div class="helper-link" onclick="openAddModal()">Name not listed? Add New Person +</div>
+
         </div>
 
         <div class="scroll-content">
@@ -425,6 +457,29 @@
 
         <div class="footer">
             <button class="submit-btn" onclick="submitRequest()">Submit Request</button>
+        </div>
+    </div>
+
+    <!-- ADD PERSON MODAL -->
+    <div id="add-modal" class="overlay">
+        <div class="modal-title">Add New Person</div>
+        <div style="font-size:12px; color:#666; margin-bottom:15px; line-height:1.4;">
+            Note: This adds the name to <strong>your device only</strong>.<br>To add someone for everyone, please update the GitHub code.
+        </div>
+        <div class="input-group" style="width:100%; text-align:left;">
+            <label class="input-label">Full Name</label>
+            <input type="text" id="new-person-name" class="styled-input" placeholder="e.g. Sarah Jones">
+        </div>
+        <div class="input-group" style="width:100%; text-align:left;">
+            <label class="input-label">Role Category</label>
+            <select id="new-person-role" class="styled-select">
+                <option value="Staff">Staff / Employee</option>
+                <option value="Manager">Line Manager</option>
+            </select>
+        </div>
+        <div class="modal-btn-row">
+            <button class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+            <button class="btn-save" onclick="addNewPerson()">Add Person</button>
         </div>
     </div>
 
@@ -459,6 +514,7 @@
     function init() {
         calculateNextWeek();
         renderDays();
+        loadCustomNames(); // Load locally saved names
     }
 
     function calculateNextWeek() {
@@ -516,6 +572,50 @@
     function selectLoc(day, loc) {
         weekData[day] = loc;
         renderDays();
+    }
+
+    // --- MODAL FUNCTIONS (LOCAL STORAGE) ---
+    function openAddModal() {
+        document.getElementById('add-modal').classList.add('active');
+    }
+    function closeAddModal() {
+        document.getElementById('add-modal').classList.remove('active');
+        document.getElementById('new-person-name').value = '';
+    }
+    
+    function addNewPerson() {
+        const name = document.getElementById('new-person-name').value.trim();
+        const role = document.getElementById('new-person-role').value;
+        
+        if (!name) return alert("Please enter a name");
+
+        // Save to LocalStorage
+        let customList = JSON.parse(localStorage.getItem('dmg_custom_people') || "[]");
+        customList.push({ name, role });
+        localStorage.setItem('dmg_custom_people', JSON.stringify(customList));
+
+        // Update UI immediately
+        addOptionToUI(name, role);
+        
+        closeAddModal();
+        alert(`${name} added! (Saved to your device only)`);
+    }
+
+    function loadCustomNames() {
+        let customList = JSON.parse(localStorage.getItem('dmg_custom_people') || "[]");
+        customList.forEach(p => addOptionToUI(p.name, p.role));
+    }
+
+    function addOptionToUI(name, role) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.innerText = name; // For select box text
+
+        if (role === 'Staff') {
+            document.getElementById('staff-list').appendChild(option);
+        } else {
+            document.getElementById('manager-select').appendChild(option);
+        }
     }
 
     async function submitRequest() {
