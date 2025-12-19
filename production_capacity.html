@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Capacity Hub | DMG Media</title>
+    <style>
+        :root {
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-creative: #E6468B;
+            --team-people: #21A0D8;
+            --team-editorial: #E94B4B;
+
+            --bg-page: #FFFFFF;
+            --bg-base: #F8F9FA;
+            --border-soft: #EAEAEA;
+            --ink: #1A1A1A;
+            --ink-sub: #757575;
+            
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-chip: 999px;
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.04);
+            --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-page);
+            margin: 0; padding: 0; color: var(--ink);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .main-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+        /* --- HEADER --- */
+        .main-header {
+            padding: 40px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            border-bottom: 1px solid var(--border-soft);
+            margin-bottom: 40px;
+        }
+
+        .header-lockup { display: flex; align-items: center; gap: 1.5rem; }
+        .title-text {
+            font-size: 3.5rem; font-weight: 800; color: #000;
+            letter-spacing: -0.04em; line-height: 1; text-transform: uppercase;
+        }
+
+        .dots-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+            width: 44px; height: 44px; flex-shrink: 0;
+        }
+        .dot { width: 100%; height: 100%; background-color: var(--team-production); border-radius: 50%; transform: scale(0); animation: popIn 0.6s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        @keyframes popIn { to { transform: scale(1); } }
+
+        /* --- FOLDER SYSTEM --- */
+        .folder-card {
+            background: #FFF; border: 1px solid var(--border-soft); border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-soft); position: relative; padding: 45px 30px 30px; margin-bottom: 40px;
+        }
+        .folder-tab {
+            position: absolute; top: -14px; left: 30px; background: #EEE; color: var(--ink);
+            padding: 6px 16px; border-radius: 8px 8px 0 0; font-size: 9px; font-weight: 900;
+            text-transform: uppercase; letter-spacing: 0.15em; border: 1px solid var(--border-soft); border-bottom: none;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .folder-card[data-team="edit"] .folder-tab { border-top: 3px solid var(--team-production); }
+        .folder-card[data-team="design"] .folder-tab { border-top: 3px solid var(--team-social); }
+
+        /* --- CAPACITY TABLE --- */
+        .capacity-table { width: 100%; border-collapse: collapse; }
+        .capacity-table th { text-align: left; font-size: 9px; font-weight: 900; color: #BBB; text-transform: uppercase; padding: 12px; border-bottom: 1px solid var(--border-soft); }
+        .capacity-table td { padding: 20px 12px; border-bottom: 1px solid #F9F9F9; vertical-align: top; }
+
+        .name-stack { display: flex; flex-direction: column; }
+        .staff-name { font-size: 14px; font-weight: 800; }
+        .staff-status { font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-top: 2px; }
+
+        .project-pill {
+            display: inline-flex; align-items: center; padding: 6px 12px; background: var(--bg-base);
+            border-radius: 8px; font-size: 11px; font-weight: 700; margin-bottom: 6px; border: 1px solid var(--border-soft);
+            cursor: pointer; transition: var(--transition);
+        }
+        .project-pill:hover { background: #FFF; border-color: var(--team-production); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+
+        .capacity-bar-container { width: 100%; height: 8px; background: #EEE; border-radius: 4px; margin-top: 8px; position: relative; overflow: hidden; }
+        .capacity-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+        .cap-safe { background: var(--team-production); }
+        .cap-busy { background: var(--team-social); }
+        .cap-full { background: var(--team-editorial); }
+
+        .hour-breakdown { font-size: 9px; color: var(--ink-sub); margin-top: 4px; font-weight: 600; text-transform: uppercase; }
+
+        /* --- PROJECT SIDE PANEL --- */
+        .side-panel {
+            position: fixed; top: 0; right: -400px; width: 400px; height: 100vh;
+            background: #FFF; border-left: 1px solid var(--border-soft);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.05);
+            z-index: 1000; padding: 40px;
+            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .side-panel.open { right: 0; }
+        .panel-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.1); backdrop-filter: blur(2px);
+            z-index: 999; display: none;
+        }
+        .panel-overlay.active { display: block; }
+        .close-btn { position: absolute; top: 20px; right: 20px; border: none; background: none; font-size: 24px; cursor: pointer; color: var(--ink-sub); }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+    <div class="side-panel" id="projectPanel">
+        <button class="close-btn" onclick="closePanel()">×</button>
+        <div style="font-size: 10px; font-weight: 800; color: var(--team-production); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.1em;">Notion Project Prompt</div>
+        <h2 id="panelProjectTitle" style="font-size: 24px; font-weight: 900; margin: 0 0 20px 0; letter-spacing: -0.04em;">Project Name</h2>
+        
+        <div style="background: var(--bg-base); padding: 20px; border-radius: 12px; font-size: 13px; font-weight: 500; color: var(--ink-sub);">
+            This panel will load the Notion Workspace or Database Page for this specific project.
+        </div>
+    </div>
+
+    <div class="main-container">
+        <header class="main-header">
+            <div class="header-lockup">
+                <div class="title-text">PRODUCTION</div>
+                <div class="dots-grid">
+                    <div class="dot"></div><div class="dot"></div>
+                    <div class="dot"></div><div class="dot"></div>
+                </div>
+                <div class="title-text">CAPACITY</div>
+            </div>
+        </header>
+
+        <section id="view-workload">
+            <!-- VIDEO EDITORS -->
+            <div class="folder-card" data-team="edit">
+                <div class="folder-tab">Video Post-Production</div>
+                <table class="capacity-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Operator</th>
+                            <th style="width: 45%;">Active Projects Today</th>
+                            <th style="width: 30%;">Current Daily Load</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="name-stack">
+                                    <span class="staff-name">Claire O’Moore</span>
+                                    <span class="staff-status">In Office • Mon 22</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="project-pill" onclick="openProject('Daily Social Edits (AM)')">Daily Social Edits (AM)</div>
+                                <div class="project-pill" onclick="openProject('Feature: Oscars Preview')">Feature: Oscars Preview</div>
+                            </td>
+                            <td>
+                                <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:800;">
+                                    <span>UTILISED</span><span>7.5 / 9 HRS</span>
+                                </div>
+                                <div class="capacity-bar-container">
+                                    <div class="capacity-fill cap-busy" style="width: 83%;"></div>
+                                </div>
+                                <div class="hour-breakdown">4h Baseline + 3.5h Projects</div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <div class="name-stack">
+                                    <span class="staff-name">Stefan Burghila</span>
+                                    <span class="staff-status">In Office • Mon 22</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="project-pill" onclick="openProject('Sport Originals: Boxing Recap')">Sport Originals: Boxing Recap</div>
+                            </td>
+                            <td>
+                                <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:800;">
+                                    <span>AVAILABLE</span><span>6 / 9 HRS</span>
+                                </div>
+                                <div class="capacity-bar-container">
+                                    <div class="capacity-fill cap-safe" style="width: 66%;"></div>
+                                </div>
+                                <div class="hour-breakdown">4h Baseline + 2h Projects</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- DESIGNERS -->
+            <div class="folder-card" data-team="design">
+                <div class="folder-tab">Social Design</div>
+                <table class="capacity-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Operator</th>
+                            <th style="width: 45%;">Active Projects Today</th>
+                            <th style="width: 30%;">Current Daily Load</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="name-stack">
+                                    <span class="staff-name">Josh Fajobi</span>
+                                    <span class="staff-status">WFH • Mon 22</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="project-pill" onclick="openProject('Branding: Respawn Revamp')">Branding: Respawn Revamp</div>
+                                <div class="project-pill" onclick="openProject('Graphic Suite: Jan Sale')">Graphic Suite: Jan Sale</div>
+                                <div class="project-pill" onclick="openProject('Daily Design Assets')">Daily Design Assets</div>
+                            </td>
+                            <td>
+                                <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:800;">
+                                    <span>AT CAPACITY</span><span>9 / 9 HRS</span>
+                                </div>
+                                <div class="capacity-bar-container">
+                                    <div class="capacity-fill cap-full" style="width: 100%;"></div>
+                                </div>
+                                <div class="hour-breakdown">Fully Allocated</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function openProject(projectName) {
+            document.getElementById('panelProjectTitle').innerText = projectName;
+            document.getElementById('projectPanel').classList.add('open');
+            document.getElementById('panelOverlay').classList.add('active');
+        }
+
+        function closePanel() {
+            document.getElementById('projectPanel').classList.remove('open');
+            document.getElementById('panelOverlay').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
