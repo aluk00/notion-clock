@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office Outlook</title>
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --text-main: #111;
+            --text-sub: #888;
+            --border: #eeeeee;
+            --bg-light: #f9f9f9;
+            --st-office: #2E7D32;
+            --st-wfh: #F9A825;
+            --st-shoot: #2196F3;
+            --st-pto: #F44336;
+            
+            /* Team Colors */
+            --team-social: #be185d;
+            --team-production: #d97706;
+            --team-creative: #7e22ce;
+            --team-ops: #666;
+        }
+
+        /* Fixed: Removed height: 100% to prevent white-screen clipping in Notion */
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: var(--text-main);
+        }
+
+        body {
+            padding: 10px;
+            display: block;
+        }
+
+        .outlook-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: #ffffff;
+            border: 1.5px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            box-sizing: border-box;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            position: relative;
+        }
+
+        /* --- HEADER: DATES --- */
+        .date-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 5px;
+        }
+
+        .date-main { display: flex; flex-direction: column; }
+        .today-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dmg-blue); }
+        .today-date { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+        .wc-label { font-size: 11px; font-weight: 700; color: var(--text-sub); }
+
+        /* --- TOP ROW: TODAY'S TOTALS --- */
+        .status-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .status-pill {
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            background: var(--bg-light);
+            border-radius: 10px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .status-pill:hover { border-color: var(--dmg-blue); background: #fff; transform: translateY(-2px); }
+
+        .pill-count {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .pill-label {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-sub);
+        }
+
+        /* --- MIDDLE SECTION: TODAY'S LIST --- */
+        .section-header {
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #bbb;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .section-header::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+        .people-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 5px; }
+        .person-tag {
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--st-office); }
+
+        .others-trigger {
+            background: var(--bg-light);
+            color: var(--dmg-blue);
+            cursor: pointer;
+            border: 1px solid transparent;
+            font-weight: 800;
+            transition: all 0.2s;
+        }
+        .others-trigger:hover { background: #fff; border-color: var(--dmg-blue); }
+
+        /* --- BOTTOM SECTION: WEEKLY FORECAST --- */
+        .forecast-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
+        .day-btn {
+            background: var(--bg-light);
+            border: 1px solid transparent;
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .day-btn:hover { border-color: var(--dmg-blue); background: #fff; }
+        .day-btn.active { background: var(--dmg-blue); color: #fff; }
+        .day-label { font-size: 10px; font-weight: 900; }
+
+        .expandable-content {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            animation: slideDown 0.3s ease;
+        }
+        .expandable-content.active { display: block; }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { font-size: 11px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; }
+        
+        .data-val-btn {
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .data-val-btn:hover { border-color: var(--dmg-blue); transform: scale(1.05); }
+
+        /* --- POPUP / MODAL --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        
+        .modal-card {
+            background: #fff; width: 90%; max-width: 320px; border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2); display: flex; flex-direction: column;
+            max-height: 80vh; animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--text-sub); letter-spacing: 0.1em; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #ccc; line-height: 1; }
+        
+        .modal-list { padding: 10px 20px; overflow-y: auto; flex: 1; }
+        .modal-list-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px solid #f5f5f5;
+        }
+        .modal-list-item:last-child { border-bottom: none; }
+        .staff-name { font-size: 13px; font-weight: 700; }
+        .team-tag { font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; color: #fff; }
+
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        @media (max-width: 600px) {
+            .status-row { grid-template-columns: 1fr 1fr; }
+            .forecast-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="outlook-container">
+        <!-- Header -->
+        <div class="date-header">
+            <div class="date-main">
+                <span class="today-label">Today</span>
+                <span class="today-date" id="display-today">Loading...</span>
+            </div>
+            <div class="wc-label" id="display-wc">W/C: --</div>
+        </div>
+        
+        <!-- 1. Today's Totals -->
+        <div class="status-row">
+            <div class="status-pill" onclick="openStaffList('Office', 'today')">
+                <span class="pill-count" id="today-office" style="color: var(--st-office);">12</span>
+                <span class="pill-label">In Office</span>
+            </div>
+            <div class="status-pill" onclick="openStaffList('WFH', 'today')">
+                <span class="pill-count" id="today-remote" style="color: var(--st-wfh);">8</span>
+                <span class="pill-label">Remote</span>
+            </div>
+            <div class="status-pill" onclick="openStaffList('Shoot', 'today')">
+                <span class="pill-count" id="today-shoot" style="color: var(--st-shoot);">3</span>
+                <span class="pill-label">Off-Site</span>
+            </div>
+            <div class="status-pill" onclick="openStaffList('PTO', 'today')">
+                <span class="pill-count" id="today-pto" style="color: var(--st-pto);">2</span>
+                <span class="pill-label">On Leave</span>
+            </div>
+        </div>
+
+        <!-- 2. Who is In Today -->
+        <div class="presence-list">
+            <div class="section-header">Currently in building</div>
+            <div class="people-grid">
+                <div class="person-tag"><div class="status-dot"></div> Ellie B.</div>
+                <div class="person-tag"><div class="status-dot"></div> Nick B.</div>
+                <div class="person-tag"><div class="status-dot"></div> Matthew M.</div>
+                <div class="person-tag"><div class="status-dot"></div> Anaïs L.</div>
+                <div class="person-tag"><div class="status-dot"></div> Hugo S.</div>
+                <div class="person-tag others-trigger" onclick="openStaffList('Office', 'today')">+5 others</div>
+            </div>
+        </div>
+
+        <!-- 3. Weekly Forecast -->
+        <div class="weekly-forecast">
+            <div class="section-header">Weekly Forecast</div>
+            <div class="forecast-grid">
+                <div class="day-btn" id="btn-mon" onclick="expandDay('mon')"><span class="day-label">MON</span></div>
+                <div class="day-btn" id="btn-tue" onclick="expandDay('tue')"><span class="day-label">TUE</span></div>
+                <div class="day-btn" id="btn-wed" onclick="expandDay('wed')"><span class="day-label">WED</span></div>
+                <div class="day-btn" id="btn-thu" onclick="expandDay('thu')"><span class="day-label">THU</span></div>
+                <div class="day-btn" id="btn-fri" onclick="expandDay('fri')"><span class="day-label">FRI</span></div>
+            </div>
+
+            <div class="expandable-content" id="day-details">
+                <div style="font-size:10px; font-weight:900; color:var(--dmg-blue); text-transform:uppercase; margin-bottom:10px;" id="selected-day-label">Monday Breakdown</div>
+                
+                <div class="data-row">
+                    <span class="data-label">In Office</span>
+                    <button class="data-val-btn" id="val-office" style="color:var(--st-office)" onclick="openStaffList('Office', window.currentDay)">--</button>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Remote</span>
+                    <button class="data-val-btn" id="val-remote" style="color:var(--st-wfh)" onclick="openStaffList('WFH', window.currentDay)">--</button>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Off Site</span>
+                    <button class="data-val-btn" id="val-shoot" style="color:var(--st-shoot)" onclick="openStaffList('Shoot', window.currentDay)">--</button>
+                </div>
+                <div class="data-row">
+                    <span class="data-label">Annual Leave</span>
+                    <button class="data-val-btn" id="val-pto" style="color:var(--st-pto)" onclick="openStaffList('PTO', window.currentDay)">--</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STAFF POPUP -->
+    <div class="modal-overlay" id="staff-modal" onclick="closeModal()">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-title">Staff List</div>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-list" id="modal-content">
+                <!-- List items added here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Use window scope for currentDay to ensure HTML handlers can find it
+        window.currentDay = 'today';
+
+        // --- STAFF DATA ---
+        const staff = [
+            { name: "Ellie Beetham", team: "Social", color: "var(--team-social)" },
+            { name: "Nick Bolwell", team: "Social", color: "var(--team-social)" },
+            { name: "Matthew Macleod", team: "Production", color: "var(--team-production)" },
+            { name: "Anaïs Lukaku", team: "Creative", color: "var(--team-creative)" },
+            { name: "Hugo Starns", team: "Creative", color: "var(--team-creative)" },
+            { name: "Nev Brook", team: "Production", color: "var(--team-production)" },
+            { name: "Maxine Halperin", team: "Operations", color: "var(--team-ops)" },
+            { name: "Henry Williams", team: "Creative", color: "var(--team-creative)" },
+            { name: "Josh Hartley", team: "Production", color: "var(--team-production)" },
+            { name: "Romy Grigg", team: "Social", color: "var(--team-social)" },
+            { name: "Dan Quinnell", team: "Social", color: "var(--team-social)" },
+            { name: "Claire O’Moore", team: "Production", color: "var(--team-production)" },
+            { name: "Stefan Burghila", team: "Production", color: "var(--team-production)" },
+            { name: "Alex Biddle", team: "Social", color: "var(--team-social)" },
+            { name: "Mimi Yates", team: "Social", color: "var(--team-social)" }
+        ];
+
+        const forecastData = {
+            mon: { Office: 14, WFH: 6, Shoot: 2, PTO: 3 },
+            tue: { Office: 18, WFH: 2, Shoot: 4, PTO: 1 },
+            wed: { Office: 15, WFH: 5, Shoot: 3, PTO: 2 },
+            thu: { Office: 12, WFH: 8, Shoot: 3, PTO: 2 },
+            fri: { Office: 6, WFH: 14, Shoot: 1, PTO: 4 },
+            today: { Office: 12, WFH: 8, Shoot: 3, PTO: 2 }
+        };
+
+        // --- LOGIC ---
+        function setDates() {
+            try {
+                const now = new Date();
+                const todayStr = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+                document.getElementById('display-today').innerText = todayStr;
+                
+                // Fixed Monday calculation
+                const day = now.getDay();
+                const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                const monday = new Date(new Date().setDate(diff));
+                document.getElementById('display-wc').innerText = `W/C: ${monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+            } catch (e) {
+                console.error("Date calculation failed", e);
+            }
+        }
+
+        function expandDay(dayId) {
+            const panel = document.getElementById('day-details');
+            const data = forecastData[dayId];
+            const btn = document.getElementById('btn-' + dayId);
+
+            if (btn.classList.contains('active')) {
+                btn.classList.remove('active'); 
+                panel.classList.remove('active');
+                window.currentDay = 'today'; 
+                return;
+            }
+
+            document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active'); 
+            panel.classList.add('active');
+            window.currentDay = dayId;
+
+            document.getElementById('selected-day-label').innerText = dayId.toUpperCase() + ' Breakdown';
+            document.getElementById('val-office').innerText = data.Office;
+            document.getElementById('val-remote').innerText = data.WFH;
+            document.getElementById('val-shoot').innerText = data.Shoot;
+            document.getElementById('val-pto').innerText = data.PTO;
+        }
+
+        function openStaffList(category, day) {
+            if (!day || !forecastData[day]) day = 'today';
+            
+            const modal = document.getElementById('staff-modal');
+            const content = document.getElementById('modal-content');
+            const title = document.getElementById('modal-title');
+            
+            const count = forecastData[day][category];
+            title.innerText = `${day === 'today' ? 'TODAY' : day.toUpperCase()} / ${category} (${count})`;
+            
+            // Randomize a subset of staff based on the count
+            const shuffled = [...staff].sort(() => 0.5 - Math.random());
+            const selectedStaff = shuffled.slice(0, Math.min(count, staff.length));
+
+            content.innerHTML = selectedStaff.map(p => `
+                <div class="modal-list-item">
+                    <span class="staff-name">${p.name}</span>
+                    <span class="team-tag" style="background:${p.color}">${p.team}</span>
+                </div>
+            `).join('');
+
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('staff-modal').classList.remove('active');
+        }
+
+        // Initialize
+        window.onload = function() {
+            setDates();
+        };
+    </script>
+</body>
+</html>
