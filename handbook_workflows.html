@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Navigator | DMG Handbook</title>
+    <style>
+        :root {
+            --editorial: #E94B4B;
+            --commercial: #E6468B;
+            --production: #43B049;
+            --social: #F2C316;
+            --dmg-blue: #21a0d8;
+            
+            --bg-page: #FFFFFF;
+            --border-ink: #F2F2F2;
+            --text-main: #000000;
+            --text-sub: #8E8E93;
+            --transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            --shadow-hd: 0 20px 40px -15px rgba(0,0,0,0.05);
+        }
+
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+        body {
+            margin: 0;
+            padding: 80px 20px;
+            background-color: var(--bg-page);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text-main);
+        }
+
+        .wf-master-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        /* --- THE TREE SPINE --- */
+        .spine-container {
+            position: absolute;
+            top: 60px;
+            bottom: 60px;
+            width: 2px;
+            background: linear-gradient(to bottom, #EEE, #EEE 80%, var(--production) 100%);
+            z-index: 0;
+        }
+
+        /* --- TOP COMMAND TABS --- */
+        .top-deck {
+            display: flex;
+            gap: 30px;
+            width: 100%;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+            margin-bottom: 40px;
+        }
+
+        .wf-tab {
+            flex: 1;
+            max-width: 440px;
+            background: #FFF;
+            border: 1.5px solid var(--border-ink);
+            padding: 40px;
+            border-radius: 28px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        }
+
+        /* Hover & Glow Logic */
+        .wf-tab:hover {
+            transform: translateY(-8px);
+        }
+
+        .wf-tab[data-type="editorial"]:hover, 
+        .wf-tab.active[data-type="editorial"] {
+            border-color: var(--editorial);
+            box-shadow: 0 0 20px rgba(233, 75, 75, 0.15), 0 30px 60px -15px rgba(233, 75, 75, 0.1);
+        }
+
+        .wf-tab[data-type="commercial"]:hover, 
+        .wf-tab.active[data-type="commercial"] {
+            border-color: var(--commercial);
+            box-shadow: 0 0 20px rgba(230, 70, 139, 0.15), 0 30px 60px -15px rgba(230, 70, 139, 0.1);
+        }
+
+        .tab-tag {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+            margin-bottom: 4px;
+        }
+
+        .tab-title {
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: -0.06em;
+            text-transform: uppercase;
+            margin: 0;
+            line-height: 0.9;
+        }
+
+        /* --- EXPANDABLE SECTIONS --- */
+        .expansion-gate {
+            width: 100%;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s;
+            opacity: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .expansion-gate.open {
+            max-height: 3000px;
+            opacity: 1;
+            margin-bottom: 80px;
+        }
+
+        .content-shell {
+            width: 100%;
+            background: #FAFAFA;
+            border-radius: 40px;
+            padding: 60px;
+            border: 1px solid var(--border-ink);
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 60px;
+        }
+
+        /* --- UI COMPONENTS --- */
+        .lifecycle-step {
+            padding: 24px 0;
+            border-bottom: 1px solid #EAEAEA;
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+        .step-num {
+            width: 32px; height: 32px; border-radius: 8px; background: #FFF;
+            border: 1px solid #EEE;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 900; color: #333; flex-shrink: 0; margin-top: 2px;
+        }
+        .step-info strong { display: block; font-size: 15px; text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 4px; }
+        .step-info p { margin: 0; font-size: 13px; color: var(--text-sub); line-height: 1.6; font-weight: 500; }
+        .step-tag { font-size: 8px; font-weight: 900; background: #EEE; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 8px; }
+
+        .sla-hero { display: flex; flex-direction: column; gap: 20px; }
+        .sla-card {
+            background: #FFF; border: 1px solid #EEE; padding: 30px; border-radius: 24px;
+            transition: var(--transition);
+        }
+        .sla-num { font-size: 48px; font-weight: 900; letter-spacing: -3px; color: var(--commercial); line-height: 1; }
+        .sla-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #BBB; margin-top: 8px; display: block; }
+
+        .ledger-box {
+            background: #000; color: #FFF; padding: 40px; border-radius: 32px;
+            position: relative; overflow: hidden;
+        }
+        .ledger-box::before { content: "DATA"; position: absolute; top: -20px; right: -20px; font-size: 80px; font-weight: 900; opacity: 0.03; }
+        .ledger-box h5 { margin: 0 0 25px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--social); }
+
+        /* --- BOTTOM: TECHNICAL DISTRIBUTION --- */
+        .bottom-anchor {
+            width: 100%;
+            max-width: 800px;
+            position: relative;
+            z-index: 10;
+            margin-top: 20px;
+        }
+
+        .wf-tab-center {
+            background: #FFF;
+            border: 2px solid var(--border-ink);
+            padding: 40px;
+            border-radius: 32px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .wf-tab-center:hover,
+        .wf-tab-center.active { 
+            transform: scale(1.02); 
+            border-color: var(--production); 
+            box-shadow: 0 0 20px rgba(67, 176, 73, 0.12), 0 30px 60px -15px rgba(67, 176, 73, 0.1); 
+        }
+
+        @media (max-width: 900px) {
+            .content-shell { grid-template-columns: 1fr; padding: 30px; }
+            .top-deck { flex-direction: column; }
+            .spine-container { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="wf-master-container">
+        
+        <div class="spine-container"></div>
+
+        <!-- ROW 1: THE INTAKE ARMS -->
+        <div class="top-deck">
+            <div class="wf-tab" id="tab-editorial" data-type="editorial" onclick="triggerWorkflow('editorial')">
+                <span class="tab-tag" style="color: var(--editorial);">Vertical stream</span>
+                <h4 class="tab-title">Editorial</h4>
+            </div>
+            <div class="wf-tab" id="tab-commercial" data-type="commercial" onclick="triggerWorkflow('commercial')">
+                <span class="tab-tag" style="color: var(--commercial);">Brand projects</span>
+                <h4 class="tab-title">Commercial</h4>
+            </div>
+        </div>
+
+        <!-- PANE: EDITORIAL -->
+        <div class="expansion-gate" id="pane-editorial">
+            <div class="content-shell" style="border-top: 6px solid var(--editorial)">
+                <div>
+                    <span class="tab-tag" style="color:var(--editorial)">The Daily Beat</span>
+                    <div class="lifecycle-step">
+                        <div class="step-num">08</div>
+                        <div class="step-info">
+                            <strong>Active Sourcing</strong>
+                            <p>Identify trending visual signals in vertical Slack channels. Monitor RTA, NewsWhip, and Google Trends for spikes.</p>
+                        </div>
+                    </div>
+                    <div class="lifecycle-step">
+                        <div class="step-num">09</div>
+                        <div class="step-info">
+                            <strong>Senior Vetting</strong>
+                            <p>Pitch conference with Nick Bolwell and Ellie Beetham. High-priority stories move instantly to the Script Vault.</p>
+                        </div>
+                    </div>
+                    <div class="lifecycle-step">
+                        <div class="step-num">DT</div>
+                        <div class="step-info">
+                            <strong>Production & Upload</strong>
+                            <p>Filming in studio or off-site. RAW assets sent to FRONT/SIDE folders. Mandatory 14-hour editor lead time.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="sla-hero">
+                    <span class="tab-tag">IP Standards</span>
+                    <div class="sla-card" style="border-color: #EEE;">
+                        <strong style="font-size: 16px; display: block; margin-bottom: 10px;">The Hook Protocol</strong>
+                        <p style="font-size: 13px; color: var(--text-sub); line-height: 1.6;">Scripts must lead with a bold statement or visual question. Maximum 5 words for the on-screen primary hook text.</p>
+                    </div>
+                    <div class="ledger-box" style="background: var(--editorial);">
+                        <h5>Verification Rituals</h5>
+                        <p style="margin: 0; font-weight: 500; font-size: 14px;">Accuracy over speed. Check the Banned Words list before submitting scripts. Always verify UGC rights via the syndication pillars.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANE: COMMERCIAL -->
+        <div class="expansion-gate" id="pane-commercial">
+            <div class="content-shell" style="border-top: 6px solid var(--commercial)">
+                <div>
+                    <span class="tab-tag" style="color:var(--commercial)">Lifecycle of a Project</span>
+                    <div class="lifecycle-step">
+                        <div class="step-num">1</div>
+                        <div class="step-info"><strong>Intake & Assignment</strong><span class="step-tag">Sales → Creative</span><p>Sales enters deal in Dashboard. Nick Moar alerted. Creative Lead (e.g. Anaïs/Hugo) assigned.</p></div>
+                    </div>
+                    <div class="lifecycle-step">
+                        <div class="step-num">2</div>
+                        <div class="step-info"><strong>Ideation & Design</strong><span class="step-tag">Creative → Design</span><p>Concepts developed in Hub. Deck design assets built by Nev. Collaborative feedback on live decks.</p></div>
+                    </div>
+                    <div class="lifecycle-step">
+                        <div class="step-num">3</div>
+                        <div class="step-info"><strong>Internal Review</strong><span class="step-tag">Creative → Mgmt</span><p>Final strategy and design sign-off by Nick, Nathan, or Nev Brook in Notion before Sales handover.</p></div>
+                    </div>
+                    <div class="lifecycle-step">
+                        <div class="step-num">4</div>
+                        <div class="step-info"><strong>Production Phase</strong><span class="step-tag">Sales → Prod</span><p>Campaign won; shoot and edit cycle begins. Status tracking active via 'Stakeholder Review'.</p></div>
+                    </div>
+                    <div class="lifecycle-step">
+                        <div class="step-num">5</div>
+                        <div class="step-info"><strong>Publication</strong><span class="step-tag">Prod → Social</span><p>Final approval from Heads. Assets hit Scheduling Queue. Live links logged and alerts sent to the team.</p></div>
+                    </div>
+                </div>
+                <div class="sla-hero">
+                    <span class="tab-tag">Commercial SLAs</span>
+                    <div class="sla-card">
+                        <span class="sla-num">48h</span>
+                        <span class="sla-label">Standard Turnaround</span>
+                        <p style="font-size: 12px; color: var(--text-sub); margin-top: 10px;">Brief intakes, requests, and edit feedback loops.</p>
+                    </div>
+                    <div class="sla-card">
+                        <span class="sla-num">36h</span>
+                        <span class="sla-label">Creative Decks</span>
+                        <p style="font-size: 12px; color: var(--text-sub); margin-top: 10px;">Window for ideation, copywriting, and design polish.</p>
+                    </div>
+                    <div class="ledger-box">
+                        <h5>Master Ledger Etiquette</h5>
+                        <p style="margin-bottom: 15px;"><strong>Tag the People:</strong> Always fill Creative/Social/Production leads for task visibility.</p>
+                        <p style="margin: 0;"><strong>Don't Delete:</strong> Archive or mark as 'Lost' to preserve our performance data history.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 2: THE FOUNDATION -->
+        <div class="bottom-anchor">
+            <div class="wf-tab-center" id="tab-technical" onclick="triggerWorkflow('technical')">
+                <span class="tab-tag" style="color: var(--production);">Final distribution</span>
+                <h4 class="tab-title">Technical Production & Distribution</h4>
+            </div>
+        </div>
+
+        <!-- PANE: TECHNICAL -->
+        <div class="expansion-gate" id="pane-technical">
+            <div class="content-shell" style="border-top: 6px solid var(--production); margin-top: 40px;">
+                <div>
+                    <span class="tab-tag" style="color:var(--production)">The Quality Gate</span>
+                    <div class="lifecycle-step">
+                        <div class="step-num">A</div>
+                        <div class="step-info"><strong>Airtable Upload</strong><p>Headline (60 char max) + Summary + Primary Source required for every draft upload. No exceptions.</p></div>
+                    </div>
+                    <div class="lifecycle-step">
+                        <div class="step-num">B</div>
+                        <div class="step-info"><strong>MSN Distribution</strong><p>If content is 100% cleared and tells a complete story, toggle for Global MSN distribution via the dashboard.</p></div>
+                    </div>
+                </div>
+                <div>
+                    <span class="tab-tag" style="color:var(--production)">Automation Loops</span>
+                    <div class="lifecycle-step">
+                        <div class="step-num">C</div>
+                        <div class="step-info"><strong>Repurpose.io Pipeline</strong><p>TikTok content is automatically migrated to Instagram. Organic cover management is required on the IG page.</p></div>
+                    </div>
+                    <div class="lifecycle-step">
+                        <div class="step-num">D</div>
+                        <div class="step-info"><strong>SEO Article Linking</strong><p>Append ITO tracking codes (?ito=tiktok-link) to all video article links. Log URLs in the master tracker.</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function triggerWorkflow(type) {
+            const panes = {
+                editorial: document.getElementById('pane-editorial'),
+                commercial: document.getElementById('pane-commercial'),
+                technical: document.getElementById('pane-technical')
+            };
+            const tabs = {
+                editorial: document.getElementById('tab-editorial'),
+                commercial: document.getElementById('tab-commercial'),
+                technical: document.getElementById('tab-technical')
+            };
+
+            // Exclusive logic for Editorial / Commercial
+            if (type === 'editorial') {
+                panes.commercial.classList.remove('open');
+                tabs.commercial.classList.remove('active');
+                
+                panes.editorial.classList.toggle('open');
+                tabs.editorial.classList.toggle('active');
+            } 
+            else if (type === 'commercial') {
+                panes.editorial.classList.remove('open');
+                tabs.editorial.classList.remove('active');
+                
+                panes.commercial.classList.toggle('open');
+                tabs.commercial.classList.toggle('active');
+            }
+            else if (type === 'technical') {
+                panes.technical.classList.toggle('open');
+                tabs.technical.classList.toggle('active');
+            }
+        }
+    </script>
+</body>
+</html>
