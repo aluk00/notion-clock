@@ -1,524 +1,585 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DMG Manager Command</title>
+    <title>DMG Command Centre | Management Hub</title>
     <style>
-        /* --- DMG OS v15.0 (Group View Edition) --- */
         :root {
-            --bg-body: #FAFAFA;
-            --bg-card: #FFFFFF;
-            --text-primary: #111111;
-            --text-secondary: #8E8E93;
-            --brand-blue: #21a0d8;
-            --brand-pink: #E91E63;
-            --border: #F2F2F7;
-            
-            /* TYPE SCALES */
-            --font-display: 900;
-            --font-body: 600;
+            /* Canonical Team Colours */
+            --team-editorial: #E94B4B;
+            --team-sales: #0FA59A;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-people: #21A0D8;
 
-            /* STATUS COLORS */
-            --st-office: #2E7D32; --st-office-bg: #E8F5E9;
-            --st-wfh: #FBC02D;    --st-wfh-bg: #FFF9C4;
-            --st-abroad: #FF9800; --st-abroad-bg: #FFE0B2;
-            --st-pto: #F44336;    --st-pto-bg: #FFCDD2;
-            --st-shoot: #2196F3;  --st-shoot-bg: #BBDEFB;
-            --st-half: #9C27B0;   --st-half-bg: #E1BEE7;
+            /* Status Shades */
+            --st-office: #BCD9B8;
+            --st-wfh: #F2E7D5;
+            --st-shoot: #D1E1F0;
+            --st-pto: #EBD4D4;
+
+            /* UI Tokens */
+            --bg-page: #FFFFFF;
+            --bg-base: #F8F9FA;
+            --border-soft: #EAEAEA;
+            --ink: #1A1A1A;
+            --ink-sub: #757575;
+            
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-chip: 999px;
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.04);
+            --shadow-glow: 0 8px 24px rgba(33, 160, 216, 0.25);
+            --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background-color: var(--bg-body);
-            margin: 0; padding: 0;
-            color: var(--text-primary);
-            height: 100vh;
-            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-page);
+            margin: 0; padding: 0; color: var(--ink); min-height: 100vh;
         }
 
         .hidden { display: none !important; }
-        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- DMG DOT COMPONENT --- */
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 8px); gap: 4px; width: fit-content; }
+        .dot-grid span { width: 8px; height: 8px; border-radius: 50%; background: var(--team-people); }
+        .dots-editorial span { background: var(--team-editorial); }
+        .dots-social span { background: var(--team-social); }
+        .dots-creative span { background: var(--team-creative); }
+        .dots-production span { background: var(--team-production); }
+        .dots-people span { background: var(--team-people); }
+
+        /* --- LOCK SCREEN --- */
+        #lock-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-page); z-index: 2000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .lock-card { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; max-width: 380px; width: 90%; 
+        }
+        .lock-logo { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 24px; }
+        .lock-logo .dot-grid span { width: 12px; height: 12px; animation: dotPulse 2s infinite ease-in-out; }
+        @keyframes dotPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.8); opacity: 0.5; } }
+        .lock-title { font-size: 22px; font-weight: 900; letter-spacing: -0.04em; text-transform: uppercase; margin-bottom: 32px; }
+        
+        .pin-field { display: flex; gap: 12px; justify-content: center; margin-bottom: 40px; }
+        .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-soft); transition: var(--transition); }
+        .pin-dot.filled { background: var(--team-people); border-color: var(--team-people); transform: scale(1.2); box-shadow: 0 0 10px rgba(33, 160, 216, 0.3); }
+        
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 280px; }
+        .n-btn { 
+            width: 100%; aspect-ratio: 1.3 / 1; border-radius: var(--radius-md); background: var(--bg-base); border: 1px solid var(--border-soft);
+            display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; cursor: pointer; transition: var(--transition);
+        }
+        .n-btn:hover { background: #EEE; }
+        .n-btn:active { 
+            background: #FFF; 
+            border-color: var(--team-people); 
+            box-shadow: 0 0 15px var(--team-people); 
+            transform: scale(0.95);
+            transition: all 0.05s ease;
+        }
 
         /* --- APP SHELL --- */
-        .app-shell { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; }
+        .main-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .main-header { padding: 40px 0; display: flex; flex-direction: column; gap: 24px; border-bottom: 1px solid var(--border-soft); margin-bottom: 40px; }
+        .header-lockup { display: flex; align-items: center; gap: 1.5rem; }
+        .title-text { font-size: 4rem; font-weight: 800; color: #000000; letter-spacing: -0.04em; line-height: 1; opacity: 0; transform: translateY(10px); animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; text-transform: uppercase; }
+        .header-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 44px; height: 44px; flex-shrink: 0; }
+        .header-dots .dot { width: 100%; height: 100%; background-color: var(--team-people); border-radius: 50%; transform: scale(0); animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { to { transform: scale(1); } }
 
-        /* --- 1. LOCK SCREEN --- */
-        #lock-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #fff; z-index: 2000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.4s ease;
-        }
+        .tab-nav { display: flex; gap: 12px; padding: 4px; background: var(--bg-base); width: fit-content; border-radius: var(--radius-chip); }
+        .tab-trigger { background: transparent; border: none; padding: 10px 24px; font-size: 13px; font-weight: 900; color: var(--ink-sub); cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; border-radius: var(--radius-chip); transition: var(--transition); }
+        .tab-trigger:hover { color: var(--ink); transform: translateY(-2px); background: #FFF; box-shadow: var(--shadow-glow); }
+        .tab-trigger.active { background: #FFF; color: var(--ink); box-shadow: var(--shadow-soft); }
+
+        /* --- VIEWS --- */
+        .view-section { display: none; animation: slideIn 0.3s ease-out; padding-bottom: 80px; }
+        .view-section.active { display: block; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- OUTLOOK TAB --- */
+        .metric-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
+        .metric-card { background: #FFF; border: 1px solid var(--border-soft); padding: 24px; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); cursor: pointer; transition: var(--transition); border-top: 4px solid var(--ink); }
+        .metric-card:hover { transform: translateY(-4px); border-color: var(--team-people); }
+        .metric-val { font-size: 48px; font-weight: 900; line-height: 1; margin-bottom: 8px; letter-spacing: -2px; }
+        .metric-label { font-size: 10px; font-weight: 800; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.1em; }
+
+        .presence-list-box { background: var(--bg-base); padding: 24px; border-radius: var(--radius-lg); margin-bottom: 40px; }
+        .presence-header { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .chip-stack { display: flex; flex-wrap: wrap; gap: 8px; }
+        .person-chip { background: #FFF; border: 1px solid var(--border-soft); padding: 6px 12px; border-radius: var(--radius-chip); font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+        .weekly-strip { display: flex; gap: 10px; margin-bottom: 30px; overflow-x: auto; padding-bottom: 5px; }
+        .day-btn { background: var(--bg-base); border: 1px solid var(--border-soft); padding: 10px 20px; border-radius: var(--radius-md); font-size: 12px; font-weight: 800; cursor: pointer; transition: var(--transition); white-space: nowrap; }
+        .day-btn.active { background: var(--ink); color: #FFF; border-color: var(--ink); }
+
+        /* --- TABLES --- */
+        .directory-box { background: #FFF; border: 1px solid var(--border-soft); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-soft); }
+        .directory-table { width: 100%; border-collapse: collapse; }
+        .directory-table th { text-align: left; font-size: 9px; font-weight: 900; color: #BBB; text-transform: uppercase; padding: 15px 20px; border-bottom: 1px solid var(--border-soft); }
+        .directory-table td { padding: 18px 20px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #F9F9F9; }
         
-        .ls-header-container { display: flex; align-items: center; gap: 12px; line-height: 1; margin-bottom: 20px; }
-        .ls-title-text { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.04em; }
-        .ls-dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 20px; height: 20px; }
-        .ls-dot { width: 100%; height: 100%; background-color: var(--brand-blue); border-radius: 50%; }
+        .name-cell { display: flex; align-items: center; gap: 12px; }
+        .staff-name-link { text-decoration: none; font-weight: 800; cursor: pointer; transition: opacity 0.2s; }
+        .staff-name-link:hover { opacity: 0.7; text-decoration: underline; }
+        .role-subtext { font-size: 11px; color: #BBB; font-weight: 500; margin-left: 8px; text-transform: none; letter-spacing: 0; }
+
+        .status-chip { padding: 4px 10px; border-radius: var(--radius-chip); font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase; }
+        .chip-office { background: var(--st-office); color: #2D4F2D; }
+        .chip-wfh { background: var(--st-wfh); color: #5F4B2D; }
+        .chip-shoot { background: var(--st-shoot); color: #2D425F; }
+        .chip-pto { background: var(--st-pto); color: #5F2D2D; }
+
+        /* --- FOLDER CARDS --- */
+        .silo-stack { display: flex; flex-direction: column; gap: 32px; }
+        .folder-card { background: #FFF; border: 1px solid var(--border-soft); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); position: relative; padding: 40px 30px 30px; }
+        .folder-tab { position: absolute; top: -14px; left: 30px; background: #EEE; color: var(--ink); padding: 6px 16px; border-radius: 8px 8px 0 0; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; display: flex; align-items: center; gap: 10px; border: 1px solid var(--border-soft); border-bottom: none; }
+        .folder-card[data-team="editorial"] .folder-tab { border-top: 3px solid var(--team-editorial); }
+        .folder-card[data-team="production"] .folder-tab { border-top: 3px solid var(--team-production); }
+        .folder-card[data-team="creative"] .folder-tab { border-top: 3px solid var(--team-creative); }
+        .folder-card[data-team="social"] .folder-tab { border-top: 3px solid var(--team-social); }
+        .folder-card[data-team="sales"] .folder-tab { border-top: 3px solid var(--team-sales); }
+        .folder-card[data-team="people"] .folder-tab { border-top: 3px solid var(--team-people); }
+
+        /* --- APPROVALS --- */
+        .manager-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .manager-card { background: #FFF; border: 1px solid var(--border-soft); padding: 30px; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); cursor: pointer; transition: var(--transition); }
+        .manager-card:hover { transform: translateY(-4px); border-color: var(--team-people); box-shadow: var(--shadow-glow); }
+        .manager-name { font-size: 18px; font-weight: 900; letter-spacing: -0.03em; margin-bottom: 5px; } /* EMBOLDENED */
+        .manager-role { font-size: 11px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .request-item { display: grid; grid-template-columns: 80px 120px 1fr; align-items: center; padding: 15px 0; border-bottom: 1px solid #F5F5F5; }
+        .segmented-control { display: flex; background: #F0F0F0; padding: 3px; border-radius: 10px; width: fit-content; margin-left: auto; }
+        .segment-btn { border: none; background: none; padding: 6px 12px; font-size: 9px; font-weight: 900; text-transform: uppercase; cursor: pointer; border-radius: 7px; color: var(--ink-sub); transition: var(--transition); }
+        .segment-btn.active-approve { background: var(--team-production); color: #FFF; }
+        .segment-btn.active-deny { background: var(--team-editorial); color: #FFF; }
+        .segment-btn.active-suggest { background: var(--team-social); color: var(--ink); }
+
+        /* --- MODAL SYSTEM --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 3000; }
+        .modal-overlay.open { display: flex; }
+        .modal-body { background: #FFF; width: 640px; max-height: 85vh; padding: 40px; border-radius: 24px; box-shadow: 0 40px 100px rgba(0,0,0,0.15); overflow-y: auto; position: relative; }
+        .modal-close { position: absolute; top: 20px; right: 20px; cursor: pointer; font-size: 24px; font-weight: 900; color: #BBB; }
+
+        /* HISTORY LAYOUT */
+        .history-week-block { margin-bottom: 30px; border: 1px solid #EEE; border-radius: 12px; overflow: hidden; }
+        .history-week-title { background: #FAFAFA; padding: 10px 15px; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #888; border-bottom: 1px solid #EEE; }
+        .history-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #EEE; }
+        .history-day { background: #FFF; padding: 15px 10px; text-align: center; }
+        .h-day-name { font-size: 9px; font-weight: 800; color: #BBB; margin-bottom: 5px; text-transform: uppercase; }
         
-        .pin-dots-container { display: flex; gap: 20px; margin-bottom: 60px; margin-top: 10px; }
-        .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; transition: all 0.2s; }
-        .pin-dot.filled { background: var(--brand-blue); border-color: var(--brand-blue); transform: scale(1.3); }
-
-        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; }
-        .key { width: 75px; height: 75px; border-radius: 50%; background: #F5F5F5; font-size: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; transition: background 0.1s; }
-        .key:active { background: #E0E0E0; }
-        .key-blank { width: 75px; height: 75px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; }
-
-        /* --- DASHBOARD HEADER --- */
-        .dashboard-header {
-            padding: 25px 40px; background: rgba(255,255,255,0.98); border-bottom: 2px solid #000;
-            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 10;
-            backdrop-filter: blur(10px);
+        @media (max-width: 768px) {
+            .title-text { font-size: 2.2rem; }
+            .header-dots { width: 28px; height: 28px; gap: 4px; }
+            .metric-row { grid-template-columns: 1fr 1fr; }
         }
-        .logline-text { font-size: 1.8rem; font-weight: 900; display: flex; align-items: center; white-space: nowrap; letter-spacing: -0.03em; }
-        .blue-dots { display: inline-flex; margin: 0 12px; gap: 4px; }
-        .dot-blue { width: 8px; height: 8px; background-color: var(--brand-blue); border-radius: 50%; }
-
-        .nav-tabs { display: flex; gap: 10px; }
-        .tab-btn {
-            background: #fff; color: #888; padding: 10px 20px; border-radius: 30px; border: 2px solid #eee;
-            font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 8px;
-            transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em;
-        }
-        .tab-btn.active { background: #000; color: #fff; border-color: #000; }
-        .tab-btn:hover:not(.active) { border-color: #000; color: #000; }
-        .badge-count { background: var(--brand-pink); color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 9px; }
-
-        /* --- CONTENT --- */
-        .view-container { display: none; flex: 1; flex-direction: column; overflow: hidden; }
-        .view-container.active { display: flex; animation: fadeIn 0.4s ease; }
-        .content-scroll { flex: 1; overflow-y: auto; padding: 40px; }
-        .max-width { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 50px; padding-bottom: 60px; }
-
-        /* --- STATS --- */
-        .overview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-        .stat-card {
-            background: #fff; padding: 30px 25px; border-radius: 24px; text-align: left;
-            border: 1px solid #eee; box-shadow: 0 10px 30px rgba(0,0,0,0.03); transition: transform 0.2s;
-        }
-        .stat-accent { height: 4px; width: 40px; margin-bottom: 15px; border-radius: 2px; }
-        .stat-num { font-size: 56px; font-weight: 900; letter-spacing: -2px; line-height: 1; color: #000; margin-bottom: 5px; }
-        .stat-label { font-size: 12px; font-weight: 800; color: #999; text-transform: uppercase; letter-spacing: 1px; }
-
-        .section-title { 
-            font-size: 14px; font-weight: 900; text-transform: uppercase; margin-bottom: 25px; 
-            border-left: 5px solid var(--brand-blue); padding-left: 15px; letter-spacing: 0.05em; 
-        }
-
-        /* --- TEAM NAV --- */
-        .team-nav-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 10px; }
-        .team-btn {
-            position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px;
-            padding: 25px; border-radius: 20px; cursor: pointer; overflow: hidden;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05); transition: all 0.3s;
-        }
-        .team-btn:hover { transform: translateY(-4px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); }
-        .btn-text { font-weight: 900; font-size: 15px; color: #fff; text-transform: uppercase; letter-spacing: 0.05em; }
-        .g-all { background: #111; }
-        .g-social { background: linear-gradient(135deg, #f472b6 0%, #be185d 100%); }
-        .g-production { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); }
-        .g-creative { background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); }
-
-        /* --- LEADERS --- */
-        .leaders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-        .leader-card {
-            background: #fff; padding: 20px; border-radius: 16px; border: 1px solid #eee; 
-            cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.02);
-        }
-        .leader-card:hover { border-color: #000; transform: translateY(-3px); }
-        .lc-name { font-weight: 800; font-size: 15px; margin-bottom: 5px; }
-        .lc-role { font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; }
-
-        /* --- ROSTER TABLE --- */
-        .roster-card { background: #fff; border-radius: 24px; border: 1px solid #eee; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.04); }
-        .roster-tools { padding: 25px 30px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .search-input { width: 300px; padding: 12px 15px; border-radius: 10px; border: 2px solid #eee; outline: none; font-size: 13px; font-weight: 600; background: #fafafa; }
-        .roster-head, .roster-row { display: grid; grid-template-columns: 2fr 1.5fr 2fr; padding: 15px 30px; align-items: center; }
-        .roster-head { background: #fafafa; font-size: 11px; font-weight: 900; color: #bbb; text-transform: uppercase; border-bottom: 1px solid #eee; }
-        .roster-row { border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.1s; }
-        .roster-row:hover { background: #f9f9f9; }
-        .rr-name { font-weight: 800; font-size: 14px; }
-        .rr-role { font-weight: 600; color: #999; font-size: 10px; margin-left: 8px; text-transform: uppercase; }
-
-        .badge { padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; display: inline-block; text-transform: uppercase; }
-        .b-Office { background: var(--st-office-bg); color: var(--st-office); }
-        .b-WFH { background: var(--st-wfh-bg); color: #F9A825; }
-        .b-Abroad { background: var(--st-abroad-bg); color: var(--st-abroad); }
-        .b-PTO { background: var(--st-pto-bg); color: var(--st-pto); }
-        .b-Shoot { background: var(--st-shoot-bg); color: var(--st-shoot); }
-        .b-Half { background: var(--st-half-bg); color: var(--st-half); }
-
-        /* --- GROUP WEEKLY VIEW --- */
-        .group-block { background: #fff; border-radius: 24px; border: 1px solid #eee; overflow: hidden; margin-bottom: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .group-header { padding: 25px 30px; background: #000; color: #fff; display: flex; justify-content: space-between; align-items: center; }
-        .group-name { font-size: 18px; font-weight: 900; letter-spacing: -0.02em; }
-        .group-summary { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--brand-blue); }
-        
-        .group-grid { display: grid; grid-template-columns: 2fr repeat(5, 1fr); border-bottom: 1px solid #eee; }
-        .gg-head { padding: 12px 20px; font-size: 10px; font-weight: 900; color: #999; text-transform: uppercase; background: #fafafa; border-bottom: 1px solid #eee; }
-        .gg-row { display: contents; }
-        .gg-cell { padding: 15px 20px; border-bottom: 1px solid #f5f5f5; align-items: center; display: flex; font-size: 13px; font-weight: 700; }
-        .gg-status-dot { width: 12px; height: 12px; border-radius: 50%; margin: 0 auto; }
-
-        /* --- APPROVAL TICKETS --- */
-        .approval-list { display: flex; flex-direction: column; gap: 30px; }
-        .req-card { background: #fff; border: 1px solid #eee; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.03); }
-        .req-header { padding: 25px 30px; background: #fafafa; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .req-title { font-size: 16px; font-weight: 900; }
-        .req-grid-row { display: grid; grid-template-columns: 80px 1fr 140px; align-items: center; padding: 15px 30px; border-bottom: 1px solid #f9f9f9; }
-        .rg-day { font-size: 12px; font-weight: 900; color: #bbb; text-transform: uppercase; }
-        .rg-status { font-size: 14px; font-weight: 700; }
-        .act-group { display: flex; gap: 8px; justify-content: flex-end; }
-        .icon-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #eee; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 14px; }
-        .icon-btn.active-approve { background: var(--st-office); color: #fff; border-color: var(--st-office); }
-        .icon-btn.active-deny { background: var(--st-pto); color: #fff; border-color: var(--st-pto); }
-        .icon-btn.active-suggest { background: var(--brand-blue); color: #fff; border-color: var(--brand-blue); }
-        .btn-confirm { background: var(--brand-blue); color: #fff; border: none; padding: 12px 30px; border-radius: 30px; font-weight: 800; font-size: 13px; cursor: pointer; }
-
-        /* --- MODAL --- */
-        #modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); z-index: 1500; opacity: 0; pointer-events: none; transition: opacity 0.3s; display: flex; align-items: center; justify-content: center; }
-        #modal-overlay.active { opacity: 1; pointer-events: all; }
-        .modal-card { background: #fff; width: 400px; border-radius: 30px; box-shadow: 0 30px 80px rgba(0,0,0,0.15); padding: 40px; text-align: center; }
-
     </style>
 </head>
 <body>
 
-    <div class="app-shell">
-
-        <!-- 1. LOCK SCREEN -->
-        <div id="lock-screen">
-            <div class="ls-header-container">
-                <div class="ls-title-text" style="text-align:center;">MANAGER<br>DASHBOARD</div>
+    <div id="lock-screen">
+        <div class="lock-card">
+            <div class="lock-logo">
+                <div class="dot-grid dots-people"><span></span><span></span><span></span><span></span></div>
+                <div class="lock-title">DMG Media</div>
             </div>
-            <div class="ls-dots-grid" style="margin-bottom:20px;">
-                <div class="ls-dot"></div><div class="ls-dot"></div><div class="ls-dot"></div><div class="ls-dot"></div>
+            <div class="pin-field">
+                <div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div>
+                <div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div>
             </div>
-            <div style="font-size:12px; font-weight:800; color:#ccc; letter-spacing:2px; margin-bottom:40px;">DMG NEW MEDIA</div>
-            <div class="pin-dots-container"><div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div><div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div></div>
-            <div class="keypad">
-                <div class="key" onclick="pressKey(1)">1</div><div class="key" onclick="pressKey(2)">2</div><div class="key" onclick="pressKey(3)">3</div>
-                <div class="key" onclick="pressKey(4)">4</div><div class="key" onclick="pressKey(5)">5</div><div class="key" onclick="pressKey(6)">6</div>
-                <div class="key" onclick="pressKey(7)">7</div><div class="key" onclick="pressKey(8)">8</div><div class="key" onclick="pressKey(9)">9</div>
-                <div class="key-blank"></div><div class="key" onclick="pressKey(0)">0</div><div class="key-blank" onclick="deleteKey()">⌫</div>
+            <div class="numpad">
+                <div class="n-btn" onclick="press(1)">1</div><div class="n-btn" onclick="press(2)">2</div><div class="n-btn" onclick="press(3)">3</div>
+                <div class="n-btn" onclick="press(4)">4</div><div class="n-btn" onclick="press(5)">5</div><div class="n-btn" onclick="press(6)">6</div>
+                <div class="n-btn" onclick="press(7)">7</div><div class="n-btn" onclick="press(8)">8</div><div class="n-btn" onclick="press(9)">9</div>
+                <div></div><div class="n-btn" onclick="press(0)">0</div><div onclick="clearPin()" style="display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:9px; font-weight:900; color:#BBB;">RESET</div>
             </div>
         </div>
-
-        <!-- MAIN INTERFACE -->
-        <div id="main-interface" class="hidden" style="height:100%; flex-direction:column;">
-            <div class="dashboard-header">
-                <div class="logline-text"><span>TODAY IS</span><span class="blue-dots"><span class="dot-blue"></span><span class="dot-blue"></span><span class="dot-blue"></span><span class="dot-blue"></span></span><span id="header-date">...</span></div>
-                <div class="nav-tabs">
-                    <button class="tab-btn active" id="btn-dash" onclick="switchTab('dashboard')">Dashboard</button>
-                    <button class="tab-btn" id="btn-group" onclick="switchTab('group')">Group View</button>
-                    <button class="tab-btn" id="btn-approvals" onclick="switchTab('approvals')">Approvals <span class="badge-count" id="badge-count">0</span></button>
-                </div>
-            </div>
-
-            <!-- VIEW: DASHBOARD -->
-            <div id="view-dashboard" class="view-container active">
-                <div class="content-scroll">
-                    <div class="max-width">
-                        <div class="team-nav-grid">
-                            <div class="team-btn g-all" onclick="filterTeam('All')"><span class="btn-text">All Teams</span></div>
-                            <div class="team-btn g-social" onclick="filterTeam('Social')"><span class="btn-text">Social</span></div>
-                            <div class="team-btn g-production" onclick="filterTeam('Production')"><span class="btn-text">Production</span></div>
-                            <div class="team-btn g-creative" onclick="filterTeam('Creative')"><span class="btn-text">Creative</span></div>
-                        </div>
-
-                        <div class="overview-grid">
-                            <div class="stat-card"><div class="stat-accent" style="background:var(--st-office)"></div><div class="stat-num" id="c-office">--</div><div class="stat-label">In Office</div></div>
-                            <div class="stat-card"><div class="stat-accent" style="background:var(--st-wfh)"></div><div class="stat-num" id="c-wfh">--</div><div class="stat-label">Remote</div></div>
-                            <div class="stat-card"><div class="stat-accent" style="background:var(--st-abroad)"></div><div class="stat-num" id="c-abroad">--</div><div class="stat-label">External</div></div>
-                            <div class="stat-card"><div class="stat-accent" style="background:var(--st-pto)"></div><div class="stat-num" id="c-pto">--</div><div class="stat-label">On Leave</div></div>
-                        </div>
-
-                        <div><div class="section-title">Line Managers</div><div class="leaders-grid" id="leaders-grid"></div></div>
-                        <div><div class="section-title">Team Availability</div><div class="roster-card"><div class="roster-tools"><input type="text" id="search-input" class="search-input" placeholder="Search staff..." onkeyup="renderRoster()"><div style="font-size:11px; font-weight:800; color:#ccc;">LIVE DATA</div></div><div class="roster-head"><div>Name</div><div>Status</div><div>Notes</div></div><div id="roster-rows"></div></div></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: GROUP VIEW -->
-            <div id="view-group" class="view-container">
-                <div class="content-scroll">
-                    <div class="max-width" id="group-view-container">
-                        <!-- Groups generated by JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: APPROVALS -->
-            <div id="view-approvals" class="view-container">
-                <div class="content-scroll"><div class="max-width"><div class="section-title">Pending Approvals</div><div id="approvals-list" class="approval-list"></div></div></div>
-            </div>
-        </div>
-
-        <!-- MODAL -->
-        <div id="modal-overlay" onclick="closeModal()"><div class="modal-card" onclick="event.stopPropagation()"><button style="position:absolute; top:20px; right:20px; background:none; border:none; font-size:24px; cursor:pointer;" onclick="closeModal()">×</button><h2 id="m-name" style="margin:0 0 5px 0; font-weight:900;">Name</h2><div id="m-role" style="font-size:12px; font-weight:800; color:#ccc; text-transform:uppercase;">Role</div><div id="m-status" style="margin-top:30px; font-weight:800; font-size:16px;"></div></div></div>
     </div>
 
-<script>
-    // --- 1. FULL DATA (Comprehensive Roster) ---
-    const leadsConfig = [
-        {name: "Nicholas Moar", team: "Creative", role: "Head of New Media", status: "Office"},
-        {name: "Nathan Aspell", team: "Social", role: "Director of Creative", status: "Office"},
-        {name: "Ellie Beetham", team: "Social", role: "Head of Social Creative", status: "Office"},
-        {name: "Nick Bolwell", team: "Social", role: "Lead Social Creative", status: "WFH"},
-        {name: "Nev Brook", team: "Production", role: "Director of Production", status: "Office"},
-        {name: "Matthew Macleod", team: "Production", role: "Head of Production", status: "Half Day"}
-    ];
+    <div id="app-shell" class="hidden">
+        <div class="main-container">
+            <header class="main-header">
+                <div class="header-lockup">
+                    <div class="title-text text-left">COMMAND</div>
+                    <div class="header-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    <div class="title-text text-right">CENTRE</div>
+                </div>
+                <nav class="tab-nav">
+                    <button class="tab-trigger active" onclick="navigate('outlook', this)">Outlook</button>
+                    <button class="tab-trigger" onclick="navigate('teams', this)">Teams</button>
+                    <button class="tab-trigger" onclick="navigate('approvals', this)">Approvals</button>
+                </nav>
+            </header>
 
-    const staffConfig = [
-        // CREATIVE
-        {name: "Anaïs Lukaku", team: "Creative", role: "Senior Creative", func: "Creative"},
-        {name: "Hugo Starns", team: "Creative", role: "Freelance Creative", func: "Creative"},
-        {name: "Monty Vann", team: "Creative", role: "Exec Videographer", func: "Creative"},
-        {name: "Henry Williams", team: "Creative", role: "Social Creative", func: "Creative"},
-        // SOCIAL
-        {name: "Dan Quinnell", team: "Social", role: "UK Video Lead", func: "Channel Lead"},
-        {name: "Romy Grigg", team: "Social", role: "Ent Video Lead", func: "Channel Lead"},
-        {name: "Alex Biddle", team: "Social", role: "Sport Lead", func: "Channel Lead"},
-        {name: "Alex Hobbs", team: "Social", role: "Multimedia Journalist", func: "Journalists"},
-        {name: "Mimi Yates", team: "Social", role: "Multimedia Reporter", func: "Journalists"},
-        {name: "Sophia Stanford", team: "Social", role: "Trainee Reporter", func: "Journalists"},
-        // PRODUCTION
-        {name: "Claire O’Moore", team: "Production", role: "Senior Video Editor", func: "Editors"},
-        {name: "Deli Koprinkov", team: "Production", role: "Senior Video Editor", func: "Editors"},
-        {name: "Stefan Burghila", team: "Production", role: "Video Editor & Producer", func: "Editors"},
-        {name: "Tomas Meehan", team: "Production", role: "Video Producer", func: "Editors"},
-        {name: "Josh Fajobi", team: "Production", role: "Social Designer", func: "Designers"},
-        {name: "Williams Olufemi", team: "Production", role: "Social Designer", func: "Designers"},
-        {name: "Abhinaya Sriram", team: "Production", role: "Video Producer", func: "Producers"},
-        {name: "Ismail Pulat", team: "Production", role: "Senior Video Producer", func: "Producers"},
-        {name: "Libby Jarvis", team: "Production", role: "Video Producer", func: "Producers"},
-        {name: "Rowen Rennie", team: "Production", role: "Video Producer", func: "Producers"},
-        {name: "Reuben Claypole", team: "Production", role: "Video Producer", func: "Producers"},
-        {name: "Mourad El-Dine Abdou", team: "Production", role: "Managing Producer", func: "Producers"},
-        {name: "Ben Wiley", team: "Production", role: "Managing Producer", func: "Producers"},
-        {name: "Josh Hartley", team: "Production", role: "Managing Producer", func: "Producers"},
-        // OPERATIONS
-        {name: "Maxine Halperin", team: "Operations", role: "Project & Ops Manager", func: "Operations"},
-        {name: "Megan Raso", team: "Operations", role: "Editorial Assistant", func: "Operations"},
-        // CASUALS
-        {name: "Abraham Eneh", team: "Production", role: "Casual Staff", func: "Casuals"},
-        {name: "Aivhan Catacutan", team: "Production", role: "Casual Staff", func: "Casuals"},
-        {name: "David Ojobo", team: "Production", role: "Casual Staff", func: "Casuals"},
-        {name: "Kacper Kupczyk", team: "Production", role: "Casual Staff", func: "Casuals"},
-        {name: "Kaylee Abrahams", team: "Production", role: "Casual Staff", func: "Casuals"},
-        {name: "Lauren Cole-Lomas", team: "Production", role: "Casual Staff", func: "Casuals"}
-    ];
+            <main>
+                <!-- VIEW: OUTLOOK -->
+                <section id="view-outlook" class="view-section active">
+                    <div class="presence-header">Presence Snapshot <span id="outlook-wc-header" style="color:var(--team-people)"></span></div>
+                    
+                    <!-- NEW DAY SELECTOR FOR PRESENCE SNAPSHOT -->
+                    <div class="weekly-strip" id="outlook-strip">
+                        <button class="day-btn active" onclick="selectOutlookDay(0, this)">Mon 15</button>
+                        <button class="day-btn" onclick="selectOutlookDay(1, this)">Tue 16</button>
+                        <button class="day-btn" onclick="selectOutlookDay(2, this)">Wed 17</button>
+                        <button class="day-btn" onclick="selectOutlookDay(3, this)">Thu 18</button>
+                        <button class="day-btn" onclick="selectOutlookDay(4, this)">Fri 19</button>
+                    </div>
 
-    const statuses = ['Office', 'Office', 'Office', 'WFH', 'WFH', 'Shoot', 'Abroad', 'Half Day', 'PTO'];
-    let roster = [];
-    let currentFilter = 'All';
-    let pin = ""; const correctPin = "2025";
+                    <div class="metric-row">
+                        <div class="metric-card" style="border-top-color: var(--team-production);" onclick="openCategoryModal('Office')">
+                            <div class="metric-val" id="count-office">0</div>
+                            <div class="metric-label">In Office</div>
+                        </div>
+                        <div class="metric-card" style="border-top-color: var(--team-social);" onclick="openCategoryModal('WFH')">
+                            <div class="metric-val" id="count-wfh">0</div>
+                            <div class="metric-label">Remote</div>
+                        </div>
+                        <div class="metric-card" style="border-top-color: var(--team-people);" onclick="openCategoryModal('Shoot')">
+                            <div class="metric-val" id="count-shoot">0</div>
+                            <div class="metric-label">Off-site</div>
+                        </div>
+                        <div class="metric-card" style="border-top-color: var(--team-editorial);" onclick="openCategoryModal('PTO')">
+                            <div class="metric-val" id="count-pto">0</div>
+                            <div class="metric-label">Leave</div>
+                        </div>
+                    </div>
 
-    // --- 2. INIT ---
-    function init() {
-        const d = new Date();
-        document.getElementById('header-date').innerText = d.toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'}).toUpperCase();
-        
-        const l = leadsConfig.map(x => ({...x, type:'LEAD', pending: false}));
-        const s = staffConfig.map(x => {
-            const st = statuses[Math.floor(Math.random()*statuses.length)];
-            return {...x, type:'STAFF', status:st, note:"-", pending: Math.random()>0.8, reqId: Math.random().toString(36).substr(2,9)};
-        });
-        roster = [...l, ...s];
-        renderDashboard();
-        renderGroupView();
-        renderApprovals();
-    }
+                    <div class="presence-list-box">
+                        <div class="presence-header" id="in-office-label">IN OFFICE</div>
+                        <div class="chip-stack" id="today-chips-mount"></div>
+                    </div>
 
-    // --- 3. RENDERING ---
-    function switchTab(tab) {
-        document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        document.getElementById('view-'+tab).classList.add('active');
-        document.getElementById('btn-'+tab).classList.add('active');
-    }
+                    <div class="presence-header">Operational Weekly Forecast</div>
+                    <!-- INDEPENDENT DAY SELECTOR FOR DIRECTORY -->
+                    <div class="weekly-strip" id="forecast-strip">
+                        <button class="day-btn active" onclick="selectForecastDay(0, this)">Mon 15</button>
+                        <button class="day-btn" onclick="selectForecastDay(1, this)">Tue 16</button>
+                        <button class="day-btn" onclick="selectForecastDay(2, this)">Wed 17</button>
+                        <button class="day-btn" onclick="selectForecastDay(3, this)">Thu 18</button>
+                        <button class="day-btn" onclick="selectForecastDay(4, this)">Fri 19</button>
+                    </div>
 
-    function filterTeam(team) { currentFilter = team; renderDashboard(); }
+                    <div class="presence-header">All Staff Directory</div>
+                    <div class="directory-box">
+                        <table class="directory-table">
+                            <thead><tr><th>Name</th><th>Role</th><th>Status</th></tr></thead>
+                            <tbody id="directory-mount"></tbody>
+                        </table>
+                    </div>
+                </section>
 
-    function renderDashboard() {
-        const filtered = currentFilter === 'All' ? roster : roster.filter(p => p.team === currentFilter);
-        renderStats(filtered);
-        renderLeaders(filtered);
-        renderRoster(filtered);
-    }
+                <!-- VIEW: TEAMS -->
+                <section id="view-teams" class="view-section">
+                    <div class="presence-header" style="margin-bottom:30px;">Weekly Team Silos <span id="teams-wc-label" style="color:var(--team-people)"></span></div>
+                    <div class="silo-stack" id="teams-mount"></div>
+                </section>
 
-    function renderStats(data) {
-        let counts = { Office:0, WFH:0, Abroad:0, PTO:0 };
-        data.forEach(p => {
-            if(p.status==='Office') counts.Office++;
-            else if(p.status==='WFH') counts.WFH++;
-            else if(p.status==='PTO') counts.PTO++;
-            else counts.Abroad++;
-        });
-        document.getElementById('c-office').innerText = counts.Office;
-        document.getElementById('c-wfh').innerText = counts.WFH;
-        document.getElementById('c-abroad').innerText = counts.Abroad;
-        document.getElementById('c-pto').innerText = counts.PTO;
-    }
+                <!-- VIEW: APPROVALS -->
+                <section id="view-approvals" class="view-section">
+                    <div class="presence-header" style="margin-bottom:30px;">Requests by Line Manager</div>
+                    <div class="manager-grid" id="manager-grid-mount"></div>
+                </section>
+            </main>
+        </div>
+    </div>
 
-    function renderLeaders(data) {
-        const leads = data.filter(p => p.type === 'LEAD');
-        let html = '';
-        leads.forEach(l => {
-            const cls = 'b-' + l.status.replace(' ','');
-            html += `<div class="leader-card" onclick="openModal('${l.name}')">
-                <div class="lc-role">${l.role}</div><div class="lc-name">${l.name}</div><span class="badge ${cls}" style="font-size:10px;">${l.status}</span>
-            </div>`;
-        });
-        document.getElementById('leaders-grid').innerHTML = html;
-    }
+    <!-- MODAL SYSTEM -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
+        <div class="modal-body" onclick="event.stopPropagation()">
+            <div class="modal-close" onclick="closeModal()">×</div>
+            <div id="modal-title" style="font-size:11px; font-weight:900; text-transform:uppercase; margin-bottom:30px; border-bottom:1px solid #EEE; padding-bottom:15px; letter-spacing:0.1em;">Title</div>
+            <div id="modal-content-body"></div>
+        </div>
+    </div>
 
-    function renderRoster(data) {
-        const source = data || (currentFilter === 'All' ? roster : roster.filter(p => p.team === currentFilter));
-        const q = document.getElementById('search-input').value.toLowerCase();
-        const final = source.filter(p => p.name.toLowerCase().includes(q));
-        let html = '';
-        final.forEach(p => {
-            const cls = 'b-' + p.status.replace(' ','');
-            html += `<div class="roster-row" onclick="openModal('${p.name}')">
-                <div class="rr-name">${p.name} <span class="rr-role">${p.role}</span></div>
-                <div><span class="badge ${cls}">${p.status}</span></div>
-                <div class="rr-note">${p.note}</div>
-            </div>`;
-        });
-        document.getElementById('roster-rows').innerHTML = html;
-    }
+    <script>
+        // --- DATA ---
+        const staff = [
+            { id: 1, name: "Abhinaya Sriram", role: "Social Video Producer", manager: "m4", team: "production", schedule: ["Office", "Office", "WFH", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["WFH", "WFH", "Office", "Office", "Office"]] },
+            { id: 2, name: "Abraham Eneh", role: "Casual", manager: "m3", team: "production", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
+            { id: 3, name: "Aivhan Catacutan", role: "Casual", manager: "m3", team: "production", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
+            { id: 4, name: "Alex Biddle", role: "Head of Sport Originals", manager: "m1", team: "editorial", schedule: ["Office", "Office", "Office", "Office", "Office"], history: [["Office", "Office", "Office", "Office", "Office"], ["Office", "Office", "Office", "Office", "Office"]] },
+            { id: 5, name: "Alex Hobbs", role: "Multimedia Journalist", manager: "m5", team: "editorial", schedule: ["Office", "Office", "WFH", "Office", "WFH"], history: [["Office", "Office", "WFH", "Office", "WFH"], ["Office", "Office", "WFH", "Office", "WFH"]] },
+            { id: 6, name: "Anaïs Lukaku", role: "Senior Creative", manager: "m2", team: "creative", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
+            { id: 7, name: "Ben Wiley", role: "Managing Producer", manager: "m4", team: "production", schedule: ["Office", "WFH", "Office", "Office", "WFH"], history: [["Office", "WFH", "Office", "Office", "WFH"], ["Office", "WFH", "Office", "Office", "WFH"]] },
+            { id: 8, name: "Claire O’Moore", role: "Senior Video Editor", manager: "m3", team: "production", schedule: ["Office", "Office", "WFH", "Office", "WFH"], history: [["Office", "Office", "WFH", "Office", "WFH"], ["Office", "Office", "WFH", "Office", "WFH"]] },
+            { id: 9, name: "Dan Quinnell", role: "UK Social Video Lead", manager: "m4", team: "production", schedule: ["Office", "Office", "Shoot", "Office", "WFH"], history: [["Office", "Office", "Shoot", "Office", "WFH"], ["Office", "Office", "Shoot", "Office", "WFH"]] },
+            { id: 10, name: "Deli Koprinkov", role: "Senior Video Editor", manager: "m3", team: "production", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
+            { id: 11, name: "Josh Fajobi", role: "Social Designer", manager: "m2", team: "social", schedule: ["WFH", "Office", "Office", "Office", "WFH"], history: [["WFH", "Office", "Office", "Office", "WFH"], ["WFH", "Office", "Office", "Office", "WFH"]] },
+            { id: 12, name: "Nick Bolwell", role: "Lead Social Creative", manager: "m2", team: "creative", schedule: ["Office", "Office", "Office", "Office", "Office"], history: [["Office", "Office", "Office", "Office", "Office"], ["Office", "Office", "Office", "Office", "Office"]] },
+            { id: 13, name: "Romy Grigg", role: "Social Video Lead", manager: "m2", team: "social", schedule: ["Office", "Office", "Shoot", "Office", "WFH"], history: [["Office", "Office", "Shoot", "Office", "WFH"], ["Office", "Office", "Shoot", "Office", "WFH"]] },
+            { id: 14, name: "Stefan Burghila", role: "Video Editor & Producer", manager: "m3", team: "production", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
+            { id: 15, name: "Williams Olufemi", role: "Social Designer", manager: "m2", team: "social", schedule: ["Office", "WFH", "Office", "Office", "WFH"], history: [["Office", "WFH", "Office", "Office", "WFH"], ["Office", "WFH", "Office", "Office", "WFH"]] }
+        ];
 
-    function renderGroupView() {
-        const container = document.getElementById('group-view-container');
-        const groups = [...new Set(staffConfig.map(s => s.func))].filter(Boolean);
-        let html = '';
+        const managers = [
+            { id: "m1", name: "Nick Moar", role: "Head of New Media" },
+            { id: "m2", name: "Ellie Beetham", role: "Head of Social Creative" },
+            { id: "m3", name: "Nev Brook", role: "Director of Social Production" },
+            { id: "m4", name: "Matthew Macleod", role: "Head of Social Production" },
+            { id: "m5", name: "Nathan Aspell", role: "Director of Creative and Platforms" }
+        ];
 
-        groups.forEach(g => {
-            const members = roster.filter(p => p.func === g);
-            const inToday = members.filter(m => m.status === 'Office').length;
+        const requests = [
+            { staff: "Nick Bolwell", managerId: "m2", days: ["Office", "Office", "WFH", "Office", "Office"] },
+            { staff: "Romy Grigg", managerId: "m2", days: ["Office", "Office", "Shoot", "Shoot", "WFH"] }
+        ];
+
+        let pin = "";
+        let outlookDayIndex = 0;
+        let forecastDayIndex = 0;
+
+        // --- AUTH ---
+        function press(n) { if(pin.length < 4) { pin += n; syncPin(); if(pin.length === 4) setTimeout(auth, 200); } }
+        function clearPin() { pin = ""; syncPin(); }
+        function syncPin() { for(let i=1; i<=4; i++) document.getElementById('p'+i).classList.toggle('filled', i <= pin.length); }
+        function auth() { if(pin === "2025") { document.getElementById('lock-screen').style.opacity = 0; setTimeout(() => { document.getElementById('lock-screen').classList.add('hidden'); document.getElementById('app-shell').classList.remove('hidden'); }, 300); } else { clearPin(); } }
+
+        // --- NAVIGATION ---
+        function navigate(view, btn) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
+            document.getElementById('view-'+view).classList.add('active');
+            btn.classList.add('active');
+            if(view === 'teams') renderTeams();
+            if(view === 'approvals') renderManagerGrid();
+        }
+
+        // --- DATES ---
+        function getWC() {
+            const now = new Date();
+            const day = now.getDay();
+            const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+            const mon = new Date(now.setDate(diff));
+            return `w/c ${mon.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`.toUpperCase();
+        }
+
+        // --- RENDERING ---
+        function selectOutlookDay(index, btn) {
+            outlookDayIndex = index;
+            document.querySelectorAll('#outlook-strip .day-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderOutlookSummary();
+        }
+
+        function selectForecastDay(index, btn) {
+            forecastDayIndex = index;
+            document.querySelectorAll('#forecast-strip .day-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderForecastDirectory();
+        }
+
+        function renderOutlookSummary() {
+            const wc = getWC();
+            document.getElementById('outlook-wc-header').innerText = wc;
+            document.getElementById('in-office-label').innerText = `IN OFFICE • ${wc}`;
+
+            const stats = { Office: 0, WFH: 0, Shoot: 0, PTO: 0 };
+            const inOffice = [];
+
+            staff.forEach(s => {
+                const status = s.schedule[outlookDayIndex];
+                stats[status]++;
+                if(status === 'Office') inOffice.push(s);
+            });
+
+            document.getElementById('count-office').innerText = stats.Office;
+            document.getElementById('count-wfh').innerText = stats.WFH;
+            document.getElementById('count-shoot').innerText = stats.Shoot;
+            document.getElementById('count-pto').innerText = stats.PTO;
+
+            document.getElementById('today-chips-mount').innerHTML = inOffice.map(s => `
+                <div class="person-chip">
+                    <div class="dot-grid dots-${s.team}" style="transform:scale(0.6)"><span></span><span></span><span></span><span></span></div>
+                    ${s.name}
+                </div>
+            `).join('') || '<div style="font-size:12px; color:var(--ink-sub);">None scheduled for Office.</div>';
+        }
+
+        function renderForecastDirectory() {
+            const directoryMount = document.getElementById('directory-mount');
+            directoryMount.innerHTML = "";
+
+            staff.forEach(s => {
+                const status = s.schedule[forecastDayIndex];
+                directoryMount.innerHTML += `
+                    <tr>
+                        <td>
+                            <div class="name-cell">
+                                <div class="dot-grid dots-${s.team}" style="transform:scale(0.6)"><span></span><span></span><span></span><span></span></div>
+                                <span class="staff-name-link" style="color:var(--team-${s.team})" onclick="openStaffHistory(${s.id})">${s.name}</span>
+                            </div>
+                        </td>
+                        <td><span style="font-size:11px; color:#BBB; font-weight:500;">${s.role}</span></td>
+                        <td><span class="status-chip chip-${status.toLowerCase()}">${status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderTeams() {
+            document.getElementById('teams-wc-label').innerText = getWC();
+            const mount = document.getElementById('teams-mount');
+            const groups = [...new Set(staff.map(s => s.team))];
             
-            html += `
-            <div class="group-block">
-                <div class="group-header">
-                    <div class="group-name">${g}</div>
-                    <div class="group-summary">${inToday} available today</div>
+            mount.innerHTML = groups.map(teamName => {
+                const teamStaff = staff.filter(s => s.team === teamName);
+                return `
+                    <div class="folder-card" data-team="${teamName}">
+                        <div class="folder-tab">
+                            <div class="dot-grid dots-${teamName}"><span></span><span></span><span></span><span></span></div>
+                            ${teamName} Stream
+                        </div>
+                        <table class="directory-table">
+                            <thead><tr><th>Name & Role</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th></tr></thead>
+                            <tbody>
+                                ${teamStaff.map(s => `
+                                    <tr>
+                                        <td>
+                                            <span class="staff-name-link" style="color:var(--team-${s.team})" onclick="openStaffHistory(${s.id})">${s.name}</span>
+                                            <span class="role-subtext">${s.role}</span>
+                                        </td>
+                                        ${s.schedule.map(st => `<td><span class="status-chip chip-${st.toLowerCase()}">${st.charAt(0)}</span></td>`).join('')}
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderManagerGrid() {
+            const mount = document.getElementById('manager-grid-mount');
+            mount.innerHTML = managers.map(m => `
+                <div class="manager-card" onclick="openManagerRequests('${m.id}', '${m.name}')">
+                    <div class="manager-name">${m.name}</div>
+                    <div class="manager-role">${m.role}</div>
+                    <div style="margin-top:15px; font-size:10px; font-weight:800; color:var(--team-people);">
+                        ${requests.filter(r => r.managerId === m.id).length} Pending Requests
+                    </div>
                 </div>
-                <div class="group-grid">
-                    <div class="gg-head">Staff</div>
-                    <div class="gg-head">Mon</div><div class="gg-head">Tue</div>
-                    <div class="gg-head">Wed</div><div class="gg-head">Thu</div><div class="gg-head">Fri</div>
-                    ${members.map(m => `
-                        <div class="gg-cell">${m.name}</div>
-                        ${['Mon','Tue','Wed','Thu','Fri'].map(() => {
-                            const st = statuses[Math.floor(Math.random()*statuses.length)];
-                            let col = 'var(--st-office)';
-                            if(st==='WFH') col='var(--st-wfh)';
-                            if(st==='PTO') col='var(--st-pto)';
-                            if(st==='Abroad'||st==='Shoot') col='var(--st-abroad)';
-                            return `<div class="gg-cell"><div class="gg-status-dot" style="background:${col}" title="${st}"></div></div>`;
-                        }).join('')}
+            `).join('');
+        }
+
+        // --- POPUP FOR METRIC CARDS ---
+        function openCategoryModal(cat) {
+            document.getElementById('modal-title').innerText = `${cat} Breakdown • ${getWC()}`;
+            const list = staff.filter(s => s.schedule[outlookDayIndex] === cat);
+            document.getElementById('modal-content-body').innerHTML = list.map(s => `
+                <div style="padding:12px 0; border-bottom:1px solid #F5F5F5; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="name-cell">
+                        <div class="dot-grid dots-${s.team}" style="transform:scale(0.6)"><span></span><span></span><span></span><span></span></div>
+                        ${s.name}
+                    </div>
+                    <span style="font-size:10px; color:var(--ink-sub); text-transform:uppercase;">${s.role}</span>
+                </div>
+            `).join('') || `<div style="padding:20px; text-align:center; color:var(--ink-sub);">No staff in ${cat} on this day.</div>`;
+            document.getElementById('modal-overlay').classList.add('open');
+        }
+
+        // --- HISTORY MODAL ---
+        function openStaffHistory(staffId) {
+            const s = staff.find(x => x.id === staffId);
+            document.getElementById('modal-title').innerText = `${s.name} • Operational History`;
+            const mount = document.getElementById('modal-content-body');
+            
+            let html = `
+                <div style="margin-bottom:20px; font-size:13px; font-weight:700; color:var(--team-${s.team});">${s.role}</div>
+                
+                <div class="history-week-block">
+                    <div class="history-week-title">Current Week (${getWC()})</div>
+                    <div class="history-row">
+                        ${s.schedule.map((st, i) => `
+                            <div class="history-day">
+                                <div class="h-day-name">${['M','T','W','T','F'][i]}</div>
+                                <span class="status-chip chip-${st.toLowerCase()}">${st.charAt(0)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            s.history.forEach((hist, idx) => {
+                html += `
+                <div class="history-week-block">
+                    <div class="history-week-title">Week Minus ${idx+1}</div>
+                    <div class="history-row">
+                        ${hist.map((st, i) => `
+                            <div class="history-day">
+                                <div class="h-day-name">${['M','T','W','T','F'][i]}</div>
+                                <span class="status-chip chip-${st.toLowerCase()}">${st.charAt(0)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                `;
+            });
+
+            mount.innerHTML = html;
+            document.getElementById('modal-overlay').classList.add('open');
+        }
+
+        function openManagerRequests(id, name) {
+            const mgrReqs = requests.filter(r => r.managerId === id);
+            document.getElementById('modal-title').innerText = `Pending Requests: ${name}`;
+            const mount = document.getElementById('modal-content-body');
+            
+            mount.innerHTML = mgrReqs.map(req => `
+                <div style="margin-bottom:40px;">
+                    <div style="font-size:18px; font-weight:900; margin-bottom:15px;">${req.staff}</div>
+                    ${['Mon','Tue','Wed','Thu','Fri'].map((day, i) => `
+                        <div class="request-item">
+                            <div class="day-label">${day}</div>
+                            <div style="font-size:13px; font-weight:800;">${req.days[i]}</div>
+                            <div class="segmented-control">
+                                <button class="segment-btn" onclick="stamp(this, 'approve')">Approve</button>
+                                <button class="segment-btn" onclick="stamp(this, 'deny')">Deny</button>
+                                <button class="segment-btn" onclick="segment(this, 'suggest')">Suggest</button>
+                            </div>
+                        </div>
+                        <textarea class="feedback-area" placeholder="Add rationale for ${day}..."></textarea>
                     `).join('')}
+                    <button class="n-btn" style="width:100%; background:var(--ink); color:#FFF; margin-top:20px; height:45px;" onclick="submitRequest(this)">Submit</button>
                 </div>
-            </div>`;
-        });
-        container.innerHTML = html;
-    }
+            `).join('');
+            document.getElementById('modal-overlay').classList.add('open');
+        }
 
-    function renderApprovals() {
-        const list = roster.filter(p => p.pending);
-        document.getElementById('badge-count').innerText = list.length;
-        const container = document.getElementById('approvals-list');
-        let html = '';
-        list.forEach(p => {
-            html += `
-            <div class="req-card" id="req-${p.reqId}">
-                <div class="req-header"><div class="req-title">${p.name} <span style="font-weight:400; color:#888;">(${p.role})</span></div></div>
-                <div class="req-body">
-                    ${['MON', 'TUE', 'WED', 'THU', 'FRI'].map(d => renderDayRow(p.reqId, d, 'Office')).join('')}
-                    <div style="padding-top:20px; text-align:right;"><button class="btn-confirm" onclick="resolveReq('${p.reqId}')">Approve Request</button></div>
-                </div>
-            </div>`;
-        });
-        container.innerHTML = html;
-    }
+        function stamp(btn, action) {
+            const parent = btn.parentElement;
+            parent.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active-approve','active-deny','active-suggest'));
+            btn.classList.add('active-'+action);
+            const feedback = parent.parentElement.nextElementSibling;
+            if(action === 'deny' || action === 'suggest') feedback.classList.add('visible');
+            else feedback.classList.remove('visible');
+        }
 
-    function renderDayRow(id, day, status) {
-        const rowId = `${id}-${day}`;
-        return `
-        <div class="req-grid-row">
-            <div class="rg-day">${day}</div>
-            <div class="rg-status"><span id="txt-${rowId}">${status}</span><input type="text" class="status-input" id="inp-${rowId}" value="${status}" onblur="saveSuggest('${rowId}')" style="display:none;"></div>
-            <div class="act-group">
-                <div class="icon-btn" onclick="markDay(this, 'tick')">✓</div>
-                <div class="icon-btn" onclick="markDay(this, 'cross')">✕</div>
-                <div class="icon-btn" onclick="editDay('${rowId}', this)">✎</div>
-            </div>
-        </div>`;
-    }
-
-    // --- INTERACTION LOGIC ---
-    function markDay(btn, type) {
-        const p = btn.parentElement;
-        p.querySelectorAll('.icon-btn').forEach(b => b.className = 'icon-btn');
-        if(type==='tick') btn.classList.add('active-approve');
-        if(type==='cross') btn.classList.add('active-deny');
-    }
-
-    function editDay(rowId, btn) {
-        btn.parentElement.querySelectorAll('.icon-btn').forEach(b => b.className = 'icon-btn');
-        btn.classList.add('active-suggest');
-        document.getElementById(`txt-${rowId}`).style.display = 'none';
-        const inp = document.getElementById(`inp-${rowId}`);
-        inp.style.display = 'block'; inp.focus();
-    }
-
-    function saveSuggest(rowId) {
-        const inp = document.getElementById(`inp-${rowId}`);
-        const txt = document.getElementById(`txt-${rowId}`);
-        txt.innerText = inp.value; inp.style.display = 'none'; txt.style.display = 'block'; txt.style.color = 'var(--brand-blue)';
-    }
-
-    function resolveReq(id) {
-        const el = document.getElementById('req-'+id);
-        el.style.opacity = '0';
-        setTimeout(() => {
-            const idx = roster.findIndex(p => p.reqId === id);
-            if(idx > -1) roster[idx].pending = false;
-            renderApprovals();
-        }, 300);
-    }
-
-    function openModal(name) {
-        const p = roster.find(n=>n.name===name);
-        document.getElementById('m-name').innerText = p.name;
-        document.getElementById('m-role').innerText = p.role;
-        document.getElementById('m-status').innerText = `Current Status: ${p.status}`;
-        document.getElementById('modal-overlay').classList.add('active');
-    }
-    function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
-
-    // --- PIN LOGIC ---
-    document.addEventListener('keydown', (e) => { if(document.getElementById('lock-screen').style.display !== 'none') { if(e.key>='0'&&e.key<='9') pressKey(e.key); if(e.key==='Backspace') deleteKey(); }});
-    function pressKey(n) { if(pin.length<4) { pin+=n; updateDots(); if(pin.length===4) checkPin(); } }
-    function deleteKey() { if(pin.length>0) pin=pin.slice(0,-1); updateDots(); }
-    function updateDots() { for(let i=1;i<=4;i++) document.getElementById(`p${i}`).classList.toggle('filled', i<=pin.length); }
-    function checkPin() {
-        if(pin===correctPin) {
-            document.getElementById('lock-screen').style.opacity = '0';
+        function submitRequest(btn) {
+            btn.innerText = "Synchronising...";
             setTimeout(() => {
-                document.getElementById('lock-screen').classList.add('hidden');
-                document.getElementById('main-interface').classList.remove('hidden');
-                document.getElementById('main-interface').classList.add('fade-in');
-                document.getElementById('main-interface').style.display = 'flex';
-                init();
-            }, 400);
-        } else { pin=""; updateDots(); }
-    }
-</script>
+                btn.parentElement.style.opacity = "0.3";
+                btn.parentElement.style.pointerEvents = "none";
+                btn.innerText = "Decisions Logged";
+            }, 600);
+        }
+
+        function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+        // Boot
+        renderOutlookSummary();
+        renderForecastDirectory();
+        renderManagerGrid();
+    </script>
 </body>
 </html>
