@@ -1,0 +1,539 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  getDocs, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  updateDoc,
+  doc,
+  writeBatch
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  signInWithCustomToken, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  Calendar, 
+  CheckCircle2, 
+  Clock, 
+  ExternalLink, 
+  Search, 
+  ArrowRight, 
+  UserCheck, 
+  Bell, 
+  Hash,
+  ChevronRight,
+  Copy,
+  Sparkles,
+  Zap,
+  Activity,
+  CalendarDays,
+  Lock,
+  Palette,
+  ArrowLeft,
+  Layout,
+  MessageSquare,
+  Settings2,
+  X
+} from 'lucide-react';
+
+// Firebase Initialisation
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'dmg-command-system';
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [staffData, setStaffData] = useState(null);
+  const [directory, setDirectory] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [ledgerUpdates, setLedgerUpdates] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [passcode, setPasscode] = useState("");
+  const [view, setView] = useState('loading'); 
+  const [onboardingStep, setOnboardingStep] = useState('find'); 
+  const [showSettings, setShowSettings] = useState(false);
+  
+  // Personalisation State (Defaults)
+  const [feeling, setFeeling] = useState("");
+  const [selectedEmoji, setSelectedEmoji] = useState("✨");
+  const [accentColor, setAccentColor] = useState('#21A0D8');
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const auraOptions = [
+    { name: 'Blue', color: '#21A0D8' },
+    { name: 'Pink', color: '#E6468B' },
+    { name: 'Red', color: '#E94B4B' },
+    { name: 'Green', color: '#43B049' },
+    { name: 'Gold', color: '#F2C316' }
+  ];
+
+  const emojiOptions = ["✨", "🚀", "⚡️", "🔋", "💡", "🎨", "📈", "🏢", "🏠", "🎥"];
+
+  // --- Date Formatting (UK English / Capitalised Suffixes) ---
+  const getDaySuffix = (day) => {
+    if (day > 3 && day < 21) return 'TH';
+    switch (day % 10) {
+      case 1: return "ST";
+      case 2: return "ND";
+      case 3: return "RD";
+      default: return "TH";
+    }
+  };
+
+  const formatFullDate = (dateObj = new Date()) => {
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+    const dayNum = dateObj.getDate();
+    return `${days[dateObj.getDay()]}, ${dayNum}${getDaySuffix(dayNum)} ${months[dateObj.getMonth()]}`;
+  };
+
+  // --- Auth & Session Initialisation ---
+  useEffect(() => {
+    const initAuth = async () => {
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return () => unsubscribe();
+  }, []);
+
+  // --- Data Fetching ---
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'));
+      const list = [];
+      snap.forEach(doc => list.push({ id: doc.id, ...doc.data(), fullName: `${doc.data().firstName} ${doc.data().lastName}` }));
+      
+      // Mandatory Fallbacks for Demo
+      if (!list.find(s => s.fullName === 'Anaïs Lukaku')) {
+        list.push({ id: 'nais-01', firstName: 'Anaïs', lastName: 'Lukaku', fullName: 'Anaïs Lukaku', role: 'Senior Creative', team: 'creative', manager: 'Nathan Aspell' });
+      }
+      list.push({ id: 'jane-01', firstName: 'Jane', lastName: 'Doe', fullName: 'Jane Doe', role: 'Social Designer', team: 'social', manager: 'Ellie Beetham' });
+      list.push({ id: 'james-01', firstName: 'James', lastName: 'Whatever', fullName: 'James Whatever', role: 'Video Editor', team: 'production', manager: 'Matthew Macleod' });
+
+      setDirectory(list);
+
+      const params = new URLSearchParams(window.location.search);
+      const idParam = params.get('id');
+      if (idParam) {
+        const found = list.find(s => s.id === idParam);
+        if (found) {
+          setStaffData(found);
+          if (found.accentColor) setAccentColor(found.accentColor);
+          if (found.selectedEmoji) setSelectedEmoji(found.selectedEmoji);
+          if (found.feeling) setFeeling(found.feeling);
+          setView('profile');
+          return;
+        }
+      }
+      setView('onboarding');
+    };
+
+    fetchData();
+  }, [user]);
+
+  // --- Ledger Pulse (Mocked Updates) ---
+  useEffect(() => {
+    if (!staffData) return;
+    const fullName = staffData.fullName;
+    const qTasks = collection(db, 'artifacts', appId, 'public', 'data', 'master_ledger');
+    
+    const unsubTasks = onSnapshot(qTasks, (snap) => {
+      const myTasks = [];
+      snap.forEach(doc => {
+        const t = doc.data();
+        if (t.salesLead === fullName || t.projectLead === fullName) myTasks.push({ id: doc.id, ...t });
+      });
+      setTasks(myTasks);
+    });
+
+    const mockFeed = [
+        { id: 1, user: 'Anaïs Lukaku', action: 'Synchronised Master Ledger', project: 'Next - AW24 Prep', time: '5M AGO' },
+        { id: 2, user: 'Jane Doe', action: 'Uploaded social assets to', project: 'Nike - Run Club', time: '2H AGO' },
+        { id: 3, user: 'James Whatever', action: 'Initialised production for', project: 'Adidas Originals', time: '5H AGO' }
+    ];
+    setLedgerUpdates(mockFeed);
+
+    return () => unsubTasks();
+  }, [staffData]);
+
+  // --- Handlers ---
+  const handleOnboardingSelect = (person) => {
+    setStaffData(person);
+    setOnboardingStep('secure');
+  };
+
+  const verifyPasscode = () => {
+    if (passcode === "00000") {
+      setOnboardingStep('magic');
+    } else {
+      setPasscode("");
+    }
+  };
+
+  const saveSettings = async () => {
+    const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', staffData.id);
+    try {
+        await updateDoc(userRef, { accentColor, selectedEmoji, feeling });
+        setShowSettings(false);
+    } catch(e) { 
+        setShowSettings(false);
+    }
+  };
+
+  const copyMagicLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}?id=${staffData.id}`;
+    navigator.clipboard.writeText(url);
+    alert("Personal URL Copied. Update your Notion Embed link to bypass this setup.");
+  };
+
+  const submitRota = async () => {
+    setIsSubmitting(true);
+    const nextMon = new Date(new Date().setDate(new Date().getDate() + (1 + 7 - new Date().getDay()) % 7)).toLocaleDateString('en-GB');
+    try {
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rota_requests'), {
+        staffName: staffData.fullName,
+        managerName: staffData.manager,
+        schedule: { Mon: 'Office', Tue: 'Office', Wed: 'Office', Thu: 'Office', Fri: 'Office' },
+        status: 'pending',
+        weekCommencing: nextMon,
+        timestamp: Date.now()
+      });
+      setSubmitSuccess(true);
+      setTimeout(() => setSubmitSuccess(false), 3000);
+    } catch (e) { console.error(e); }
+    setIsSubmitting(false);
+  };
+
+  if (view === 'loading') return (
+    <div className="h-screen flex items-center justify-center bg-white">
+      <div className="flex gap-2">
+        {[0,1,2].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8] animate-pulse" style={{ animationDelay: `${i * 0.15}s` }} />)}
+      </div>
+    </div>
+  );
+
+  // --- ONBOARDING VIEWS ---
+  if (view === 'onboarding') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 select-none">
+        <div className="max-w-xl w-full">
+          
+          {onboardingStep === 'find' && (
+            <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000 text-center">
+                <div className="flex justify-center gap-1.5 mb-10">
+                    {[1,2,3,4].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8]" />)}
+                </div>
+                <h1 className="text-5xl font-black tracking-tighter uppercase mb-4 text-[#1C1C1C]">Create my DMG profile</h1>
+                <p className="text-[#21a0d8] font-bold text-xs tracking-[0.25em] uppercase mb-16 italic">Initialise your personal dashboard</p>
+                
+                <div className="relative group mb-10">
+                  <div className="absolute left-7 top-1/2 -translate-y-1/2 text-[#21a0d8]"><Search size={24}/></div>
+                  <input 
+                    type="text" 
+                    placeholder="TYPE FULL NAME..."
+                    className="w-full pl-16 pr-8 py-9 bg-blue-50/20 border-2 border-[#21a0d8]/10 rounded-[2.5rem] text-sm font-black uppercase tracking-[0.2em] focus:outline-none focus:border-[#21a0d8] focus:bg-white transition-all shadow-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid gap-4 max-h-72 overflow-y-auto pr-3 custom-scrollbar">
+                  {searchQuery.length > 0 && directory.filter(s => s.fullName.toLowerCase().includes(searchQuery.toLowerCase())).map(person => (
+                    <button key={person.id} onClick={() => handleOnboardingSelect(person)} className="w-full p-8 bg-white border border-gray-100 hover:border-[#21a0d8] rounded-[2rem] flex items-center justify-between group transition-all hover:shadow-xl">
+                      <div className="text-left flex items-center gap-6">
+                        <div className="grid grid-cols-2 gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                        </div>
+                        <div>
+                            <span className="font-black text-base uppercase tracking-widest block text-[#1C1C1C]">{person.fullName}</span>
+                            <span className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.15em]">{person.role}</span>
+                        </div>
+                      </div>
+                      <ArrowRight size={22} className="text-gray-200 group-hover:text-[#21a0d8] group-hover:translate-x-1 transition-all" />
+                    </button>
+                  ))}
+                </div>
+            </div>
+          )}
+
+          {onboardingStep === 'secure' && (
+            <div className="animate-in fade-in slide-in-from-bottom-12 duration-700 text-center">
+                <Lock className="w-12 h-12 text-[#21a0d8] mx-auto mb-10" />
+                <h1 className="text-5xl font-black tracking-tighter uppercase mb-4 text-[#1C1C1C]">Handshake.</h1>
+                <p className="text-gray-400 font-bold text-xs tracking-[0.2em] uppercase mb-16">Enter 5-digit passcode for <strong>{staffData.firstName}</strong>.</p>
+                <input 
+                    type="password" 
+                    placeholder="00000" 
+                    className="w-full text-center p-10 bg-white border-2 border-gray-100 rounded-[3rem] text-6xl font-black tracking-[0.4em] focus:outline-none focus:border-[#21a0d8] mb-12 shadow-sm"
+                    value={passcode}
+                    onChange={(e) => setPasscode(e.target.value)}
+                    maxLength={5}
+                />
+                <button onClick={verifyPasscode} className="w-full p-8 bg-[#1C1C1C] text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-sm shadow-2xl hover:bg-[#333] transition-all">Verify Handover</button>
+                <button onClick={() => setOnboardingStep('find')} className="mt-10 text-[10px] font-black uppercase text-gray-300 tracking-widest flex items-center justify-center gap-2 mx-auto hover:text-[#1C1C1C] transition-colors"><ArrowLeft size={12}/> Switch Identity</button>
+            </div>
+          )}
+
+          {onboardingStep === 'magic' && (
+            <div className="animate-in fade-in zoom-in duration-700 text-center">
+                <Sparkles className="w-24 h-24 text-[#21a0d8] mx-auto mb-12 animate-pulse" />
+                <h1 className="text-5xl font-black tracking-tighter uppercase mb-6 text-[#1C1C1C]">Key Issued.</h1>
+                <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em] max-w-xs mx-auto mb-16 leading-relaxed">Your unique access link is ready. Use this as your Notion embed URL to bypass this setup forever.</p>
+                <div className="space-y-5">
+                    <button onClick={copyMagicLink} className="w-full p-8 bg-[#21a0d8] text-white rounded-[2.5rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-4 shadow-xl"><Copy size={18}/> Copy Magic URL</button>
+                    <button onClick={() => setView('profile')} className="w-full p-8 border-2 border-gray-100 text-gray-300 rounded-[2.5rem] font-black uppercase tracking-widest text-xs hover:text-[#1C1C1C] hover:border-[#1C1C1C] transition-all">Open My Dashboard</button>
+                </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white text-[#1C1C1C] pb-32">
+      
+      {/* SETTINGS MODAL (Post-Onboarding Personalisation) */}
+      {showSettings && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-white w-full max-w-lg rounded-[3rem] p-12 relative shadow-2xl animate-in zoom-in-95 duration-300">
+                  <button onClick={() => setShowSettings(false)} className="absolute top-8 right-8 text-gray-300 hover:text-[#1C1C1C]"><X size={24}/></button>
+                  <h3 className="text-3xl font-black tracking-tighter uppercase mb-10">Personalise Profile</h3>
+                  
+                  <div className="space-y-10">
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-6">Profile Accent Aura</label>
+                        <div className="flex flex-wrap gap-5">
+                            {auraOptions.map(opt => (
+                                <button key={opt.color} onClick={() => setAccentColor(opt.color)} className={`w-12 h-12 rounded-full transition-all ${accentColor === opt.color ? 'scale-125 ring-4 ring-blue-50' : 'opacity-20 hover:opacity-100'}`} style={{ background: opt.color }} />
+                            ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-6">Signature Icon</label>
+                        <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+                            {emojiOptions.map(emoji => (
+                                <button key={emoji} onClick={() => setSelectedEmoji(emoji)} className={`p-5 bg-white rounded-3xl text-3xl transition-all flex-shrink-0 border-2 ${selectedEmoji === emoji ? 'border-[#21a0d8] scale-110 shadow-xl' : 'border-gray-50 opacity-30 hover:opacity-100'}`}>{emoji}</button>
+                            ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-6">Current Mood / Status</label>
+                        <input 
+                            type="text" 
+                            placeholder="WHAT IS THE VIBE TODAY?"
+                            className="w-full p-8 bg-gray-50 border border-gray-100 rounded-[2rem] text-sm font-black uppercase tracking-widest focus:outline-none focus:border-[#21a0d8] transition-all"
+                            value={feeling}
+                            onChange={(e) => setFeeling(e.target.value)}
+                        />
+                      </div>
+                      <button onClick={saveSettings} className="w-full p-7 bg-[#1C1C1C] text-white rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-[#333]">Update My Profile</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      <div className="max-w-4xl mx-auto px-12 py-20">
+        
+        {/* LOGLINE HEADER */}
+        <div className="flex flex-col gap-10 border-b border-gray-100 pb-20 mb-24 relative group">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-5 text-[10px] font-black text-gray-400 tracking-[0.5em] uppercase leading-none">
+                <span>TODAY IS</span>
+                <div className="flex gap-1">
+                    {[1,2,3,4].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8]" />)}
+                </div>
+                <span className="text-[#1C1C1C]">{formatFullDate()}</span>
+            </div>
+            <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center text-gray-300 hover:text-[#21a0d8] hover:border-[#21a0d8] transition-all"><Settings2 size={18}/></button>
+          </div>
+
+          <div className="flex items-center gap-10 leading-none select-none">
+            <h2 className="text-9xl font-black tracking-tighter uppercase leading-[0.8] mb-2">Hello</h2>
+            <div className="grid grid-cols-2 gap-2 mt-4 rotate-45">
+                <div className="w-5 h-5 rounded-full" style={{ background: accentColor }} />
+                <div className="w-5 h-5 rounded-full" style={{ background: accentColor, opacity: 0.6 }} />
+                <div className="w-5 h-5 rounded-full" style={{ background: accentColor, opacity: 0.3 }} />
+                <div className="w-5 h-5 rounded-full" style={{ background: accentColor, opacity: 0.1 }} />
+            </div>
+            <h2 className="text-9xl font-black tracking-tighter uppercase leading-[0.8] mb-2">{staffData.firstName}</h2>
+          </div>
+          
+          <div className="flex items-center gap-8 mt-4">
+              <div className="text-6xl drop-shadow-md">{selectedEmoji}</div>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-gray-300 mb-2">Today I'm Feeling</span>
+                <span className="text-xl font-black uppercase italic tracking-tighter text-[#1C1C1C] border-b-2 border-[#21a0d8]/20 pb-1">{feeling || "Ready for the Shift"}</span>
+              </div>
+          </div>
+
+          <div className="flex items-center gap-6 text-[10px] font-black text-gray-300 uppercase tracking-[0.15em] mt-10">
+            <span className="px-5 py-2 bg-gray-50 rounded-full font-black" style={{ color: accentColor }}>{staffData.team} STREAM</span>
+            <span className="opacity-20 text-2xl">/</span>
+            <span>{staffData.role}</span>
+            <span className="opacity-20 text-2xl">/</span>
+            <span>Led by {staffData.manager}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-20">
+            
+            {/* LEFT COLUMN: PULSE & TASKS */}
+            <div className="lg:col-span-7 space-y-24">
+                
+                {/* SECTION: DEPARTMENT PULSE */}
+                <section>
+                    <div className="flex items-center gap-5 mb-12">
+                        <div className="grid grid-cols-2 gap-1">
+                            {[1,2,3,4].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />)}
+                        </div>
+                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 leading-none">Department Pulse</span>
+                        <div className="flex-1 h-px bg-gray-50" />
+                    </div>
+                    <div className="space-y-6">
+                        {ledgerUpdates.map((upd, i) => (
+                            <div key={upd.id} className="flex items-start gap-8 p-8 bg-gray-50/50 rounded-[2.5rem] border border-transparent hover:border-gray-100 transition-all hover:bg-white hover:shadow-lg">
+                                <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-xl shadow-sm border border-gray-50">👩‍🎨</div>
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#21a0d8]">{upd.user}</span>
+                                        <span className="text-[9px] font-bold text-gray-300 uppercase">{upd.time}</span>
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-500 mt-2 uppercase tracking-tight leading-snug">{upd.action} <span className="text-[#1C1C1C] font-black italic">[{upd.project}]</span></p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* SECTION: ACTION LEDGER */}
+                <section>
+                    <div className="flex items-center justify-between mb-12">
+                        <div className="flex items-center gap-5 flex-1">
+                            <Zap size={22} className="text-yellow-400" />
+                            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 leading-none">Action Ledger</span>
+                            <div className="flex-1 h-px bg-gray-50" />
+                        </div>
+                        <span className="text-[10px] font-black text-white px-6 py-2.5 rounded-full ml-8 shadow-2xl" style={{ background: accentColor }}>{tasks.length} PROJECTS DUE</span>
+                    </div>
+                    
+                    <div className="grid gap-6">
+                        {tasks.length > 0 ? tasks.map(t => (
+                            <div key={t.id} className="group flex items-center justify-between p-12 bg-white border border-gray-100 rounded-[3.5rem] hover:border-[#21a0d8] transition-all relative overflow-hidden shadow-sm hover:shadow-2xl">
+                                <div className="absolute top-0 left-0 w-2.5 h-full" style={{ background: accentColor }} />
+                                <div>
+                                    <span className="font-black text-4xl tracking-tighter uppercase italic group-hover:text-[#21a0d8] leading-none mb-3 block transition-colors">{t.title}</span>
+                                    <span className="text-[11px] font-bold text-gray-300 uppercase block tracking-widest">{t.client || 'Internal Project'}</span>
+                                </div>
+                                <div className="text-right flex flex-col items-end gap-3">
+                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.15em] leading-none block">Deadline</span>
+                                    <span className="font-black text-2xl text-[#E94B4B] tracking-tighter">{t.internalDueDate ? t.internalDueDate.toUpperCase() : 'TBC'}</span>
+                                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-200 group-hover:bg-blue-50 group-hover:text-[#21a0d8] transition-all"><ExternalLink size={16}/></div>
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="p-28 border-2 border-dashed border-gray-100 rounded-[4rem] text-center bg-gray-50/10">
+                                <span className="text-sm font-black text-gray-200 uppercase tracking-[0.4em]">Ledger Empty // Open Capacity</span>
+                            </div>
+                        )}
+                    </div>
+                </section>
+            </div>
+
+            {/* RIGHT COLUMN: CALENDAR & ROTA */}
+            <div className="lg:col-span-5 space-y-24">
+                
+                {/* SECTION: CALENDAR STREAM */}
+                <section>
+                    <div className="flex items-center gap-5 mb-12">
+                        <div className="flex gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                        </div>
+                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 leading-none">Meeting Stream</span>
+                        <div className="flex-1 h-px bg-gray-50" />
+                    </div>
+                    
+                    <div className="bg-white border-2 border-gray-100 rounded-[3.5rem] overflow-hidden shadow-sm relative group min-h-[550px] flex flex-col items-center justify-center">
+                         <div className="absolute inset-0 p-16 flex flex-col gap-10 opacity-[0.04] pointer-events-none group-hover:opacity-[0.06] transition-opacity">
+                             <div className="w-full h-14 bg-gray-200 rounded-2xl" />
+                             <div className="flex gap-6">
+                                 <div className="w-24 h-48 bg-gray-200 rounded-3xl" />
+                                 <div className="flex-1 space-y-6">
+                                     <div className="w-full h-24 bg-gray-200 rounded-[2rem]" />
+                                     <div className="w-3/4 h-12 bg-gray-200 rounded-[2rem]" />
+                                 </div>
+                             </div>
+                         </div>
+                         
+                         <div className="relative z-10 p-16 text-center max-w-sm mx-auto">
+                            <div className="w-24 h-24 bg-white shadow-2xl rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 border border-gray-50 text-[#21a0d8] rotate-6 group-hover:rotate-0 transition-transform duration-500">
+                                <MessageSquare size={42} strokeWidth={2.5} />
+                            </div>
+                            <h4 className="text-3xl font-black uppercase mb-6 tracking-tight leading-[0.85]">Outlook Integration</h4>
+                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-12 leading-relaxed italic">Securely stream live scrums and client syncs to this view.</p>
+                            <button className="w-full p-8 bg-[#1C1C1C] text-white rounded-[2rem] font-black uppercase tracking-widest text-[10px] shadow-2xl hover:bg-[#333] transition-all">Connect Private API</button>
+                         </div>
+                    </div>
+                </section>
+
+                {/* SECTION: ROTApattern */}
+                <section>
+                    <div className="flex items-center gap-5 mb-12">
+                        <Calendar size={20} className="text-[#21a0d8]" />
+                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 leading-none">Pattern Log</span>
+                        <div className="flex-1 h-px bg-gray-50" />
+                    </div>
+                    
+                    <div className="bg-[#1C1C1C] text-white rounded-[4rem] p-16 shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 left-0 w-3 h-full" style={{ background: accentColor }} />
+                        <div className="grid grid-cols-5 gap-4 mb-16">
+                            {['M','T','W','T','F'].map(day => (
+                                <div key={day} className="flex flex-col gap-4">
+                                    <span className="text-[11px] font-black text-center text-gray-600 uppercase tracking-widest leading-none">{day}</span>
+                                    <button className="p-5 bg-white/5 border border-white/10 rounded-[1.5rem] text-[10px] font-black transition-all hover:bg-white/10 active:scale-90">O</button>
+                                    <button className="p-5 bg-white/5 border border-white/10 rounded-[1.5rem] text-[10px] font-black transition-all hover:bg-white/10 active:scale-90">R</button>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <button 
+                            onClick={submitRota}
+                            disabled={isSubmitting || submitSuccess}
+                            className={`w-full p-8 rounded-[2.5rem] font-black uppercase tracking-[0.3em] text-xs transition-all flex items-center justify-center gap-5 ${submitSuccess ? 'bg-[#43B049]' : 'bg-white text-[#1C1C1C] hover:bg-gray-100 shadow-xl'}`}
+                        >
+                            {isSubmitting ? 'Synchronising...' : submitSuccess ? 'Pattern Logged' : 'Submit Pattern'}
+                            {submitSuccess && <CheckCircle2 size={20}/>}
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <p className="text-center text-[10px] font-black text-gray-200 uppercase tracking-[0.7em] mt-48 select-none pointer-events-none">Daily Mail // New Media Division // v8.0</p>
+      </div>
+    </div>
+  );
+};
+
+export default App;
