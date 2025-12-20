@@ -30,7 +30,7 @@
 
         .hidden { display: none !important; }
 
-        /* --- AUTH SCREEN --- */
+        /* --- LOCK SCREEN --- */
         #lock-screen {
             position: fixed; inset: 0; background: #FFF; z-index: 5000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -59,12 +59,10 @@
 
         .view-section { display: none; animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
         .view-section.active { display: block; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
         .content-card { background: #FFF; border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 50px; margin-bottom: 40px; box-shadow: 0 4px 30px rgba(0,0,0,0.02); position: relative; }
         .section-tag { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--dmg-blue); letter-spacing: 0.15em; margin-bottom: 25px; display: flex; align-items: center; gap: 8px; }
         
-        /* MULTI-DELETE HEADER */
         .directory-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .bulk-actions { display: flex; gap: 10px; align-items: center; }
 
@@ -81,7 +79,7 @@
         .btn-danger:hover { background: var(--danger); color: #FFF; border-color: var(--danger); }
 
         .checkbox-cell { width: 40px; }
-        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; border-radius: 4px; border: 2px solid var(--border); }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 
         #toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: var(--carbon); color: #FFF; padding: 12px 30px; border-radius: 99px; font-size: 12px; font-weight: 800; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 7000; }
         #toast.active { opacity: 1; bottom: 50px; }
@@ -89,7 +87,7 @@
 </head>
 <body>
 
-    <div id="toast">Update Successful</div>
+    <div id="toast">Database Updated</div>
 
     <!-- LOCK SCREEN -->
     <div id="lock-screen">
@@ -123,6 +121,7 @@
                 <button class="tab-btn" onclick="switchTab('system', this)">Setup Control</button>
             </nav>
 
+            <!-- DIRECTORY VIEW -->
             <section id="view-personnel" class="view-section active">
                 <div class="content-card">
                     <div class="directory-controls">
@@ -147,14 +146,18 @@
                 </div>
             </section>
 
+            <!-- SETUP CONTROL VIEW -->
             <section id="view-system" class="view-section">
                 <div class="content-card">
-                    <span class="section-tag">System Control</span>
-                    <h3 style="font-size:16px; margin-top:0;">Master Hierarchy Reset</h3>
-                    <p style="font-size:12px; color:#666; margin-bottom:24px; line-height:1.5;">This will <b>WIPE ALL DUPLICATES</b> and overwrite the cloud with the corrected management structure:<br>
-                    • <b>Managers Only:</b> Anaïs, Nick M, Alice, Ellie, Matthew, Nev, Nathan, Alex B.<br>
-                    • <b>Relocations:</b> Williams, Aivhan, and Josh moved to Matthew Macleod.<br>
-                    • <b>Fixed Roles:</b> Hugo Starns set as Freelance Creative.</p>
+                    <span class="section-tag">Database Management</span>
+                    <h3 style="font-size:16px; margin-top:0;">Hard Master Hierarchy Sync</h3>
+                    <p style="font-size:12px; color:#666; margin-bottom:24px; line-height:1.6;">
+                        Use this to **WIPE ALL DUPLICATES** and enforce the structure below:<br>
+                        • <b>Strict Managers:</b> Anaïs, Nick M, Alice, Ellie, Matthew, Nev, Nathan, Alex B.<br>
+                        • <b>Relocated:</b> Williams, Aivhan, Josh moved to Matthew Macleod.<br>
+                        • <b>Hugo Starns:</b> Set as Freelance Creative under Anaïs Lukaku.<br>
+                        • <b>Staff Level:</b> Bolwell, Quinnell, Deli, Claire, and Romy set to non-managers.
+                    </p>
                     <button class="btn-primary" onclick="seedPersonnelBulk()" id="seed-btn">Sync Corrected List</button>
                 </div>
             </section>
@@ -163,7 +166,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -218,7 +221,6 @@
 
     function renderDirectory() {
         const mount = document.getElementById('directory-mount');
-        // Sort to help spot duplicates
         const sorted = staffData.sort((a,b) => {
             if(a.firstName === b.firstName) return a.lastName.localeCompare(b.lastName);
             return a.firstName.localeCompare(b.firstName);
@@ -249,32 +251,32 @@
 
     window.deleteSelected = async () => {
         const selected = Array.from(document.querySelectorAll('.profile-checkbox:checked')).map(cb => cb.value);
-        if(!confirm(`Are you sure you want to permanently delete these ${selected.length} profiles?`)) return;
+        if(!confirm(`Are you sure you want to permanently delete these ${selected.length} records?`)) return;
 
         try {
             for(let id of selected) {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', id));
             }
-            showToast(`${selected.length} Profiles Deleted`);
-        } catch(e) { alert("Delete failed: " + e.message); }
+            showToast(`${selected.length} Records Deleted`);
+        } catch(e) { alert("Action failed: " + e.message); }
     };
 
     window.seedPersonnelBulk = async () => {
         const btn = document.getElementById('seed-btn');
-        if(!confirm("This will FULLY WIPE ALL DUPLICATES and reset to the corrected list. Continue?")) return;
+        if(!confirm("This will WIPE EVERY NAME in the database and re-upload the corrected list. Continue?")) return;
         
-        btn.disabled = true; btn.innerText = "Clearing Old Records...";
+        btn.disabled = true; btn.innerText = "Wiping Database...";
         
         try {
-            // 1. COMPLETELY WIPE COLLECTION
+            // 1. COMPLETELY WIPE THE CLOUD DIRECTORY
             const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'));
             for (const docSnap of snap.docs) { await deleteDoc(docSnap.ref); }
 
-            btn.innerText = "Syncing Corrected Data...";
+            btn.innerText = "Rebuilding Hierarchy...";
 
-            // 2. THE STRICT MASTER LIST (40 MEMBERS)
+            // 2. THE STRICT 40-MEMBER MASTER LIST
             const list = [
-                // MANAGERS ONLY (8)
+                // MANAGERS (8)
                 { f: "Nick", l: "Moar", s: "Director", r: "Head of New Media", m: "None", t: "Executive", is: true },
                 { f: "Nev", l: "Brook", s: "Director", r: "Director of Social Production", m: "Nick Moar", t: "Production", is: true },
                 { f: "Nathan", l: "Aspell", s: "Director", r: "Director of Creative and Platforms", m: "Nick Moar", t: "Creative", is: true },
