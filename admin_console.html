@@ -7,12 +7,13 @@
     <style>
         :root {
             --brand-blue: #21a0d8;
-            --brand-black: #000000;
+            --carbon: #1C1C1C;
             --danger: #E94B4B;
+            --success: #43B049;
             --bg-page: #FFFFFF;
             --bg-base: #FCFCFC;
             --border: #EFEFEF;
-            --ink: #000000;
+            --ink: #1C1C1C;
             --ink-sub: #666;
             --radius: 18px;
             --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -35,11 +36,28 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             transition: opacity 0.5s ease;
         }
+
+        /* Cycling Dot Animation */
+        @keyframes dotCycle {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+
+        .header-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 44px; height: 44px; margin-bottom: 20px; }
+        .header-dots .dot { width: 100%; height: 100%; background-color: var(--brand-blue); border-radius: 50%; }
+        
+        /* Lock screen dot sequence: clockwise pulsing */
+        #lock-screen .header-dots .dot { animation: dotCycle 3s infinite ease-in-out; }
+        #lock-screen .header-dots .dot:nth-child(1) { animation-delay: 0s; }
+        #lock-screen .header-dots .dot:nth-child(2) { animation-delay: 0.75s; }
+        #lock-screen .header-dots .dot:nth-child(4) { animation-delay: 1.5s; }
+        #lock-screen .header-dots .dot:nth-child(3) { animation-delay: 2.25s; }
+
         .lock-card { 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             text-align: center; max-width: 400px; width: 90%; 
         }
-        .lock-title { font-size: 26px; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; color: #000; letter-spacing: -0.02em; }
+        .lock-title { font-size: 26px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; color: var(--carbon); letter-spacing: -0.02em; }
         .lock-subtitle { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 32px; letter-spacing: 0.1em; }
         
         .pin-field { display: flex; gap: 16px; justify-content: center; margin-bottom: 40px; }
@@ -48,11 +66,15 @@
         
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 320px; }
         .n-btn { 
-            width: 100%; aspect-ratio: 1.3 / 1; border-radius: 12px; background: #FFF; border: 1px solid #EEE;
+            width: 100%; aspect-ratio: 1.3 / 1; border-radius: 14px; background: #FFF; border: 1px solid #EEE;
             display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; cursor: pointer; transition: all 0.1s ease;
+            color: var(--carbon);
         }
-        .n-btn:hover { border-color: var(--brand-blue); }
-        .n-btn:active { background: var(--brand-blue); color: white; }
+        .n-btn:hover { border-color: var(--brand-blue); background: var(--bg-base); }
+        .n-btn:active { background: var(--brand-blue); color: white; transform: scale(0.95); }
+
+        .n-btn.utility { font-size: 10px; font-weight: 900; letter-spacing: 0.1em; color: var(--brand-blue); border-color: rgba(33, 160, 216, 0.2); }
+        .n-btn.utility:hover { background: rgba(33, 160, 216, 0.05); }
 
         /* --- MAIN APP SHELL --- */
         .admin-shell { max-width: 1200px; margin: 0 auto; padding: 60px 40px; }
@@ -61,87 +83,67 @@
             display: flex; justify-content: space-between; align-items: center; 
             margin-bottom: 40px; padding-bottom: 30px; border-bottom: 2px solid var(--border);
         }
-        .header h1 { font-size: 3rem; font-weight: 900; letter-spacing: -0.05em; margin: 0; text-transform: uppercase; }
+        .header h1 { font-size: 3rem; font-weight: 900; letter-spacing: -0.05em; margin: 0; text-transform: uppercase; color: var(--carbon); }
 
         .tab-nav { display: flex; gap: 12px; margin-bottom: 40px; background: var(--bg-base); padding: 6px; border-radius: 99px; width: fit-content; border: 1px solid var(--border); }
         .tab-btn { padding: 10px 24px; border: none; background: transparent; font-size: 13px; font-weight: 800; text-transform: uppercase; cursor: pointer; border-radius: 99px; color: var(--ink-sub); transition: 0.2s; }
-        .tab-btn.active { background: #FFF; color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .tab-btn.active { background: var(--carbon); color: #FFF; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
         .view-section { display: none; }
-        .view-section.active { display: block; }
+        .view-section.active { display: block; animation: slideUp 0.6s forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- INTAKE DESIGN --- */
-        .intake-container { background: white; border: 2px solid var(--border); padding: 45px; border-radius: 28px; box-shadow: 0 10px 40px rgba(0,0,0,0.02); margin-bottom: 40px; }
-        .intake-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-        .intake-column { display: flex; flex-direction: column; gap: 24px; }
+        /* --- DIRECTORY DESIGN --- */
+        .content-card { background: white; border: 1px solid var(--border); padding: 40px; border-radius: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 40px; position: relative; }
+        .section-tag { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--brand-blue); letter-spacing: 0.15em; margin-bottom: 25px; display: flex; align-items: center; gap: 8px; }
         
-        .intake-group { display: flex; flex-direction: column; }
-        .intake-group label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #AAA; letter-spacing: 0.1em; margin-bottom: 8px; }
+        .directory-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .bulk-actions { display: flex; gap: 10px; align-items: center; }
+
+        .btn-danger { background: #FFF3F3; color: var(--danger); border: 1px solid #FFE0E0; padding: 10px 20px; border-radius: 10px; font-size: 11px; font-weight: 900; cursor: pointer; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
+        .btn-danger:hover { background: var(--danger); color: #FFF; }
+
+        .btn-primary { background: var(--carbon); color: #FFF; border: none; padding: 18px 40px; border-radius: 14px; font-weight: 900; text-transform: uppercase; cursor: pointer; transition: 0.2s; letter-spacing: 0.05em; }
+        .btn-primary:hover { background: var(--brand-blue); transform: translateY(-2px); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; background: var(--bg-base); font-size: 10px; font-weight: 900; color: #999; text-transform: uppercase; padding: 18px; border-bottom: 1px solid var(--border); }
+        td { padding: 18px; font-size: 15px; font-weight: 700; border-bottom: 1px solid var(--bg-base); color: var(--carbon); }
         
-        .input-row { display: flex; gap: 15px; }
-        .input-row > div { flex: 1; }
+        .is-mgr-badge { font-size: 8px; background: var(--brand-blue); color: #FFF; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 8px; font-weight: 900; }
+        .checkbox-cell { width: 50px; text-align: center; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; border-radius: 4px; }
 
-        input, select { 
-            width: 100%; padding: 14px 18px; border-radius: 12px; border: 1.5px solid var(--border); 
-            background: #FAFAFA; font-weight: 600; font-size: 15px; transition: all 0.2s;
-        }
-        input:focus, select:focus { border-color: var(--brand-blue); background: #FFF; outline: none; box-shadow: 0 0 0 4px rgba(33, 160, 216, 0.08); }
-
-        .toggle-section { padding: 20px; background: var(--bg-base); border-radius: 16px; border: 1.5px dashed #DDD; display: flex; flex-direction: column; gap: 15px; }
-        .toggle-header { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-        .toggle-header input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
-        .toggle-header span { font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); }
-
-        .btn-confirm { 
-            background: black; color: white; border: none; padding: 18px 45px; border-radius: 14px; 
-            font-size: 14px; font-weight: 900; text-transform: uppercase; cursor: pointer; 
-            transition: var(--transition); align-self: flex-start; margin-top: 10px;
-        }
-        .btn-confirm:hover { background: var(--brand-blue); transform: scale(1.02); }
-
-        /* --- DIRECTORY TABLE --- */
-        .table-container { background: white; border: 2px solid var(--border); border-radius: 24px; overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; background: #FAFAFA; font-size: 11px; font-weight: 900; color: #999; text-transform: uppercase; padding: 20px; border-bottom: 1px solid var(--border); }
-        td { padding: 20px; font-size: 15px; font-weight: 700; border-bottom: 1px solid #FAFAFA; }
-        
-        .level-tag { padding: 4px 10px; border-radius: 6px; font-size: 9px; font-weight: 900; text-transform: uppercase; background: #EEE; color: #666; }
-        .stream-tag { color: var(--brand-blue); font-size: 11px; font-weight: 900; text-transform: uppercase; }
-        .btn-delete { background: #FFF0F0; color: var(--danger); border: none; padding: 8px 15px; border-radius: 8px; font-weight: 900; cursor: pointer; }
-
-        /* Registry Items */
-        .registry-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; padding: 40px; background: white; border: 2px solid var(--border); border-radius: 24px; }
-        .cat-group h3 { font-size: 12px; font-weight: 900; text-transform: uppercase; color: #BBB; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; }
-        .file-list { display: flex; flex-direction: column; gap: 8px; }
-        .file-button { 
-            width: 100%; text-align: left; background: var(--bg-base); border: 1px solid var(--border); padding: 12px 16px; border-radius: 10px; 
-            font-size: 14px; font-weight: 700; color: #333; cursor: pointer; font-family: 'Courier New', monospace; transition: all 0.2s;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .file-button:hover { background: #FFF; border-color: var(--brand-blue); color: var(--brand-blue); }
-
-        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #000; color: #FFF; padding: 12px 30px; border-radius: 99px; font-size: 13px; font-weight: 800; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 5000; }
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--carbon); color: #FFF; padding: 12px 30px; border-radius: 99px; font-size: 13px; font-weight: 800; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 5000; }
         #toast.active { opacity: 1; bottom: 40px; }
     </style>
 </head>
 <body>
 
-    <div id="toast">URL Copied</div>
+    <div id="toast">Update Successful</div>
 
     <!-- LOCK SCREEN -->
     <div id="lock-screen">
         <div class="lock-card">
+            <div class="header-dots">
+                <div class="dot"></div><div class="dot"></div>
+                <div class="dot"></div><div class="dot"></div>
+            </div>
             <h1 class="lock-title">Admin Console</h1>
-            <p class="lock-subtitle">New Media Infrastructure</p>
+            <p class="lock-subtitle">Cloud Control Interface</p>
+            
             <div class="pin-field">
                 <div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div>
                 <div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div>
             </div>
+            
             <div class="numpad">
                 <div class="n-btn" onclick="press(1)">1</div><div class="n-btn" onclick="press(2)">2</div><div class="n-btn" onclick="press(3)">3</div>
                 <div class="n-btn" onclick="press(4)">4</div><div class="n-btn" onclick="press(5)">5</div><div class="n-btn" onclick="press(6)">6</div>
                 <div class="n-btn" onclick="press(7)">7</div><div class="n-btn" onclick="press(8)">8</div><div class="n-btn" onclick="press(9)">9</div>
-                <div></div><div class="n-btn" onclick="press(0)">0</div><div onclick="clearPin()" style="display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#BBB;cursor:pointer">RESET</div>
+                <div class="n-btn utility" onclick="clearPin()">CLEAR</div>
+                <div class="n-btn" onclick="press(0)">0</div>
+                <div class="n-btn utility" onclick="deleteDigit()">DELETE</div>
             </div>
         </div>
     </div>
@@ -149,140 +151,53 @@
     <!-- MAIN APP -->
     <div id="admin-app" class="hidden">
         <div class="admin-shell">
-            <div class="header">
+            <header class="header">
                 <h1>Admin Hub</h1>
-                <div class="system-status"><div style="width:10px;height:10px;border-radius:50%;background:#43B049"></div> Cloud Synchronised</div>
-            </div>
+                <div style="font-size:11px; font-weight:800; color:var(--success); display:flex; align-items:center; gap:8px;">
+                    <div style="width:8px; height:8px; background:var(--success); border-radius:50%;"></div> CLOUD LIVE
+                </div>
+            </header>
 
             <nav class="tab-nav">
-                <button class="tab-btn active" onclick="switchView('overview', this)">System Overview</button>
-                <button class="tab-btn" onclick="switchView('directory', this)">Personnel Directory</button>
-                <button class="tab-btn" onclick="switchView('registry', this)">Asset Registry</button>
-                <button class="tab-btn" onclick="switchView('access', this)">Access Codes</button>
+                <button class="tab-btn active" onclick="switchView('directory', this)">Directory</button>
+                <button class="tab-btn" onclick="switchView('system', this)">Setup Control</button>
             </nav>
 
-            <!-- VIEW: OVERVIEW -->
-            <section id="view-overview" class="view-section active">
-                <div class="info-grid">
-                    <div class="info-card">
-                        <h2>Infrastructure Summary</h2>
-                        <p>The system uses a headless cloud engine to allow real-time widget updates within Notion.</p>
-                        <ul class="tech-summary">
-                            <li><strong>Cloud Engine</strong> Google Firestore (SDK 11.6.1)</li>
-                            <li><strong>Encryption</strong> Encrypted TLS transit; AES-256 storage</li>
-                            <li><strong>Handover Path</strong> Source Config swap required for Enterprise</li>
-                        </ul>
+            <section id="view-directory" class="view-section active">
+                <div class="content-card">
+                    <div class="directory-controls">
+                        <span class="section-tag">Personnel Directory</span>
+                        <div class="bulk-actions hidden" id="bulk-bar">
+                            <button class="btn-danger" onclick="deleteSelected()">Delete Selected Records</button>
+                        </div>
                     </div>
-                    <div class="developer-space">
-                        <h2>IT / Developer Notes</h2>
-                        <textarea id="it-notes" placeholder="Enter protocols for future DMG admins..."></textarea>
-                        <button style="margin-top:15px; padding:10px 20px; border-radius:8px; border:none; background:#333; color:white; font-size:10px; font-weight:900; cursor:pointer;" onclick="window.saveNotes()">Commit to Cloud</button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- VIEW: DIRECTORY -->
-            <section id="view-directory" class="view-section">
-                <div class="intake-container">
-                    <h2 style="font-size: 13px; font-weight: 900; text-transform: uppercase; color: var(--brand-blue); letter-spacing: 0.15em; margin-bottom: 30px;">New Starter Intake</h2>
                     
-                    <div class="intake-grid">
-                        <div class="intake-column">
-                            <div class="intake-group">
-                                <label>Legal Identity</label>
-                                <div class="input-row">
-                                    <input type="text" id="p-first" placeholder="First Name">
-                                    <input type="text" id="p-last" placeholder="Last Name">
-                                </div>
-                            </div>
-                            <div class="intake-group">
-                                <label>Reporting Hierarchy</label>
-                                <div class="toggle-section">
-                                    <div class="toggle-header" onclick="document.getElementById('mgr-toggle').click()">
-                                        <input type="checkbox" id="mgr-toggle" onchange="window.updateHierarchyView()">
-                                        <span>Direct Management Active?</span>
-                                    </div>
-                                    <div id="mgr-select-box" class="hidden">
-                                        <select id="p-mgr">
-                                            <option value="None">Select Manager...</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="intake-column">
-                            <div class="intake-group">
-                                <label>Seniority Tier</label>
-                                <select id="p-level">
-                                    <option value="Casual">Casual</option>
-                                    <option value="Junior">Junior</option>
-                                    <option value="Staff Member">Staff Member</option>
-                                    <option value="Midweight">Midweight</option>
-                                    <option value="Senior">Senior</option>
-                                    <option value="Lead">Lead</option>
-                                    <option value="Head of">Head of</option>
-                                    <option value="Director">Director</option>
-                                </select>
-                            </div>
-                            <div class="intake-group">
-                                <label>Vertical Stream</label>
-                                <select id="p-team">
-                                    <option value="editorial">Editorial</option>
-                                    <option value="production">Production</option>
-                                    <option value="creative">Creative</option>
-                                    <option value="social">Social</option>
-                                    <option value="operations">Operations</option>
-                                </select>
-                            </div>
-                            <button class="btn-confirm" onclick="window.addStaff()">Confirm New Starter</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="table-container">
                     <table>
-                        <thead><tr><th>Name</th><th>Level</th><th>Stream</th><th>Reporting To</th><th>Actions</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th class="checkbox-cell"><input type="checkbox" id="sel-all" onchange="toggleAll(this)"></th>
+                                <th>Name</th>
+                                <th>Tier</th>
+                                <th>Vertical</th>
+                                <th>Manager</th>
+                            </tr>
+                        </thead>
                         <tbody id="directory-mount"></tbody>
                     </table>
                 </div>
             </section>
 
-            <!-- VIEW: REGISTRY -->
-            <section id="view-registry" class="view-section">
-                <div class="registry-container">
-                    <div class="registry-grid">
-                        <div class="cat-group">
-                            <h3>Infrastructure</h3>
-                            <div class="file-list">
-                                <button class="file-button" onclick="copyUrl('admin_console.html')">admin_console.html</button>
-                                <button class="file-button" onclick="copyUrl('manager_dashboard.html')">manager_dashboard.html</button>
-                                <button class="file-button" onclick="copyUrl('dmg_team_log.html')">dmg_team_log.html</button>
-                            </div>
-                        </div>
-                        <div class="cat-group">
-                            <h3>Operations</h3>
-                            <div class="file-list">
-                                <button class="file-button" onclick="copyUrl('org_chart.html')">org_chart.html</button>
-                                <button class="file-button" onclick="copyUrl('people_master_nav.html')">people_master_nav.html</button>
-                                <button class="file-button" onclick="copyUrl('handbook_workflows.html')">handbook_workflows.html</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- VIEW: ACCESS CODES -->
-            <section id="view-access" class="view-section">
-                <div class="code-grid">
-                    <div style="background:#FFF; border:2px solid var(--border); padding:30px; border-radius:20px; text-align:center;">
-                        <span style="font-size:10px; font-weight:900; color:#AAA; text-transform:uppercase;">Admin Console PIN</span>
-                        <div style="font-size:32px; font-weight:900; letter-spacing:4px; color:var(--brand-blue);">3646</div>
-                    </div>
-                    <div style="background:#FFF; border:2px solid var(--border); padding:30px; border-radius:20px; text-align:center; margin-top:20px;">
-                        <span style="font-size:10px; font-weight:900; color:#AAA; text-transform:uppercase;">Manager Hub PIN</span>
-                        <div style="font-size:32px; font-weight:900; letter-spacing:4px; color:var(--brand-blue);">2025</div>
-                    </div>
+            <section id="view-system" class="view-section">
+                <div class="content-card">
+                    <span class="section-tag">System Protocols</span>
+                    <h3 style="font-size:18px; margin-top:0; color:var(--carbon);">Master Database Sync</h3>
+                    <p style="font-size:13px; color:var(--ink-sub); margin-bottom:30px; line-height:1.6;">
+                        This operation will <b>purge all current records</b> and reset the cloud hierarchy to the verified 40-member DMG structure.<br><br>
+                        • <b>Confirmed Managers:</b> Anaïs, Nick M, Alice, Ellie, Matthew, Nev, Nathan, Alex B.<br>
+                        • Williams, Aivhan, and Josh assigned to Matthew Macleod.<br>
+                        • Hugo Starns assigned to Anaïs Lukaku.
+                    </p>
+                    <button class="btn-primary" onclick="seedDatabase()" id="seed-btn">Sync Master List</button>
                 </div>
             </section>
         </div>
@@ -290,84 +205,146 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    const firebaseConfig = JSON.parse(__firebase_config);
+    const firebaseConfig = {
+      apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+      authDomain: "dmg-command-centre-native.firebaseapp.com",
+      projectId: "dmg-command-centre-native",
+      storageBucket: "dmg-command-centre-native.firebasestorage.app",
+      messagingSenderId: "223535956454",
+      appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
+      measurementId: "G-5HNGPRJGZY"
+    };
+    
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'dmg-command-system';
+    const appId = 'dmg-command-centre-native';
 
     let pin = "";
-    let staff = [];
+    let staffData = [];
 
-    window.press = (n) => { 
-        if(pin.length < 4) { 
-            pin += n; 
-            syncPin(); 
-            if(pin.length === 4) setTimeout(authCheck, 250); 
-        } 
-    };
+    // --- PIN LOGIC ---
+    window.press = (n) => { if(pin.length < 4) { pin += n; syncPin(); if(pin.length === 4) setTimeout(authCheck, 300); } };
+    window.deleteDigit = () => { if(pin.length > 0) { pin = pin.slice(0, -1); syncPin(); } };
     window.clearPin = () => { pin = ""; syncPin(); };
-    function syncPin() { for(let i=1; i<=4; i++) {
-        const dot = document.getElementById('p'+i);
-        if(dot) dot.classList.toggle('filled', i <= pin.length);
-    }}
-    async function authCheck() { 
-        if(pin === "3646") { 
-            document.getElementById('lock-screen').style.opacity = 0; 
-            setTimeout(() => { 
-                document.getElementById('lock-screen').classList.add('hidden'); 
-                document.getElementById('admin-app').classList.remove('hidden'); 
+    function syncPin() { for(let i=1; i<=4; i++) document.getElementById('p'+i).classList.toggle('filled', i <= pin.length); }
+    
+    async function authCheck() {
+        if(pin === "3646") {
+            document.getElementById('lock-screen').style.opacity = 0;
+            setTimeout(() => {
+                document.getElementById('lock-screen').classList.add('hidden');
+                document.getElementById('admin-app').classList.remove('hidden');
                 init();
             }, 500);
-        } else { clearPin(); } 
+        } else { clearPin(); }
     }
 
     async function init() {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-        else await signInAnonymously(auth);
+        await signInAnonymously(auth);
         onAuthStateChanged(auth, (user) => {
-            if (user) setupListeners();
+            if(user) {
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => {
+                    staffData = [];
+                    snap.forEach(d => staffData.push({id: d.id, ...d.data()}));
+                    renderDirectory();
+                });
+            }
         });
     }
 
-    function setupListeners() {
-        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => {
-            staff = []; snap.forEach(d => {
-                const data = d.data();
-                const fullName = data.firstName ? `${data.firstName} ${data.lastName}` : (data.name || "Unknown");
-                staff.push({id: d.id, fullName, ...data});
-            });
-            updateMgrDropdown();
-            renderTable();
-        });
-        loadITNotes();
+    function renderDirectory() {
+        const mount = document.getElementById('directory-mount');
+        const sorted = staffData.sort((a,b) => a.firstName.localeCompare(b.firstName));
+        
+        mount.innerHTML = sorted.map(s => `
+            <tr>
+                <td class="checkbox-cell"><input type="checkbox" class="p-check" value="${s.id}" onchange="updateBulkUI()"></td>
+                <td>${s.firstName} ${s.lastName} ${s.isManager ? '<span class="is-mgr-badge">MGR</span>' : ''}</td>
+                <td style="font-size:11px; color:#999; text-transform:uppercase; font-weight:800;">${s.seniority}</td>
+                <td style="color:var(--brand-blue); font-size:11px; font-weight:800; text-transform:uppercase;">${s.team}</td>
+                <td style="color:#666; font-size:13px;">${s.manager}</td>
+            </tr>
+        `).join('');
+        document.getElementById('sel-all').checked = false;
+        updateBulkUI();
     }
 
-    async function loadITNotes() {
-        const noteDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'it_security_logs', 'current'));
-        if(noteDoc.exists()) document.getElementById('it-notes').value = noteDoc.data().content;
-    }
-
-    window.saveNotes = async () => {
-        const content = document.getElementById('it-notes').value;
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'it_security_logs', 'current'), { content, updated: Date.now() });
-        alert("Committed to Cloud");
+    window.toggleAll = (master) => {
+        document.querySelectorAll('.p-check').forEach(cb => cb.checked = master.checked);
+        updateBulkUI();
     };
 
-    window.updateHierarchyView = () => {
-        const checked = document.getElementById('mgr-toggle').checked;
-        document.getElementById('mgr-select-box').classList.toggle('hidden', !checked);
+    window.updateBulkUI = () => {
+        const checked = document.querySelectorAll('.p-check:checked').length;
+        document.getElementById('bulk-bar').classList.toggle('hidden', checked === 0);
     };
 
-    function updateMgrDropdown() {
-        const sel = document.getElementById('p-mgr');
-        const current = sel.value;
-        sel.innerHTML = '<option value="None">Select Manager...</option>' + 
-            staff.map(s => `<option value="${s.fullName}">${s.fullName}</option>`).join('');
-        sel.value = current;
+    window.deleteSelected = async () => {
+        const ids = Array.from(document.querySelectorAll('.p-check:checked')).map(cb => cb.value);
+        if(!confirm(`Delete ${ids.length} selected profiles?`)) return;
+        for(let id of ids) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', id));
+        showToast("Records Deleted");
+    };
+
+    window.seedDatabase = async () => {
+        const btn = document.getElementById('seed-btn');
+        if(!confirm("Purge all duplicates and rebuild hierarchy?")) return;
+        
+        btn.disabled = true; btn.innerText = "Wiping Data...";
+        const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'));
+        for(const d of snap.docs) await deleteDoc(d.ref);
+
+        btn.innerText = "Syncing Hierarchy...";
+        const list = [
+            { f: "Nick", l: "Moar", s: "Director", r: "Head of New Media", m: "None", t: "Executive", is: true },
+            { f: "Nev", l: "Brook", s: "Director", r: "Director of Social Production", m: "Nick Moar", t: "Production", is: true },
+            { f: "Nathan", l: "Aspell", s: "Director", r: "Director of Creative and Platforms", m: "Nick Moar", t: "Creative", is: true },
+            { f: "Ellie", l: "Beetham", s: "Head of", r: "Head of Social Creative", m: "Nathan Aspell", t: "Social", is: true },
+            { f: "Matthew", l: "Macleod", s: "Head of", r: "Head of Social Production", m: "Nev Brook", t: "Production", is: true },
+            { f: "Alex", l: "Biddle", s: "Head of", r: "Head of Sport Originals", m: "Nick Moar", t: "Editorial", is: true },
+            { f: "Anaïs", l: "Lukaku", s: "Senior", r: "Senior Creative", m: "Nick Moar", t: "Creative", is: true },
+            { f: "Alice", l: "Baker", s: "Lead", r: "Operations Lead", m: "Nick Moar", t: "Operations", is: true },
+            { f: "Nick", l: "Bolwell", s: "Lead", r: "Lead Social Creative", m: "Ellie Beetham", t: "Social", is: false },
+            { f: "Dan", l: "Quinnell", s: "Lead", r: "UK Social Video Lead", m: "Ellie Beetham", t: "Social", is: false },
+            { f: "Romy", l: "Grigg", s: "Lead", r: "Social Video Lead", m: "Ellie Beetham", t: "Social", is: false },
+            { f: "Alex", l: "Hobbs", s: "Midweight", r: "Multimedia Journalist", m: "Ellie Beetham", t: "Editorial", is: false },
+            { f: "Mimi", l: "Yates", s: "Midweight", r: "Multimedia Reporter", m: "Ellie Beetham", t: "Editorial", is: false },
+            { f: "Sophia", l: "Stanford", s: "Junior", r: "UK Trainee Reporter", m: "Ellie Beetham", t: "Editorial", is: false },
+            { f: "Kaylee", l: "Abrahams", s: "Junior", r: "Editorial Reporter", m: "Ellie Beetham", t: "Editorial", is: false },
+            { f: "Prashan", l: "Leigh", s: "Midweight", r: "Social Creative", m: "Ellie Beetham", t: "Editorial", is: false },
+            { f: "Josh", l: "Fajobi", s: "Midweight", r: "Social Designer", m: "Matthew Macleod", t: "Creative", is: false },
+            { f: "Williams", l: "Olufemi", s: "Midweight", r: "Social Designer", m: "Matthew Macleod", t: "Creative", is: false },
+            { f: "Aivhan", l: "Catacutan", s: "Freelance", r: "Freelance Designer", m: "Matthew Macleod", t: "Creative", is: false },
+            { f: "Claire", l: "O’Moore", s: "Senior", r: "Senior Video Editor", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Deli", l: "Koprinkov", s: "Senior", r: "Senior Video Editor", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Stefan", l: "Burghila", s: "Midweight", r: "Video Editor & Producer", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Ben", l: "Wiley", s: "Midweight", r: "Managing Producer (Sport)", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Abhinaya", l: "Sriram", s: "Midweight", r: "Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Ismail", l: "Pulat", s: "Senior", r: "Senior Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Tomas", l: "Meehan", s: "Midweight", r: "UK Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Reuben", l: "Claypole", s: "Midweight", r: "Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Rowen", l: "Rennie", s: "Midweight", r: "Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Abraham", l: "Eneh", s: "Junior", r: "Casual Production", m: "Matthew Macleod", t: "Production", is: false },
+            { f: "Hugo", l: "Starns", s: "Freelance", r: "Freelance Creative", m: "Anaïs Lukaku", t: "Creative", is: false },
+            { f: "Maxine", l: "Halperin", s: "Midweight", r: "Project & Operations Manager", m: "Alice Baker", t: "Operations", is: false },
+            { f: "Megan", l: "Raso", s: "Junior", r: "Editorial Assistant", m: "Alice Baker", t: "Operations", is: false }
+        ];
+
+        const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory');
+        for(let p of list) await addDoc(colRef, { firstName: p.f, lastName: p.l, seniority: p.s, role: p.r, team: p.t, manager: p.m, isManager: p.is, active: true });
+        
+        btn.disabled = false; btn.innerText = "Sync Master List";
+        showToast("Hierarchy Reset Complete");
+    };
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.classList.add('active');
+        setTimeout(() => t.classList.remove('active'), 2000);
     }
 
     window.switchView = (id, btn) => {
@@ -376,51 +353,6 @@
         document.getElementById('view-'+id).classList.add('active');
         btn.classList.add('active');
     };
-
-    window.copyUrl = (filename) => {
-        const url = `https://aluk00.github.io/notion-clock/${filename}`;
-        const el = document.createElement('textarea');
-        el.value = url;
-        document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
-        const toast = document.getElementById('toast');
-        toast.innerText = `Copied: ${filename}`; toast.classList.add('active');
-        setTimeout(() => toast.classList.remove('active'), 2000);
-    };
-
-    function renderTable() {
-        const mount = document.getElementById('directory-mount');
-        mount.innerHTML = staff.sort((a,b) => a.fullName.localeCompare(b.fullName)).map(p => `
-            <tr>
-                <td style="font-weight:900; font-size:16px;">${p.fullName}</td>
-                <td><span class="level-tag">${p.level || 'Staff'}</span></td>
-                <td><span class="stream-tag">${p.team}</span></td>
-                <td style="color:#666; font-size:13px; font-weight:600;">${p.manager || 'None'}</td>
-                <td><button class="btn-delete" onclick="window.del('${p.id}')">Remove</button></td>
-            </tr>
-        `).join('');
-    }
-
-    window.addStaff = async () => {
-        const first = document.getElementById('p-first').value.trim();
-        const last = document.getElementById('p-last').value.trim();
-        const level = document.getElementById('p-level').value;
-        const team = document.getElementById('p-team').value;
-        const manager = document.getElementById('mgr-toggle').checked ? document.getElementById('p-mgr').value : 'None';
-
-        if(!first || !last) return alert("Full name required.");
-        
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), { 
-            firstName: first, lastName: last, level, team, manager, active: true 
-        });
-
-        document.getElementById('p-first').value = "";
-        document.getElementById('p-last').value = "";
-        document.getElementById('mgr-toggle').checked = false;
-        window.updateHierarchyView();
-    };
-
-    window.del = async (id) => { if(confirm("Remove from database?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', id)); };
-
 </script>
 </body>
 </html>
