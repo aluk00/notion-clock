@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control Centre | DMG New Media</title>
+    <style>
+        :root {
+            --brand-blue: #21a0d8;
+            --brand-black: #000000;
+            --danger: #E94B4B;
+            --bg: #FFFFFF;
+            --bg-base: #FCFCFC;
+            --border: #EFEFEF;
+            --ink: #000000;
+            --ink-sub: #666;
+            --radius: 18px;
+            --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-page);
+            margin: 0; padding: 0; color: var(--ink); min-height: 100vh;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- LOCK SCREEN --- */
+        #lock-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #FFF; z-index: 2000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease;
+        }
+        .lock-card { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; max-width: 400px; width: 90%; 
+        }
+        .lock-title { font-size: 24px; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; color: #000; }
+        .lock-subtitle { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 32px; letter-spacing: 0.1em; }
+        
+        .pin-field { display: flex; gap: 16px; justify-content: center; margin-bottom: 40px; }
+        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #EEE; transition: 0.2s; }
+        .pin-dot.filled { background: var(--brand-blue); border-color: var(--brand-blue); transform: scale(1.2); }
+        
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 320px; }
+        .n-btn { 
+            width: 100%; aspect-ratio: 1.3 / 1; border-radius: 12px; background: #FFF; border: 1px solid #EEE;
+            display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; cursor: pointer; transition: all 0.1s ease;
+        }
+        .n-btn:active { background: var(--brand-blue); color: white; box-shadow: 0 0 20px rgba(33, 160, 216, 0.4); }
+
+        /* --- MAIN APP SHELL --- */
+        .admin-shell { max-width: 1200px; margin: 0 auto; padding: 60px 40px; }
+
+        .header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 60px; padding-bottom: 30px; border-bottom: 2px solid var(--border);
+        }
+        .header h1 { font-size: 3rem; font-weight: 900; letter-spacing: -0.05em; margin: 0; text-transform: uppercase; }
+
+        .system-status { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 900; text-transform: uppercase; color: #888; }
+        #status-dot { width: 10px; height: 10px; border-radius: 50%; background: #DDD; }
+
+        /* --- INFO BLOCKS --- */
+        .info-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px; margin-bottom: 50px; }
+        .info-card { background: white; border: 2px solid var(--border); padding: 35px; border-radius: 24px; }
+        .info-card h2 { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--brand-blue); margin: 0 0 20px 0; letter-spacing: 0.1em; }
+        .info-card p { font-size: 14px; line-height: 1.6; color: #444; font-weight: 500; margin-bottom: 15px; }
+        .tech-list { font-size: 13px; color: #666; font-weight: 600; list-style: none; padding: 0; }
+        .tech-list li { margin-bottom: 8px; padding-left: 15px; position: relative; }
+        .tech-list li::before { content: "-"; position: absolute; left: 0; color: var(--brand-blue); }
+
+        /* --- IT INPUT --- */
+        .developer-space { background: #000; color: #FFF; padding: 35px; border-radius: 24px; }
+        .developer-space h2 { color: #FFF; font-size: 11px; margin-bottom: 15px; opacity: 0.6; }
+        textarea { width: 100%; height: 120px; background: #111; border: 1px solid #333; border-radius: 12px; padding: 15px; color: #00FF41; font-family: 'Courier New', Courier, monospace; font-size: 12px; resize: none; }
+        .btn-save-it { background: #333; color: #FFF; border: none; padding: 10px 20px; border-radius: 8px; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-top: 15px; cursor: pointer; }
+
+        /* --- EXTERNAL LINKS --- */
+        .link-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 50px; }
+        .external-btn { 
+            background: white; border: 2px solid var(--border); padding: 25px; border-radius: var(--radius);
+            display: flex; align-items: center; justify-content: space-between; text-decoration: none;
+            transition: var(--transition);
+        }
+        .external-btn:hover { border-color: var(--brand-blue); transform: translateY(-3px); }
+        .btn-label span:first-child { font-size: 10px; font-weight: 900; color: #BBB; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .btn-label span:last-child { font-size: 18px; font-weight: 800; color: #000; }
+
+        /* --- DIRECTORY FORM --- */
+        .form-section { background: white; padding: 40px; border-radius: 24px; border: 2px solid var(--border); margin-bottom: 50px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        label { font-size: 11px; font-weight: 900; text-transform: uppercase; color: #888; display: block; margin-bottom: 10px; }
+        input, select { width: 100%; padding: 14px; border-radius: 12px; border: 1.5px solid var(--border); background: #FFF; font-weight: 600; font-size: 15px; }
+        
+        .btn-add { background: black; color: white; border: none; padding: 15px 40px; border-radius: 12px; font-size: 15px; font-weight: 900; cursor: pointer; transition: 0.2s; }
+        .btn-add:hover { background: var(--brand-blue); }
+
+        /* --- TABLE --- */
+        .table-container { background: white; border: 2px solid var(--border); border-radius: 24px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; background: #FAFAFA; font-size: 11px; font-weight: 900; color: #999; text-transform: uppercase; padding: 20px; border-bottom: 1px solid var(--border); }
+        td { padding: 20px; font-size: 15px; font-weight: 700; border-bottom: 1px solid #FAFAFA; }
+        .btn-delete { background: #FFF0F0; color: var(--danger); border: none; padding: 8px 15px; border-radius: 8px; font-weight: 900; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <!-- PIN SECURITY SCREEN -->
+    <div id="lock-screen">
+        <div class="lock-card">
+            <h1 class="lock-title">Admin Control</h1>
+            <p class="lock-subtitle">Security Access Required</p>
+            <div class="pin-field">
+                <div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div>
+                <div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div>
+            </div>
+            <div class="numpad">
+                <div class="n-btn" onclick="press(1)">1</div><div class="n-btn" onclick="press(2)">2</div><div class="n-btn" onclick="press(3)">3</div>
+                <div class="n-btn" onclick="press(4)">4</div><div class="n-btn" onclick="press(5)">5</div><div class="n-btn" onclick="press(6)">6</div>
+                <div class="n-btn" onclick="press(7)">7</div><div class="n-btn" onclick="press(8)">8</div><div class="n-btn" onclick="press(9)">9</div>
+                <div></div><div class="n-btn" onclick="press(0)">0</div><div onclick="clearPin()" style="display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#BBB;cursor:pointer">RESET</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN INTERFACE -->
+    <div id="admin-app" class="hidden">
+        <div class="admin-shell">
+            <div class="header">
+                <h1>Admin Panel</h1>
+                <div class="system-status">
+                    <div id="status-dot"></div>
+                    <span id="status-text">Cloud Connection Active</span>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-card">
+                    <h2>Technical Infrastructure</h2>
+                    <p>The system operates on a headless cloud-synchronisation model. This ensures zero-latency communication between independent Notion widgets.</p>
+                    <ul class="tech-list">
+                        <li>Storage: Google Cloud Firebase (Firestore)</li>
+                        <li>Data Path: Staff Portal writes to "rota_requests" and "staff_directory" collections.</li>
+                        <li>Update Cycle: Live Listeners push changes to Manager Hub in 0.1 seconds.</li>
+                        <li>Handover: Replace "firebaseConfig" in source code to migrate to DMG corporate account.</li>
+                    </ul>
+                </div>
+                <div class="developer-space">
+                    <h2>IT / Developer Notes</h2>
+                    <textarea id="it-notes" placeholder="Enter security protocols, project IDs, or backend environment details..."></textarea>
+                    <button class="btn-save-it" onclick="window.saveNotes()">Update Security Logs</button>
+                </div>
+            </div>
+
+            <div class="link-grid">
+                <a href="https://console.firebase.google.com" target="_blank" class="external-btn">
+                    <div class="btn-label">
+                        <span>Database Source</span>
+                        <span>Google Firebase Console</span>
+                    </div>
+                </a>
+                <a href="https://github.com/aluk00/notion-clock" target="_blank" class="external-btn">
+                    <div class="btn-label">
+                        <span>Source Code</span>
+                        <span>GitHub Repository</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="form-section">
+                <label style="color:var(--brand-blue); margin-bottom:20px;">Personnel Management</label>
+                <div class="form-row">
+                    <div><label>First Name</label><input type="text" id="p-first" placeholder="Enter first name"></div>
+                    <div><label>Last Name</label><input type="text" id="p-last" placeholder="Enter last name"></div>
+                </div>
+                <div class="form-row">
+                    <div>
+                        <label>Level</label>
+                        <select id="p-level">
+                            <option value="Casual">Casual</option><option value="Junior">Junior</option>
+                            <option value="Staff Member">Staff Member</option><option value="Midweight">Midweight</option>
+                            <option value="Senior">Senior</option><option value="Lead">Lead</option>
+                            <option value="Head of">Head of</option><option value="Director">Director</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Team</label>
+                        <select id="p-team">
+                            <option value="editorial">Editorial</option><option value="production">Production</option>
+                            <option value="creative">Creative</option><option value="social">Social</option>
+                            <option value="operations">Operations</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div><label>Reports To</label><select id="p-mgr"><option value="None">Direct Management Required</option></select></div>
+                </div>
+                <button class="btn-add" onclick="window.addStaff()">Confirm New Starter</button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>Name</th><th>Level</th><th>Team</th><th>Reports To</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody id="directory-mount"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'dmg-command-system';
+
+    let pin = "";
+    let staff = [];
+
+    // --- SECURITY LOGIC ---
+    window.press = (n) => { if(pin.length < 4) { pin += n; syncPin(); if(pin.length === 4) setTimeout(authCheck, 250); } };
+    window.clearPin = () => { pin = ""; syncPin(); };
+    function syncPin() { for(let i=1; i<=4; i++) {
+        const dot = document.getElementById('p'+i);
+        if(dot) dot.classList.toggle('filled', i <= pin.length);
+    }}
+    async function authCheck() { 
+        if(pin === "3646") { // D-M-G-M on keypad
+            document.getElementById('lock-screen').style.opacity = 0; 
+            setTimeout(() => { 
+                document.getElementById('lock-screen').classList.add('hidden'); 
+                document.getElementById('admin-app').classList.remove('hidden'); 
+                init();
+            }, 500);
+        } else { clearPin(); } 
+    }
+
+    // --- FIREBASE INIT ---
+    async function init() {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+        else await signInAnonymously(auth);
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('status-dot').style.background = '#43B049';
+                setupListeners();
+                loadITNotes();
+            }
+        });
+    }
+
+    function setupListeners() {
+        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => {
+            staff = []; 
+            snap.forEach(d => {
+                const data = d.data();
+                const fullName = data.firstName ? `${data.firstName} ${data.lastName}` : (data.name || "Unknown");
+                staff.push({id: d.id, fullName, ...data});
+            });
+            updateMgrDropdown();
+            renderTable();
+        });
+    }
+
+    async function loadITNotes() {
+        const noteDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'it_security_logs', 'current'));
+        if(noteDoc.exists()) document.getElementById('it-notes').value = noteDoc.data().content;
+    }
+
+    window.saveNotes = async () => {
+        const content = document.getElementById('it-notes').value;
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'it_security_logs', 'current'), { content, updated: Date.now() });
+        alert("Security Logs Updated");
+    };
+
+    function updateMgrDropdown() {
+        const sel = document.getElementById('p-mgr');
+        const current = sel.value;
+        sel.innerHTML = '<option value="None">Select Manager...</option>' + 
+            staff.map(s => `<option value="${s.fullName}">${s.fullName}</option>`).join('');
+        sel.value = current;
+    }
+
+    function renderTable() {
+        const mount = document.getElementById('directory-mount');
+        mount.innerHTML = staff.sort((a,b) => a.fullName.localeCompare(b.fullName)).map(p => `
+            <tr>
+                <td style="font-weight:900;">${p.fullName}</td>
+                <td><span style="font-size:10px; font-weight:900; background:#EEE; padding:4px 8px; border-radius:4px;">${p.level || 'Staff'}</span></td>
+                <td><span style="color:var(--brand-blue); font-size:11px; text-transform:uppercase;">${p.team}</span></td>
+                <td style="color:#666; font-size:13px;">${p.manager || 'None'}</td>
+                <td><button class="btn-delete" onclick="window.del('${p.id}')">Delete</button></td>
+            </tr>
+        `).join('');
+    }
+
+    window.addStaff = async () => {
+        const first = document.getElementById('p-first').value.trim();
+        const last = document.getElementById('p-last').value.trim();
+        const level = document.getElementById('p-level').value;
+        const team = document.getElementById('p-team').value;
+        const manager = document.getElementById('p-mgr').value;
+
+        if(!first || !last) return alert("Full name data required");
+
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), { 
+            firstName: first, lastName: last, level, team, manager, active: true 
+        });
+
+        document.getElementById('p-first').value = "";
+        document.getElementById('p-last').value = "";
+    };
+
+    window.del = async (id) => { if(confirm("Remove from database?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', id)); };
+</script>
+</body>
+</html>
