@@ -88,17 +88,22 @@
 
         .week-picker { display: flex; align-items: center; gap: 20px; background: var(--carbon); color: #FFF; padding: 12px 24px; border-radius: 12px; width: fit-content; }
         .week-btn { background: none; border: none; color: #FFF; font-weight: 900; cursor: pointer; padding: 5px; font-size: 18px; transition: 0.2s; }
-        .week-btn:hover { color: var(--team-people); }
         .week-label { font-size: 11px; font-weight: 800; text-transform: uppercase; min-width: 140px; text-align: center; letter-spacing: 0.1em; }
 
-        /* --- DIRECTORY TABLE --- */
-        .directory-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #FFF; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+        /* --- DIRECTORY & TEAMS TABLES --- */
+        .directory-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; background: #FFF; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
         .directory-table th { text-align: left; padding: 18px; font-size: 9px; font-weight: 900; color: #BBB; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid var(--border); background: var(--bg-base); }
         .directory-table td { padding: 18px; font-size: 14px; font-weight: 700; border-bottom: 1px solid #F9FAFB; color: var(--carbon); }
         
         .name-cell { display: flex; align-items: center; gap: 14px; }
         .name-dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; flex-shrink: 0; }
         .name-dots span { width: 6px; height: 6px; border-radius: 50%; }
+
+        .is-mgr-badge { font-size: 8px; background: var(--dmg-blue); color: #FFF; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 10px; font-weight: 900; }
+        .status-cell-grid { font-size: 10px; font-weight: 900; text-transform: uppercase; text-align: center; width: 40px; }
+
+        .stream-header { display: flex; align-items: center; gap: 10px; margin: 40px 0 15px; font-size: 11px; font-weight: 900; text-transform: uppercase; color: #BBB; letter-spacing: 0.15em; }
+        .stream-dot { width: 8px; height: 8px; border-radius: 50%; }
 
         /* --- MANAGER CARDS --- */
         .approvals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
@@ -118,9 +123,7 @@
         .mgr-pending-alert.urgent { background: #FFF3F3; color: var(--team-editorial); border-color: #FFE0E0; }
         .mgr-pending-alert.all-clear { background: #F0FDF4; color: var(--st-office); border-color: #DCFCE7; }
 
-        .sport-tag { font-size: 8px; background: var(--carbon); color: #FFF; padding: 2px 6px; border-radius: 4px; font-weight: 900; margin-left: 8px; }
-
-        /* --- SNAPSHOT MODAL --- */
+        /* --- MODALS --- */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 6000; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.active { display: flex; }
         .modal-content { background: #fff; width: 100%; max-width: 600px; border-radius: 24px; padding: 32px; box-shadow: 0 40px 100px rgba(0,0,0,0.2); max-height: 85vh; overflow-y: auto; position: relative; }
@@ -183,6 +186,7 @@
                 <div class="nav-row">
                     <nav class="tab-nav">
                         <button class="tab-trigger active" onclick="switchView('outlook', this)">Directory</button>
+                        <button class="tab-trigger" onclick="switchView('teams', this)">Teams</button>
                         <button class="tab-trigger" onclick="switchView('approvals', this)">Approvals</button>
                     </nav>
                     <div class="week-picker">
@@ -208,7 +212,12 @@
                 </table>
             </section>
 
-            <!-- VIEW: APPROVALS -->
+            <!-- VIEW: TEAMS (DAILY GRID) -->
+            <section id="view-teams" class="view-section">
+                <div id="teams-mount"></div>
+            </section>
+
+            <!-- VIEW: APPROVALS (MANAGER CARDS) -->
             <section id="view-approvals" class="view-section">
                 <div class="approvals-grid" id="approvals-mount"></div>
             </section>
@@ -219,7 +228,7 @@
     <div class="modal-overlay" id="approval-modal" onclick="closeModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="close-btn" onclick="closeModal()">×</div>
-            <div class="modal-title" id="modal-title-text">Workforce Snapshot</div>
+            <div class="modal-title" id="modal-title-text">Approval Workspace</div>
             <div id="modal-mount"></div>
         </div>
     </div>
@@ -303,6 +312,7 @@
 
     function updateUI() {
         renderDirectory();
+        renderTeams();
         renderApprovals();
         document.getElementById('wc-label').innerText = `WC ${currentMonday.toLocaleDateString('en-GB', {day:'numeric', month:'short'})}`;
     }
@@ -337,6 +347,64 @@
         }).join('');
     }
 
+    // --- TEAMS VIEW (DAILY GRID) ---
+    function renderTeams() {
+        const mount = document.getElementById('teams-mount');
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        const verticals = ['Editorial', 'Production', 'Creative', 'Social', 'Operations'];
+
+        mount.innerHTML = verticals.map(v => {
+            const members = staff.filter(s => s.team === v);
+            if(members.length === 0) return "";
+            const vColor = teamColors[v] || '#CCC';
+
+            return `
+                <div class="team-block">
+                    <div class="stream-header">
+                        <div class="stream-dot" style="background:${vColor}"></div>
+                        ${v} Stream
+                    </div>
+                    <table class="directory-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th class="status-cell-grid">M</th>
+                                <th class="status-cell-grid">T</th>
+                                <th class="status-cell-grid">W</th>
+                                <th class="status-cell-grid">T</th>
+                                <th class="status-cell-grid">F</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${members.sort((a,b)=>a.firstName.localeCompare(b.firstName)).map(m => {
+                                const fullName = `${m.firstName} ${m.lastName}`;
+                                const sub = submissions.find(s => s.name === fullName && s.weekId === wcStr);
+                                const sched = sub ? sub.schedule : Array(5).fill({status: 'Pending'});
+                                const dots = `<div class="name-dots"><span style="background:${vColor}"></span><span style="background:${vColor}"></span><span style="background:${vColor}"></span><span style="background:${vColor}"></span></div>`;
+
+                                return `
+                                    <tr>
+                                        <td class="name-cell">${dots} ${fullName}</td>
+                                        ${sched.map(day => {
+                                            const s = day.status;
+                                            const char = s === 'Client / Travel' ? 'T' : s.charAt(0);
+                                            let col = '#DDD';
+                                            if(s === 'Office') col = 'var(--st-office)';
+                                            if(s === 'WFH') col = 'var(--st-wfh)';
+                                            if(s === 'Shoot') col = 'var(--st-shoot)';
+                                            if(['PTO','Leave','Abroad'].includes(s)) col = 'var(--st-pto)';
+                                            return `<td class="status-cell-grid" style="color:${col}">${char}</td>`;
+                                        }).join('')}
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }).join('');
+    }
+
     // --- APPROVALS GRID ---
     function renderApprovals() {
         const mount = document.getElementById('approvals-mount');
@@ -348,7 +416,7 @@
             const reports = staff.filter(s => s.manager === name);
             if(reports.length === 0) return "";
 
-            const pendingReports = reports.filter(r => {
+            const pendingActions = reports.filter(r => {
                 const fullName = `${r.firstName} ${r.lastName}`;
                 const resp = responses.find(res => res.name === fullName && res.weekId === wcStr);
                 return !resp;
@@ -364,8 +432,8 @@
                 <div class="manager-card" style="border-left-color: ${accent}" onclick="openApprovalWorkspace('${name}')">
                     <div class="dot-strip">${dots.map(c => `<span style="background:${c}"></span>`).join('')}</div>
                     <div class="mgr-name">${name}${sportTag}</div>
-                    <div class="mgr-pending-alert ${pendingReports.length > 0 ? 'urgent' : 'all-clear'}">
-                        ${pendingReports.length > 0 ? pendingReports.length + ' PENDING ACTIONS' : 'ALL CLEAR'}
+                    <div class="mgr-pending-alert ${pendingActions.length > 0 ? 'urgent' : 'all-clear'}">
+                        ${pendingActions.length > 0 ? pendingActions.length + ' PENDING ACTIONS' : 'ALL CLEAR'}
                     </div>
                 </div>
             `;
@@ -397,7 +465,7 @@
                 <div class="request-item">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="font-weight:900;">${fullName}</div>
-                        <div style="font-size:9px; font-weight:900; padding:4px 10px; border-radius:99px; background:${resp ? '#DCFCE7' : '#F1F5F9'}">${resp ? resp.status : 'Awaiting Review'}</div>
+                        <div style="font-size:9px; font-weight:900; padding:4px 10px; border-radius:99px; background:${resp ? (resp.status === 'Approved' ? '#DCFCE7' : '#FEE2E2') : '#F1F5F9'}">${resp ? resp.status : 'Awaiting Review'}</div>
                     </div>
                     <div class="week-strip">
                         ${sub.schedule.map((day, i) => `<div class="day-box"><span class="d-label">${['M','T','W','T','F'][i]}</span><span class="d-val">${day.status.charAt(0)}</span></div>`).join('')}
@@ -408,7 +476,7 @@
                             <button class="btn-action btn-deny" onclick="handleAction('${fullName}', 'Denied')">Deny</button>
                             <button class="btn-action btn-suggest" onclick="handleAction('${fullName}', 'Suggested')">Suggest</button>
                         </div>
-                    ` : `<div style="font-size:11px; color:#999;">Response recorded on ${new Date(resp.timestamp).toLocaleDateString()}.</div>`}
+                    ` : `<div style="font-size:11px; color:#999; margin-top:10px;">Actioned by Manager.</div>`}
                 </div>
             `;
         }).join('');
@@ -419,7 +487,7 @@
         const wcStr = currentMonday.toISOString().split('T')[0];
         const respId = `${wcStr}_${name.replace(/\s+/g, '_')}`;
         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rota_responses', respId), { name, weekId: wcStr, status, timestamp: new Date().toISOString() });
-        showToast("Action Synced");
+        showToast("Response Recorded");
         openApprovalWorkspace(staff.find(s => `${s.firstName} ${s.lastName}` === name).manager);
     };
 
