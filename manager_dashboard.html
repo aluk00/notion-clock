@@ -171,13 +171,6 @@
         .modal-body { background: #FFF; width: 640px; max-height: 85vh; padding: 40px; border-radius: 24px; box-shadow: 0 40px 100px rgba(0,0,0,0.15); overflow-y: auto; position: relative; }
         .modal-close { position: absolute; top: 20px; right: 20px; cursor: pointer; font-size: 24px; font-weight: 900; color: #BBB; }
 
-        /* HISTORY LAYOUT */
-        .history-week-block { margin-bottom: 30px; border: 1px solid #EEE; border-radius: 12px; overflow: hidden; }
-        .history-week-title { background: #FAFAFA; padding: 10px 15px; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #888; border-bottom: 1px solid #EEE; }
-        .history-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: #EEE; }
-        .history-day { background: #FFF; padding: 15px 10px; text-align: center; }
-        .h-day-name { font-size: 9px; font-weight: 800; color: #BBB; margin-bottom: 5px; text-transform: uppercase; }
-        
         @media (max-width: 768px) {
             .title-text { font-size: 2.2rem; }
             .header-dots { width: 28px; height: 28px; gap: 4px; }
@@ -224,55 +217,36 @@
             <main>
                 <!-- VIEW: OUTLOOK -->
                 <section id="view-outlook" class="view-section active">
-                    <div class="presence-header">Presence Snapshot <span id="outlook-wc-header" style="color:var(--team-people)"></span></div>
+                    <div class="presence-header">Live Cloud Presence <span id="outlook-wc-header" style="color:var(--team-people)"></span></div>
                     
-                    <!-- NEW DAY SELECTOR FOR PRESENCE SNAPSHOT -->
-                    <div class="weekly-strip" id="outlook-strip">
-                        <button class="day-btn active" onclick="selectOutlookDay(0, this)">Mon 15</button>
-                        <button class="day-btn" onclick="selectOutlookDay(1, this)">Tue 16</button>
-                        <button class="day-btn" onclick="selectOutlookDay(2, this)">Wed 17</button>
-                        <button class="day-btn" onclick="selectOutlookDay(3, this)">Thu 18</button>
-                        <button class="day-btn" onclick="selectOutlookDay(4, this)">Fri 19</button>
-                    </div>
-
                     <div class="metric-row">
-                        <div class="metric-card" style="border-top-color: var(--team-production);" onclick="openCategoryModal('Office')">
+                        <div class="metric-card" style="border-top-color: var(--team-production);">
                             <div class="metric-val" id="count-office">0</div>
                             <div class="metric-label">In Office</div>
                         </div>
-                        <div class="metric-card" style="border-top-color: var(--team-social);" onclick="openCategoryModal('WFH')">
+                        <div class="metric-card" style="border-top-color: var(--team-social);">
                             <div class="metric-val" id="count-wfh">0</div>
                             <div class="metric-label">Remote</div>
                         </div>
-                        <div class="metric-card" style="border-top-color: var(--team-people);" onclick="openCategoryModal('Shoot')">
+                        <div class="metric-card" style="border-top-color: var(--team-people);">
                             <div class="metric-val" id="count-shoot">0</div>
                             <div class="metric-label">Off-site</div>
                         </div>
-                        <div class="metric-card" style="border-top-color: var(--team-editorial);" onclick="openCategoryModal('PTO')">
+                        <div class="metric-card" style="border-top-color: var(--team-editorial);">
                             <div class="metric-val" id="count-pto">0</div>
                             <div class="metric-label">Leave</div>
                         </div>
                     </div>
 
                     <div class="presence-list-box">
-                        <div class="presence-header" id="in-office-label">IN OFFICE</div>
+                        <div class="presence-header">In the building today</div>
                         <div class="chip-stack" id="today-chips-mount"></div>
                     </div>
 
-                    <div class="presence-header">Operational Weekly Forecast</div>
-                    <!-- INDEPENDENT DAY SELECTOR FOR DIRECTORY -->
-                    <div class="weekly-strip" id="forecast-strip">
-                        <button class="day-btn active" onclick="selectForecastDay(0, this)">Mon 15</button>
-                        <button class="day-btn" onclick="selectForecastDay(1, this)">Tue 16</button>
-                        <button class="day-btn" onclick="selectForecastDay(2, this)">Wed 17</button>
-                        <button class="day-btn" onclick="selectForecastDay(3, this)">Thu 18</button>
-                        <button class="day-btn" onclick="selectForecastDay(4, this)">Fri 19</button>
-                    </div>
-
-                    <div class="presence-header">All Staff Directory</div>
+                    <div class="presence-header">All Submission Directory</div>
                     <div class="directory-box">
                         <table class="directory-table">
-                            <thead><tr><th>Name</th><th>Role</th><th>Status</th></tr></thead>
+                            <thead><tr><th>Name</th><th>Manager</th><th>Status Today</th></tr></thead>
                             <tbody id="directory-mount"></tbody>
                         </table>
                     </div>
@@ -280,8 +254,13 @@
 
                 <!-- VIEW: TEAMS -->
                 <section id="view-teams" class="view-section">
-                    <div class="presence-header" style="margin-bottom:30px;">Weekly Team Silos <span id="teams-wc-label" style="color:var(--team-people)"></span></div>
-                    <div class="silo-stack" id="teams-mount"></div>
+                    <div class="presence-header" style="margin-bottom:30px;">Team Weekly View (Live)</div>
+                    <div class="directory-box">
+                        <table class="directory-table">
+                            <thead><tr><th>Name</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th></tr></thead>
+                            <tbody id="teams-mount"></tbody>
+                        </table>
+                    </div>
                 </section>
 
                 <!-- VIEW: APPROVALS -->
@@ -302,284 +281,123 @@
         </div>
     </div>
 
-    <script>
-        // --- DATA ---
-        const staff = [
-            { id: 1, name: "Abhinaya Sriram", role: "Social Video Producer", manager: "m4", team: "production", schedule: ["Office", "Office", "WFH", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["WFH", "WFH", "Office", "Office", "Office"]] },
-            { id: 2, name: "Abraham Eneh", role: "Casual", manager: "m3", team: "production", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
-            { id: 3, name: "Aivhan Catacutan", role: "Casual", manager: "m3", team: "production", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
-            { id: 4, name: "Alex Biddle", role: "Head of Sport Originals", manager: "m1", team: "editorial", schedule: ["Office", "Office", "Office", "Office", "Office"], history: [["Office", "Office", "Office", "Office", "Office"], ["Office", "Office", "Office", "Office", "Office"]] },
-            { id: 5, name: "Alex Hobbs", role: "Multimedia Journalist", manager: "m5", team: "editorial", schedule: ["Office", "Office", "WFH", "Office", "WFH"], history: [["Office", "Office", "WFH", "Office", "WFH"], ["Office", "Office", "WFH", "Office", "WFH"]] },
-            { id: 6, name: "Anaïs Lukaku", role: "Senior Creative", manager: "m2", team: "creative", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
-            { id: 7, name: "Ben Wiley", role: "Managing Producer", manager: "m4", team: "production", schedule: ["Office", "WFH", "Office", "Office", "WFH"], history: [["Office", "WFH", "Office", "Office", "WFH"], ["Office", "WFH", "Office", "Office", "WFH"]] },
-            { id: 8, name: "Claire O’Moore", role: "Senior Video Editor", manager: "m3", team: "production", schedule: ["Office", "Office", "WFH", "Office", "WFH"], history: [["Office", "Office", "WFH", "Office", "WFH"], ["Office", "Office", "WFH", "Office", "WFH"]] },
-            { id: 9, name: "Dan Quinnell", role: "UK Social Video Lead", manager: "m4", team: "production", schedule: ["Office", "Office", "Shoot", "Office", "WFH"], history: [["Office", "Office", "Shoot", "Office", "WFH"], ["Office", "Office", "Shoot", "Office", "WFH"]] },
-            { id: 10, name: "Deli Koprinkov", role: "Senior Video Editor", manager: "m3", team: "production", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
-            { id: 11, name: "Josh Fajobi", role: "Social Designer", manager: "m2", team: "social", schedule: ["WFH", "Office", "Office", "Office", "WFH"], history: [["WFH", "Office", "Office", "Office", "WFH"], ["WFH", "Office", "Office", "Office", "WFH"]] },
-            { id: 12, name: "Nick Bolwell", role: "Lead Social Creative", manager: "m2", team: "creative", schedule: ["Office", "Office", "Office", "Office", "Office"], history: [["Office", "Office", "Office", "Office", "Office"], ["Office", "Office", "Office", "Office", "Office"]] },
-            { id: 13, name: "Romy Grigg", role: "Social Video Lead", manager: "m2", team: "social", schedule: ["Office", "Office", "Shoot", "Office", "WFH"], history: [["Office", "Office", "Shoot", "Office", "WFH"], ["Office", "Office", "Shoot", "Office", "WFH"]] },
-            { id: 14, name: "Stefan Burghila", role: "Video Editor & Producer", manager: "m3", team: "production", schedule: ["Office", "Office", "Office", "Office", "WFH"], history: [["Office", "Office", "Office", "Office", "WFH"], ["Office", "Office", "Office", "Office", "WFH"]] },
-            { id: 15, name: "Williams Olufemi", role: "Social Designer", manager: "m2", team: "social", schedule: ["Office", "WFH", "Office", "Office", "WFH"], history: [["Office", "WFH", "Office", "Office", "WFH"], ["Office", "WFH", "Office", "Office", "WFH"]] }
-        ];
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        const managers = [
-            { id: "m1", name: "Nick Moar", role: "Head of New Media" },
-            { id: "m2", name: "Ellie Beetham", role: "Head of Social Creative" },
-            { id: "m3", name: "Nev Brook", role: "Director of Social Production" },
-            { id: "m4", name: "Matthew Macleod", role: "Head of Social Production" },
-            { id: "m5", name: "Nathan Aspell", role: "Director of Creative and Platforms" }
-        ];
-
-        const requests = [
-            { staff: "Nick Bolwell", managerId: "m2", days: ["Office", "Office", "WFH", "Office", "Office"] },
-            { staff: "Romy Grigg", managerId: "m2", days: ["Office", "Office", "Shoot", "Shoot", "WFH"] }
-        ];
+        // --- CLOUD CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMhRhG2j-NprFJdeZ8VvcPQ_sRiqILz6o",
+            authDomain: "dmg-command-centre.firebaseapp.com",
+            projectId: "dmg-command-centre",
+            storageBucket: "dmg-command-centre.firebasestorage.app",
+            messagingSenderId: "870188205332",
+            appId: "1:870188205332:web:0d6b87300fe272eae0ae01",
+            measurementId: "G-25TS57VLVS"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = 'dmg-command-centre';
 
         let pin = "";
-        let outlookDayIndex = 0;
-        let forecastDayIndex = 0;
+        let liveData = [];
+        const todayIdx = new Date().getDay() - 1; // 0=Mon, 4=Fri
 
         // --- AUTH ---
-        function press(n) { if(pin.length < 4) { pin += n; syncPin(); if(pin.length === 4) setTimeout(auth, 200); } }
-        function clearPin() { pin = ""; syncPin(); }
+        window.press = (n) => { if(pin.length < 4) { pin += n; syncPin(); if(pin.length === 4) setTimeout(authCheck, 200); } };
+        window.clearPin = () => { pin = ""; syncPin(); };
         function syncPin() { for(let i=1; i<=4; i++) document.getElementById('p'+i).classList.toggle('filled', i <= pin.length); }
-        function auth() { if(pin === "2025") { document.getElementById('lock-screen').style.opacity = 0; setTimeout(() => { document.getElementById('lock-screen').classList.add('hidden'); document.getElementById('app-shell').classList.remove('hidden'); }, 300); } else { clearPin(); } }
+        async function authCheck() { 
+            if(pin === "2025") { 
+                document.getElementById('lock-screen').style.opacity = 0; 
+                setTimeout(() => { 
+                    document.getElementById('lock-screen').classList.add('hidden'); 
+                    document.getElementById('app-shell').classList.remove('hidden'); 
+                    initLiveSync();
+                }, 300); 
+            } else { clearPin(); } 
+        }
 
-        // --- NAVIGATION ---
-        function navigate(view, btn) {
+        // --- LIVE SYNC ---
+        async function initLiveSync() {
+            await signInAnonymously(auth);
+            onAuthStateChanged(auth, (user) => {
+                if(user) {
+                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_submissions'), (snap) => {
+                        liveData = [];
+                        snap.forEach(doc => liveData.push(doc.data()));
+                        renderAll();
+                    });
+                }
+            });
+        }
+
+        function renderAll() {
+            renderOutlook();
+            renderTeams();
+            renderManagers();
+        }
+
+        function renderOutlook() {
+            const counts = { Office: 0, WFH: 0, Shoot: 0, PTO: 0, Abroad: 0, "Half Day": 0 };
+            const inOffice = [];
+            const directoryMount = document.getElementById('directory-mount');
+            
+            directoryMount.innerHTML = liveData.map(s => {
+                const status = s.schedule[todayIdx] || 'Office';
+                if(counts[status] !== undefined) counts[status]++;
+                if(status === 'Office') inOffice.push(s.name);
+                
+                return `
+                    <tr>
+                        <td><span style="font-weight:800;">${s.name}</span></td>
+                        <td><span style="color:#BBB; font-size:11px;">${s.manager}</span></td>
+                        <td><span class="status-chip chip-${status.toLowerCase().replace(' ', '')}">${status}</span></td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('count-office').innerText = counts.Office;
+            document.getElementById('count-wfh').innerText = counts.WFH;
+            document.getElementById('count-shoot').innerText = counts.Shoot;
+            document.getElementById('count-pto').innerText = counts.PTO;
+
+            document.getElementById('today-chips-mount').innerHTML = inOffice.map(n => `
+                <div class="person-chip">${n}</div>
+            `).join('') || '<div style="font-size:12px; color:#BBB;">None scheduled.</div>';
+        }
+
+        function renderTeams() {
+            document.getElementById('teams-mount').innerHTML = liveData.map(s => `
+                <tr>
+                    <td><span style="font-weight:800;">${s.name}</span></td>
+                    ${s.schedule.map(st => `<td><span class="status-chip">${st.charAt(0)}</span></td>`).join('')}
+                </tr>
+            `).join('');
+        }
+
+        function renderManagers() {
+            const mgrs = [...new Set(liveData.map(s => s.manager))];
+            document.getElementById('manager-grid-mount').innerHTML = mgrs.map(m => `
+                <div class="manager-card">
+                    <div class="manager-name">${m}</div>
+                    <div style="font-size:10px; color:var(--team-people); font-weight:800; margin-top:10px;">
+                        ${liveData.filter(s => s.manager === m).length} Reports Connected
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.navigate = (view, btn) => {
             document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
             document.getElementById('view-'+view).classList.add('active');
             btn.classList.add('active');
-            if(view === 'teams') renderTeams();
-            if(view === 'approvals') renderManagerGrid();
-        }
+        };
 
-        // --- DATES ---
-        function getWC() {
-            const now = new Date();
-            const day = now.getDay();
-            const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-            const mon = new Date(now.setDate(diff));
-            return `w/c ${mon.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`.toUpperCase();
-        }
-
-        // --- RENDERING ---
-        function selectOutlookDay(index, btn) {
-            outlookDayIndex = index;
-            document.querySelectorAll('#outlook-strip .day-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderOutlookSummary();
-        }
-
-        function selectForecastDay(index, btn) {
-            forecastDayIndex = index;
-            document.querySelectorAll('#forecast-strip .day-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderForecastDirectory();
-        }
-
-        function renderOutlookSummary() {
-            const wc = getWC();
-            document.getElementById('outlook-wc-header').innerText = wc;
-            document.getElementById('in-office-label').innerText = `IN OFFICE • ${wc}`;
-
-            const stats = { Office: 0, WFH: 0, Shoot: 0, PTO: 0 };
-            const inOffice = [];
-
-            staff.forEach(s => {
-                const status = s.schedule[outlookDayIndex];
-                stats[status]++;
-                if(status === 'Office') inOffice.push(s);
-            });
-
-            document.getElementById('count-office').innerText = stats.Office;
-            document.getElementById('count-wfh').innerText = stats.WFH;
-            document.getElementById('count-shoot').innerText = stats.Shoot;
-            document.getElementById('count-pto').innerText = stats.PTO;
-
-            document.getElementById('today-chips-mount').innerHTML = inOffice.map(s => `
-                <div class="person-chip">
-                    <div class="dot-grid dots-${s.team}" style="transform:scale(0.6)"><span></span><span></span><span></span><span></span></div>
-                    ${s.name}
-                </div>
-            `).join('') || '<div style="font-size:12px; color:var(--ink-sub);">None scheduled for Office.</div>';
-        }
-
-        function renderForecastDirectory() {
-            const directoryMount = document.getElementById('directory-mount');
-            directoryMount.innerHTML = "";
-
-            staff.forEach(s => {
-                const status = s.schedule[forecastDayIndex];
-                directoryMount.innerHTML += `
-                    <tr>
-                        <td>
-                            <div class="name-cell">
-                                <div class="dot-grid dots-${s.team}" style="transform:scale(0.6)"><span></span><span></span><span></span><span></span></div>
-                                <span class="staff-name-link" style="color:var(--team-${s.team})" onclick="openStaffHistory(${s.id})">${s.name}</span>
-                            </div>
-                        </td>
-                        <td><span style="font-size:11px; color:#BBB; font-weight:500;">${s.role}</span></td>
-                        <td><span class="status-chip chip-${status.toLowerCase()}">${status}</span></td>
-                    </tr>
-                `;
-            });
-        }
-
-        function renderTeams() {
-            document.getElementById('teams-wc-label').innerText = getWC();
-            const mount = document.getElementById('teams-mount');
-            const groups = [...new Set(staff.map(s => s.team))];
-            
-            mount.innerHTML = groups.map(teamName => {
-                const teamStaff = staff.filter(s => s.team === teamName);
-                return `
-                    <div class="folder-card" data-team="${teamName}">
-                        <div class="folder-tab">
-                            <div class="dot-grid dots-${teamName}"><span></span><span></span><span></span><span></span></div>
-                            ${teamName} Stream
-                        </div>
-                        <table class="directory-table">
-                            <thead><tr><th>Name & Role</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th></tr></thead>
-                            <tbody>
-                                ${teamStaff.map(s => `
-                                    <tr>
-                                        <td>
-                                            <span class="staff-name-link" style="color:var(--team-${s.team})" onclick="openStaffHistory(${s.id})">${s.name}</span>
-                                            <span class="role-subtext">${s.role}</span>
-                                        </td>
-                                        ${s.schedule.map(st => `<td><span class="status-chip chip-${st.toLowerCase()}">${st.charAt(0)}</span></td>`).join('')}
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function renderManagerGrid() {
-            const mount = document.getElementById('manager-grid-mount');
-            mount.innerHTML = managers.map(m => `
-                <div class="manager-card" onclick="openManagerRequests('${m.id}', '${m.name}')">
-                    <div class="manager-name">${m.name}</div>
-                    <div class="manager-role">${m.role}</div>
-                    <div style="margin-top:15px; font-size:10px; font-weight:800; color:var(--team-people);">
-                        ${requests.filter(r => r.managerId === m.id).length} Pending Requests
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        // --- POPUP FOR METRIC CARDS ---
-        function openCategoryModal(cat) {
-            document.getElementById('modal-title').innerText = `${cat} Breakdown • ${getWC()}`;
-            const list = staff.filter(s => s.schedule[outlookDayIndex] === cat);
-            document.getElementById('modal-content-body').innerHTML = list.map(s => `
-                <div style="padding:12px 0; border-bottom:1px solid #F5F5F5; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
-                    <div class="name-cell">
-                        <div class="dot-grid dots-${s.team}" style="transform:scale(0.6)"><span></span><span></span><span></span><span></span></div>
-                        ${s.name}
-                    </div>
-                    <span style="font-size:10px; color:var(--ink-sub); text-transform:uppercase;">${s.role}</span>
-                </div>
-            `).join('') || `<div style="padding:20px; text-align:center; color:var(--ink-sub);">No staff in ${cat} on this day.</div>`;
-            document.getElementById('modal-overlay').classList.add('open');
-        }
-
-        // --- HISTORY MODAL ---
-        function openStaffHistory(staffId) {
-            const s = staff.find(x => x.id === staffId);
-            document.getElementById('modal-title').innerText = `${s.name} • Operational History`;
-            const mount = document.getElementById('modal-content-body');
-            
-            let html = `
-                <div style="margin-bottom:20px; font-size:13px; font-weight:700; color:var(--team-${s.team});">${s.role}</div>
-                
-                <div class="history-week-block">
-                    <div class="history-week-title">Current Week (${getWC()})</div>
-                    <div class="history-row">
-                        ${s.schedule.map((st, i) => `
-                            <div class="history-day">
-                                <div class="h-day-name">${['M','T','W','T','F'][i]}</div>
-                                <span class="status-chip chip-${st.toLowerCase()}">${st.charAt(0)}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-
-            s.history.forEach((hist, idx) => {
-                html += `
-                <div class="history-week-block">
-                    <div class="history-week-title">Week Minus ${idx+1}</div>
-                    <div class="history-row">
-                        ${hist.map((st, i) => `
-                            <div class="history-day">
-                                <div class="h-day-name">${['M','T','W','T','F'][i]}</div>
-                                <span class="status-chip chip-${st.toLowerCase()}">${st.charAt(0)}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-                `;
-            });
-
-            mount.innerHTML = html;
-            document.getElementById('modal-overlay').classList.add('open');
-        }
-
-        function openManagerRequests(id, name) {
-            const mgrReqs = requests.filter(r => r.managerId === id);
-            document.getElementById('modal-title').innerText = `Pending Requests: ${name}`;
-            const mount = document.getElementById('modal-content-body');
-            
-            mount.innerHTML = mgrReqs.map(req => `
-                <div style="margin-bottom:40px;">
-                    <div style="font-size:18px; font-weight:900; margin-bottom:15px;">${req.staff}</div>
-                    ${['Mon','Tue','Wed','Thu','Fri'].map((day, i) => `
-                        <div class="request-item">
-                            <div class="day-label">${day}</div>
-                            <div style="font-size:13px; font-weight:800;">${req.days[i]}</div>
-                            <div class="segmented-control">
-                                <button class="segment-btn" onclick="stamp(this, 'approve')">Approve</button>
-                                <button class="segment-btn" onclick="stamp(this, 'deny')">Deny</button>
-                                <button class="segment-btn" onclick="segment(this, 'suggest')">Suggest</button>
-                            </div>
-                        </div>
-                        <textarea class="feedback-area" placeholder="Add rationale for ${day}..."></textarea>
-                    `).join('')}
-                    <button class="n-btn" style="width:100%; background:var(--ink); color:#FFF; margin-top:20px; height:45px;" onclick="submitRequest(this)">Submit</button>
-                </div>
-            `).join('');
-            document.getElementById('modal-overlay').classList.add('open');
-        }
-
-        function stamp(btn, action) {
-            const parent = btn.parentElement;
-            parent.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active-approve','active-deny','active-suggest'));
-            btn.classList.add('active-'+action);
-            const feedback = parent.parentElement.nextElementSibling;
-            if(action === 'deny' || action === 'suggest') feedback.classList.add('visible');
-            else feedback.classList.remove('visible');
-        }
-
-        function submitRequest(btn) {
-            btn.innerText = "Synchronising...";
-            setTimeout(() => {
-                btn.parentElement.style.opacity = "0.3";
-                btn.parentElement.style.pointerEvents = "none";
-                btn.innerText = "Decisions Logged";
-            }, 600);
-        }
-
-        function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
-
-        // Boot
-        renderOutlookSummary();
-        renderForecastDirectory();
-        renderManagerGrid();
+        window.closeModal = () => document.getElementById('modal-overlay').classList.remove('open');
     </script>
 </body>
 </html>
