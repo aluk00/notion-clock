@@ -1,546 +1,376 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  addDoc, 
-  onSnapshot, 
-  query, 
-  updateDoc,
-  doc
-} from 'firebase/firestore';
-import { 
-  getAuth, 
-  signInAnonymously, 
-  signInWithCustomToken, 
-  onAuthStateChanged 
-} from 'firebase/auth';
-import { 
-  Calendar, 
-  CheckCircle2, 
-  Clock, 
-  ExternalLink, 
-  Search, 
-  ArrowRight, 
-  UserCheck, 
-  Bell, 
-  Hash,
-  ChevronRight,
-  Copy,
-  Sparkles,
-  Zap,
-  Activity,
-  CalendarDays,
-  Lock,
-  ArrowLeft,
-  MessageSquare,
-  Settings2,
-  X
-} from 'lucide-react';
-
-// Firebase Configuration
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'dmg-command-system';
-
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [staffData, setStaffData] = useState(null);
-  const [directory, setDirectory] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [ledgerUpdates, setLedgerUpdates] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [passcode, setPasscode] = useState("");
-  const [view, setView] = useState('loading'); 
-  const [onboardingStep, setOnboardingStep] = useState('find'); 
-  const [showSettings, setShowSettings] = useState(false);
-  
-  // Personalisation State
-  const [feeling, setFeeling] = useState("");
-  const [selectedEmoji, setSelectedEmoji] = useState("✨");
-  const [accentColor, setAccentColor] = useState('#21A0D8');
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
-
-  // Constants
-  const auraOptions = [
-    { name: 'Blue', color: '#21A0D8' },
-    { name: 'Pink', color: '#E6468B' },
-    { name: 'Red', color: '#E94B4B' },
-    { name: 'Green', color: '#43B049' },
-    { name: 'Gold', color: '#F2C316' }
-  ];
-
-  const emojiOptions = ["✨", "🚀", "⚡️", "🔋", "💡", "🎨", "📈", "🏢", "🏠", "🎥"];
-
-  // --- Date Formatting (UK English / Capitalised Suffixes) ---
-  const getDaySuffix = (day) => {
-    if (day > 3 && day < 21) return 'TH';
-    switch (day % 10) {
-      case 1: return "ST";
-      case 2: return "ND";
-      case 3: return "RD";
-      default: return "TH";
-    }
-  };
-
-  const formatFullDate = (dateObj = new Date()) => {
-    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-    const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-    const dayNum = dateObj.getDate();
-    return `${days[dateObj.getDay()]}, ${dayNum}${getDaySuffix(dayNum)} ${months[dateObj.getMonth()]}`;
-  };
-
-  // --- Authentication ---
-  useEffect(() => {
-    const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
-
-  // --- Initial Data Pull & Identity Resolution ---
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchData = async () => {
-      const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'));
-      const list = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        list.push({ id: doc.id, ...d, fullName: `${d.firstName} ${d.lastName}` });
-      });
-      
-      // Inject Mock/Required Identities for Testing
-      const defaults = [
-        { id: 'anais-01', firstName: 'Anaïs', lastName: 'Lukaku', fullName: 'Anaïs Lukaku', role: 'Senior Creative', team: 'creative', manager: 'Nathan Aspell' },
-        { id: 'jane-01', firstName: 'Jane', lastName: 'Doe', fullName: 'Jane Doe', role: 'Social Designer', team: 'social', manager: 'Ellie Beetham' },
-        { id: 'james-01', firstName: 'James', lastName: 'Whatever', fullName: 'James Whatever', role: 'Video Editor', team: 'production', manager: 'Matthew Macleod' }
-      ];
-
-      defaults.forEach(def => {
-        if (!list.find(s => s.fullName === def.fullName)) list.push(def);
-      });
-
-      setDirectory(list);
-
-      const params = new URLSearchParams(window.location.search);
-      const idParam = params.get('id');
-      if (idParam) {
-        const found = list.find(s => s.id === idParam);
-        if (found) {
-          setStaffData(found);
-          if (found.accentColor) setAccentColor(found.accentColor);
-          if (found.selectedEmoji) setSelectedEmoji(found.selectedEmoji);
-          if (found.feeling) setFeeling(found.feeling);
-          setView('profile');
-          return;
-        }
-      }
-      setView('onboarding');
-    };
-
-    fetchData();
-  }, [user]);
-
-  // --- Master Ledger Interaction (Action Ledger) ---
-  useEffect(() => {
-    if (!staffData) return;
-    const fullName = staffData.fullName;
-    const qTasks = collection(db, 'artifacts', appId, 'public', 'data', 'master_ledger');
-    
-    const unsubTasks = onSnapshot(qTasks, (snap) => {
-      const myTasks = [];
-      snap.forEach(doc => {
-        const t = doc.data();
-        if (t.salesLead === fullName || t.projectLead === fullName) myTasks.push({ id: doc.id, ...t });
-      });
-      setTasks(myTasks);
-    });
-
-    // Mock Pulse Feed for Demonstration
-    setLedgerUpdates([
-        { id: 1, user: 'Anaïs Lukaku', action: 'Synchronised Master Ledger', project: 'NEXT - Dressing for the Plot', time: '5M AGO' },
-        { id: 2, user: 'Jane Doe', action: 'Uploaded social assets to', project: 'NIKE - Campaign V2', time: '1H AGO' },
-        { id: 3, user: 'James Whatever', action: 'Initialised production for', project: 'ADIDAS - Originals', time: '3H AGO' }
-    ]);
-
-    return () => unsubTasks();
-  }, [staffData]);
-
-  // --- Onboarding Logic ---
-  const handleOnboardingSelect = (person) => {
-    setStaffData(person);
-    setOnboardingStep('secure');
-  };
-
-  const verifyPasscode = () => {
-    if (passcode === "00000") {
-      setOnboardingStep('magic');
-    } else {
-      setPasscode("");
-    }
-  };
-
-  const finalizeProfile = async () => {
-    const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', staffData.id);
-    try {
-        await updateDoc(userRef, { accentColor, selectedEmoji, feeling });
-        setShowSettings(false);
-    } catch(e) { 
-        setShowSettings(false);
-    }
-  };
-
-  const copyMagicURL = () => {
-    const url = `${window.location.origin}${window.location.pathname}?id=${staffData.id}`;
-    const el = document.createElement('textarea');
-    el.value = url;
-    document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
-    alert("Magic URL Copied. Paste this into your private Notion embed link.");
-  };
-
-  const submitRota = async () => {
-    setIsSubmitting(true);
-    const nextMon = new Date(new Date().setDate(new Date().getDate() + (1 + 7 - new Date().getDay()) % 7)).toLocaleDateString('en-GB');
-    try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rota_requests'), {
-        staffName: staffData.fullName,
-        managerName: staffData.manager,
-        schedule: { Mon: 'Office', Tue: 'Office', Wed: 'Office', Thu: 'Office', Fri: 'Office' },
-        status: 'pending',
-        weekCommencing: nextMon,
-        timestamp: Date.now()
-      });
-      setSubmitSuccess(true);
-      setTimeout(() => setSubmitSuccess(false), 3000);
-    } catch (e) { console.error(e); }
-    setIsSubmitting(false);
-  };
-
-  // --- RENDERERS ---
-  if (view === 'loading') return (
-    <div className="h-screen flex items-center justify-center bg-white">
-      <div className="flex gap-2">
-        {[0,1,2].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8] animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />)}
-      </div>
-    </div>
-  );
-
-  if (view === 'onboarding') {
-    return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 select-none">
-        <div className="max-w-xl w-full">
-          
-          {onboardingStep === 'find' && (
-            <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000 text-center">
-                <div className="flex justify-center gap-1.5 mb-10">
-                    {[1,2,3,4].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8]" />)}
-                </div>
-                <h1 className="text-5xl font-black tracking-tighter uppercase mb-4 text-[#1C1C1C]">Create my DMG profile</h1>
-                <p className="text-[#21a0d8] font-bold text-xs tracking-[0.25em] uppercase mb-16 italic">Initialise your personal dashboard</p>
-                
-                <div className="relative group mb-10">
-                  <div className="absolute left-7 top-1/2 -translate-y-1/2 text-[#21a0d8]"><Search size={24}/></div>
-                  <input 
-                    type="text" 
-                    placeholder="TYPE FULL NAME..."
-                    className="w-full pl-16 pr-8 py-9 bg-blue-50/20 border-2 border-[#21a0d8]/30 rounded-[2.5rem] text-sm font-black uppercase tracking-[0.2em] focus:outline-none focus:border-[#21a0d8] focus:bg-white transition-all shadow-sm"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-
-                <div className="grid gap-4 max-h-72 overflow-y-auto pr-3">
-                  {searchQuery.length > 0 && directory.filter(s => s.fullName.toLowerCase().includes(searchQuery.toLowerCase())).map(person => (
-                    <button key={person.id} onClick={() => handleOnboardingSelect(person)} className="w-full p-8 bg-white border border-gray-100 hover:border-[#21a0d8] rounded-[2rem] flex items-center justify-between group transition-all hover:shadow-xl">
-                      <div className="text-left flex items-center gap-6">
-                        <div className="grid grid-cols-2 gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
-                        </div>
-                        <div>
-                            <span className="font-black text-base uppercase tracking-widest block text-[#1C1C1C]">{person.fullName}</span>
-                            <span className="text-[10px] font-bold text-gray-300 uppercase tracking-[0.15em]">{person.role}</span>
-                        </div>
-                      </div>
-                      <ArrowRight size={22} className="text-gray-200 group-hover:text-[#21a0d8] group-hover:translate-x-1 transition-all" />
-                    </button>
-                  ))}
-                </div>
-            </div>
-          )}
-
-          {onboardingStep === 'secure' && (
-            <div className="animate-in fade-in slide-in-from-bottom-12 duration-700 text-center">
-                <Lock className="w-12 h-12 text-[#21a0d8] mx-auto mb-10" />
-                <h1 className="text-5xl font-black tracking-tighter uppercase mb-4 text-[#1C1C1C]">Handshake.</h1>
-                <p className="text-gray-400 font-bold text-xs tracking-[0.2em] uppercase mb-16">Enter 5-digit passcode for <strong>{staffData.firstName}</strong>.</p>
-                <input 
-                    type="password" 
-                    placeholder="00000" 
-                    className="w-full text-center p-10 bg-white border-2 border-gray-100 rounded-[3rem] text-6xl font-black tracking-[0.4em] focus:outline-none focus:border-[#21a0d8] mb-12 shadow-sm"
-                    value={passcode}
-                    onChange={(e) => setPasscode(e.target.value)}
-                    maxLength={5}
-                />
-                <button onClick={verifyPasscode} className="w-full p-8 bg-[#1C1C1C] text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-sm shadow-2xl hover:bg-[#333] transition-all">Verify Handover</button>
-                <button onClick={() => setOnboardingStep('find')} className="mt-10 text-[10px] font-black uppercase text-gray-300 tracking-widest flex items-center justify-center gap-2 mx-auto hover:text-[#1C1C1C] transition-colors"><ArrowLeft size={12}/> Switch Identity</button>
-            </div>
-          )}
-
-          {onboardingStep === 'magic' && (
-            <div className="animate-in fade-in zoom-in duration-700 text-center">
-                <Sparkles className="w-24 h-24 text-[#21a0d8] mx-auto mb-12 animate-pulse" />
-                <h1 className="text-5xl font-black tracking-tighter uppercase mb-6 text-[#1C1C1C]">Key Issued.</h1>
-                <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em] max-w-xs mx-auto mb-16 leading-relaxed">Your unique access link is ready. Use this as your Notion embed URL to bypass this setup forever.</p>
-                <div className="space-y-5">
-                    <button onClick={copyMagicURL} className="w-full p-8 bg-[#21a0d8] text-white rounded-[2.5rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-4 shadow-xl"><Copy size={18}/> Copy Magic URL</button>
-                    <button onClick={() => setView('profile')} className="w-full p-8 border-2 border-gray-100 text-gray-300 rounded-[2.5rem] font-black uppercase tracking-widest text-xs hover:text-[#1C1C1C] hover:border-[#1C1C1C] transition-all">Open My Dashboard</button>
-                </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-white text-[#1C1C1C] pb-32">
-      
-      {/* POST-ONBOARDING SETTINGS MODAL */}
-      {showSettings && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
-              <div className="bg-white w-full max-w-lg rounded-[3rem] p-12 relative shadow-2xl">
-                  <button onClick={() => setShowSettings(false)} className="absolute top-8 right-8 text-gray-300 hover:text-[#1C1C1C]"><X size={24}/></button>
-                  <h3 className="text-3xl font-black tracking-tighter uppercase mb-10">Personalise Profile</h3>
-                  
-                  <div className="space-y-10">
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-6">Profile Accent Aura</label>
-                        <div className="flex flex-wrap gap-5">
-                            {auraOptions.map(opt => (
-                                <button key={opt.color} onClick={() => setAccentColor(opt.color)} className={`w-12 h-12 rounded-full transition-all ${accentColor === opt.color ? 'scale-125 ring-4 ring-blue-50' : 'opacity-20 hover:opacity-100'}`} style={{ background: opt.color }} />
-                            ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-6">Signature Icon</label>
-                        <div className="flex gap-4 overflow-x-auto pb-4">
-                            {emojiOptions.map(emoji => (
-                                <button key={emoji} onClick={() => setSelectedEmoji(emoji)} className={`p-5 bg-white rounded-3xl text-3xl transition-all flex-shrink-0 border-2 ${selectedEmoji === emoji ? 'border-[#21a0d8] scale-110 shadow-xl' : 'border-gray-50 opacity-30 hover:opacity-100'}`}>{emoji}</button>
-                            ))}
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-6">Current Mood / Status</label>
-                        <input 
-                            type="text" 
-                            placeholder="WHAT IS THE VIBE TODAY?"
-                            className="w-full p-8 bg-gray-50 border border-gray-100 rounded-[2rem] text-sm font-black uppercase tracking-widest focus:outline-none focus:border-[#21a0d8] transition-all"
-                            value={feeling}
-                            onChange={(e) => setFeeling(e.target.value)}
-                        />
-                      </div>
-                      <button onClick={finalizeProfile} className="w-full p-7 bg-[#1C1C1C] text-white rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-[#333]">Update My Profile</button>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      <div className="max-w-4xl mx-auto px-12 py-20">
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create my DMG profile | New Media Hub</title>
+    <!-- Core Engine CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         
-        {/* LOGLINE HEADER */}
-        <div className="flex flex-col gap-10 border-b border-gray-100 pb-20 mb-24 relative group">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-5 text-[10px] font-black text-gray-400 tracking-[0.5em] uppercase leading-none">
-                <span>TODAY IS</span>
-                <div className="flex gap-1">
-                    {[1,2,3,4].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8]" />)}
-                </div>
-                <span className="text-[#1C1C1C]">{formatFullDate()}</span>
-            </div>
-            <button onClick={() => setShowSettings(true)} className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center text-gray-300 hover:text-[#21a0d8] hover:border-[#21a0d8] transition-all"><Settings2 size={18}/></button>
-          </div>
+        :root {
+            --dmg-blue: #21a0d8;
+            --ink: #1C1C1C;
+        }
 
-          <div className="flex items-center gap-10 leading-none select-none">
-            <h2 className="text-9xl font-black tracking-tighter uppercase leading-[0.8] mb-2">Hello</h2>
-            <div className="grid grid-cols-2 gap-2 mt-4 rotate-45">
-                <div className="w-5 h-5 rounded-full" style={{ background: accentColor }} />
-                <div className="w-5 h-5 rounded-full" style={{ background: accentColor, opacity: 0.6 }} />
-                <div className="w-5 h-5 rounded-full" style={{ background: accentColor, opacity: 0.3 }} />
-                <div className="w-5 h-5 rounded-full" style={{ background: accentColor, opacity: 0.1 }} />
-            </div>
-            <h2 className="text-9xl font-black tracking-tighter uppercase leading-[0.8] mb-2">{staffData.firstName}</h2>
-          </div>
-          
-          <div className="flex items-center gap-8 mt-4">
-              <div className="text-6xl drop-shadow-md">{selectedEmoji}</div>
-              <div className="flex flex-col">
-                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-gray-300 mb-2">Today I'm Feeling</span>
-                <span className="text-xl font-black uppercase italic tracking-tighter text-[#1C1C1C] border-b-2 border-[#21a0d8]/20 pb-1">{feeling || "Ready for the Shift"}</span>
-              </div>
-          </div>
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: #FFFFFF;
+            margin: 0;
+            color: var(--ink);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
 
-          <div className="flex items-center gap-6 text-[10px] font-black text-gray-300 uppercase tracking-[0.15em] mt-10">
-            <span className="px-5 py-2 bg-gray-50 rounded-full font-black" style={{ color: accentColor }}>{staffData.team} STREAM</span>
-            <span className="opacity-20 text-2xl">/</span>
-            <span>{staffData.role}</span>
-            <span className="opacity-20 text-2xl">/</span>
-            <span>Led by {staffData.manager}</span>
-          </div>
-        </div>
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #EAEAEA; border-radius: 10px; }
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-20">
+        .blueprint-sketch {
+            background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='40' ry='40' stroke='%2321A0D8' stroke-width='2' stroke-dasharray='10%2c 15' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+            border-radius: 40px;
+        }
+
+        .page-transition {
+            animation: fadeInScale 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.99) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Directory for Onboarding Logic
+        const DIRECTORY = [
+            { id: 'nais-01', firstName: 'Anaïs', lastName: 'Lukaku', fullName: 'Anaïs Lukaku', role: 'Senior Creative', team: 'creative', manager: 'Nathan Aspell' },
+            { id: 'jane-01', firstName: 'Jane', lastName: 'Doe', fullName: 'Jane Doe', role: 'Social Designer', team: 'social', manager: 'Ellie Beetham' },
+            { id: 'james-01', firstName: 'James', lastName: 'Whatever', fullName: 'James Whatever', role: 'Video Editor', team: 'production', manager: 'Matthew Macleod' }
+        ];
+
+        const App = () => {
+            const [view, setView] = useState('loading'); 
+            const [step, setStep] = useState(1); 
+            const [search, setSearch] = useState("");
+            const [userProfile, setUserProfile] = useState(null);
+            const [passcode, setPasscode] = useState("");
+            const [feeling, setFeeling] = useState("");
+            const [accent, setAccent] = useState('#21a0d8');
             
-            {/* LEFT COLUMN */}
-            <div className="lg:col-span-7 space-y-24">
-                
-                {/* SECTION: DEPARTMENT PULSE */}
-                <section>
-                    <div className="flex items-center gap-5 mb-12">
-                        <div className="grid grid-cols-2 gap-1">
-                            {[1,2,3,4].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />)}
+            // Check for Magic Link / Persistence on Load
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const id = params.get('id');
+                if (id) {
+                    const found = DIRECTORY.find(u => u.id === id);
+                    if (found) {
+                        setUserProfile(found);
+                        setView('profile');
+                        return;
+                    }
+                }
+                setTimeout(() => setView('onboarding'), 800);
+            }, []);
+
+            const getDaySuffix = (day) => {
+                if (day > 3 && day < 21) return 'TH';
+                switch (day % 10) {
+                    case 1: return "ST";
+                    case 2: return "ND";
+                    case 3: return "RD";
+                    default: return "TH";
+                }
+            };
+
+            const today = new Date();
+            const dateStr = `${today.toLocaleDateString('en-GB', { weekday: 'long' }).toUpperCase()}, ${today.getDate()}${getDaySuffix(today.getDate())} ${today.toLocaleDateString('en-GB', { month: 'long' }).toUpperCase()}`;
+
+            const handleSelectUser = (u) => {
+                setUserProfile(u);
+                setStep(2);
+            };
+
+            const verifySecurity = () => {
+                if (passcode === "00000") {
+                    setStep(3);
+                } else {
+                    setPasscode("");
+                }
+            };
+
+            const copyMagicUrl = () => {
+                const url = `${window.location.origin}${window.location.pathname}?id=${userProfile.id}`;
+                navigator.clipboard.writeText(url);
+                const btn = document.getElementById('copy-btn');
+                btn.innerText = "URL COPIED TO CLIPBOARD";
+                btn.style.background = "#43B049";
+            };
+
+            if (view === 'loading') {
+                return (
+                    <div className="h-screen flex flex-col items-center justify-center bg-white space-y-6">
+                        <div className="flex gap-2">
+                            {[0,1,2,3].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8] animate-bounce" style={{ animationDelay: `${i * 0.1}s` }} />)}
                         </div>
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 leading-none">Department Pulse</span>
-                        <div className="flex-1 h-px bg-gray-50" />
+                        <p className="text-[10px] font-black tracking-[0.4em] text-gray-300 uppercase">Initialising Hub</p>
                     </div>
-                    <div className="space-y-6">
-                        {ledgerUpdates.map((upd) => (
-                            <div key={upd.id} className="flex items-start gap-8 p-8 bg-gray-50/50 rounded-[2.5rem] border border-transparent hover:border-gray-100 transition-all hover:bg-white hover:shadow-lg">
-                                <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-xl shadow-sm border border-gray-50">👩‍🎨</div>
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#21a0d8]">{upd.user}</span>
-                                        <span className="text-[9px] font-bold text-gray-300 uppercase">{upd.time}</span>
+                );
+            }
+
+            if (view === 'onboarding') {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-8 page-transition select-none bg-white">
+                        <div className="max-w-xl w-full text-center">
+                            
+                            {step === 1 && (
+                                <div className="space-y-12 animate__animated animate__fadeIn">
+                                    <div className="flex justify-center gap-1.5 mb-10">
+                                        {[1,2,3,4].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8] shadow-[0_0_10px_rgba(33,160,216,0.3)]" />)}
                                     </div>
-                                    <p className="text-sm font-bold text-gray-500 mt-2 uppercase tracking-tight leading-snug">{upd.action} <span className="text-[#1C1C1C] font-black italic">[{upd.project}]</span></p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                                    <h1 className="text-6xl font-black tracking-tighter uppercase text-[#1C1C1C]">Create my DMG profile</h1>
+                                    <p className="text-[#21a0d8] font-bold text-xs tracking-[0.25em] uppercase mb-16 italic underline underline-offset-8">Configure your personal dashboard</p>
+                                    
+                                    <div className="relative group mb-10">
+                                        <div className="absolute left-7 top-1/2 -translate-y-1/2 text-white/80">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            placeholder="SEARCH FULL NAME..." 
+                                            className="w-full bg-[#21a0d8] text-white placeholder-white/50 p-10 pl-16 rounded-[2.5rem] text-sm font-black uppercase tracking-[0.2em] focus:outline-none shadow-2xl transition-all border-none ring-0"
+                                            value={search}
+                                            onChange={(e) => setSearch(e.target.value)}
+                                        />
+                                    </div>
 
-                {/* SECTION: ACTION LEDGER */}
-                <section>
-                    <div className="flex items-center justify-between mb-12">
-                        <div className="flex items-center gap-5 flex-1">
-                            <Zap size={22} className="text-yellow-400" />
-                            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 leading-none">Action Ledger</span>
-                            <div className="flex-1 h-px bg-gray-50" />
+                                    <div className="space-y-3 max-h-72 overflow-y-auto custom-scrollbar pr-3">
+                                        {search.length > 0 && DIRECTORY.filter(u => u.fullName.toLowerCase().includes(search.toLowerCase())).map(u => (
+                                            <button key={u.id} onClick={() => handleSelectUser(u)} className="w-full p-8 bg-white border border-gray-100 rounded-[2rem] flex items-center justify-between group hover:border-[#21a0d8] hover:shadow-2xl transition-all">
+                                                <div className="text-left flex items-center gap-6">
+                                                    <div className="grid grid-cols-2 gap-1 opacity-20 group-hover:opacity-100 transition-opacity">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-base uppercase tracking-widest text-[#1C1C1C]">{u.fullName}</p>
+                                                        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-1">{u.role}</p>
+                                                    </div>
+                                                </div>
+                                                <svg width="24" height="24" className="text-gray-200 group-hover:text-[#21a0d8] transition-all group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {step === 2 && (
+                                <div className="animate__animated animate__fadeInUp space-y-12">
+                                    <div className="w-24 h-24 bg-blue-50 text-[#21a0d8] rounded-[2rem] flex items-center justify-center mx-auto mb-10 border border-blue-100 shadow-sm rotate-12">
+                                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                    </div>
+                                    <h1 className="text-6xl font-black tracking-tighter uppercase leading-none">Security<br/>Handshake.</h1>
+                                    <p className="text-gray-400 font-bold text-xs tracking-[0.25em] uppercase italic">Initialise access for <strong>{userProfile.firstName}</strong>.</p>
+                                    <input 
+                                        type="password" 
+                                        placeholder="•••••" 
+                                        className="w-full text-center p-10 bg-white border-2 border-gray-100 rounded-[3.5rem] text-6xl font-black tracking-[0.4em] focus:outline-none focus:border-[#21a0d8] mb-12 shadow-sm transition-all"
+                                        value={passcode}
+                                        onChange={(e) => setPasscode(e.target.value)}
+                                        maxLength={5}
+                                    />
+                                    <button onClick={verifySecurity} className="w-full p-8 bg-[#1C1C1C] text-white rounded-[2.5rem] font-black uppercase tracking-[0.15em] text-sm shadow-2xl hover:bg-[#333] transition-all active:scale-95">Verify Identity</button>
+                                    <button onClick={() => setStep(1)} className="mt-10 text-[10px] font-black uppercase text-gray-300 tracking-widest flex items-center justify-center gap-2 mx-auto hover:text-[#1C1C1C] transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg> Switch User</button>
+                                </div>
+                            )}
+
+                            {step === 3 && (
+                                <div className="animate__animated animate__zoomIn space-y-12">
+                                    <div className="w-24 h-24 bg-blue-50 text-[#21a0d8] rounded-full flex items-center justify-center mx-auto mb-10 animate-pulse shadow-lg border border-blue-100">
+                                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                                    </div>
+                                    <h1 className="text-6xl font-black tracking-tighter uppercase leading-[0.8]">Magic Key<br/>Issued.</h1>
+                                    <p className="text-gray-400 font-bold text-xs tracking-[0.15em] leading-relaxed max-w-sm mx-auto uppercase">Your access link is ready. Update your Notion embed URL with this link to skip setup in the future.</p>
+                                    <div className="space-y-5">
+                                        <button id="copy-btn" onClick={copyMagicUrl} className="w-full p-8 bg-[#21a0d8] text-white rounded-[2.5rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-4 shadow-2xl transition-all hover:bg-[#1b8bbd]">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                            Copy Magic URL
+                                        </button>
+                                        <button onClick={() => setView('profile')} className="w-full p-8 border-2 border-gray-100 text-gray-300 rounded-[2.5rem] font-black uppercase tracking-widest text-xs hover:text-[#1C1C1C] hover:border-[#1C1C1C] transition-all">Enter Dashboard</button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <span className="text-[10px] font-black text-white px-6 py-2.5 rounded-full ml-8 shadow-2xl" style={{ background: accentColor }}>{tasks.length} PROJECTS DUE</span>
                     </div>
-                    
-                    <div className="grid gap-6">
-                        {tasks.length > 0 ? tasks.map(t => (
-                            <div key={t.id} className="group flex items-center justify-between p-12 bg-white border border-gray-100 rounded-[3.5rem] hover:border-[#21a0d8] transition-all relative overflow-hidden shadow-sm hover:shadow-2xl">
-                                <div className="absolute top-0 left-0 w-2.5 h-full" style={{ background: accentColor }} />
-                                <div>
-                                    <span className="font-black text-4xl tracking-tighter uppercase italic group-hover:text-[#21a0d8] leading-none mb-3 block transition-colors">{t.title}</span>
-                                    <span className="text-[11px] font-bold text-gray-300 uppercase block tracking-widest">{t.client || 'Internal Project'}</span>
-                                </div>
-                                <div className="text-right flex flex-col items-end gap-3">
-                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.15em] leading-none block">Deadline</span>
-                                    <span className="font-black text-2xl text-[#E94B4B] tracking-tighter">{t.internalDueDate ? t.internalDueDate.toUpperCase() : 'TBC'}</span>
-                                    <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-200 group-hover:bg-blue-50 group-hover:text-[#21a0d8] transition-all"><ExternalLink size={16}/></div>
-                                </div>
-                            </div>
-                        )) : (
-                            <div className="p-28 border-2 border-dashed border-gray-100 rounded-[4rem] text-center bg-gray-50/10">
-                                <span className="text-sm font-black text-gray-200 uppercase tracking-[0.4em]">Ledger Empty // Open Capacity</span>
-                            </div>
-                        )}
-                    </div>
-                </section>
-            </div>
+                );
+            }
 
-            {/* RIGHT COLUMN */}
-            <div className="lg:col-span-5 space-y-24">
-                
-                {/* SECTION: CALENDAR STREAM */}
-                <section>
-                    <div className="flex items-center gap-5 mb-12">
-                        <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
-                            <div className="w-1.5 h-1.5 rounded-full bg-[#21a0d8]" />
-                        </div>
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 leading-none">Meeting Stream</span>
-                        <div className="flex-1 h-px bg-gray-50" />
-                    </div>
+            // --- MAIN DASHBOARD VIEW ---
+            return (
+                <div className="max-w-5xl mx-auto px-12 py-20 page-transition bg-white min-h-screen">
                     
-                    <div className="bg-white border-2 border-gray-100 rounded-[3.5rem] overflow-hidden shadow-sm relative group min-h-[550px] flex flex-col items-center justify-center">
-                         <div className="absolute inset-0 p-16 flex flex-col gap-10 opacity-[0.04] pointer-events-none group-hover:opacity-[0.06] transition-opacity">
-                             <div className="w-full h-14 bg-gray-200 rounded-2xl" />
-                             <div className="flex gap-6">
-                                 <div className="w-24 h-48 bg-gray-200 rounded-3xl" />
-                                 <div className="flex-1 space-y-6">
-                                     <div className="w-full h-24 bg-gray-200 rounded-[2rem]" />
-                                     <div className="w-3/4 h-12 bg-gray-200 rounded-[2rem]" />
-                                 </div>
-                             </div>
-                         </div>
-                         
-                         <div className="relative z-10 p-16 text-center max-w-sm mx-auto">
-                            <div className="w-24 h-24 bg-white shadow-2xl rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 border border-gray-50 text-[#21a0d8] rotate-6 group-hover:rotate-0 transition-transform duration-500">
-                                <MessageSquare size={42} strokeWidth={2.5} />
+                    {/* LOGLINE HEADER */}
+                    <div className="border-b border-gray-100 pb-20 mb-24 relative">
+                        <div className="flex items-center gap-5 text-[10px] font-black text-gray-400 tracking-[0.6em] uppercase mb-14">
+                            <span>TODAY IS</span>
+                            <div className="flex gap-1.5">
+                                {[1,2,3,4].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8]" />)}
                             </div>
-                            <h4 className="text-3xl font-black uppercase mb-6 tracking-tight leading-[0.85]">Outlook Integration</h4>
-                            <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-12 leading-relaxed italic">Securely stream live scrums and client syncs to this view.</p>
-                            <button className="w-full p-8 bg-[#1C1C1C] text-white rounded-[2rem] font-black uppercase tracking-widest text-[10px] shadow-2xl hover:bg-[#333] transition-all">Connect Private API</button>
-                         </div>
-                    </div>
-                </section>
-
-                {/* SECTION: ROTA pattern */}
-                <section>
-                    <div className="flex items-center gap-5 mb-12">
-                        <Calendar size={20} className="text-[#21a0d8]" />
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400 leading-none">Pattern Log</span>
-                        <div className="flex-1 h-px bg-gray-50" />
-                    </div>
-                    
-                    <div className="bg-[#1C1C1C] text-white rounded-[4rem] p-16 shadow-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 left-0 w-3 h-full" style={{ background: accentColor }} />
-                        <div className="grid grid-cols-5 gap-4 mb-16">
-                            {['M','T','W','T','F'].map(day => (
-                                <div key={day} className="flex flex-col gap-4">
-                                    <span className="text-[11px] font-black text-center text-gray-600 uppercase tracking-widest leading-none">{day}</span>
-                                    <button className="p-5 bg-white/5 border border-white/10 rounded-[1.5rem] text-[10px] font-black transition-all hover:bg-white/10 active:scale-90">O</button>
-                                    <button className="p-5 bg-white/5 border border-white/10 rounded-[1.5rem] text-[10px] font-black transition-all hover:bg-white/10 active:scale-90">R</button>
-                                </div>
-                            ))}
+                            <span className="text-[#1C1C1C]">{dateStr}</span>
                         </div>
                         
-                        <button 
-                            onClick={submitRota}
-                            disabled={isSubmitting || submitSuccess}
-                            className={`w-full p-8 rounded-[2.5rem] font-black uppercase tracking-[0.3em] text-xs transition-all flex items-center justify-center gap-5 ${submitSuccess ? 'bg-[#43B049]' : 'bg-white text-[#1C1C1C] hover:bg-gray-100 shadow-xl'}`}
-                        >
-                            {isSubmitting ? 'Synchronising...' : submitSuccess ? 'Pattern Logged' : 'Submit Pattern'}
-                            {submitSuccess && <CheckCircle2 size={20}/>}
-                        </button>
+                        <div className="flex items-center gap-10 leading-none mb-12 select-none">
+                            <h2 className="text-9xl font-black tracking-tighter uppercase leading-[0.8] mb-2">Hello</h2>
+                            <div className="grid grid-cols-2 gap-2 mt-4 rotate-45">
+                                <div className="w-5 h-5 rounded-full" style={{ background: accent }} />
+                                <div className="w-5 h-5 rounded-full" style={{ background: accent, opacity: 0.6 }} />
+                                <div className="w-5 h-5 rounded-full" style={{ background: accent, opacity: 0.3 }} />
+                                <div className="w-5 h-5 rounded-full" style={{ background: accent, opacity: 0.1 }} />
+                            </div>
+                            <h2 className="text-9xl font-black tracking-tighter uppercase leading-[0.8] mb-2">{userProfile.firstName}</h2>
+                        </div>
+
+                        <div className="flex items-center gap-8 mt-4 animate__animated animate__fadeIn animate__delay-1s">
+                            <div className="text-6xl drop-shadow-md animate__animated animate__pulse animate__infinite">✨</div>
+                            <div className="flex flex-col flex-1 max-w-sm">
+                                <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-300 mb-2">Status Heartbeat</span>
+                                <input 
+                                    type="text" 
+                                    value={feeling} 
+                                    onChange={(e) => setFeeling(e.target.value)} 
+                                    placeholder="TYPE YOUR VIBE..." 
+                                    className="text-2xl font-black uppercase italic tracking-tighter border-b-2 border-blue-50 focus:border-[#21a0d8] outline-none transition-all pb-2 bg-transparent"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-6 mt-16 text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                            <span className="px-6 py-2.5 bg-blue-50 text-[#21a0d8] rounded-full font-black tracking-[0.2em]">{userProfile.team} STREAM</span>
+                            <span className="opacity-20 text-3xl">/</span>
+                            <span>{userProfile.role}</span>
+                            <span className="opacity-20 text-3xl">/</span>
+                            <span>Reporting to {userProfile.manager}</span>
+                        </div>
                     </div>
-                </section>
-            </div>
-        </div>
 
-        <p className="text-center text-[10px] font-black text-gray-200 uppercase tracking-[0.7em] mt-48 select-none pointer-events-none">Daily Mail // New Media Division // v8.0</p>
-      </div>
-    </div>
-  );
-};
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-24">
+                        
+                        {/* LEFT COLUMN: PULSE & LEDGER */}
+                        <div className="lg:col-span-7 space-y-28">
+                            
+                            {/* SECTION: DEPARTMENT PULSE */}
+                            <section>
+                                <div className="flex items-center gap-6 mb-12">
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        {[1,2,3,4].map(i => <div key={i} className="w-2 h-2 rounded-full bg-[#21a0d8]" />)}
+                                    </div>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-400">Department Pulse</span>
+                                    <div className="flex-1 h-px bg-gray-50" />
+                                </div>
+                                <div className="space-y-6">
+                                    {[
+                                        { user: 'Anaïs Lukaku', action: 'Synchronised master ledger', project: 'NEXT - AW24 PREP', time: '12M AGO', icon: '🎬' },
+                                        { user: 'Jane Doe', action: 'Uploaded social assets', project: 'NIKE - RUN CLUB V2', time: '2H AGO', icon: '👩‍🎨' },
+                                        { user: 'James Whatever', action: 'Approved final specs', project: 'ADIDAS - SUMMER', time: '5H AGO', icon: '🎨' }
+                                    ].map((upd, i) => (
+                                        <div key={i} className="flex items-start gap-10 p-10 bg-white border border-gray-100 rounded-[3rem] hover:shadow-2xl transition-all group cursor-pointer hover:border-[#21a0d8]">
+                                            <div className="w-14 h-14 rounded-[1.5rem] bg-gray-50 flex items-center justify-center text-2xl shadow-inner group-hover:bg-blue-50 transition-colors border border-transparent group-hover:border-blue-100">{upd.icon}</div>
+                                            <div className="flex flex-col">
+                                                <div className="flex gap-5 items-center mb-2">
+                                                    <span className="text-[10px] font-black text-[#21a0d8] uppercase tracking-widest leading-none">{upd.user}</span>
+                                                    <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">{upd.time}</span>
+                                                </div>
+                                                <p className="text-sm font-bold text-gray-500 uppercase tracking-tight leading-snug">{upd.action} <span className="font-black italic text-[#1C1C1C]">[{upd.project}]</span></p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
 
-export default App;
+                            {/* SECTION: ACTION LEDGER */}
+                            <section>
+                                <div className="flex items-center justify-between mb-12">
+                                    <div className="flex items-center gap-6 flex-1">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#21a0d8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-10h-9l1-8z"></path></svg>
+                                        <span className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-400">Action Ledger</span>
+                                        <div className="flex-1 h-px bg-gray-50" />
+                                    </div>
+                                    <span className="text-[10px] font-black text-white px-6 py-2.5 rounded-full ml-10 shadow-2xl bg-[#21a0d8]">0 PROJECTS DUE</span>
+                                </div>
+                                <div className="p-32 border-2 border-dashed border-gray-100 rounded-[4.5rem] text-center bg-gray-50/10">
+                                    <span className="text-sm font-black text-gray-200 uppercase tracking-[0.5em]">Ledger Clear // Capacity Open</span>
+                                </div>
+                            </section>
+                        </div>
+
+                        {/* RIGHT COLUMN: CALENDAR & ROTA */}
+                        <div className="lg:col-span-5 space-y-28">
+                            
+                            {/* SECTION: CALENDAR BLUEPRINT */}
+                            <section>
+                                <div className="flex items-center gap-6 mb-12">
+                                    <div className="flex gap-1.5">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#21a0d8]" />
+                                        <div className="w-2.5 h-2.5 rounded-full bg-[#21a0d8]" />
+                                    </div>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-400">Meeting Stream</span>
+                                    <div className="flex-1 h-px bg-gray-50" />
+                                </div>
+                                <div className="blueprint-sketch min-h-[550px] flex flex-col items-center justify-center p-16 text-center relative group overflow-hidden bg-white">
+                                    <div className="absolute inset-0 bg-blue-50/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                                    <div className="w-24 h-24 bg-white rounded-[2.5rem] shadow-2xl flex items-center justify-center mx-auto mb-10 border border-blue-50 text-[#21a0d8] rotate-6 group-hover:rotate-0 transition-transform duration-700">
+                                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                    </div>
+                                    <h4 className="text-3xl font-black uppercase mb-6 tracking-tighter leading-[0.85]">Outlook Integration</h4>
+                                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-12 leading-relaxed italic px-4">Securely stream live client briefings and internal scrums to this view.</p>
+                                    <button className="w-full p-8 bg-[#1C1C1C] text-white rounded-[2.5rem] font-black uppercase tracking-widest text-[10px] shadow-2xl hover:bg-[#333] transition-all active:scale-95 border-none outline-none">Connect Private API</button>
+                                </div>
+                            </section>
+
+                            {/* SECTION: ROTA pattern */}
+                            <section>
+                                <div className="flex items-center gap-6 mb-12">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#21a0d8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <span className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-400">Pattern Log</span>
+                                    <div className="flex-1 h-px bg-gray-50" />
+                                </div>
+                                <div className="bg-[#1C1C1C] text-white rounded-[4.5rem] p-20 shadow-2xl relative overflow-hidden group">
+                                    <div className="absolute top-0 left-0 w-3 h-full bg-[#21a0d8]" />
+                                    <div className="grid grid-cols-5 gap-6 mb-16">
+                                        {['M','T','W','T','F'].map(day => (
+                                            <div key={day} className="flex flex-col gap-5">
+                                                <span className="text-[11px] font-black text-center text-gray-600 uppercase tracking-widest leading-none">{day}</span>
+                                                <button className="p-5 bg-white/5 border border-white/10 rounded-[1.5rem] text-[10px] font-black hover:bg-white/10 transition-all active:scale-90 shadow-inner outline-none">O</button>
+                                                <button className="p-5 bg-white/5 border border-white/10 rounded-[1.5rem] text-[10px] font-black hover:bg-white/10 transition-all active:scale-90 shadow-inner outline-none">R</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button className="w-full p-8 bg-white text-[#1C1C1C] rounded-[2.5rem] font-black uppercase tracking-[0.3em] text-xs shadow-xl hover:bg-gray-100 transition-all active:scale-95 border-none outline-none">Submit Pattern</button>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+
+                    <p className="text-center text-[10px] font-black text-gray-200 uppercase tracking-[1em] mt-72 select-none pointer-events-none">DMG NEW MEDIA DIVISION</p>
+                </div>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
