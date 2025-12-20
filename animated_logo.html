@@ -95,6 +95,8 @@
 
         .btn-primary { background: var(--carbon); color: #FFF; border: none; padding: 16px 32px; border-radius: 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 10px; }
         .btn-primary:hover { background: var(--dmg-blue); transform: translateY(-2px); }
+        .btn-secondary { background: #F3F4F6; color: var(--carbon); border: 1px solid var(--border); padding: 16px 32px; border-radius: 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 10px; }
+        .btn-secondary:hover { background: #E5E7EB; border-color: #D1D5DB; }
         .btn-danger { background: #FEE2E2; color: var(--danger); border: 1.5px solid #FCA5A5; padding: 10px 20px; border-radius: 10px; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; }
 
         /* DIRECTORY TABLE */
@@ -248,7 +250,10 @@
                 </div>
 
                 <div class="content-card">
-                    <span class="section-tag"><span class="tag-dot"></span> Widget Asset Library</span>
+                    <div class="directory-controls">
+                        <span class="section-tag"><span class="tag-dot"></span> Widget Asset Library</span>
+                        <button class="btn-secondary" onclick="seedRegistryBulk()">Re-populate Registry</button>
+                    </div>
                     <p style="font-size:11px; color:#999; margin-top:-15px; margin-bottom:20px;">Click any card to copy the embed link to your clipboard.</p>
                     <div class="asset-grid" id="asset-mount"></div>
                 </div>
@@ -275,8 +280,7 @@
                         <p style="font-size:13px; color:var(--ink-sub); line-height:1.6;">Rarely. This is your "Break Glass" button. For daily changes, use the <b>Personnel Intake</b> tab or the <b>Delete</b> buttons in the directory.</p>
                     </div>
 
-                    <button class="btn-primary" onclick="seedPersonnelBulk()" id="seed-btn">Sync Corrected List</button>
-                    <button class="btn-primary" style="margin-left:10px; background:#EEE; color:#333;" onclick="seedRegistryBulk()">Re-populate Widget Links</button>
+                    <button class="btn-primary" onclick="seedPersonnelBulk()" id="seed-btn">Sync Master List</button>
                 </div>
             </section>
         </div>
@@ -503,8 +507,13 @@
     window.seedRegistryBulk = async () => {
         if(!confirm("Repopulate all 70+ widget links?")) return;
         const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'asset_registry');
+        
+        // Wipe registry first to avoid dupes
+        const snap = await getDocs(colRef);
+        for(const d of snap.docs) await deleteDoc(d.ref);
+
         const files = [
-            "admin_console.html", "animated_logo.html", "calendar.html", "carousel_widget.html", "creative_deadlines_header.html", "creative_feed_header.html", "creative_header.html", "creative_quick_links.html", "daily_feeds_header.html", "daily_meetings.html", "dmg_hq_header.html", "dmg_team_log.html", "feed_header.html", "handbook_arrows.html", "handbook_header.html", "handbook_mission.html", "handbook_team_directory.html", "handbook_workflows.html", "handbook_workflows_header.html", "index.html", "key_dates_header.html", "manager_dashboard.html", "manager_rota_header.html", "meetings_list.html", "office_outlook.html", "org_chart.html", "people_master_nav.html", "people_team_header.html", "personal_actions_header.html", "personal_calendar_header.html", "personal_calendar_widget.html", "personal_header.html", "personal_meetings_header.html", "personal_notes_header.html", "personal_reminders_header.html", "personal_reminders_widget.html", "personal_unified_header.html", "priority_briefs_header.html", "production_capacity.html", "production_feed_header.html", "production_header.html", "production_schedule.html", "quick_links.html", "quick_links_bar.html", "quick_links_header.html", "ready_to_post_header.html", "review_queue_header.html", "rss_carousel_embed.html", "search_hub.html", "sidebar_people.html", "sidebar_resources.html", "sidebar_work.html", "social_header.html", "social_quick_links.html", "spotlight_carousel", "spotlight_header.html", "spotlight_rss_carousel.html", "spotlight_tiktok_profile.html", "stacked_clock.html", "team_announcements_header.html", "team_meetings.html", "team_navigation_widget.html", "team_tabs.html", "teams_header.html", "the_respawn_rss_carousel.html", "the_respawn_tiktok_profile.html", "this_just_in.html", "tiktok_embed_dailymail.html", "top_page_nav.html"
+            "admin_console.html", "animated_logo.html", "calendar.html", "carousel_widget.html", "creative_deadlines_header.html", "creative_feed_header.html", "creative_header.html", "creative_quick_links.html", "daily_feeds_header.html", "daily_meetings.html", "dmg_hq_header.html", "dmg_team_log.html", "feed_header.html", "handbook_arrows.html", "handbook_header.html", "handbook_mission.html", "handbook_team_directory.html", "handbook_workflows.html", "handbook_workflows_header.html", "index.html", "key_dates_header.html", "manager_dashboard.html", "manager_rota_header.html", "meetings_list.html", "office_outlook.html", "org_chart.html", "people_master_nav.html", "people_team_header.html", "personal_actions_header.html", "personal_calendar_header.html", "personal_calendar_widget.html", "personal_header.html", "personal_meetings_header.html", "personal_notes_header.html", "personal_reminders_header.html", "personal_reminders_widget.html", "personal_unified_header.html", "priority_briefs_header.html", "production_capacity.html", "production_feed_header.html", "production_header.html", "production_schedule.html", "quick_links.html", "quick_links_bar.html", "quick_links_header.html", "ready_to_post_header.html", "review_queue_header.html", "rss_carousel_embed.html", "search_hub.html", "sidebar_people.html", "sidebar_resources.html", "sidebar_work.html", "social_header.html", "social_quick_links.html", "spotlight_carousel.html", "spotlight_header.html", "spotlight_rss_carousel.html", "spotlight_tiktok_profile.html", "stacked_clock.html", "team_announcements_header.html", "team_meetings.html", "team_navigation_widget.html", "team_tabs.html", "teams_header.html", "the_respawn_rss_carousel.html", "the_respawn_tiktok_profile.html", "this_just_in.html", "tiktok_embed_dailymail.html", "top_page_nav.html"
         ];
         for(let f of files) {
             await addDoc(colRef, { filename: f, url: `https://aluk00.github.io/notion-clock/${f}` });
