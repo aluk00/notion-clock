@@ -15,44 +15,100 @@
             --st-wfh: #F9A825;
             --st-shoot: #2196F3;
             --st-pto: #F44336;
+            --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        html, body { margin: 0; padding: 0; background-color: transparent; font-family: sans-serif; color: var(--text-main); }
+        html, body { margin: 0; padding: 0; background-color: transparent; font-family: 'Inter', sans-serif; color: var(--text-main); }
         body { padding: 10px; }
-        .outlook-container { background: #ffffff; border: 1.5px solid var(--border); border-radius: 16px; padding: 24px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
-        .date-header { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 5px; }
-        .today-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: var(--dmg-blue); }
-        .today-date { font-size: 18px; font-weight: 800; }
-        .status-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 15px; }
-        .status-pill { padding: 12px; background: var(--bg-light); border-radius: 10px; text-align: center; }
-        .pill-count { font-size: 24px; font-weight: 900; display: block; }
-        .pill-label { font-size: 9px; font-weight: 800; text-transform: uppercase; color: var(--text-sub); }
-        .section-header { font-size: 11px; font-weight: 900; text-transform: uppercase; color: #bbb; margin-top: 20px; }
-        .people-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .person-tag { background: #fff; border: 1px solid var(--border); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--st-office); }
+
+        .outlook-container { 
+            background: #ffffff; 
+            border: 1.5px solid var(--border); 
+            border-radius: 16px; 
+            padding: 24px; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
+        }
+
+        .status-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        
+        .status-pill { 
+            padding: 16px; 
+            background: var(--bg-light); 
+            border-radius: 12px; 
+            text-align: center; 
+            cursor: pointer; 
+            transition: var(--transition);
+            border: 1px solid transparent;
+        }
+        .status-pill:hover { 
+            transform: translateY(-4px); 
+            background: #fff; 
+            border-color: var(--border);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+
+        .pill-count { font-size: 32px; font-weight: 900; display: block; line-height: 1; margin-bottom: 4px; }
+        .pill-label { font-size: 9px; font-weight: 800; text-transform: uppercase; color: var(--text-sub); letter-spacing: 0.05em; }
+
+        /* MODAL STYLES */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { 
+            background: #fff; 
+            width: 100%; 
+            max-width: 500px; 
+            border-radius: 24px; 
+            padding: 32px; 
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15); 
+            max-height: 80vh; 
+            overflow-y: auto;
+            position: relative;
+        }
+        .close-btn { position: absolute; top: 20px; right: 20px; font-size: 24px; font-weight: 800; color: #ccc; cursor: pointer; }
+        
+        .modal-title { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--dmg-blue); letter-spacing: 0.1em; margin-bottom: 24px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
+        
+        .team-group { margin-bottom: 24px; }
+        .team-label { font-size: 9px; font-weight: 900; text-transform: uppercase; color: #bbb; margin-bottom: 10px; display: block; }
+        .staff-line { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #f9f9f9; }
+        .staff-name { font-size: 14px; font-weight: 700; color: #000; }
+        .staff-role { font-size: 11px; color: #999; font-weight: 500; }
+
+        .empty-state { text-align: center; color: #ccc; font-size: 13px; padding: 40px 0; }
     </style>
 </head>
 <body>
 
     <div class="outlook-container">
-        <div class="date-header">
-            <div style="display:flex; flex-direction:column;">
-                <span class="today-label">Live Cloud Outlook</span>
-                <span class="today-date" id="display-today">Today</span>
-            </div>
-            <div style="font-size:11px; font-weight:700; color:var(--text-sub);" id="display-wc">Sync Active</div>
-        </div>
-        
         <div class="status-row">
-            <div class="status-pill"><span class="pill-count" id="today-office" style="color: var(--st-office);">0</span><span class="pill-label">Office</span></div>
-            <div class="status-pill"><span class="pill-count" id="today-remote" style="color: var(--st-wfh);">0</span><span class="pill-label">Remote</span></div>
-            <div class="status-pill"><span class="pill-count" id="today-shoot" style="color: var(--st-shoot);">0</span><span class="pill-label">Off-Site</span></div>
-            <div class="status-pill"><span class="pill-count" id="today-pto" style="color: var(--st-pto);">0</span><span class="pill-label">Leave</span></div>
+            <div class="status-pill" onclick="openStatusModal('Office')">
+                <span class="pill-count" id="today-office" style="color: var(--st-office);">0</span>
+                <span class="pill-label">In Building</span>
+            </div>
+            <div class="status-pill" onclick="openStatusModal('WFH')">
+                <span class="pill-count" id="today-remote" style="color: var(--st-wfh);">0</span>
+                <span class="pill-label">Remote</span>
+            </div>
+            <div class="status-pill" onclick="openStatusModal('Shoot')">
+                <span class="pill-count" id="today-shoot" style="color: var(--st-shoot);">0</span>
+                <span class="pill-label">Off-Site</span>
+            </div>
+            <div class="status-pill" onclick="openStatusModal('Leave')">
+                <span class="pill-count" id="today-pto" style="color: var(--st-pto);">0</span>
+                <span class="pill-label">Leave</span>
+            </div>
         </div>
+    </div>
 
-        <div class="section-header">Currently in building</div>
-        <div class="people-grid" id="tags-mount"></div>
+    <!-- DETAILS MODAL -->
+    <div class="modal-overlay" id="status-modal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="close-btn" onclick="closeModal()">×</div>
+            <div class="modal-title" id="modal-title-text">Status Details</div>
+            <div id="modal-mount"></div>
+        </div>
     </div>
 
 <script type="module">
@@ -61,55 +117,108 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
     const firebaseConfig = {
-        apiKey: "AIzaSyBMhRhG2j-NprFJdeZ8VvcPQ_sRiqILz6o",
-        authDomain: "dmg-command-centre.firebaseapp.com",
-        projectId: "dmg-command-centre",
-        storageBucket: "dmg-command-centre.firebasestorage.app",
-        messagingSenderId: "870188205332",
-        appId: "1:870188205332:web:0d6b87300fe272eae0ae01",
-        measurementId: "G-25TS57VLVS"
+      apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+      authDomain: "dmg-command-centre-native.firebaseapp.com",
+      projectId: "dmg-command-centre-native",
+      storageBucket: "dmg-command-centre-native.firebasestorage.app",
+      messagingSenderId: "223535956454",
+      appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
+      measurementId: "G-5HNGPRJGZY"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    const appId = 'dmg-command-centre';
-    const dayIdx = new Date().getDay() - 1;
+    const appId = 'dmg-command-centre-native';
+    const dayIdx = new Date().getDay() - 1; // 0=Mon, 4=Fri
+
+    let submissions = [];
+    let directory = [];
 
     async function init() {
-        document.getElementById('display-today').innerText = new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'short'});
         await signInAnonymously(auth);
-        
         onAuthStateChanged(auth, (user) => {
             if(user) {
+                // Listen to Rota Patterns
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_submissions'), (snap) => {
-                    const subs = [];
-                    snap.forEach(d => subs.push(d.data()));
-                    render(subs);
+                    submissions = [];
+                    snap.forEach(d => submissions.push(d.data()));
+                    updateUI();
+                });
+
+                // Listen to Directory for Roles/Teams
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => {
+                    directory = [];
+                    snap.forEach(d => directory.push(d.data()));
+                    updateUI();
                 });
             }
         });
     }
 
-    function render(data) {
-        const counts = { Office: 0, WFH: 0, Shoot: 0, PTO: 0, Abroad: 0, "Half Day": 0 };
-        const inOffice = [];
-
-        data.forEach(s => {
+    function updateUI() {
+        const counts = { Office: 0, WFH: 0, Shoot: 0, PTO: 0, Abroad: 0 };
+        submissions.forEach(s => {
             const status = s.schedule[dayIdx] || 'Office';
-            if(counts[status] !== undefined) counts[status]++;
-            if(status === 'Office') inOffice.push(s.name);
+            const key = (status === 'Abroad' || status === 'Leave') ? 'PTO' : status;
+            if(counts[key] !== undefined) counts[key]++;
+            else if(status === 'Abroad') counts.PTO++;
         });
 
         document.getElementById('today-office').innerText = counts.Office;
         document.getElementById('today-remote').innerText = counts.WFH;
         document.getElementById('today-shoot').innerText = counts.Shoot;
         document.getElementById('today-pto').innerText = counts.PTO;
-
-        document.getElementById('tags-mount').innerHTML = inOffice.map(n => `
-            <div class="person-tag"><div class="status-dot"></div> ${n}</div>
-        `).join('') || '<div style="font-size:12px; color:#BBB;">No one logged in office.</div>';
     }
+
+    window.openStatusModal = (statusType) => {
+        const mount = document.getElementById('modal-mount');
+        const title = document.getElementById('modal-title-text');
+        title.innerText = `Daily Presence: ${statusType}`;
+        
+        // Filter users with this status today
+        const usersInStatus = submissions.filter(sub => {
+            const currentStatus = sub.schedule[dayIdx] || 'Office';
+            if(statusType === 'Leave') return currentStatus === 'Leave' || currentStatus === 'Abroad' || currentStatus === 'PTO';
+            return currentStatus === statusType;
+        });
+
+        if(usersInStatus.length === 0) {
+            mount.innerHTML = `<div class="empty-state">No staff logged for this status today.</div>`;
+        } else {
+            // Merge with directory to get roles and teams
+            const detailedUsers = usersInStatus.map(u => {
+                const info = directory.find(d => `${d.firstName} ${d.lastName}` === u.name) || { team: 'Other', role: 'Staff' };
+                return { name: u.name, team: info.team, role: info.role };
+            });
+
+            // Group by Team
+            const teams = [...new Set(detailedUsers.map(u => u.team))].sort();
+            let html = "";
+            
+            teams.forEach(team => {
+                const teamMembers = detailedUsers.filter(u => u.team === team);
+                html += `
+                    <div class="team-group">
+                        <span class="team-label">${team}</span>
+                        ${teamMembers.map(m => `
+                            <div class="staff-line">
+                                <span class="staff-name">${m.name}</span>
+                                <span class="staff-role">${m.role}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            });
+            mount.innerHTML = html;
+        }
+
+        document.getElementById('status-modal').classList.add('active');
+    };
+
+    window.closeModal = () => {
+        document.getElementById('status-modal').classList.remove('active');
+    };
 
     init();
 </script>
