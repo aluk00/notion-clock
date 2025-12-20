@@ -3,401 +3,503 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DMG Command Centre | Management Hub</title>
+    <title>DMG Management Hub | Live Cloud</title>
     <style>
         :root {
             /* Canonical Team Colours */
             --team-editorial: #E94B4B;
-            --team-sales: #0FA59A;
             --team-creative: #E6468B;
             --team-production: #43B049;
             --team-social: #F2C316;
             --team-people: #21A0D8;
+            --team-operations: #21A0D8;
+            --team-executive: #1C1C1C;
 
-            /* Status Shades */
-            --st-office: #BCD9B8;
-            --st-wfh: #F2E7D5;
-            --st-shoot: #D1E1F0;
-            --st-pto: #EBD4D4;
+            /* Status Colors */
+            --st-office: #2E7D32;
+            --st-wfh: #F9A825;
+            --st-shoot: #2196F3;
+            --st-pto: #F44336;
 
-            /* UI Tokens */
+            /* Refined Palette */
+            --carbon: #1C1C1C;
             --bg-page: #FFFFFF;
             --bg-base: #F8F9FA;
             --border-soft: #EAEAEA;
-            --ink: #1A1A1A;
+            --ink: #1C1C1C;
             --ink-sub: #757575;
-            
-            --radius-lg: 16px;
-            --radius-md: 10px;
-            --radius-chip: 999px;
-            --shadow-soft: 0 4px 20px rgba(0,0,0,0.04);
-            --shadow-glow: 0 8px 24px rgba(33, 160, 216, 0.25);
+            --radius-lg: 20px;
+            --radius-md: 12px;
             --transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-page);
             margin: 0; padding: 0; color: var(--ink); min-height: 100vh;
         }
 
         .hidden { display: none !important; }
 
-        /* --- DMG DOT COMPONENT --- */
-        .dot-grid { display: grid; grid-template-columns: repeat(2, 8px); gap: 4px; width: fit-content; }
-        .dot-grid span { width: 8px; height: 8px; border-radius: 50%; background: var(--team-people); }
-        .dots-editorial span { background: var(--team-editorial); }
-        .dots-social span { background: var(--team-social); }
-        .dots-creative span { background: var(--team-creative); }
-        .dots-production span { background: var(--team-production); }
-        .dots-people span { background: var(--team-people); }
-
-        /* --- LOCK SCREEN --- */
+        /* --- AUTH SCREEN --- */
         #lock-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-page); z-index: 2000;
+            position: fixed; inset: 0; background: #FFF; z-index: 5000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .lock-card { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; max-width: 380px; width: 90%; 
-        }
-        .lock-logo { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 24px; }
-        .lock-logo .dot-grid span { width: 12px; height: 12px; animation: dotPulse 2s infinite ease-in-out; }
-        @keyframes dotPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.8); opacity: 0.5; } }
-        .lock-title { font-size: 22px; font-weight: 900; letter-spacing: -0.04em; text-transform: uppercase; margin-bottom: 32px; }
+        .pin-field { display: flex; gap: 12px; margin-bottom: 40px; }
+        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border-soft); transition: 0.2s; }
+        .pin-dot.filled { background: var(--team-people); border-color: var(--team-people); transform: scale(1.2); }
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 280px; }
+        .n-btn { aspect-ratio: 1.3; border-radius: 12px; background: var(--bg-base); border: 1px solid var(--border-soft); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; cursor: pointer; color: var(--carbon); }
+
+        /* --- LAYOUT --- */
+        .main-container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        .header-lockup { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 30px; }
+        .title-text { font-size: 3.5rem; font-weight: 900; letter-spacing: -0.04em; text-transform: uppercase; line-height: 1; color: var(--carbon); }
         
-        .pin-field { display: flex; gap: 12px; justify-content: center; margin-bottom: 40px; }
-        .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-soft); transition: var(--transition); }
-        .pin-dot.filled { background: var(--team-people); border-color: var(--team-people); transform: scale(1.2); box-shadow: 0 0 10px rgba(33, 160, 216, 0.3); }
+        .header-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 44px; height: 44px; }
+        .header-dots .dot { width: 100%; height: 100%; background-color: var(--team-people); border-radius: 50%; }
+
+        .nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .tab-nav { display: flex; gap: 8px; padding: 4px; background: var(--bg-base); border-radius: 99px; }
+        .tab-trigger { border: none; background: none; padding: 10px 24px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border-radius: 99px; color: var(--ink-sub); transition: 0.2s; }
+        .tab-trigger.active { background: var(--carbon); color: #FFF; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+        /* --- CONTROLS --- */
+        .week-picker { display: flex; align-items: center; gap: 20px; background: var(--carbon); color: #FFF; padding: 12px 24px; border-radius: 12px; width: fit-content; }
+        .week-btn { background: none; border: none; color: #FFF; font-weight: 900; cursor: pointer; padding: 5px; font-size: 18px; }
+        .week-label { font-size: 12px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+
+        .day-scroller { display: flex; gap: 10px; margin-bottom: 30px; }
+        .day-tab { flex: 1; padding: 15px; background: var(--bg-base); border: 1px solid var(--border-soft); border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .day-tab.active { background: #FFF; border-color: var(--team-people); box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
+        .day-name { display: block; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #999; margin-bottom: 4px; }
+        .day-date { display: block; font-size: 14px; font-weight: 800; color: var(--carbon); }
+        .day-tab.active .day-name { color: var(--team-people); }
+
+        /* --- CARDS --- */
+        .metric-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+        .metric-card { background: #FFF; border: 1px solid var(--border-soft); padding: 24px; border-radius: var(--radius-lg); border-top: 4px solid var(--carbon); transition: var(--transition); cursor: pointer; }
+        .metric-card:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .metric-val { font-size: 40px; font-weight: 900; line-height: 1; margin-bottom: 8px; color: var(--carbon); }
+        .metric-label { font-size: 10px; font-weight: 800; color: var(--ink-sub); text-transform: uppercase; }
+
+        /* --- APPROVALS GRID --- */
+        .approvals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .mgr-card { background: #FFF; border: 1px solid var(--border-soft); border-radius: var(--radius-lg); padding: 24px; position: relative; border-bottom: 4px solid #F0F0F0; }
+        .mgr-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .mgr-name { font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; color: var(--carbon); }
         
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 280px; }
-        .n-btn { 
-            width: 100%; aspect-ratio: 1.3 / 1; border-radius: var(--radius-md); background: var(--bg-base); border: 1px solid var(--border-soft);
-            display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; cursor: pointer; transition: var(--transition);
-        }
-        .n-btn:hover { background: #EEE; }
-        .n-btn:active { 
-            background: #FFF; 
-            border-color: var(--team-people); 
-            box-shadow: 0 0 15px var(--team-people); 
-            transform: scale(0.95);
-            transition: all 0.05s ease;
-        }
-
-        /* --- APP SHELL --- */
-        .main-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-        .main-header { padding: 40px 0; display: flex; flex-direction: column; gap: 24px; border-bottom: 1px solid var(--border-soft); margin-bottom: 40px; }
-        .header-lockup { display: flex; align-items: center; gap: 1.5rem; }
-        .title-text { font-size: 4rem; font-weight: 800; color: #000000; letter-spacing: -0.04em; line-height: 1; opacity: 0; transform: translateY(10px); animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; text-transform: uppercase; }
-        .header-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 44px; height: 44px; flex-shrink: 0; }
-        .header-dots .dot { width: 100%; height: 100%; background-color: var(--team-people); border-radius: 50%; transform: scale(0); animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
-        @keyframes popIn { to { transform: scale(1); } }
-
-        .tab-nav { display: flex; gap: 12px; padding: 4px; background: var(--bg-base); width: fit-content; border-radius: var(--radius-chip); }
-        .tab-trigger { background: transparent; border: none; padding: 10px 24px; font-size: 13px; font-weight: 900; color: var(--ink-sub); cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; border-radius: var(--radius-chip); transition: var(--transition); }
-        .tab-trigger:hover { color: var(--ink); transform: translateY(-2px); background: #FFF; box-shadow: var(--shadow-glow); }
-        .tab-trigger.active { background: #FFF; color: var(--ink); box-shadow: var(--shadow-soft); }
-
-        /* --- VIEWS --- */
-        .view-section { display: none; animation: slideIn 0.3s ease-out; padding-bottom: 80px; }
-        .view-section.active { display: block; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* --- OUTLOOK TAB --- */
-        .metric-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
-        .metric-card { background: #FFF; border: 1px solid var(--border-soft); padding: 24px; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); cursor: pointer; transition: var(--transition); border-top: 4px solid var(--ink); }
-        .metric-card:hover { transform: translateY(-4px); border-color: var(--team-people); }
-        .metric-val { font-size: 48px; font-weight: 900; line-height: 1; margin-bottom: 8px; letter-spacing: -2px; }
-        .metric-label { font-size: 10px; font-weight: 800; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.1em; }
-
-        .presence-list-box { background: var(--bg-base); padding: 24px; border-radius: var(--radius-lg); margin-bottom: 40px; }
-        .presence-header { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
-        .chip-stack { display: flex; flex-wrap: wrap; gap: 8px; }
-        .person-chip { background: #FFF; border: 1px solid var(--border-soft); padding: 6px 12px; border-radius: var(--radius-chip); font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-
-        .weekly-strip { display: flex; gap: 10px; margin-bottom: 30px; overflow-x: auto; padding-bottom: 5px; }
-        .day-btn { background: var(--bg-base); border: 1px solid var(--border-soft); padding: 10px 20px; border-radius: var(--radius-md); font-size: 12px; font-weight: 800; cursor: pointer; transition: var(--transition); white-space: nowrap; }
-        .day-btn.active { background: var(--ink); color: #FFF; border-color: var(--ink); }
-
-        /* --- TABLES --- */
-        .directory-box { background: #FFF; border: 1px solid var(--border-soft); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-soft); }
-        .directory-table { width: 100%; border-collapse: collapse; }
-        .directory-table th { text-align: left; font-size: 9px; font-weight: 900; color: #BBB; text-transform: uppercase; padding: 15px 20px; border-bottom: 1px solid var(--border-soft); }
-        .directory-table td { padding: 18px 20px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #F9F9F9; }
+        .mgr-dots { display: flex; gap: 3px; }
+        .mgr-dots span { width: 6px; height: 6px; border-radius: 50%; background: #EEE; }
         
-        .name-cell { display: flex; align-items: center; gap: 12px; }
-        .staff-name-link { text-decoration: none; font-weight: 800; cursor: pointer; transition: opacity 0.2s; }
-        .staff-name-link:hover { opacity: 0.7; text-decoration: underline; }
-        .role-subtext { font-size: 11px; color: #BBB; font-weight: 500; margin-left: 8px; text-transform: none; letter-spacing: 0; }
+        .sport-tag { font-size: 8px; background: var(--team-social); color: #000; padding: 2px 6px; border-radius: 4px; font-weight: 900; margin-left: 5px; vertical-align: middle; }
 
-        .status-chip { padding: 4px 10px; border-radius: var(--radius-chip); font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase; }
-        .chip-office { background: var(--st-office); color: #2D4F2D; }
-        .chip-wfh { background: var(--st-wfh); color: #5F4B2D; }
-        .chip-shoot { background: var(--st-shoot); color: #2D425F; }
-        .chip-pto { background: var(--st-pto); color: #5F2D2D; }
+        .report-line { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #F9F9F9; }
+        .report-name { font-size: 13px; font-weight: 700; color: var(--carbon); }
+        .status-badge { font-size: 8px; font-weight: 900; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .status-pending { background: #FFF3E0; color: #E65100; }
+        .status-done { background: #E8F5E9; color: #2E7D32; }
 
-        /* --- FOLDER CARDS --- */
-        .silo-stack { display: flex; flex-direction: column; gap: 32px; }
-        .folder-card { background: #FFF; border: 1px solid var(--border-soft); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); position: relative; padding: 40px 30px 30px; }
-        .folder-tab { position: absolute; top: -14px; left: 30px; background: #EEE; color: var(--ink); padding: 6px 16px; border-radius: 8px 8px 0 0; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; display: flex; align-items: center; gap: 10px; border: 1px solid var(--border-soft); border-bottom: none; }
-        .folder-card[data-team="editorial"] .folder-tab { border-top: 3px solid var(--team-editorial); }
-        .folder-card[data-team="production"] .folder-tab { border-top: 3px solid var(--team-production); }
-        .folder-card[data-team="creative"] .folder-tab { border-top: 3px solid var(--team-creative); }
-        .folder-card[data-team="social"] .folder-tab { border-top: 3px solid var(--team-social); }
-        .folder-card[data-team="sales"] .folder-tab { border-top: 3px solid var(--team-sales); }
-        .folder-card[data-team="people"] .folder-tab { border-top: 3px solid var(--team-people); }
+        /* --- TABLES & SECTIONS --- */
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- APPROVALS --- */
-        .manager-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-        .manager-card { background: #FFF; border: 1px solid var(--border-soft); padding: 30px; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); cursor: pointer; transition: var(--transition); }
-        .manager-card:hover { transform: translateY(-4px); border-color: var(--team-people); box-shadow: var(--shadow-glow); }
-        .manager-name { font-size: 18px; font-weight: 900; letter-spacing: -0.03em; margin-bottom: 5px; } /* EMBOLDENED */
-        .manager-role { font-size: 11px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+        .team-header { display: flex; align-items: center; gap: 10px; margin: 40px 0 20px; font-size: 11px; font-weight: 900; text-transform: uppercase; color: #999; letter-spacing: 0.1em; }
+        .team-dot { width: 8px; height: 8px; border-radius: 50%; }
+        
+        .teams-table { width: 100%; border-collapse: collapse; background: #FFF; border: 1px solid var(--border-soft); border-radius: 12px; overflow: hidden; margin-bottom: 40px; }
+        .teams-table th { text-align: left; padding: 15px 20px; font-size: 9px; font-weight: 900; color: #BBB; border-bottom: 1px solid var(--border-soft); text-transform: uppercase; }
+        .teams-table td { padding: 15px 20px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #F9F9F9; color: var(--carbon); }
+        .status-cell { font-size: 10px; font-weight: 900; text-transform: uppercase; text-align: center; }
 
-        .request-item { display: grid; grid-template-columns: 80px 120px 1fr; align-items: center; padding: 15px 0; border-bottom: 1px solid #F5F5F5; }
-        .segmented-control { display: flex; background: #F0F0F0; padding: 3px; border-radius: 10px; width: fit-content; margin-left: auto; }
-        .segment-btn { border: none; background: none; padding: 6px 12px; font-size: 9px; font-weight: 900; text-transform: uppercase; cursor: pointer; border-radius: 7px; color: var(--ink-sub); transition: var(--transition); }
-        .segment-btn.active-approve { background: var(--team-production); color: #FFF; }
-        .segment-btn.active-deny { background: var(--team-editorial); color: #FFF; }
-        .segment-btn.active-suggest { background: var(--team-social); color: var(--ink); }
-
-        /* --- MODAL SYSTEM --- */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 3000; }
-        .modal-overlay.open { display: flex; }
-        .modal-body { background: #FFF; width: 640px; max-height: 85vh; padding: 40px; border-radius: 24px; box-shadow: 0 40px 100px rgba(0,0,0,0.15); overflow-y: auto; position: relative; }
-        .modal-close { position: absolute; top: 20px; right: 20px; cursor: pointer; font-size: 24px; font-weight: 900; color: #BBB; }
-
-        @media (max-width: 768px) {
-            .title-text { font-size: 2.2rem; }
-            .header-dots { width: 28px; height: 28px; gap: 4px; }
-            .metric-row { grid-template-columns: 1fr 1fr; }
-        }
+        /* --- MODAL --- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(8px); z-index: 6000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: #fff; width: 100%; max-width: 500px; border-radius: 24px; padding: 32px; box-shadow: 0 30px 60px rgba(0,0,0,0.15); max-height: 80vh; overflow-y: auto; position: relative; }
+        .close-btn { position: absolute; top: 20px; right: 20px; font-size: 24px; font-weight: 800; color: #ccc; cursor: pointer; }
+        .modal-title { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--team-people); letter-spacing: 0.1em; margin-bottom: 24px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
+        
+        .snapshot-team-group { margin-bottom: 20px; }
+        .snapshot-team-label { font-size: 9px; font-weight: 900; text-transform: uppercase; color: #bbb; margin-bottom: 8px; display: block; }
+        .snapshot-line { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #F9F9F9; }
+        .snapshot-name { font-size: 14px; font-weight: 700; color: var(--carbon); }
+        .snapshot-role { font-size: 11px; color: #999; }
     </style>
 </head>
 <body>
 
+    <!-- LOCK SCREEN -->
     <div id="lock-screen">
-        <div class="lock-card">
-            <div class="lock-logo">
-                <div class="dot-grid dots-people"><span></span><span></span><span></span><span></span></div>
-                <div class="lock-title">DMG Media</div>
-            </div>
-            <div class="pin-field">
-                <div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div>
-                <div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div>
-            </div>
-            <div class="numpad">
-                <div class="n-btn" onclick="press(1)">1</div><div class="n-btn" onclick="press(2)">2</div><div class="n-btn" onclick="press(3)">3</div>
-                <div class="n-btn" onclick="press(4)">4</div><div class="n-btn" onclick="press(5)">5</div><div class="n-btn" onclick="press(6)">6</div>
-                <div class="n-btn" onclick="press(7)">7</div><div class="n-btn" onclick="press(8)">8</div><div class="n-btn" onclick="press(9)">9</div>
-                <div></div><div class="n-btn" onclick="press(0)">0</div><div onclick="clearPin()" style="display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:9px; font-weight:900; color:#BBB;">RESET</div>
-            </div>
+        <div class="header-lockup" style="flex-direction:column; margin-bottom:40px;">
+            <div class="header-dots" style="margin-bottom:20px;"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+            <div class="title-text" style="font-size:2rem; color: var(--carbon);">Management Hub</div>
+        </div>
+        <div class="pin-field">
+            <div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div><div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div>
+        </div>
+        <div class="numpad">
+            <div class="n-btn" onclick="press(1)">1</div><div class="n-btn" onclick="press(2)">2</div><div class="n-btn" onclick="press(3)">3</div>
+            <div class="n-btn" onclick="press(4)">4</div><div class="n-btn" onclick="press(5)">5</div><div class="n-btn" onclick="press(6)">6</div>
+            <div class="n-btn" onclick="press(7)">7</div><div class="n-btn" onclick="press(8)">8</div><div class="n-btn" onclick="press(9)">9</div>
+            <div></div><div class="n-btn" onclick="press(0)">0</div>
         </div>
     </div>
 
+    <!-- MAIN APP -->
     <div id="app-shell" class="hidden">
         <div class="main-container">
-            <header class="main-header">
+            <header>
                 <div class="header-lockup">
-                    <div class="title-text text-left">COMMAND</div>
+                    <div class="title-text">Management</div>
                     <div class="header-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-                    <div class="title-text text-right">CENTRE</div>
+                    <div class="title-text">Hub</div>
                 </div>
-                <nav class="tab-nav">
-                    <button class="tab-trigger active" onclick="navigate('outlook', this)">Outlook</button>
-                    <button class="tab-trigger" onclick="navigate('teams', this)">Teams</button>
-                    <button class="tab-trigger" onclick="navigate('approvals', this)">Approvals</button>
-                </nav>
+                <div class="nav-row">
+                    <nav class="tab-nav">
+                        <button class="tab-trigger active" onclick="switchView('outlook', this)">Outlook</button>
+                        <button class="tab-trigger" onclick="switchView('approvals', this)">Approvals</button>
+                        <button class="tab-trigger" onclick="switchView('teams', this)">Teams</button>
+                    </nav>
+                    <div class="week-picker">
+                        <button class="week-btn" onclick="changeWeek(-1)">←</button>
+                        <span class="week-label" id="wc-label">Loading...</span>
+                        <button class="week-btn" onclick="changeWeek(1)">→</button>
+                    </div>
+                </div>
             </header>
 
-            <main>
-                <!-- VIEW: OUTLOOK -->
-                <section id="view-outlook" class="view-section active">
-                    <div class="presence-header">Live Cloud Presence <span id="outlook-wc-header" style="color:var(--team-people)"></span></div>
-                    
-                    <div class="metric-row">
-                        <div class="metric-card" style="border-top-color: var(--team-production);">
-                            <div class="metric-val" id="count-office">0</div>
-                            <div class="metric-label">In Office</div>
-                        </div>
-                        <div class="metric-card" style="border-top-color: var(--team-social);">
-                            <div class="metric-val" id="count-wfh">0</div>
-                            <div class="metric-label">Remote</div>
-                        </div>
-                        <div class="metric-card" style="border-top-color: var(--team-people);">
-                            <div class="metric-val" id="count-shoot">0</div>
-                            <div class="metric-label">Off-site</div>
-                        </div>
-                        <div class="metric-card" style="border-top-color: var(--team-editorial);">
-                            <div class="metric-val" id="count-pto">0</div>
-                            <div class="metric-label">Leave</div>
-                        </div>
-                    </div>
+            <!-- VIEW: OUTLOOK -->
+            <section id="view-outlook" class="view-section active">
+                <div class="day-scroller" id="day-tabs-mount"></div>
 
-                    <div class="presence-list-box">
-                        <div class="presence-header">In the building today</div>
-                        <div class="chip-stack" id="today-chips-mount"></div>
+                <div class="metric-row">
+                    <div class="metric-card" style="border-top-color: var(--st-office);" onclick="openSnapshot('Office')">
+                        <div class="metric-val" id="count-office">0</div>
+                        <div class="metric-label">In Building</div>
                     </div>
-
-                    <div class="presence-header">All Submission Directory</div>
-                    <div class="directory-box">
-                        <table class="directory-table">
-                            <thead><tr><th>Name</th><th>Manager</th><th>Status Today</th></tr></thead>
-                            <tbody id="directory-mount"></tbody>
-                        </table>
+                    <div class="metric-card" style="border-top-color: var(--st-wfh);" onclick="openSnapshot('WFH')">
+                        <div class="metric-val" id="count-wfh">0</div>
+                        <div class="metric-label">Remote</div>
                     </div>
-                </section>
-
-                <!-- VIEW: TEAMS -->
-                <section id="view-teams" class="view-section">
-                    <div class="presence-header" style="margin-bottom:30px;">Team Weekly View (Live)</div>
-                    <div class="directory-box">
-                        <table class="directory-table">
-                            <thead><tr><th>Name</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th></tr></thead>
-                            <tbody id="teams-mount"></tbody>
-                        </table>
+                    <div class="metric-card" style="border-top-color: var(--st-shoot);" onclick="openSnapshot('Shoot')">
+                        <div class="metric-val" id="count-shoot">0</div>
+                        <div class="metric-label">Off-Site / Shoots</div>
                     </div>
-                </section>
+                    <div class="metric-card" style="border-top-color: var(--st-pto);" onclick="openSnapshot('PTO')">
+                        <div class="metric-val" id="count-pto">0</div>
+                        <div class="metric-label">Leave / PTO</div>
+                    </div>
+                </div>
 
-                <!-- VIEW: APPROVALS -->
-                <section id="view-approvals" class="view-section">
-                    <div class="presence-header" style="margin-bottom:30px;">Requests by Line Manager</div>
-                    <div class="manager-grid" id="manager-grid-mount"></div>
-                </section>
-            </main>
+                <div class="team-header">STAFF DIRECTORY</div>
+                <div class="teams-table">
+                    <table style="width:100%;">
+                        <thead><tr><th>Name</th><th>Role</th><th>Stream</th><th>Status</th></tr></thead>
+                        <tbody id="directory-mount"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- VIEW: APPROVALS -->
+            <section id="view-approvals" class="view-section">
+                <div class="approvals-grid" id="approvals-mount"></div>
+            </section>
+
+            <!-- VIEW: TEAMS -->
+            <section id="view-teams" class="view-section">
+                <div id="teams-mount"></div>
+            </section>
         </div>
     </div>
 
-    <!-- MODAL SYSTEM -->
-    <div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
-        <div class="modal-body" onclick="event.stopPropagation()">
-            <div class="modal-close" onclick="closeModal()">×</div>
-            <div id="modal-title" style="font-size:11px; font-weight:900; text-transform:uppercase; margin-bottom:30px; border-bottom:1px solid #EEE; padding-bottom:15px; letter-spacing:0.1em;">Title</div>
-            <div id="modal-content-body"></div>
+    <!-- MODAL -->
+    <div class="modal-overlay" id="snapshot-modal" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="close-btn" onclick="closeModal()">×</div>
+            <div class="modal-title" id="modal-title-text">Snapshot</div>
+            <div id="modal-mount"></div>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // --- CLOUD CONFIG ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyBMhRhG2j-NprFJdeZ8VvcPQ_sRiqILz6o",
-            authDomain: "dmg-command-centre.firebaseapp.com",
-            projectId: "dmg-command-centre",
-            storageBucket: "dmg-command-centre.firebasestorage.app",
-            messagingSenderId: "870188205332",
-            appId: "1:870188205332:web:0d6b87300fe272eae0ae01",
-            measurementId: "G-25TS57VLVS"
-        };
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = 'dmg-command-centre';
+    const firebaseConfig = {
+      apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+      authDomain: "dmg-command-centre-native.firebaseapp.com",
+      projectId: "dmg-command-centre-native",
+      storageBucket: "dmg-command-centre-native.firebasestorage.app",
+      messagingSenderId: "223535956454",
+      appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
+      measurementId: "G-5HNGPRJGZY"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const appId = 'dmg-command-centre-native';
 
-        let pin = "";
-        let liveData = [];
-        const todayIdx = new Date().getDay() - 1; // 0=Mon, 4=Fri
+    let staff = [];
+    let submissions = [];
+    let currentMonday = getThisMonday(new Date());
+    let selectedDayIdx = (new Date().getDay() + 6) % 7; 
+    if(selectedDayIdx > 4) selectedDayIdx = 0;
 
-        // --- AUTH ---
-        window.press = (n) => { if(pin.length < 4) { pin += n; syncPin(); if(pin.length === 4) setTimeout(authCheck, 200); } };
-        window.clearPin = () => { pin = ""; syncPin(); };
-        function syncPin() { for(let i=1; i<=4; i++) document.getElementById('p'+i).classList.toggle('filled', i <= pin.length); }
-        async function authCheck() { 
-            if(pin === "2025") { 
-                document.getElementById('lock-screen').style.opacity = 0; 
-                setTimeout(() => { 
-                    document.getElementById('lock-screen').classList.add('hidden'); 
-                    document.getElementById('app-shell').classList.remove('hidden'); 
-                    initLiveSync();
-                }, 300); 
-            } else { clearPin(); } 
+    let pin = "";
+    window.press = (n) => {
+        pin += n;
+        document.getElementById('p'+pin.length).classList.add('filled');
+        if(pin.length === 4) {
+            if(pin === "2025") {
+                document.getElementById('lock-screen').classList.add('hidden');
+                document.getElementById('app-shell').classList.remove('hidden');
+                init();
+            } else {
+                pin = "";
+                document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+            }
         }
+    };
 
-        // --- LIVE SYNC ---
-        async function initLiveSync() {
-            await signInAnonymously(auth);
-            onAuthStateChanged(auth, (user) => {
-                if(user) {
-                    onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_submissions'), (snap) => {
-                        liveData = [];
-                        snap.forEach(doc => liveData.push(doc.data()));
-                        renderAll();
-                    });
-                }
-            });
-        }
+    function getThisMonday(d) {
+        const date = new Date(d);
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(date.setDate(diff));
+        monday.setHours(0,0,0,0);
+        return monday;
+    }
 
-        function renderAll() {
-            renderOutlook();
-            renderTeams();
-            renderManagers();
-        }
+    async function init() {
+        await signInAnonymously(auth);
+        
+        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => {
+            staff = [];
+            snap.forEach(d => staff.push({id: d.id, ...d.data()}));
+            updateUI();
+        });
 
-        function renderOutlook() {
-            const counts = { Office: 0, WFH: 0, Shoot: 0, PTO: 0, Abroad: 0, "Half Day": 0 };
-            const inOffice = [];
-            const directoryMount = document.getElementById('directory-mount');
-            
-            directoryMount.innerHTML = liveData.map(s => {
-                const status = s.schedule[todayIdx] || 'Office';
-                if(counts[status] !== undefined) counts[status]++;
-                if(status === 'Office') inOffice.push(s.name);
-                
-                return `
-                    <tr>
-                        <td><span style="font-weight:800;">${s.name}</span></td>
-                        <td><span style="color:#BBB; font-size:11px;">${s.manager}</span></td>
-                        <td><span class="status-chip chip-${status.toLowerCase().replace(' ', '')}">${status}</span></td>
-                    </tr>
-                `;
-            }).join('');
+        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_submissions'), (snap) => {
+            submissions = [];
+            snap.forEach(d => submissions.push(d.data()));
+            updateUI();
+        });
+    }
 
-            document.getElementById('count-office').innerText = counts.Office;
-            document.getElementById('count-wfh').innerText = counts.WFH;
-            document.getElementById('count-shoot').innerText = counts.Shoot;
-            document.getElementById('count-pto').innerText = counts.PTO;
+    function updateUI() {
+        renderDayTabs();
+        renderOutlook();
+        renderTeams();
+        renderApprovals();
+        document.getElementById('wc-label').innerText = `WC ${currentMonday.toLocaleDateString('en-GB', {day:'numeric', month:'short'})}`;
+    }
 
-            document.getElementById('today-chips-mount').innerHTML = inOffice.map(n => `
-                <div class="person-chip">${n}</div>
-            `).join('') || '<div style="font-size:12px; color:#BBB;">None scheduled.</div>';
-        }
+    function renderDayTabs() {
+        const mount = document.getElementById('day-tabs-mount');
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        mount.innerHTML = days.map((d, i) => {
+            const date = new Date(currentMonday.getTime() + i * 24 * 60 * 60 * 1000);
+            return `
+                <div class="day-tab ${selectedDayIdx === i ? 'active' : ''}" onclick="selectDay(${i})">
+                    <span class="day-name">${d}</span>
+                    <span class="day-date">${date.getDate()} ${date.toLocaleDateString('en-GB', {month:'short'})}</span>
+                </div>
+            `;
+        }).join('');
+    }
 
-        function renderTeams() {
-            document.getElementById('teams-mount').innerHTML = liveData.map(s => `
+    window.selectDay = (idx) => { selectedDayIdx = idx; updateUI(); };
+    window.changeWeek = (offset) => {
+        currentMonday.setDate(currentMonday.getDate() + (offset * 7));
+        updateUI();
+    };
+
+    function renderOutlook() {
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        const daySubmissions = submissions.filter(s => s.weekId === wcStr);
+        const counts = { Office: 0, WFH: 0, Shoot: 0, PTO: 0 };
+        
+        const dirMount = document.getElementById('directory-mount');
+        dirMount.innerHTML = staff.map(s => {
+            const sub = daySubmissions.find(sub => sub.name === `${s.firstName} ${s.lastName}`);
+            const statusData = sub ? sub.schedule[selectedDayIdx] : { status: 'Office' };
+            const status = statusData.status || 'Office';
+            const countKey = (status === 'Leave' || status === 'PTO' || status === 'Client / Travel') ? 'PTO' : status;
+            if(counts[countKey] !== undefined) counts[countKey]++;
+
+            let statusColor = 'var(--st-office)';
+            if(status === 'WFH') statusColor = 'var(--st-wfh)';
+            if(status === 'Shoot') statusColor = 'var(--st-shoot)';
+            if(countKey === 'PTO') statusColor = 'var(--st-pto)';
+
+            return `
                 <tr>
-                    <td><span style="font-weight:800;">${s.name}</span></td>
-                    ${s.schedule.map(st => `<td><span class="status-chip">${st.charAt(0)}</span></td>`).join('')}
+                    <td>${s.firstName} ${s.lastName}</td>
+                    <td style="color:#999; font-size:11px;">${s.role}</td>
+                    <td style="text-transform:uppercase; font-size:10px; font-weight:800; color:var(--team-people)">${s.team}</td>
+                    <td style="font-weight:900; color:${statusColor}">${status}</td>
                 </tr>
-            `).join('');
-        }
+            `;
+        }).join('');
 
-        function renderManagers() {
-            const mgrs = [...new Set(liveData.map(s => s.manager))];
-            document.getElementById('manager-grid-mount').innerHTML = mgrs.map(m => `
-                <div class="manager-card">
-                    <div class="manager-name">${m}</div>
-                    <div style="font-size:10px; color:var(--team-people); font-weight:800; margin-top:10px;">
-                        ${liveData.filter(s => s.manager === m).length} Reports Connected
+        document.getElementById('count-office').innerText = counts.Office;
+        document.getElementById('count-wfh').innerText = counts.WFH;
+        document.getElementById('count-shoot').innerText = counts.Shoot;
+        document.getElementById('count-pto').innerText = counts.PTO;
+    }
+
+    function renderApprovals() {
+        const mount = document.getElementById('approvals-mount');
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        const managers = staff.filter(s => s.isManager);
+
+        mount.innerHTML = managers.map(m => {
+            const mgrName = `${m.firstName} ${m.lastName}`;
+            const reports = staff.filter(s => s.manager === mgrName);
+            if(reports.length === 0) return "";
+
+            // Custom Branding Dots
+            let dotsHtml = "";
+            let sportLabel = "";
+            let borderCol = "#EEE";
+
+            if(mgrName === "Nick Moar") {
+                dotsHtml = '<span style="background:var(--team-editorial)"></span><span style="background:var(--team-creative)"></span><span style="background:var(--team-production)"></span><span style="background:var(--team-social)"></span><span style="background:var(--team-people)"></span>';
+            } else if(mgrName === "Nathan Aspell") {
+                dotsHtml = '<span style="background:var(--team-creative)"></span><span style="background:var(--team-social)"></span><span style="background:var(--team-editorial)"></span>';
+            } else if(mgrName === "Ellie Beetham") {
+                dotsHtml = '<span style="background:var(--team-social)"></span><span style="background:var(--team-editorial)"></span>';
+            } else if(mgrName === "Alex Biddle") {
+                dotsHtml = '<span style="background:var(--team-social)"></span>';
+                sportLabel = '<span class="sport-tag">SPORT</span>';
+            } else if(mgrName === "Anaïs Lukaku") {
+                dotsHtml = '<span style="background:var(--team-creative)"></span>';
+                borderCol = "var(--team-creative)";
+            } else {
+                dotsHtml = '<span></span><span></span>';
+            }
+
+            return `
+                <div class="mgr-card" style="border-bottom-color: ${borderCol}">
+                    <div class="mgr-card-header">
+                        <div class="mgr-dots">${dotsHtml}</div>
+                        <span class="mgr-name">${mgrName}${sportLabel}</span>
                     </div>
+                    ${reports.map(r => {
+                        const sub = submissions.find(s => s.name === `${r.firstName} ${r.lastName}` && s.weekId === wcStr);
+                        return `
+                            <div class="report-line">
+                                <span class="report-name">${r.firstName} ${r.lastName}</span>
+                                <span class="status-badge ${sub ? 'status-done' : 'status-pending'}">
+                                    ${sub ? 'Submitted' : 'Pending'}
+                                </span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderTeams() {
+        const mount = document.getElementById('teams-mount');
+        const verticals = ['Editorial', 'Production', 'Creative', 'Social', 'Operations'];
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        const weekSubmissions = submissions.filter(s => s.weekId === wcStr);
+
+        mount.innerHTML = verticals.map(v => {
+            const members = staff.filter(s => s.team === v);
+            if(members.length === 0) return "";
+            
+            return `
+                <div class="team-section">
+                    <div class="team-header">
+                        <div class="team-dot" style="background:var(--team-${v.toLowerCase()})"></div>
+                        ${v} Stream
+                    </div>
+                    <div class="teams-table">
+                        <table style="width:100%">
+                            <thead><tr><th>Name</th><th style="text-align:center">M</th><th style="text-align:center">T</th><th style="text-align:center">W</th><th style="text-align:center">T</th><th style="text-align:center">F</th></tr></thead>
+                            <tbody>
+                                ${members.map(m => {
+                                    const sub = weekSubmissions.find(sub => sub.name === `${m.firstName} ${m.lastName}`);
+                                    const sched = sub ? sub.schedule : Array(5).fill({status:'Office'});
+                                    return `
+                                        <tr>
+                                            <td style="width:200px;">${m.firstName} ${m.lastName}</td>
+                                            ${sched.map(day => {
+                                                const status = day.status || 'Office';
+                                                const char = status === 'Client / Travel' ? 'T' : status.charAt(0);
+                                                let col = "#BBB";
+                                                if(status === 'Office') col = "var(--st-office)";
+                                                if(status === 'WFH') col = "var(--st-wfh)";
+                                                if(status === 'Shoot') col = "var(--st-shoot)";
+                                                if(['PTO', 'Leave', 'Abroad', 'Client / Travel'].includes(status) && status !== 'Office') col = "var(--st-pto)";
+                                                // Override if travel
+                                                if(status === 'Client / Travel') col = "var(--team-people)";
+
+                                                return `<td class="status-cell" style="color:${col}">${char}</td>`;
+                                            }).join('')}
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.openSnapshot = (statusType) => {
+        const mount = document.getElementById('modal-mount');
+        document.getElementById('modal-title-text').innerText = `Snapshot: ${statusType}`;
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        const daySubmissions = submissions.filter(s => s.weekId === wcStr);
+
+        const users = staff.filter(s => {
+            const sub = daySubmissions.find(sub => sub.name === `${s.firstName} ${s.lastName}`);
+            const statusData = sub ? sub.schedule[selectedDayIdx] : { status: 'Office' };
+            const status = statusData.status || 'Office';
+            if(statusType === 'PTO') return ['Leave', 'PTO', 'Abroad'].includes(status);
+            return status === statusType;
+        });
+
+        if(users.length === 0) {
+            mount.innerHTML = `<div style="text-align:center; padding:40px; color:#CCC;">No records for this status.</div>`;
+        } else {
+            const verticals = [...new Set(users.map(u => u.team))].sort();
+            mount.innerHTML = verticals.map(v => `
+                <div class="snapshot-team-group">
+                    <span class="snapshot-team-label">${v}</span>
+                    ${users.filter(u => u.team === v).map(m => `
+                        <div class="snapshot-line">
+                            <span class="snapshot-name">${m.firstName} ${m.lastName}</span>
+                            <span class="snapshot-role">${m.role}</span>
+                        </div>
+                    `).join('')}
                 </div>
             `).join('');
         }
+        document.getElementById('snapshot-modal').classList.add('active');
+    };
 
-        window.navigate = (view, btn) => {
-            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
-            document.getElementById('view-'+view).classList.add('active');
-            btn.classList.add('active');
-        };
+    window.closeModal = () => document.getElementById('snapshot-modal').classList.remove('active');
+    
+    window.switchView = (id, btn) => {
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
+        document.getElementById('view-'+id).classList.add('active');
+        btn.classList.add('active');
+        updateUI(); // Refresh on tab switch
+    };
 
-        window.closeModal = () => document.getElementById('modal-overlay').classList.remove('open');
-    </script>
+</script>
 </body>
 </html>
