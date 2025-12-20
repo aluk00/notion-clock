@@ -31,7 +31,7 @@
 
         .hidden { display: none !important; }
 
-        /* --- AUTH / LOCK SCREEN --- */
+        /* --- LOCK SCREEN --- */
         #lock-screen {
             position: fixed; inset: 0; background: #FFF; z-index: 5000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -92,7 +92,6 @@
             animation: slideDown 0.4s ease forwards;
         }
         .management-assignment.active { display: block; }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
         .multi-list { height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-base); padding: 10px; }
         .multi-item { display: flex; align-items: center; gap: 10px; padding: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 6px; }
@@ -139,7 +138,7 @@
 </head>
 <body>
 
-    <div id="toast">Link Copied</div>
+    <div id="toast">Update Successful</div>
 
     <!-- LOCK SCREEN -->
     <div id="lock-screen">
@@ -200,10 +199,9 @@
                             <label>Seniority</label>
                             <select id="p-seniority">
                                 <option value="Intern">Intern</option><option value="Junior">Junior</option>
-                                <option value="Freelance">Freelance</option><option value="Midweight">Midweight</option>
-                                <option value="Senior">Senior</option><option value="Lead">Lead</option>
-                                <option value="Head of">Head of</option><option value="Director">Director</option>
-                                <option value="Executive">Executive</option>
+                                <option value="Midweight">Midweight</option><option value="Senior">Senior</option>
+                                <option value="Lead">Lead</option><option value="Head of">Head of</option>
+                                <option value="Director">Director</option><option value="Executive">Executive</option>
                             </select>
                         </div>
                     </div>
@@ -305,7 +303,7 @@
                     <span class="section-tag"><span class="tag-dot"></span> System Setup</span>
                     <div style="background:var(--bg-base); padding:30px; border-radius:16px; border:1px solid var(--border);">
                         <h3 style="font-size:14px; margin-top:0;">Bulk Cloud Seeding</h3>
-                        <p style="font-size:12px; color:#666; line-height:1.5; margin-bottom:20px;">Populate the full DMG team list (40 members) provided to your cloud instance.</p>
+                        <p style="font-size:12px; color:#666; line-height:1.5; margin-bottom:20px;">Populate the full DMG team list (40 members) to your cloud instance.</p>
                         <button class="btn-primary" onclick="seedPersonnelBulk()" id="seed-btn">Sync Master List</button>
                     </div>
                 </div>
@@ -319,19 +317,19 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
     const firebaseConfig = {
-        apiKey: "AIzaSyBMhRhG2j-NprFJdeZ8VvcPQ_sRiqILz6o",
-        authDomain: "dmg-command-centre.firebaseapp.com",
-        projectId: "dmg-command-centre",
-        storageBucket: "dmg-command-centre.firebasestorage.app",
-        messagingSenderId: "870188205332",
-        appId: "1:870188205332:web:0d6b87300fe272eae0ae01",
-        measurementId: "G-25TS57VLVS"
+      apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+      authDomain: "dmg-command-centre-native.firebaseapp.com",
+      projectId: "dmg-command-centre-native",
+      storageBucket: "dmg-command-centre-native.firebasestorage.app",
+      messagingSenderId: "223535956454",
+      appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
+      measurementId: "G-5HNGPRJGZY"
     };
     
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    const appId = 'dmg-command-centre';
+    const appId = 'dmg-command-centre-native';
 
     let enteredPin = "";
     let staffData = [];
@@ -397,7 +395,6 @@
         document.getElementById('management-section').classList.toggle('active', isMgr);
     };
 
-    // --- CRUD ACTIONS ---
     window.addPersonnel = async () => {
         const data = {
             firstName: document.getElementById('p-first').value.trim(),
@@ -445,7 +442,6 @@
         document.getElementById('p-mgr-select').value = s.manager;
         document.getElementById('p-is-manager').checked = s.isManager;
         toggleManagementAssignment();
-        
         document.getElementById('intake-title').innerText = "Editing: " + s.firstName;
         document.getElementById('main-submit-btn').innerText = "Update Cloud Record";
         document.getElementById('cancel-edit-btn').classList.remove('hidden');
@@ -454,8 +450,7 @@
 
     window.cancelEdit = () => {
         editingId = null;
-        document.getElementById('p-first').value = "";
-        document.getElementById('p-last').value = "";
+        document.getElementById('p-first').value = ""; document.getElementById('p-last').value = "";
         document.getElementById('intake-title').innerText = "Personnel Intake";
         document.getElementById('main-submit-btn').innerText = "Confirm & Sync";
         document.getElementById('cancel-edit-btn').classList.add('hidden');
@@ -470,25 +465,12 @@
         const fullName = `${s.firstName} ${s.lastName}`;
         document.getElementById('modal-staff-name').innerText = fullName;
         const mount = document.getElementById('modal-content');
-        
         let html = `<div style="margin-bottom:20px; font-size:12px; font-weight:700; color:#999;">${s.seniority.toUpperCase()} • ${s.role}</div>`;
-
         if(s.isManager) {
             const reports = staffData.filter(x => x.manager === fullName);
             html += `<div class="section-tag"><span class="tag-dot"></span> Reports Managed (${reports.length})</div>`;
             reports.forEach(r => {
-                html += `
-                    <div class="report-item">
-                        <div class="report-name">${r.firstName} ${r.lastName}</div>
-                        <select class="reassign-select" onchange="reassignReport('${r.id}', this.value)">
-                            <option selected disabled>Reassign Manager...</option>
-                            <option value="None">None</option>
-                            ${staffData.filter(m => m.isManager && `${m.firstName} ${m.lastName}` !== fullName).map(m => `
-                                <option value="${m.firstName} ${m.lastName}">${m.firstName} ${m.lastName}</option>
-                            `).join('')}
-                        </select>
-                    </div>
-                `;
+                html += `<div class="report-item"><div class="report-name">${r.firstName} ${r.lastName}</div><select class="reassign-select" onchange="reassignReport('${r.id}', this.value)"><option selected disabled>Reassign Manager...</option><option value="None">None</option>${staffData.filter(m => m.isManager && `${m.firstName} ${m.lastName}` !== fullName).map(m => `<option value="${m.firstName} ${m.lastName}">${m.firstName} ${m.lastName}</option>`).join('')}</select></div>`;
             });
             if(reports.length === 0) html += `<div style="padding:20px; text-align:center; color:#CCC; font-size:12px;">No active reports assigned.</div>`;
         } else {
@@ -506,19 +488,13 @@
 
     window.closeModal = () => document.getElementById('mgr-modal').classList.remove('open');
 
-    // --- REGISTRY ---
     function setupRegistryListener() {
         onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'asset_registry'), (snap) => {
             if(snap.empty) { seedRegistry(); return; }
             document.getElementById('asset-mount').innerHTML = "";
             snap.forEach(d => {
                 const a = d.data();
-                document.getElementById('asset-mount').innerHTML += `
-                    <div class="asset-item" onclick="copyAssetUrl('https://aluk00.github.io/notion-clock/${a.filename}')">
-                        <div class="asset-tag">Embed Link</div>
-                        <div class="asset-name">${a.filename}</div>
-                    </div>
-                `;
+                document.getElementById('asset-mount').innerHTML += `<div class="asset-item" onclick="copyAssetUrl('https://aluk00.github.io/notion-clock/${a.filename}')"><div class="asset-tag">Embed Link</div><div class="asset-name">${a.filename}</div></div>`;
             });
         });
     }
@@ -527,11 +503,9 @@
         const el = document.createElement('textarea'); el.value = url;
         document.body.appendChild(el); el.select(); document.execCommand('copy');
         document.body.removeChild(el);
-        const t = document.getElementById('toast'); t.innerText = "Link Copied"; t.classList.add('active');
-        setTimeout(() => t.classList.remove('active'), 2000);
+        showToast("Link Copied");
     };
 
-    // --- BULK SEEDING ---
     window.seedPersonnelBulk = async () => {
         const btn = document.getElementById('seed-btn');
         btn.disabled = true; btn.innerText = "Syncing 40 Records...";
@@ -586,7 +560,7 @@
     };
 
     async function seedRegistry() {
-        const files = ["admin_console.html", "animated_logo.html", "calendar.html", "carousel_widget.html", "org_chart.html", "office_outlook.html", "dmg_hq_header.html", "feed_header.html", "people_team_header.html", "production_header.html", "creative_header.html", "daily_feeds_header.html", "social_header.html", "teams_header.html", "manager_dashboard.html", "meetings_list.html", "personal_unified_header.html", "uk_news_ticker.html", "creative_deadlines_header.html", "creative_feed_header.html", "daily_meetings.html", "dmg_team_log.html", "handbook_arrows.html", "handbook_header.html", "handbook_mission.html", "handbook_workflows.html", "index.html", "key_dates_header.html", "manager_rota_header.html", "personal_actions_header.html", "personal_calendar_header.html", "personal_notes_header.html", "personal_reminders_header.html", "priority_briefs_header.html", "production_capacity.html", "production_feed_header.html", "production_schedule.html", "quick_links.html", "ready_to_post_header.html", "review_queue_header.html", "search_hub.html", "sidebar_people.html", "sidebar_resources.html", "sidebar_work.html", "team_announcements_header.html", "the_respawn_rss_carousel.html", "this_just_in.html", "top_page_nav.html"];
+        const files = ["admin_console.html", "animated_logo.html", "calendar.html", "carousel_widget.html", "org_chart.html", "office_outlook.html", "dmg_hq_header.html", "feed_header.html", "people_team_header.html", "production_header.html", "creative_header.html", "daily_feeds_header.html", "social_header.html", "teams_header.html", "manager_dashboard.html"];
         const col = collection(db, 'artifacts', appId, 'public', 'data', 'asset_registry');
         for(let f of files) await addDoc(col, { filename: f });
     }
