@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -8,8 +8,7 @@ import {
   onSnapshot, 
   query, 
   updateDoc,
-  doc,
-  writeBatch
+  doc
 } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -34,15 +33,13 @@ import {
   Activity,
   CalendarDays,
   Lock,
-  Palette,
   ArrowLeft,
-  Layout,
   MessageSquare,
   Settings2,
   X
 } from 'lucide-react';
 
-// Firebase Initialisation
+// Firebase Configuration
 const firebaseConfig = JSON.parse(__firebase_config);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -61,7 +58,7 @@ const App = () => {
   const [onboardingStep, setOnboardingStep] = useState('find'); 
   const [showSettings, setShowSettings] = useState(false);
   
-  // Personalisation State (Defaults)
+  // Personalisation State
   const [feeling, setFeeling] = useState("");
   const [selectedEmoji, setSelectedEmoji] = useState("✨");
   const [accentColor, setAccentColor] = useState('#21A0D8');
@@ -69,6 +66,7 @@ const App = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Constants
   const auraOptions = [
     { name: 'Blue', color: '#21A0D8' },
     { name: 'Pink', color: '#E6468B' },
@@ -97,7 +95,7 @@ const App = () => {
     return `${days[dateObj.getDay()]}, ${dayNum}${getDaySuffix(dayNum)} ${months[dateObj.getMonth()]}`;
   };
 
-  // --- Auth & Session Initialisation ---
+  // --- Authentication ---
   useEffect(() => {
     const initAuth = async () => {
       if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -111,21 +109,28 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-  // --- Data Fetching ---
+  // --- Initial Data Pull & Identity Resolution ---
   useEffect(() => {
     if (!user) return;
 
     const fetchData = async () => {
       const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'));
       const list = [];
-      snap.forEach(doc => list.push({ id: doc.id, ...doc.data(), fullName: `${doc.data().firstName} ${doc.data().lastName}` }));
+      snap.forEach(doc => {
+        const d = doc.data();
+        list.push({ id: doc.id, ...d, fullName: `${d.firstName} ${d.lastName}` });
+      });
       
-      // Mandatory Fallbacks for Demo
-      if (!list.find(s => s.fullName === 'Anaïs Lukaku')) {
-        list.push({ id: 'nais-01', firstName: 'Anaïs', lastName: 'Lukaku', fullName: 'Anaïs Lukaku', role: 'Senior Creative', team: 'creative', manager: 'Nathan Aspell' });
-      }
-      list.push({ id: 'jane-01', firstName: 'Jane', lastName: 'Doe', fullName: 'Jane Doe', role: 'Social Designer', team: 'social', manager: 'Ellie Beetham' });
-      list.push({ id: 'james-01', firstName: 'James', lastName: 'Whatever', fullName: 'James Whatever', role: 'Video Editor', team: 'production', manager: 'Matthew Macleod' });
+      // Inject Mock/Required Identities for Testing
+      const defaults = [
+        { id: 'anais-01', firstName: 'Anaïs', lastName: 'Lukaku', fullName: 'Anaïs Lukaku', role: 'Senior Creative', team: 'creative', manager: 'Nathan Aspell' },
+        { id: 'jane-01', firstName: 'Jane', lastName: 'Doe', fullName: 'Jane Doe', role: 'Social Designer', team: 'social', manager: 'Ellie Beetham' },
+        { id: 'james-01', firstName: 'James', lastName: 'Whatever', fullName: 'James Whatever', role: 'Video Editor', team: 'production', manager: 'Matthew Macleod' }
+      ];
+
+      defaults.forEach(def => {
+        if (!list.find(s => s.fullName === def.fullName)) list.push(def);
+      });
 
       setDirectory(list);
 
@@ -148,7 +153,7 @@ const App = () => {
     fetchData();
   }, [user]);
 
-  // --- Ledger Pulse (Mocked Updates) ---
+  // --- Master Ledger Interaction (Action Ledger) ---
   useEffect(() => {
     if (!staffData) return;
     const fullName = staffData.fullName;
@@ -163,17 +168,17 @@ const App = () => {
       setTasks(myTasks);
     });
 
-    const mockFeed = [
-        { id: 1, user: 'Anaïs Lukaku', action: 'Synchronised Master Ledger', project: 'Next - AW24 Prep', time: '5M AGO' },
-        { id: 2, user: 'Jane Doe', action: 'Uploaded social assets to', project: 'Nike - Run Club', time: '2H AGO' },
-        { id: 3, user: 'James Whatever', action: 'Initialised production for', project: 'Adidas Originals', time: '5H AGO' }
-    ];
-    setLedgerUpdates(mockFeed);
+    // Mock Pulse Feed for Demonstration
+    setLedgerUpdates([
+        { id: 1, user: 'Anaïs Lukaku', action: 'Synchronised Master Ledger', project: 'NEXT - Dressing for the Plot', time: '5M AGO' },
+        { id: 2, user: 'Jane Doe', action: 'Uploaded social assets to', project: 'NIKE - Campaign V2', time: '1H AGO' },
+        { id: 3, user: 'James Whatever', action: 'Initialised production for', project: 'ADIDAS - Originals', time: '3H AGO' }
+    ]);
 
     return () => unsubTasks();
   }, [staffData]);
 
-  // --- Handlers ---
+  // --- Onboarding Logic ---
   const handleOnboardingSelect = (person) => {
     setStaffData(person);
     setOnboardingStep('secure');
@@ -187,7 +192,7 @@ const App = () => {
     }
   };
 
-  const saveSettings = async () => {
+  const finalizeProfile = async () => {
     const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', staffData.id);
     try {
         await updateDoc(userRef, { accentColor, selectedEmoji, feeling });
@@ -197,10 +202,12 @@ const App = () => {
     }
   };
 
-  const copyMagicLink = () => {
+  const copyMagicURL = () => {
     const url = `${window.location.origin}${window.location.pathname}?id=${staffData.id}`;
-    navigator.clipboard.writeText(url);
-    alert("Personal URL Copied. Update your Notion Embed link to bypass this setup.");
+    const el = document.createElement('textarea');
+    el.value = url;
+    document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+    alert("Magic URL Copied. Paste this into your private Notion embed link.");
   };
 
   const submitRota = async () => {
@@ -221,15 +228,15 @@ const App = () => {
     setIsSubmitting(false);
   };
 
+  // --- RENDERERS ---
   if (view === 'loading') return (
     <div className="h-screen flex items-center justify-center bg-white">
       <div className="flex gap-2">
-        {[0,1,2].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8] animate-pulse" style={{ animationDelay: `${i * 0.15}s` }} />)}
+        {[0,1,2].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8] animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />)}
       </div>
     </div>
   );
 
-  // --- ONBOARDING VIEWS ---
   if (view === 'onboarding') {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 select-none">
@@ -248,13 +255,13 @@ const App = () => {
                   <input 
                     type="text" 
                     placeholder="TYPE FULL NAME..."
-                    className="w-full pl-16 pr-8 py-9 bg-blue-50/20 border-2 border-[#21a0d8]/10 rounded-[2.5rem] text-sm font-black uppercase tracking-[0.2em] focus:outline-none focus:border-[#21a0d8] focus:bg-white transition-all shadow-sm"
+                    className="w-full pl-16 pr-8 py-9 bg-blue-50/20 border-2 border-[#21a0d8]/30 rounded-[2.5rem] text-sm font-black uppercase tracking-[0.2em] focus:outline-none focus:border-[#21a0d8] focus:bg-white transition-all shadow-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
 
-                <div className="grid gap-4 max-h-72 overflow-y-auto pr-3 custom-scrollbar">
+                <div className="grid gap-4 max-h-72 overflow-y-auto pr-3">
                   {searchQuery.length > 0 && directory.filter(s => s.fullName.toLowerCase().includes(searchQuery.toLowerCase())).map(person => (
                     <button key={person.id} onClick={() => handleOnboardingSelect(person)} className="w-full p-8 bg-white border border-gray-100 hover:border-[#21a0d8] rounded-[2rem] flex items-center justify-between group transition-all hover:shadow-xl">
                       <div className="text-left flex items-center gap-6">
@@ -300,7 +307,7 @@ const App = () => {
                 <h1 className="text-5xl font-black tracking-tighter uppercase mb-6 text-[#1C1C1C]">Key Issued.</h1>
                 <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em] max-w-xs mx-auto mb-16 leading-relaxed">Your unique access link is ready. Use this as your Notion embed URL to bypass this setup forever.</p>
                 <div className="space-y-5">
-                    <button onClick={copyMagicLink} className="w-full p-8 bg-[#21a0d8] text-white rounded-[2.5rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-4 shadow-xl"><Copy size={18}/> Copy Magic URL</button>
+                    <button onClick={copyMagicURL} className="w-full p-8 bg-[#21a0d8] text-white rounded-[2.5rem] font-black uppercase tracking-widest text-xs flex items-center justify-center gap-4 shadow-xl"><Copy size={18}/> Copy Magic URL</button>
                     <button onClick={() => setView('profile')} className="w-full p-8 border-2 border-gray-100 text-gray-300 rounded-[2.5rem] font-black uppercase tracking-widest text-xs hover:text-[#1C1C1C] hover:border-[#1C1C1C] transition-all">Open My Dashboard</button>
                 </div>
             </div>
@@ -313,10 +320,10 @@ const App = () => {
   return (
     <div className="min-h-screen bg-white text-[#1C1C1C] pb-32">
       
-      {/* SETTINGS MODAL (Post-Onboarding Personalisation) */}
+      {/* POST-ONBOARDING SETTINGS MODAL */}
       {showSettings && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
-              <div className="bg-white w-full max-w-lg rounded-[3rem] p-12 relative shadow-2xl animate-in zoom-in-95 duration-300">
+              <div className="bg-white w-full max-w-lg rounded-[3rem] p-12 relative shadow-2xl">
                   <button onClick={() => setShowSettings(false)} className="absolute top-8 right-8 text-gray-300 hover:text-[#1C1C1C]"><X size={24}/></button>
                   <h3 className="text-3xl font-black tracking-tighter uppercase mb-10">Personalise Profile</h3>
                   
@@ -331,7 +338,7 @@ const App = () => {
                       </div>
                       <div>
                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block mb-6">Signature Icon</label>
-                        <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+                        <div className="flex gap-4 overflow-x-auto pb-4">
                             {emojiOptions.map(emoji => (
                                 <button key={emoji} onClick={() => setSelectedEmoji(emoji)} className={`p-5 bg-white rounded-3xl text-3xl transition-all flex-shrink-0 border-2 ${selectedEmoji === emoji ? 'border-[#21a0d8] scale-110 shadow-xl' : 'border-gray-50 opacity-30 hover:opacity-100'}`}>{emoji}</button>
                             ))}
@@ -347,7 +354,7 @@ const App = () => {
                             onChange={(e) => setFeeling(e.target.value)}
                         />
                       </div>
-                      <button onClick={saveSettings} className="w-full p-7 bg-[#1C1C1C] text-white rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-[#333]">Update My Profile</button>
+                      <button onClick={finalizeProfile} className="w-full p-7 bg-[#1C1C1C] text-white rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-[#333]">Update My Profile</button>
                   </div>
               </div>
           </div>
@@ -398,7 +405,7 @@ const App = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-20">
             
-            {/* LEFT COLUMN: PULSE & TASKS */}
+            {/* LEFT COLUMN */}
             <div className="lg:col-span-7 space-y-24">
                 
                 {/* SECTION: DEPARTMENT PULSE */}
@@ -411,7 +418,7 @@ const App = () => {
                         <div className="flex-1 h-px bg-gray-50" />
                     </div>
                     <div className="space-y-6">
-                        {ledgerUpdates.map((upd, i) => (
+                        {ledgerUpdates.map((upd) => (
                             <div key={upd.id} className="flex items-start gap-8 p-8 bg-gray-50/50 rounded-[2.5rem] border border-transparent hover:border-gray-100 transition-all hover:bg-white hover:shadow-lg">
                                 <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-xl shadow-sm border border-gray-50">👩‍🎨</div>
                                 <div className="flex flex-col">
@@ -460,7 +467,7 @@ const App = () => {
                 </section>
             </div>
 
-            {/* RIGHT COLUMN: CALENDAR & ROTA */}
+            {/* RIGHT COLUMN */}
             <div className="lg:col-span-5 space-y-24">
                 
                 {/* SECTION: CALENDAR STREAM */}
@@ -497,7 +504,7 @@ const App = () => {
                     </div>
                 </section>
 
-                {/* SECTION: ROTApattern */}
+                {/* SECTION: ROTA pattern */}
                 <section>
                     <div className="flex items-center gap-5 mb-12">
                         <Calendar size={20} className="text-[#21a0d8]" />
