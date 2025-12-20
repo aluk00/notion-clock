@@ -3,111 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Org Chart | DMG Media</title>
+    <title>Admin Control Centre | DMG New Media</title>
     <style>
         :root {
-            /* Canonical Team Colours */
-            --team-editorial: #E94B4B;
-            --team-creative: #E6468B;
-            --team-production: #43B049;
-            --team-social: #F2C316;
-            --team-people: #21A0D8;
-            --team-operations: #21A0D8;
-            --team-executive: #1C1C1C;
-
+            --dmg-blue: #21a0d8;
+            --carbon: #1C1C1C;
+            --danger: #E94B4B;
+            --success: #43B049;
             --bg-page: #FFFFFF;
-            --border-soft: #EAEAEA;
+            --bg-base: #F9FAFB;
+            --border: #E5E7EB;
             --ink: #1C1C1C;
-            --ink-sub: #757575;
-            --radius-md: 14px;
-            --shadow-soft: 0 4px 20px rgba(0,0,0,0.04);
+            --ink-sub: #6B7280;
+            --radius-xl: 32px;
+            --radius-lg: 16px;
             --transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-            --line-color: #D1D1D1;
         }
 
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, sans-serif;
             background-color: var(--bg-page);
-            margin: 0; padding: 60px 20px;
-            color: var(--ink);
-            overflow-x: auto;
+            margin: 0; padding: 0; color: var(--ink); min-height: 100vh;
         }
 
-        /* --- HEADER --- */
-        .main-header { display: flex; align-items: center; justify-content: center; gap: 1.5rem; margin-bottom: 80px; }
-        .title-text { font-size: 3.5rem; font-weight: 900; color: var(--ink); letter-spacing: -0.04em; line-height: 1; text-transform: uppercase; }
-        .header-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 40px; height: 40px; }
-        .header-dots .dot { width: 100%; height: 100%; background-color: var(--team-people); border-radius: 50%; animation: popIn 0.6s forwards; }
-        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+        .hidden { display: none !important; }
 
-        /* --- TREE LAYOUT --- */
-        .org-tree { display: flex; flex-direction: column; align-items: center; width: fit-content; min-width: 100%; margin: 0 auto; }
-        .node-layer { display: flex; justify-content: center; gap: 40px; position: relative; margin-bottom: 60px; }
-        
-        .person-card {
-            background: #FFF; border: 1px solid var(--border-soft); border-radius: var(--radius-md); 
-            padding: 20px 30px; min-width: 240px; box-shadow: var(--shadow-soft); position: relative; 
-            transition: var(--transition); display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 10;
+        /* --- AUTH SCREEN --- */
+        #lock-screen {
+            position: fixed; inset: 0; background: #FFF; z-index: 5000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .person-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
+        .lock-logo-container { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 60px; }
+        .lock-title-text { font-size: 3rem; font-weight: 900; letter-spacing: -0.04em; text-transform: uppercase; color: var(--carbon); }
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 44px; height: 44px; }
+        .dot { width: 100%; height: 100%; background-color: var(--dmg-blue); border-radius: 50%; }
+
+        .pin-field { display: flex; gap: 24px; margin-bottom: 40px; }
+        .pin-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); background: transparent; transition: 0.2s; }
+        .pin-dot.filled { background: var(--dmg-blue); border-color: var(--dmg-blue); transform: scale(1.2); box-shadow: 0 0 20px rgba(33, 160, 216, 0.3); }
+
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 320px; }
+        .n-btn { aspect-ratio: 1.4; border-radius: 12px; background: #FFF; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; cursor: pointer; transition: 0.2s; color: var(--carbon); }
+        .n-btn:active { background: var(--dmg-blue); color: white; transform: scale(0.95); }
+
+        /* --- MAIN LAYOUT --- */
+        .admin-shell { max-width: 1400px; margin: 0 auto; padding: 60px 40px; }
+        .header-lockup { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 60px; }
+        .main-title { font-size: 4rem; font-weight: 900; letter-spacing: -0.04em; line-height: 1; text-transform: uppercase; color: var(--carbon); }
         
-        .card-label {
-            position: absolute; top: -12px; left: 20px; background: #F5F5F5; font-size: 9px; font-weight: 900;
-            padding: 4px 12px; border-radius: 6px; text-transform: uppercase; border: 1px solid var(--border-soft); color: var(--ink-sub);
-        }
+        .tab-nav { display: flex; gap: 8px; background: #F3F4F6; padding: 6px; border-radius: 99px; width: fit-content; margin-bottom: 60px; }
+        .tab-btn { padding: 12px 28px; border: none; background: transparent; font-size: 13px; font-weight: 800; text-transform: uppercase; cursor: pointer; border-radius: 99px; color: var(--ink-sub); transition: 0.3s; }
+        .tab-btn.active { background: var(--carbon); color: #FFF; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
-        .name { font-size: 15px; font-weight: 900; color: var(--ink); text-align: center; }
-        .role { font-size: 10px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.02em; text-align: center; }
+        .view-section { display: none; animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        .view-section.active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        .dot-motif { display: grid; grid-template-columns: repeat(2, 5px); gap: 3px; margin-bottom: 5px; }
-        .dot-motif span { width: 5px; height: 5px; border-radius: 50%; background: #DDD; }
-
-        /* --- STREAM GRID --- */
-        .stream-grid-container { width: 100%; max-width: 1400px; margin-top: 40px; border-top: 1px solid var(--border-soft); padding-top: 40px; }
-        .stream-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-        .stream-col { display: flex; flex-direction: column; gap: 12px; }
-        .stream-title { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; color: #BBB; margin-bottom: 10px; text-align: center; }
-
-        .staff-item { background: #F9FAFB; padding: 12px 15px; border-radius: 10px; border-left: 3px solid transparent; transition: 0.2s; }
-        .staff-item:hover { background: #FFF; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transform: translateX(5px); }
+        .content-card { background: #FFF; border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 50px; margin-bottom: 40px; box-shadow: 0 4px 30px rgba(0,0,0,0.02); position: relative; }
+        .section-tag { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--dmg-blue); letter-spacing: 0.15em; margin-bottom: 25px; display: flex; align-items: center; gap: 8px; }
         
-        .mgr-badge { font-size: 7px; font-weight: 900; padding: 2px 6px; border-radius: 4px; color: #FFF; text-transform: uppercase; margin-bottom: 4px; width: fit-content; }
-        .nested-reports { margin-left: 15px; padding-left: 15px; border-left: 1.5px dashed #EEE; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+        /* MULTI-DELETE HEADER */
+        .directory-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .bulk-actions { display: flex; gap: 10px; align-items: center; }
 
-        #loader { position: fixed; inset: 0; background: #FFF; z-index: 1000; display: flex; align-items: center; justify-content: center; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: var(--team-people); }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 18px; font-size: 10px; font-weight: 900; color: #BBB; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        td { padding: 18px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #F9FAFB; }
+        .is-mgr-badge { font-size: 8px; background: var(--dmg-blue); color: #FFF; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 8px; font-weight: 900; }
+        
+        .btn-primary { background: var(--carbon); color: #FFF; border: none; padding: 16px 32px; border-radius: 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 10px; }
+        .btn-primary:hover { background: var(--dmg-blue); transform: translateY(-2px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-danger { background: #FEE2E2; color: var(--danger); border: 1.5px solid #FCA5A5; padding: 10px 20px; border-radius: 10px; font-size: 11px; font-weight: 900; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+        .btn-danger:hover { background: var(--danger); color: #FFF; border-color: var(--danger); }
+
+        .checkbox-cell { width: 40px; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; border-radius: 4px; border: 2px solid var(--border); }
+
+        #toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: var(--carbon); color: #FFF; padding: 12px 30px; border-radius: 99px; font-size: 12px; font-weight: 800; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 7000; }
+        #toast.active { opacity: 1; bottom: 50px; }
     </style>
 </head>
 <body>
 
-    <div id="loader">Syncing Live Hierarchy...</div>
+    <div id="toast">Update Successful</div>
 
-    <header class="main-header">
-        <div class="title-text">NEW MEDIA</div>
-        <div class="header-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-        <div class="title-text">ORG CHART</div>
-    </header>
+    <!-- LOCK SCREEN -->
+    <div id="lock-screen">
+        <div class="lock-logo-container">
+            <div class="lock-title-text">ADMIN</div>
+            <div class="dots-grid"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+            <div class="lock-title-text">HUB</div>
+        </div>
+        <div class="pin-field">
+            <div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div><div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div>
+        </div>
+        <div class="numpad">
+            <div class="n-btn" onclick="pressPin(1)">1</div><div class="n-btn" onclick="pressPin(2)">2</div><div class="n-btn" onclick="pressPin(3)">3</div>
+            <div class="n-btn" onclick="pressPin(4)">4</div><div class="n-btn" onclick="pressPin(5)">5</div><div class="n-btn" onclick="pressPin(6)">6</div>
+            <div class="n-btn" onclick="pressPin(7)">7</div><div class="n-btn" onclick="pressPin(8)">8</div><div class="n-btn" onclick="pressPin(9)">9</div>
+            <div></div><div class="n-btn" onclick="pressPin(0)">0</div>
+        </div>
+    </div>
 
-    <div class="org-tree">
-        <div class="node-layer" id="layer-exec"></div>
-        <div class="node-layer" id="layer-directors"></div>
+    <!-- MAIN APP -->
+    <div id="admin-app" class="hidden">
+        <div class="admin-shell">
+            <header class="header-lockup">
+                <div class="main-title">ADMIN</div>
+                <div class="dots-grid"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                <div class="main-title">HUB</div>
+            </header>
 
-        <div class="stream-grid-container">
-            <div style="font-size: 10px; font-weight: 900; color: #CCC; text-transform: uppercase; margin-bottom: 30px; text-align: center; letter-spacing: 0.2em;">Operational Stream View</div>
-            <div class="stream-grid" id="stream-mount">
-                <div class="stream-col" id="col-Production"><div class="stream-title">Production</div></div>
-                <div class="stream-col" id="col-Social"><div class="stream-title">Social & Editorial</div></div>
-                <div class="stream-col" id="col-Creative"><div class="stream-title">Creative</div></div>
-                <div class="stream-col" id="col-Operations"><div class="stream-title">Operations</div></div>
-            </div>
+            <nav class="tab-nav">
+                <button class="tab-btn active" onclick="switchTab('personnel', this)">Directory</button>
+                <button class="tab-btn" onclick="switchTab('system', this)">Setup Control</button>
+            </nav>
+
+            <section id="view-personnel" class="view-section active">
+                <div class="content-card">
+                    <div class="directory-controls">
+                        <span class="section-tag">Active Live Directory</span>
+                        <div class="bulk-actions hidden" id="bulk-actions-bar">
+                            <button class="btn-danger" onclick="deleteSelected()">Delete Selected Profiles</button>
+                        </div>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="checkbox-cell"><input type="checkbox" id="select-all" onclick="toggleAllCheckboxes(this)"></th>
+                                <th>Name</th>
+                                <th>Seniority</th>
+                                <th>Role</th>
+                                <th>Manager</th>
+                            </tr>
+                        </thead>
+                        <tbody id="directory-mount"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="view-system" class="view-section">
+                <div class="content-card">
+                    <span class="section-tag">System Control</span>
+                    <h3 style="font-size:16px; margin-top:0;">Master Hierarchy Reset</h3>
+                    <p style="font-size:12px; color:#666; margin-bottom:24px; line-height:1.5;">This will <b>WIPE ALL DUPLICATES</b> and overwrite the cloud with the corrected management structure:<br>
+                    • <b>Managers Only:</b> Anaïs, Nick M, Alice, Ellie, Matthew, Nev, Nathan, Alex B.<br>
+                    • <b>Relocations:</b> Williams, Aivhan, and Josh moved to Matthew Macleod.<br>
+                    • <b>Fixed Roles:</b> Hugo Starns set as Freelance Creative.</p>
+                    <button class="btn-primary" onclick="seedPersonnelBulk()" id="seed-btn">Sync Corrected List</button>
+                </div>
+            </section>
         </div>
     </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
@@ -118,100 +175,175 @@
       appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
       measurementId: "G-5HNGPRJGZY"
     };
-
+    
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
     const appId = 'dmg-command-centre-native';
 
-    const colors = {
-        Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049',
-        Social: '#F2C316', Operations: '#21A0D8', Executive: '#1C1C1C'
+    let enteredPin = "";
+    let staffData = [];
+
+    window.pressPin = (n) => { 
+        if(enteredPin.length < 4) {
+            enteredPin += n; 
+            updatePinDots(); 
+            if(enteredPin.length === 4) setTimeout(checkPin, 200); 
+        }
     };
+    function updatePinDots() { for(let i=1; i<=4; i++) document.getElementById('p'+i).classList.toggle('filled', i <= enteredPin.length); }
+    function checkPin() { 
+        if(enteredPin === "3646") { 
+            document.getElementById('lock-screen').classList.add('hidden'); 
+            document.getElementById('admin-app').classList.remove('hidden'); 
+            init(); 
+        } else { 
+            enteredPin = ""; 
+            updatePinDots(); 
+        } 
+    }
 
     async function init() {
         await signInAnonymously(auth);
-        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => {
-            const staff = [];
-            snap.forEach(d => staff.push({id: d.id, ...d.data()}));
-            renderOrgChart(staff);
-            document.getElementById('loader').style.display = 'none';
-        });
-    }
-
-    function renderOrgChart(data) {
-        document.getElementById('layer-exec').innerHTML = "";
-        document.getElementById('layer-directors').innerHTML = "";
-        ['Production', 'Social', 'Creative', 'Operations'].forEach(t => {
-            document.getElementById('col-'+t).innerHTML = `<div class="stream-title">${t === 'Social' ? 'Social & Editorial' : t}</div>`;
-        });
-
-        const head = data.find(s => s.manager === "None" || s.seniority === "Executive");
-        const directors = data.filter(s => s.seniority === "Director" && s.id !== head?.id);
-        
-        if(head) document.getElementById('layer-exec').innerHTML = createCard(head, 'EXECUTIVE');
-        directors.forEach(d => document.getElementById('layer-directors').innerHTML += createCard(d, 'DIRECTOR'));
-
-        const streamStaff = data.filter(s => s.id !== head?.id && !directors.some(d => d.id === s.id));
-        
-        ['Production', 'Social', 'Creative', 'Operations'].forEach(teamName => {
-            const mount = document.getElementById('col-' + teamName);
-            let teamMembers = [];
-            
-            if(teamName === 'Social') {
-                // Combine Social and Editorial under Ellie
-                teamMembers = streamStaff.filter(s => s.team === 'Social' || s.team === 'Editorial');
-            } else {
-                teamMembers = streamStaff.filter(s => s.team === teamName);
+        onAuthStateChanged(auth, (user) => {
+            if(user) {
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => {
+                    staffData = [];
+                    snap.forEach(d => staffData.push({id: d.id, ...d.data()}));
+                    renderDirectory();
+                });
             }
-            
-            const teamManagers = teamMembers.filter(s => s.isManager);
-            teamManagers.forEach(m => {
-                const node = createStaffNode(m, true);
-                mount.appendChild(node);
-                const reports = teamMembers.filter(s => s.manager === `${m.firstName} ${m.lastName}`);
-                if(reports.length > 0) {
-                    const nested = document.createElement('div');
-                    nested.className = "nested-reports";
-                    reports.forEach(r => nested.appendChild(createStaffNode(r, false)));
-                    mount.appendChild(nested);
-                }
-            });
-
-            const looseEnds = teamMembers.filter(s => !s.isManager && !teamManagers.some(m => s.manager === `${m.firstName} ${m.lastName}`));
-            looseEnds.forEach(l => mount.appendChild(createStaffNode(l, false)));
         });
     }
 
-    function createCard(s, label) {
-        const color = colors[s.team] || '#1C1C1C';
-        return `
-            <div class="person-card" style="border-top: 4px solid ${color}">
-                <div class="card-label">${label}</div>
-                <div class="dot-motif">
-                    <span style="background:${color}"></span><span style="background:${color}"></span>
-                    <span style="background:${color}"></span><span style="background:${color}"></span>
-                </div>
-                <div class="name">${s.firstName} ${s.lastName}</div>
-                <div class="role">${s.role}</div>
-            </div>
-        `;
+    function renderDirectory() {
+        const mount = document.getElementById('directory-mount');
+        // Sort to help spot duplicates
+        const sorted = staffData.sort((a,b) => {
+            if(a.firstName === b.firstName) return a.lastName.localeCompare(b.lastName);
+            return a.firstName.localeCompare(b.firstName);
+        });
+        
+        mount.innerHTML = sorted.map(s => `
+            <tr>
+                <td class="checkbox-cell"><input type="checkbox" class="profile-checkbox" value="${s.id}" onclick="updateBulkBar()"></td>
+                <td>${s.firstName} ${s.lastName} ${s.isManager ? '<span class="is-mgr-badge">MGR</span>' : ''}</td>
+                <td style="font-size:11px; color:#999;">${s.seniority}</td>
+                <td>${s.role}</td>
+                <td style="color:#666;">${s.manager}</td>
+            </tr>
+        `).join('');
+        document.getElementById('select-all').checked = false;
+        updateBulkBar();
     }
 
-    function createStaffNode(s, isMgr) {
-        const div = document.createElement('div');
-        const color = colors[s.team] || '#EEE';
-        div.className = "staff-item";
-        div.style.borderLeftColor = color;
-        div.innerHTML = `
-            ${isMgr ? `<div class="mgr-badge" style="background:${color}">Line Manager</div>` : ''}
-            <div class="name" style="text-align:left; font-size:13px;">${s.firstName} ${s.lastName}</div>
-            <div class="role" style="text-align:left; font-size:9px; color:#999;">${s.role}</div>
-        `;
-        return div;
+    window.toggleAllCheckboxes = (master) => {
+        document.querySelectorAll('.profile-checkbox').forEach(cb => cb.checked = master.checked);
+        updateBulkBar();
+    };
+
+    window.updateBulkBar = () => {
+        const checkedCount = document.querySelectorAll('.profile-checkbox:checked').length;
+        document.getElementById('bulk-actions-bar').classList.toggle('hidden', checkedCount === 0);
+    };
+
+    window.deleteSelected = async () => {
+        const selected = Array.from(document.querySelectorAll('.profile-checkbox:checked')).map(cb => cb.value);
+        if(!confirm(`Are you sure you want to permanently delete these ${selected.length} profiles?`)) return;
+
+        try {
+            for(let id of selected) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', id));
+            }
+            showToast(`${selected.length} Profiles Deleted`);
+        } catch(e) { alert("Delete failed: " + e.message); }
+    };
+
+    window.seedPersonnelBulk = async () => {
+        const btn = document.getElementById('seed-btn');
+        if(!confirm("This will FULLY WIPE ALL DUPLICATES and reset to the corrected list. Continue?")) return;
+        
+        btn.disabled = true; btn.innerText = "Clearing Old Records...";
+        
+        try {
+            // 1. COMPLETELY WIPE COLLECTION
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'));
+            for (const docSnap of snap.docs) { await deleteDoc(docSnap.ref); }
+
+            btn.innerText = "Syncing Corrected Data...";
+
+            // 2. THE STRICT MASTER LIST (40 MEMBERS)
+            const list = [
+                // MANAGERS ONLY (8)
+                { f: "Nick", l: "Moar", s: "Director", r: "Head of New Media", m: "None", t: "Executive", is: true },
+                { f: "Nev", l: "Brook", s: "Director", r: "Director of Social Production", m: "Nick Moar", t: "Production", is: true },
+                { f: "Nathan", l: "Aspell", s: "Director", r: "Director of Creative and Platforms", m: "Nick Moar", t: "Creative", is: true },
+                { f: "Ellie", l: "Beetham", s: "Head of", r: "Head of Social Creative", m: "Nathan Aspell", t: "Social", is: true },
+                { f: "Matthew", l: "Macleod", s: "Head of", r: "Head of Social Production", m: "Nev Brook", t: "Production", is: true },
+                { f: "Alex", l: "Biddle", s: "Head of", r: "Head of Sport Originals", m: "Nick Moar", t: "Editorial", is: true },
+                { f: "Anaïs", l: "Lukaku", s: "Senior", r: "Senior Creative", m: "Nick Moar", t: "Creative", is: true },
+                { f: "Alice", l: "Baker", s: "Lead", r: "Operations Lead", m: "Nick Moar", t: "Operations", is: true },
+
+                // SOCIAL & EDITORIAL (Under Ellie)
+                { f: "Nick", l: "Bolwell", s: "Lead", r: "Lead Social Creative", m: "Ellie Beetham", t: "Social", is: false },
+                { f: "Dan", l: "Quinnell", s: "Lead", r: "UK Social Video Lead", m: "Ellie Beetham", t: "Social", is: false },
+                { f: "Romy", l: "Grigg", s: "Lead", r: "Social Video Lead", m: "Ellie Beetham", t: "Social", is: false },
+                { f: "Alex", l: "Hobbs", s: "Midweight", r: "Multimedia Journalist", m: "Ellie Beetham", t: "Editorial", is: false },
+                { f: "Mimi", l: "Yates", s: "Midweight", r: "Multimedia Reporter", m: "Ellie Beetham", t: "Editorial", is: false },
+                { f: "Sophia", l: "Stanford", s: "Junior", r: "UK Trainee Reporter", m: "Ellie Beetham", t: "Editorial", is: false },
+                { f: "Kaylee", l: "Abrahams", s: "Junior", r: "Editorial Reporter", m: "Ellie Beetham", t: "Editorial", is: false },
+                { f: "Prashan", l: "Leigh", s: "Midweight", r: "Social Creative", m: "Ellie Beetham", t: "Editorial", is: false },
+
+                // PRODUCTION & MOVED CREATIVES (Under Matthew)
+                { f: "Josh", l: "Fajobi", s: "Midweight", r: "Social Designer", m: "Matthew Macleod", t: "Creative", is: false },
+                { f: "Williams", l: "Olufemi", s: "Midweight", r: "Social Designer", m: "Matthew Macleod", t: "Creative", is: false },
+                { f: "Aivhan", l: "Catacutan", s: "Freelance", r: "Freelance Designer", m: "Matthew Macleod", t: "Creative", is: false },
+                { f: "Claire", l: "O’Moore", s: "Senior", r: "Senior Video Editor", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Deli", l: "Koprinkov", s: "Senior", r: "Senior Video Editor", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Stefan", l: "Burghila", s: "Midweight", r: "Video Editor & Producer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Ben", l: "Wiley", s: "Midweight", r: "Managing Producer (Sport)", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Abhinaya", l: "Sriram", s: "Midweight", r: "Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Ismail", l: "Pulat", s: "Senior", r: "Senior Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Tomas", l: "Meehan", s: "Midweight", r: "UK Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Reuben", l: "Claypole", s: "Midweight", r: "Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Rowen", l: "Rennie", s: "Midweight", r: "Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Abraham", l: "Eneh", s: "Junior", r: "Casual Production", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Luca", l: "Campos Schmitt", s: "Freelance", r: "Video Producer / Editor", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Dan", l: "Harrington", s: "Freelance", r: "Freelance Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Monty", l: "Vann", s: "Lead", r: "Executive Videographer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Lauren", l: "Cole-Lomas", s: "Freelance", r: "Video Producer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "David", l: "Ojobo", s: "Freelance", r: "Designer", m: "Matthew Macleod", t: "Production", is: false },
+                { f: "Kacper", l: "Kupczyk", s: "Freelance", r: "Designer", m: "Matthew Macleod", t: "Production", is: false },
+
+                // CREATIVE (Under Anaïs)
+                { f: "Hugo", l: "Starns", s: "Freelance", r: "Freelance Creative", m: "Anaïs Lukaku", t: "Creative", is: false },
+
+                // OPERATIONS (Under Alice)
+                { f: "Maxine", l: "Halperin", s: "Midweight", r: "Project & Operations Manager", m: "Alice Baker", t: "Operations", is: false },
+                { f: "Megan", l: "Raso", s: "Junior", r: "Editorial Assistant", m: "Alice Baker", t: "Operations", is: false }
+            ];
+
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory');
+            for(let p of list) {
+                await addDoc(colRef, { firstName: p.f, lastName: p.l, seniority: p.s, role: p.r, team: p.t, manager: p.m, isManager: p.is, active: true });
+            }
+            showToast("Hierarchy Reset Complete");
+        } catch(e) { alert("Sync Error: " + e.message); }
+        btn.disabled = false; btn.innerText = "Sync Corrected List";
+    };
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.classList.add('active');
+        setTimeout(() => t.classList.remove('active'), 2000);
     }
 
-    init();
+    window.switchTab = (id, btn) => {
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('view-'+id).classList.add('active');
+        btn.classList.add('active');
+    };
 </script>
 </body>
 </html>
