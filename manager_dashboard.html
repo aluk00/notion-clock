@@ -28,23 +28,27 @@
             --st-pending: #BDBDBD;
 
             /* UI Tokens */
-            --carbon: #1C1C1C;
+            --carbon: #333;
             --bg-page: #FFFFFF;
+            --bg-base: #FFFFFF;
             --border: #EAECEF;
-            --ink: #1C1C1C;
+            --ink: #333;
             --ink-sub: #757575;
             --radius-lg: 24px;
             --radius-md: 16px;
+            --radius-sm: 12px;
             --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            --shadow-glow-blue: 0 0 15px rgba(33, 160, 216, 0.25);
+            --shadow-sm: 0 4px 12px rgba(0,0,0,0.04);
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.06);
             --shadow-lg: 0 20px 50px rgba(0,0,0,0.1);
+            --shadow-glow-blue: 0 0 20px rgba(33, 160, 216, 0.2);
         }
 
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-page);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
             margin: 0; padding: 0; color: var(--ink); min-height: 100vh;
             overflow-x: hidden;
         }
@@ -53,97 +57,460 @@
 
         /* --- IMPACT ANIMATIONS --- */
         @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
-        @keyframes dotCycle { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
-
-        /* --- HEARTBEAT MOTIF --- */
-        .header-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 44px; height: 44px; }
-        .header-dots .dot { width: 100%; height: 100%; background-color: var(--team-people); border-radius: 50%; animation: dotCycle 3s infinite ease-in-out; }
-        .header-dots .dot:nth-child(1) { animation-delay: 0s; }
-        .header-dots .dot:nth-child(2) { animation-delay: 0.75s; }
-        .header-dots .dot:nth-child(4) { animation-delay: 1.5s; }
-        .header-dots .dot:nth-child(3) { animation-delay: 2.25s; }
+        @keyframes popIn { to { transform: scale(1); } }
+        @keyframes dotCycle {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+        @keyframes loader-bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
 
         /* --- AUTH SCREEN --- */
         #lock-screen {
-            position: fixed; inset: 0; background: #FFF; z-index: 5000;
+            position: fixed; inset: 0; background: var(--bg-base); z-index: 5000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             transition: opacity 0.5s ease;
         }
+        .header-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 44px; height: 44px; }
+        .header-dots .dot { width: 100%; height: 100%; background-color: var(--team-people); border-radius: 50%; }
+        #lock-screen .header-dots .dot { animation: dotCycle 3s infinite ease-in-out; }
+        #lock-screen .header-dots .dot:nth-child(1) { animation-delay: 0s; }
+        #lock-screen .header-dots .dot:nth-child(2) { animation-delay: 0.75s; }
+        #lock-screen .header-dots .dot:nth-child(4) { animation-delay: 1.5s; }
+        #lock-screen .header-dots .dot:nth-child(3) { animation-delay: 2.25s; }
+
         .pin-field { display: flex; gap: 12px; margin-bottom: 40px; }
         .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); transition: 0.2s; }
         .pin-dot.filled { background: var(--team-people); border-color: var(--team-people); transform: scale(1.2); }
+
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 280px; }
-        .n-btn { aspect-ratio: 1.3; border-radius: var(--radius-md); background: #F9F9F9; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        .n-btn:active { background: #EEE; transform: scale(0.95); }
-        .n-btn-special { background-color: var(--team-people); color: #FFF; }
+        .n-btn { 
+            aspect-ratio: 1.3; border-radius: var(--radius-md); background: var(--bg-page); 
+            border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; 
+            font-size: 20px; font-weight: 700; cursor: pointer; color: var(--ink); 
+            transition: all 0.2s ease;
+            box-shadow: 0 0 8px rgba(33, 160, 216, 0.2);
+        }
+        .n-btn:hover {
+            box-shadow: 0 0 15px rgba(33, 160, 216, 0.5);
+            border-color: var(--team-people);
+        }
+        .n-btn:active, .n-btn.n-btn--active { background: #E0E0E0; transform: scale(0.95); }
+        .n-btn-special {
+            background-color: var(--team-people);
+            color: #FFF;
+            font-weight: 800;
+        }
+        .n-btn-special:hover {
+            background-color: #1a8ac6;
+            border-color: #1a8ac6;
+        }
+
 
         /* --- LAYOUT --- */
         .main-container { max-width: 1360px; margin: 0 auto; padding: 40px; }
         .header-lockup { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 30px; }
-        .title-text { font-size: 3.5rem; font-weight: 800; letter-spacing: -0.04em; text-transform: uppercase; line-height: 1; color: var(--carbon); }
+        .title-text { font-size: 3.5rem; font-weight: 800; letter-spacing: -0.04em; text-transform: uppercase; line-height: 1; color: var(--carbon); opacity: 0; transform: translateY(10px); animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-        .nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
-        .tab-nav { display: flex; gap: 8px; padding: 6px; background: #F8F9FA; border-radius: 99px; border: 1px solid var(--border); }
-        .tab-trigger { border: none; background: none; padding: 10px 24px; font-size: 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; border-radius: 99px; color: var(--ink-sub); transition: 0.2s; }
+        #app-shell .header-dots .dot { 
+            animation: dotCycle 3s infinite ease-in-out;
+            background-color: var(--team-people);
+        }
+        #app-shell .header-dots .dot:nth-child(1) { animation-delay: 0s; }
+        #app-shell .header-dots .dot:nth-child(2) { animation-delay: 0.75s; }
+        #app-shell .header-dots .dot:nth-child(3) { animation-delay: 1.5s; }
+        #app-shell .header-dots .dot:nth-child(4) { animation-delay: 2.25s; }
+
+        .nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 20px; }
+        .tab-nav { display: flex; gap: 8px; padding: 6px; background: #F8F9FA; border-radius: 99px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+        .tab-trigger { border: none; background: none; padding: 10px 24px; font-size: 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; border-radius: 99px; color: var(--ink-sub); transition: 0.2s; letter-spacing: 0.05em; }
         .tab-trigger.active { background: var(--team-people); color: #FFF; box-shadow: 0 4px 12px rgba(33, 160, 216, 0.3); }
 
-        /* WEEK PICKER */
-        .week-picker { display: flex; align-items: center; gap: 20px; background: var(--team-people); color: #FFF; padding: 12px 24px; border-radius: var(--radius-md); box-shadow: var(--shadow-glow-blue); transition: opacity 0.3s; }
-        .week-picker.hidden { opacity: 0; pointer-events: none; }
-        .week-btn { background: rgba(255,255,255,0.1); border: none; color: #FFF; font-weight: 900; cursor: pointer; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
-        .week-label { font-size: 12px; font-weight: 800; text-transform: uppercase; min-width: 160px; text-align: center; }
-        .wc-prefix { color: #a1ddf7; margin-right: 4px; }
+        .nav-row-right { display: flex; align-items: center; gap: 16px; }
+        .header-action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-weight: 800;
+            font-size: 11px;
+            text-transform: uppercase;
+            transition: all 0.2s ease-in-out;
+            letter-spacing: 0.05em;
+        }
+        .btn-admin {
+            background-color: #4A4A4A;
+            color: #FFF;
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+        }
+        .btn-admin:hover {
+            background-color: #666;
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-help {
+            background-color: #FFF;
+            color: var(--team-people);
+            border: 2px solid var(--team-people);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: 900;
+        }
+        .btn-help:hover {
+            transform: scale(1.1);
+            background-color: #e3f2fd;
+            box-shadow: var(--shadow-glow-blue);
+        }
 
-        /* --- HERO CARDS --- */
-        .outlook-hero { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 40px; }
-        .outlook-card { background: #FFF; padding: 24px; border-radius: var(--radius-lg); text-align: center; border: 1.5px solid var(--border); box-shadow: var(--shadow-glow-blue); transition: 0.3s; cursor: pointer; }
-        .outlook-card.locked { opacity: 0.4; filter: grayscale(1); cursor: not-allowed; pointer-events: none; border-color: #EEE; box-shadow: none; }
-        .hero-count { font-size: 42px; font-weight: 900; display: block; line-height: 1; color: var(--team-people); }
-        .hero-label { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.05em; margin-top: 8px; display: block; }
+        .week-picker { display: flex; align-items: center; gap: 20px; background: var(--team-people); color: #FFF; padding: 12px 24px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); transition: opacity 0.3s, visibility 0.3s; }
+        .week-picker.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .week-btn { background: rgba(255,255,255,0.1); border: none; color: #FFF; font-weight: 900; cursor: pointer; padding: 8px; font-size: 16px; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .week-btn:hover { background: rgba(255,255,255,0.2); }
+        .week-label { font-size: 12px; font-weight: 800; text-transform: uppercase; min-width: 200px; text-align: center; letter-spacing: 0.1em; }
+        .week-label .wc-prefix { color: #a1ddf7; }
 
         /* --- DIRECTORY TABLE --- */
-        .directory-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; background: #FFF; border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); table-layout: fixed; }
-        .directory-table th { text-align: left; padding: 20px; font-size: 10px; font-weight: 900; color: var(--team-people); text-transform: uppercase; letter-spacing: 0.1em; background: #FDFDFD; border-bottom: 1px solid var(--border); width: 25%; }
-        .directory-table th.status-header { text-align: center; }
-        .directory-table td { padding: 16px 20px; font-size: 14px; font-weight: 700; border-bottom: 1px solid var(--border); color: var(--carbon); vertical-align: middle; width: 25%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .directory-table tbody tr:hover td { background-color: #F9FAFB; }
-        
-        .name-cell { display: flex; align-items: center; gap: 14px; cursor: pointer; transition: 0.2s; }
+        .directory-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; background: var(--bg-base); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-md); table-layout: fixed; }
+        .directory-table th { text-align: left; padding: 20px; font-size: 10px; font-weight: 900; color: var(--team-people); text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid var(--border); background: #FDFDFD; }
+        .directory-table th:nth-child(1) { width: 35%; }
+        .directory-table th:nth-child(2) { width: 30%; }
+        .directory-table th:nth-child(3) { width: 15%; }
+        .directory-table th:nth-child(4) { width: 20%; text-align: center;}
+        .directory-table td { padding: 16px 20px; font-size: 14px; font-weight: 700; color: var(--ink); transition: background-color 0.2s; vertical-align: middle; }
+        .directory-table tbody tr { border-bottom: 1px solid var(--border); }
+        .directory-table tbody tr:last-child { border-bottom: none; }
+        .directory-table tbody tr:hover td { background-color: #f7f7f7; }
+        .name-cell { display: flex; align-items: center; gap: 14px; cursor: pointer; transition: 0.2s; color: var(--ink); font-weight: 700; }
         .name-cell:hover { color: var(--team-people); }
         .name-dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; flex-shrink: 0; }
         .name-dots span { width: 6px; height: 6px; border-radius: 50%; }
+
+        .role-cell { color: var(--ink-sub); font-size: 13px; font-weight: 600; }
+        .stream-cell { text-transform: capitalize; font-size: 11px; font-weight: 800; }
+
+        .status-cell { text-align: center; }
         .status-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; cursor: help; }
         .status-icon svg { width: 20px; height: 20px; }
 
-        /* --- MODAL / PROFILE --- */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(28,28,28,0.6); backdrop-filter: blur(12px); z-index: 6000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .is-mgr-pill { 
+            font-size: 9px; background: var(--team-people); color: #FFF; padding: 4px 10px; 
+            border-radius: 99px; vertical-align: middle; margin-left: 10px; font-weight: 900; 
+            letter-spacing: 0.05em; line-height: 1; display: inline-block;
+        }
+
+        /* --- MODAL --- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(28,28,28,0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 6000; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.active { display: flex; }
-        .modal-content { background: #FFF; width: 100%; max-width: 700px; border-radius: var(--radius-lg); padding: 40px; box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; position: relative; }
-        .close-btn { position: absolute; top: 20px; right: 20px; font-size: 24px; font-weight: 800; color: #CCC; cursor: pointer; width: 40px; height: 40px; background: #F9F9F9; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .modal-content { background: var(--bg-base); width: 100%; max-width: 700px; border-radius: var(--radius-lg); padding: 0; box-shadow: var(--shadow-lg); max-height: 90vh; overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.1); }
+        .modal-body { padding: 40px; max-height: calc(90vh - 80px); overflow-y: auto; }
+        
+        .modal-content-with-accent { position: relative; padding-left: 50px; }
+        .modal-content-with-accent::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            width: 10px;
+            background-color: var(--modal-accent-color);
+            border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+        }
 
-        .p-section-title { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; color: var(--team-people); margin: 30px 0 15px 0; }
-        .presence-table { width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-        .presence-table th { background: #FDFDFD; padding: 12px; font-size: 10px; color: var(--team-people); text-transform: uppercase; border: 1px solid var(--border); }
+        .modal-header-stacked { margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+        .modal-mgr-name { font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -0.03em; }
+        .modal-sub-title { font-size: 14px; font-weight: 800; text-transform: uppercase; margin-top: 4px; }
+
+        .close-btn { position: absolute; top: 20px; right: 20px; font-size: 24px; font-weight: 800; color: #ccc; cursor: pointer; width: 40px; height: 40px; background: var(--bg-page); border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; z-index: 10; }
+        .close-btn:hover { color: var(--ink); transform: rotate(90deg); }
+        
+        .p-section-title { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--team-people); margin: 30px 0 15px 0; }
+        .p-grid-large { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; width: 44px; height: 44px; flex-shrink: 0; }
+        .p-grid-large span { width: 100%; height: 100%; border-radius: 50%; }
+
+        .p-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 25px; }
+        .p-meta-card { padding: 20px; background: var(--bg-page); border-radius: var(--radius-md); border: 1.5px solid var(--border); }
+        .p-meta-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #999; margin-bottom: 6px; display: block; letter-spacing: 0.05em; }
+        .p-meta-val { font-size: 16px; font-weight: 900; }
+        .p-meta-val.grey { color: var(--ink-sub); }
+        .p-meta-val-container { display: flex; align-items: center; gap: 10px; }
+        .profile-status-editor-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+
+        .presence-table { width: 100%; border-collapse: collapse; margin-top: 10px; border: 1px solid var(--border); border-radius: var(--radius-md); overflow:hidden; }
+        .presence-table th { background: var(--bg-page); padding: 12px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--team-people); }
         .presence-table td { padding: 12px; text-align: center; border: 1px solid var(--border); font-size: 11px; font-weight: 800; }
-        .presence-table tr.prior-week { background-color: #F8F9FA; opacity: 0.5; filter: grayscale(1); }
-        .presence-table tr.prior-week td { color: #BBB; pointer-events: none; }
+        .presence-table tr.prior-week { opacity: 0.5; background-color: #f9f9f9; }
+        .presence-table tr.prior-week td { color: #999; }
 
-        .btn-post { background-color: var(--team-people); color: #FFF; border: none; padding: 12px 24px; border-radius: 12px; font-size: 11px; font-weight: 900; text-transform: uppercase; cursor: pointer; box-shadow: var(--shadow-glow-blue); transition: 0.2s; }
-        .btn-post:hover { transform: translateY(-2px); box-shadow: 0 0 25px rgba(33, 160, 216, 0.6); }
+        .note-item { background: var(--bg-page); border: 1.5px solid var(--border); padding: 16px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; line-height: 1.5; color: var(--ink); margin-bottom: 10px; border-left: 5px solid; position: relative; }
+        .note-meta { position: absolute; top: 16px; right: 16px; font-size: 10px; color: var(--ink-sub); font-weight: 700; }
+
+        .request-item { background: var(--bg-page); border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 20px; }
+        .request-name-link { font-size: 18px; font-weight: 900; cursor: pointer; color: var(--ink); }
+        .request-name-link:hover { color: var(--team-people); text-decoration: underline; }
+
+        .pill-btn { border: none; padding: 6px 14px; border-radius: 99px; font-size: 10px; font-weight: 900; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-top: 4px; display: inline-block; letter-spacing: 0.05em; }
+        .pill-suggest { background: var(--team-people); color: #FFF; }
+        .pill-update { background: #E0E0E0; color: #333; padding: 4px 10px; font-size: 9px; margin: 0; }
+        .pill-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+
+        .pattern-editor { background: #FFF; border: 1.5px solid var(--border); padding: 20px; border-radius: var(--radius-md); margin-top: 15px; box-shadow: var(--shadow-sm); }
+        .editor-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 15px; }
+        .editor-grid.five-day { grid-template-columns: repeat(5, 1fr); }
+        .editor-select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); font-size: 12px; font-weight: 800; background: var(--bg-page); }
+        .editor-day-label { font-size: 10px; font-weight: 800; color: var(--ink-sub); text-transform: uppercase; text-align: center; margin-bottom: 4px; }
+        
+        .btn-action { padding: 14px 20px; border: none; border-radius: var(--radius-sm); font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.2s; letter-spacing: 0.05em; min-height: 45px; }
+        .btn-action:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .btn-approve { background: var(--st-office); color: #FFF; }
+        .btn-deny { background: var(--team-editorial); color: #FFF; }
+        .btn-sync { background-color: var(--team-people); color: #FFF; }
+        .btn-success { background-color: var(--st-office); color: #FFF; }
+        .btn-post {
+            background-color: var(--team-people); color: #FFF;
+            box-shadow: 0 0 8px rgba(33, 160, 216, 0.4);
+        }
+        .btn-post:hover {
+            box-shadow: 0 0 15px rgba(33, 160, 216, 0.7);
+        }
+        .btn-action:disabled { cursor: not-allowed; opacity: 0.7; }
+
+        .btn-action .sync-loader { display: flex; justify-content: center; align-items: center; gap: 5px; height: 15px; }
+        .btn-action .sync-loader span { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: loader-bounce 1.2s infinite ease-in-out; }
+        .btn-action .sync-loader span:nth-child(2) { animation-delay: -0.16s; }
+        .btn-action .sync-loader span:nth-child(3) { animation-delay: -0.32s; }
+        .btn-action .sync-tick { width: 24px; height: 24px; transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); transform: scale(0); fill: currentColor; }
+        .btn-success .sync-tick { transform: scale(1); }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; opacity: 0; transform: translateY(10px); animation: slideUpFade 0.5s 0.2s forwards; }
 
         .approvals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .manager-card { background: #FFF; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 24px; position: relative; transition: 0.3s; cursor: pointer; padding-left: 36px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
-        .manager-card:hover { transform: translateY(-5px); box-shadow: 0 12px 24px rgba(0,0,0,0.05); }
-        .manager-card::before { content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 8px; background-color: var(--accent-color, var(--carbon)); border-radius: var(--radius-md) 0 0 var(--radius-md); }
+        .manager-card {
+            background: var(--bg-base); border: 1px solid var(--border);
+            border-radius: var(--radius-md); padding: 24px;
+            position: relative; transition: var(--transition);
+            cursor: pointer; box-shadow: var(--shadow-sm);
+            padding-left: 36px;
+        }
+        .manager-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+        .manager-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            width: 8px;
+            border-radius: var(--radius-md) 0 0 var(--radius-md);
+            transition: width var(--transition);
+            background-color: var(--accent-color, var(--carbon));
+        }
+        .manager-card:hover::before { width: 12px; }
+        .manager-card-ellie::before { 
+            background-image: linear-gradient(
+                to bottom,
+                var(--team-editorial) 0%,
+                var(--team-editorial) 50%,
+                var(--team-social) 50%,
+                var(--team-social) 100%
+            );
+        }
+        .manager-card-nathan::before { 
+            background-image: linear-gradient(
+                to bottom,
+                var(--team-editorial) 0%,
+                var(--team-editorial) 33.33%,
+                var(--team-social) 33.33%,
+                var(--team-social) 66.66%,
+                var(--team-creative) 66.66%,
+                var(--team-creative) 100%
+            );
+        }
 
-        .day-scroller { display: flex; gap: 10px; margin-bottom: 30px; overflow-x: auto; padding-bottom: 10px; justify-content: center; }
-        .day-pill { padding: 12px 24px; border: 1.5px solid var(--border); background: #FFF; border-radius: 99px; cursor: pointer; transition: 0.2s; font-weight: 700; font-size: 14px; }
-        .day-pill.active { background: var(--team-people); color: #FFF; border-color: var(--team-people); box-shadow: var(--shadow-glow-blue); }
+        .mgr-name {
+            font-size: 18px;
+            font-weight: 900;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #555;
+        }
+        .mgr-pending-alert {
+            font-size: 10px;
+            font-weight: 900;
+            color: #555;
+        }
+        .mgr-pending-alert.urgent { color: var(--team-editorial); }
+        .mgr-pending-alert.all-clear { color: var(--st-office); }
 
-        #toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: var(--carbon); color: #FFF; padding: 14px 32px; border-radius: 99px; font-size: 13px; font-weight: 800; opacity: 0; pointer-events: none; transition: 0.4s; z-index: 9000; box-shadow: var(--shadow-lg); }
+        .outlook-hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .outlook-card { background: var(--bg-base); padding: 24px; border-radius: var(--radius-lg); text-align: center; border: 1.5px solid transparent; transition: 0.3s; cursor: pointer; box-shadow: var(--shadow-md), var(--shadow-glow-blue); }
+        .outlook-card:not(.locked):hover { transform: translateY(-4px); border-color: var(--team-people); }
+        .outlook-card.locked { opacity: 0.4; filter: grayscale(1); cursor: not-allowed; pointer-events:none; }
+        .hero-count { font-size: 48px; font-weight: 900; display: block; line-height: 1; color: var(--team-people); }
+        .hero-label { font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.05em; margin-top: 8px; display: block; }
+        
+        .day-scroller-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+        .day-scroller { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
+        .day-pill { padding: 12px 24px; border: 1.5px solid var(--border); background: var(--bg-base); border-radius: 99px; cursor: pointer; transition: 0.2s; text-align: center; font-weight: 700; font-size: 14px; white-space: nowrap; position: relative; }
+        .day-pill:hover { background: #f0f0f0; border-color: #ddd; }
+        .day-pill.active { background: var(--team-people); color: #FFF; border-color: var(--team-people); font-weight: 800; box-shadow: var(--shadow-glow-blue); }
+        .today-btn { flex-shrink: 0; background-color: #f0f0f0; border-color: #ddd; }
+        .today-btn:hover { background-color: #e0e0e0; }
+        .day-pill.is-today::after {
+            content: '';
+            position: absolute;
+            bottom: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: currentColor;
+            opacity: 0.7;
+        }
+        
+        .team-block { margin-bottom: 40px; }
+        .stream-header { display: flex; justify-content: space-between; align-items: center; font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; margin-bottom: 15px; }
+        .stream-header-title { display: flex; align-items: center; gap: 12px; }
+        .stream-dot { width: 16px; height: 16px; border-radius: 50%; }
+        .team-home-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+        .team-home-btn:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-md);
+        }
+        .team-home-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: #FFF;
+        }
+
+
+        .status-cell-grid { font-weight: 900; text-align: center; }
+
+        #view-teams .directory-table { table-layout: fixed; width: 100%; }
+        #view-teams .directory-table th:first-child,
+        #view-teams .directory-table td:first-child { width: 32%; }
+        #view-teams .directory-table th:not(:first-child),
+        #view-teams .directory-table td:not(:first-child) { width: calc(68% / 7); }
+
+        #view-teams .directory-table th { text-align: center; }
+        #view-teams .directory-table th:first-child { text-align: left; }
+        #view-teams .directory-table .status-cell-grid { padding: 8px; }
+        #view-teams .directory-table .status-cell-grid-header {
+            padding: 20px 5px;
+            font-size: 10px;
+        }
+        
+        .name-role-container {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+        .name-cell-teams .name-text {
+            font-weight: 700;
+            font-size: 14px;
+            line-height: 1.2;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .role-text-inline {
+            font-size: 9px;
+            font-weight: 600;
+            color: #9E9E9E;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+            flex-shrink: 1;
+        }
+
+        .week-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px 0; }
+        .day-box { background: #EEE; text-align: center; padding: 10px; border-radius: 8px; }
+        .d-label { display: block; font-size: 9px; font-weight: 800; color: #999; }
+        .d-val { font-weight: 900; font-size: 16px; }
+
+        .comment-box { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin: 10px 0; font-family: inherit; font-size: 14px; }
+        .action-row { display: flex; gap: 10px; margin-top: 10px; }
+
+        .status-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+        .status-modal-title-prefix {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: -0.02em;
+        }
+        .status-modal-title-main {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--team-people);
+            text-transform: uppercase;
+            letter-spacing: -0.02em;
+        }
+        .status-modal-dots {
+            display: grid;
+            grid-template-columns: repeat(2, 8px);
+            gap: 4px;
+        }
+        .status-modal-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #ccc;
+        }
+        .status-list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: var(--radius-sm); background: #F8F9FA; margin-bottom: 8px; }
+        .status-list-name { font-weight: 700; font-size: 14px; cursor: pointer; }
+        .status-list-name:hover { color: var(--team-people); }
+        .status-list-detail { font-weight: 600; font-size: 12px; color: var(--ink-sub); }
+        
+        .modal-loader {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+            padding: 40px;
+        }
+        .modal-loader .header-dots .dot {
+            animation: dotCycle 2s infinite ease-in-out;
+        }
+        .modal-loader .header-dots .dot:nth-child(1) { animation-delay: 0s; }
+        .modal-loader .header-dots .dot:nth-child(2) { animation-delay: 0.5s; }
+        .modal-loader .header-dots .dot:nth-child(4) { animation-delay: 1s; }
+        .modal-loader .header-dots .dot:nth-child(3) { animation-delay: 1.5s; }
+
+        .table-loader {
+            text-align: center;
+            padding: 60px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+
+        #toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: var(--carbon); color: #FFF; padding: 14px 32px; border-radius: 99px; font-size: 13px; font-weight: 800; opacity: 0; pointer-events: none; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 9000; box-shadow: var(--shadow-lg); }
         #toast.active { opacity: 1; bottom: 40px; }
-
-        .is-mgr-pill { font-size: 9px; background: var(--team-people); color: #FFF; padding: 4px 10px; border-radius: 99px; vertical-align: middle; margin-left: 10px; font-weight: 900; line-height: 1; display: inline-block; }
     </style>
 </head>
 <body>
@@ -154,27 +521,29 @@
     <div id="lock-screen">
         <div class="header-lockup" style="flex-direction:column; margin-bottom:40px;">
             <div class="header-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-            <div class="title-text" style="font-size: 3.5rem; margin-top: 20px; line-height: 0.9; text-align: center;">Management<br>Hub</div>
+            <div class="title-text" style="font-size: 3.75rem; color: var(--carbon); margin-top: 20px; opacity: 1; transform: none; line-height: 0.9; text-align: center;">Management<br>Hub</div>
         </div>
         <div class="pin-field">
             <div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div><div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div>
         </div>
         <div class="numpad">
-            <div class="n-btn" onclick="press(1)">1</div><div class="n-btn" onclick="press(2)">2</div><div class="n-btn" onclick="press(3)">3</div>
-            <div class="n-btn" onclick="press(4)">4</div><div class="n-btn" onclick="press(5)">5</div><div class="n-btn" onclick="press(6)">6</div>
-            <div class="n-btn" onclick="press(7)">7</div><div class="n-btn" onclick="press(8)">8</div><div class="n-btn" onclick="press(9)">9</div>
-            <div class="n-btn n-btn-special" onclick="clearPin()">CLR</div>
-            <div class="n-btn" onclick="press(0)">0</div>
+            <div class="n-btn" data-value="1">1</div><div class="n-btn" data-value="2">2</div><div class="n-btn" data-value="3">3</div>
+            <div class="n-btn" data-value="4">4</div><div class="n-btn" data-value="5">5</div><div class="n-btn" data-value="6">6</div>
+            <div class="n-btn" data-value="7">7</div><div class="n-btn" data-value="8">8</div><div class="n-btn" data-value="9">9</div>
+            <div class="n-btn n-btn-special" data-value="clear">CLR</div>
+            <div class="n-btn" data-value="0">0</div>
         </div>
     </div>
 
-    <!-- MAIN APP -->
     <div id="app-shell" class="hidden">
         <div class="main-container">
             <header>
                 <div class="header-lockup">
                     <div class="title-text">Management</div>
-                    <div class="header-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    <div class="header-dots">
+                        <div class="dot"></div><div class="dot"></div>
+                        <div class="dot"></div><div class="dot"></div>
+                    </div>
                     <div class="title-text">Hub</div>
                 </div>
                 <div class="nav-row">
@@ -183,10 +552,14 @@
                         <button class="tab-trigger" onclick="switchView('teams', this)">Teams</button>
                         <button class="tab-trigger" onclick="switchView('approvals', this)">Approvals</button>
                     </nav>
-                    <div class="week-picker" id="week-picker-control">
-                        <button class="week-btn" onclick="changeWeek(-1)">←</button>
-                        <span class="week-label" id="wc-label">WC ...</span>
-                        <button class="week-btn" onclick="changeWeek(1)">→</button>
+                    <div class="nav-row-right">
+                        <a href="https://www.notion.so/WIP_ADMIN-CONTROL-2cfb73e3901e8056a9e6f3243730ce33?source=copy_link" target="_blank" class="header-action-btn btn-admin">Admin Console</a>
+                        <a href="https://www.notion.so/WIP_MANAGEMENT_HOWTO-2d0b73e3901e802ebe17e123eae90c87?source=copy_link" target="_blank" class="header-action-btn btn-help">?</a>
+                        <div class="week-picker" id="week-picker-control">
+                            <button class="week-btn" onclick="changeWeek(-1)">←</button>
+                            <span class="week-label" id="wc-label">W/C ...</span>
+                            <button class="week-btn" onclick="changeWeek(1)">→</button>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -199,9 +572,12 @@
                     <div class="outlook-card" id="card-OffSite" onclick="showStatusList('OffSite')"><span class="hero-count" id="count-offsite">0</span><span class="hero-label">Off Site</span></div>
                     <div class="outlook-card" id="card-Leave" onclick="showStatusList('Leave')"><span class="hero-count" id="count-leave">0</span><span class="hero-label">Leave</span></div>
                 </div>
-                <div class="day-scroller" id="day-mount"></div>
+                <div class="day-scroller-container">
+                    <button class="day-pill today-btn" id="today-btn">Today</button>
+                    <div class="day-scroller" id="day-mount"></div>
+                </div>
                 <table class="directory-table">
-                    <thead><tr><th>Staff Name</th><th>Role</th><th>Stream</th><th class="status-header">Status</th></tr></thead>
+                    <thead><tr><th>Staff Name</th><th>Role</th><th>Stream</th><th>Status</th></tr></thead>
                     <tbody id="directory-mount"></tbody>
                 </table>
             </section>
@@ -211,261 +587,800 @@
         </div>
     </div>
 
-    <!-- MODAL -->
+    <!-- GLOBAL MODAL -->
     <div class="modal-overlay" id="global-modal" onclick="closeModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="close-btn" onclick="closeModal()">×</div>
             <div id="modal-mount"></div>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+<script type="module">
+    // Fix: Add a global interface to declare custom properties on the Window object.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // VERBATIM Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-            authDomain: "dmg-command-system.firebaseapp.com",
-            projectId: "dmg-command-system",
-            storageBucket: "dmg-command-system.appspot.com",
-            messagingSenderId: "223535956454",
-            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-        };
+    // CANONICAL: Use Admin Control Centre's Firebase project config.
+    const firebaseConfig = {
+      apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+      authDomain: "dmg-command-centre-native.firebaseapp.com",
+      projectId: "dmg-command-centre-native",
+      storageBucket: "dmg-command-centre-native.firebasestorage.app",
+      messagingSenderId: "223535956454",
+      appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
+      measurementId: "G-5HNGPRJGZY"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = 'dmg-command-system';
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    // CANONICAL: Use Admin Control Centre's artifact root ID.
+    const appId = "dmg-command-centre-native";
 
-        let staff = [];
-        let submissions = [];
-        let responses = [];
-        let notes = [];
-        let currentUser = null;
+    let staffList = [];
+    let rotaRequests = [];
+    let rotaResponses = [];
+    let staffNotes = [];
 
-        const teamColors = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#21a0d8', Executive: '#1C1C1C' };
-        const statusColors = { Office: '#2E7D32', WFH: '#F9A825', Shoot: '#2196F3', PTO: '#F44336', 'Client / Travel': '#6A1B9A', Leave: '#F44336', Weekend: '#9E9E9E', Pending: '#BDBDBD' };
+    const teamColors = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#21a0d8', Executive: '#1C1C1C' };
+    const statusColors = { Office: '#2E7D32', WFH: '#F9A825', Shoot: '#2196F3', PTO: '#F44336', 'Client / Travel': '#6A1B9A', Leave: '#F44336', Weekend: '#9E9E9E', Pending: '#BDBDBD' };
+    
+    const teamHomepages = {
+        Creative: "https://www.notion.so/WIP_CREATIVE-2c8b73e3901e80658e12fcbaf07a01a7?source=copy_link",
+        Operations: "https://www.notion.so/WIP_PEOPLE-2ceb73e3901e80c291f5deb9ca8505a7?source=copy_link",
+        Production: "https://www.notion.so/WIP_PRODUCTION-2c8b73e3901e80388954fb6e14c43b73?source=copy_link",
+        Social: "https://www.notion.so/WIP_SOCIAL-2c8b73e3901e80bf9c3ce8f15629cfd5?source=copy_link",
+        Editorial: "https://www.notion.so/WIP_EDITORIAL-2c8b73e3901e8090a2a0d09615970b79?source=copy_link"
+    };
+
+    const statusIcons = {
+        Office: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 16H9v-2h2v2zm0-4H9v-2h2v2zm0-4H9V9h2v2zm0-4H9V5h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>`,
+        WFH: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></svg>`,
+        Shoot: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5 20v-2h14v2H5zm0-3v-2h2.08l.92-3H6v-2h3.33l.92-3H8V5h8v2h-2.25l-.92 3H16v2h-2.25l-.92 3H15v2H5z"/></svg>`,
+        'Client / Travel': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
+        PTO: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
+        Leave: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
+        Weekend: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>`,
+        Pending: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/></svg>`
+    };
+
+    function getStatusIcon(status) {
+        const iconSvg = statusIcons[status] || statusIcons['Pending'];
+        const color = statusColors[status.replace(/ /g, '')] || statusColors.Pending;
+        return `<div class="status-icon" title="${status}" style="background-color: ${color}20; color: ${color};">${iconSvg}</div>`;
+    }
+
+    const getTodayIndex = () => {
+        const day = new Date().getDay(); // 0=sun, 1=mon, ..., 6=sat
+        return day === 0 ? 6 : day - 1; // Mon=0, Tue=1, ..., Sun=6
+    };
+
+    function getInitialMonday() {
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon...
         
-        const statusIcons = {
-            Office: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 16H9v-2h2v2zm0-4H9v-2h2v2zm0-4H9V9h2v2zm0-4H9V5h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2z"/></svg>`,
-            WFH: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></svg>`,
-            Shoot: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 20v-2h14v2H5zm0-3v-2h2.08l.92-3H6v-2h3.33l.92-3H8V5h8v2h-2.25l-.92 3H16v2h-2.25l-.92 3H15v2H5z"/></svg>`,
-            'Client / Travel': `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
-            PTO: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>`,
-            Weekend: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>`,
-            Pending: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>`
-        };
-
-        function getStatusIcon(status) {
-            const key = status.replace(/ /g, '');
-            const iconSvg = statusIcons[status] || statusIcons['Pending'];
-            const color = statusColors[key] || statusColors.Pending;
-            return `<div class="status-icon" title="${status}" style="background-color: ${color}20; color: ${color};">${iconSvg}</div>`;
+        if (dayOfWeek === 0) { // If today is Sunday, forecast to next Monday
+            today.setDate(today.getDate() + 1);
+        } else { // Otherwise, go to this week's Monday
+            const offset = dayOfWeek - 1; 
+            today.setDate(today.getDate() - offset);
         }
+        today.setHours(0, 0, 0, 0);
+        return today;
+    }
+    
+    let currentMonday = getInitialMonday();
+    let selectedDayIdx = new Date().getDay() === 0 ? 0 : getTodayIndex();
+    let pin = "";
+    let listenersInitialised = false; // Guard to prevent duplicate listeners.
 
-        function getMonday(d) {
-            const date = new Date(d);
-            const day = date.getDay();
-            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-            return new Date(date.setDate(diff));
+    const clearPin = () => {
+        pin = "";
+        document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+    };
+    
+    const press = (n) => {
+        if (pin.length >= 4) return;
+        pin += n;
+        (document.getElementById('p'+pin.length)).classList.add('filled');
+        if(pin.length === 4) {
+            setTimeout(() => {
+                if(pin === "2025") {
+                    (document.getElementById('lock-screen')).style.opacity = '0';
+                    setTimeout(() => { 
+                        (document.getElementById('lock-screen')).classList.add('hidden'); 
+                        (document.getElementById('app-shell')).classList.remove('hidden'); 
+                    }, 500);
+                } else { 
+                    clearPin();
+                }
+            }, 200);
         }
-        
-        let currentMonday = getMonday(new Date());
-        let selectedDayIdx = (new Date().getDay() >= 1 && new Date().getDay() <= 5) ? new Date().getDay() - 1 : 0;
+    };
 
-        let pin = "";
-        window.press = (n) => {
-            if (pin.length >= 4) return;
-            pin += n;
-            document.getElementById('p'+pin.length).classList.add('filled');
-            if(pin.length === 4) {
-                setTimeout(async () => {
-                    if(pin === "2025") {
-                        document.getElementById('lock-screen').style.opacity = '0';
-                        setTimeout(() => { document.getElementById('lock-screen').classList.add('hidden'); document.getElementById('app-shell').classList.remove('hidden'); }, 500);
-                        await startSystem();
-                    } else { window.clearPin(); }
-                }, 200);
+    function setupPinPad() {
+        document.querySelector('.numpad')?.addEventListener('click', (event) => {
+            const target = event.target;
+            const button = target.closest('.n-btn');
+            if (button) {
+                const value = button.dataset.value;
+                if (value === 'clear') {
+                    clearPin();
+                } else if (value) {
+                    press(parseInt(value, 10));
+                }
             }
-        };
-        window.clearPin = () => { pin = ""; document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled')); };
+        });
 
-        async function startSystem() {
-            // Rule 3 - Auth FIRST
-            const authResult = await signInAnonymously(auth);
-            currentUser = authResult.user;
-            
-            // Rule 1 - Strict Paths
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => { staff = []; snap.forEach(d => staff.push({id: d.id, ...d.data()})); updateUI(); });
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_submissions'), (snap) => { submissions = []; snap.forEach(d => submissions.push(d.data())); updateUI(); });
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_responses'), (snap) => { responses = []; snap.forEach(d => responses.push({id: d.id, ...d.data()})); updateUI(); });
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_notes'), (snap) => { notes = []; snap.forEach(d => notes.push({id: d.id, ...d.data()})); updateUI(); });
-        }
-
-        function updateUI() {
-            if (!currentUser || staff.length === 0) return;
-            document.getElementById('wc-label').innerHTML = `<span class="wc-prefix">w/c</span> ${currentMonday.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})}`;
-            renderDayScroller();
-            renderOutlook();
-            renderTeamsGrid();
-            renderApprovals();
-        }
-
-        window.changeWeek = (offset) => { currentMonday.setDate(currentMonday.getDate() + (offset * 7)); updateUI(); };
-        window.selectDay = (idx) => { selectedDayIdx = idx; updateUI(); };
-
-        function renderDayScroller() {
-            const mount = document.getElementById('day-mount');
-            mount.innerHTML = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((d, i) => {
-                const date = new Date(currentMonday.getTime()); date.setDate(date.getDate() + i);
-                return `<div class="day-pill ${selectedDayIdx === i ? 'active' : ''}" onclick="selectDay(${i})">${d.substring(0,3)} ${date.getDate()} ${date.toLocaleDateString('en-GB', {month:'short'})}</div>`;
-            }).join('');
-        }
-
-        function renderOutlook() {
-            const mount = document.getElementById('directory-mount');
-            const wcStr = currentMonday.toISOString().split('T')[0];
-            const isWeekend = (new Date().getDay() === 0 || new Date().getDay() === 6);
-            
-            // Weekend Lock
-            ['Office','WFH','Leave'].forEach(id => document.getElementById('card-'+id).classList.toggle('locked', isWeekend));
-
-            const counts = { Office: 0, WFH: 0, Shoot: 0, OffSite: 0, Leave: 0 };
-            mount.innerHTML = staff.sort((a,b) => a.firstName.localeCompare(b.firstName)).map(s => {
-                const fullName = `${s.firstName} ${s.lastName}`;
-                const sub = submissions.find(sub => sub.name === fullName && sub.weekId === wcStr);
-                const rawStatus = (sub && sub.schedule[selectedDayIdx]) ? sub.schedule[selectedDayIdx].status : 'Office';
-                let status = rawStatus || 'Office';
-
-                let countKey = ['PTO','Leave','Abroad'].includes(status) ? 'Leave' : (status === 'Shoot' ? 'Shoot' : (status === 'Client / Travel' ? 'OffSite' : status));
-                let displayStatus = isWeekend && !['Shoot', 'Client / Travel'].includes(status) ? "Weekend" : status;
+        document.addEventListener('keydown', (event) => {
+            const lockScreen = document.getElementById('lock-screen');
+            if (lockScreen && !lockScreen.classList.contains('hidden')) {
+                const key = event.key;
+                let buttonToAnimate = null;
                 
-                if (countKey === 'Shoot') counts.Shoot++;
-                else if (countKey === 'OffSite') counts.OffSite++;
-                else if (!isWeekend && counts[countKey] !== undefined) counts[countKey]++;
+                if (key >= '0' && key <= '9') {
+                    press(parseInt(key, 10));
+                    buttonToAnimate = document.querySelector(`.n-btn[data-value="${key}"]`);
+                } else if (key === 'Backspace' || key === 'Delete') {
+                    clearPin();
+                    buttonToAnimate = document.querySelector('.n-btn[data-value="clear"]');
+                }
 
-                const color = teamColors[s.team] || '#CCC';
-                const dots = `<div class="name-dots">${Array(4).fill(`<span style="background:${color}"></span>`).join('')}</div>`;
-                return `<tr>
-                    <td class="name-cell" onclick="openStaffProfile('${s.id}')">${dots} <span>${fullName} ${s.isManager ? '<span class="is-mgr-pill">MGR</span>' : ''}</span></td>
-                    <td>${s.role}</td>
-                    <td style="color:${color}; text-transform:uppercase; font-size:11px;">${s.team}</td>
-                    <td class="status-cell">${getStatusIcon(displayStatus)}</td>
-                </tr>`;
-            }).join('');
+                if (buttonToAnimate) {
+                    event.preventDefault();
+                    buttonToAnimate.classList.add('n-btn--active');
+                    setTimeout(() => { 
+                        buttonToAnimate?.classList.remove('n-btn--active');
+                    }, 150);
+                }
+            }
+        });
+    }
+    setupPinPad();
 
-            document.getElementById('count-office').innerText = isWeekend ? 0 : counts.Office;
-            document.getElementById('count-wfh').innerText = isWeekend ? 0 : counts.WFH;
-            document.getElementById('count-shoot').innerText = counts.Shoot;
-            document.getElementById('count-offsite').innerText = counts.OffSite;
-            document.getElementById('count-leave').innerText = isWeekend ? 0 : counts.Leave;
+    const todayBtn = document.getElementById('today-btn');
+    if (todayBtn) {
+        todayBtn.addEventListener('click', () => window.jumpToToday());
+    }
+
+    onAuthStateChanged(auth, (user) => {
+        if (user && !listenersInitialised) {
+            console.log("Authenticated. Initialising Firestore listeners...");
+            listenersInitialised = true;
+            
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), 
+                (snap) => { 
+                    staffList = []; 
+                    snap.forEach(d => staffList.push({id: d.id, ...d.data()})); 
+                    updateUI(); 
+                },
+                (error) => { console.error("Error fetching staff_directory:", error); }
+            );
+
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_requests'), 
+                (snap) => { 
+                    rotaRequests = []; 
+                    snap.forEach(d => rotaRequests.push(d.data())); 
+                    updateUI(); 
+                },
+                (error) => { console.error("Error fetching rota_requests:", error); }
+            );
+            
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_responses'), 
+                (snap) => { 
+                    rotaResponses = []; 
+                    snap.forEach(d => rotaResponses.push({id: d.id, ...d.data()})); 
+                    updateUI(); 
+                },
+                (error) => { console.error("Error fetching rota_responses:", error); }
+            );
+
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_notes'), 
+                (snap) => { 
+                    staffNotes = []; 
+                    snap.forEach(d => staffNotes.push({id: d.id, ...d.data()})); 
+                    updateUI(); 
+                },
+                (error) => { console.error("Error fetching staff_notes:", error); }
+            );
+        } else if (!user) {
+            console.log("User not signed in. Waiting for authentication.");
+            listenersInitialised = false;
+        }
+    });
+    
+    signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
+
+    function updateUI() {
+        currentMonday.setHours(0,0,0,0);
+        
+        const weekEndDate = new Date(currentMonday);
+        weekEndDate.setDate(weekEndDate.getDate() + 6);
+        const startDateFormatted = currentMonday.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+        const endDateFormatted = weekEndDate.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+        
+        (document.getElementById('wc-label')).innerHTML = `<span class="wc-prefix">W/C</span> ${startDateFormatted} - ${endDateFormatted}`;
+        
+        renderDayScroller();
+        renderOutlook();
+        renderTeamsGrid();
+        renderApprovals();
+    }
+
+    window.changeWeek = (offset) => { currentMonday.setDate(currentMonday.getDate() + (offset * 7)); updateUI(); };
+    window.selectDay = (idx) => { selectedDayIdx = idx; updateUI(); };
+    
+    window.jumpToToday = () => {
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const offset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const mondayOfCurrentWeek = new Date(today);
+        mondayOfCurrentWeek.setDate(today.getDate() - offset);
+        mondayOfCurrentWeek.setHours(0, 0, 0, 0);
+        
+        currentMonday = mondayOfCurrentWeek;
+        selectedDayIdx = getTodayIndex();
+        updateUI();
+    };
+
+    function renderDayScroller() {
+        const mount = document.getElementById('day-mount');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        mount.innerHTML = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((d, i) => {
+            const date = new Date(currentMonday.getTime());
+            date.setDate(date.getDate() + i);
+            
+            const isToday = date.getTime() === today.getTime();
+            const todayClass = isToday ? 'is-today' : '';
+
+            return `<div class="day-pill ${selectedDayIdx === i ? 'active' : ''} ${todayClass}" onclick="selectDay(${i})">${d.substring(0,3)} ${date.getDate()} ${date.toLocaleDateString('en-GB', {month:'short'})}</div>`;
+        }).join('');
+    }
+
+    function renderOutlook() {
+        const mount = document.getElementById('directory-mount');
+        if (staffList.length === 0) {
+            mount.innerHTML = `<tr><td colspan="4" class="table-loader">Loading Directory...</td></tr>`;
+            return;
         }
 
-        function renderTeamsGrid() {
-            const mount = document.getElementById('teams-grid-mount');
-            const wcStr = currentMonday.toISOString().split('T')[0];
-            mount.innerHTML = ['Editorial', 'Production', 'Creative', 'Social', 'Operations', 'Executive'].map(v => {
-                const members = staff.filter(s => s.team === v);
-                if(members.length === 0) return "";
-                const vCol = teamColors[v];
-                return `<div class="team-block"><div class="stream-header"><div class="stream-dot" style="background:${vCol}"></div>${v} Stream</div><table class="directory-table"><thead><tr><th>Name</th>${['M','T','W','T','F'].map(d => `<th class="status-cell-grid">${d}</th>`).join('')}</tr></thead><tbody>${members.sort((a,b)=>a.firstName.localeCompare(b.firstName)).map(m => {
-                    const sub = submissions.find(s => s.name === `${m.firstName} ${m.lastName}` && s.weekId === wcStr);
-                    const sched = sub ? sub.schedule : Array(5).fill({status: 'Pending'});
-                    return `<tr><td class="name-cell" onclick="openStaffProfile('${m.id}')"><span>${m.firstName} ${m.lastName}</span></td>${sched.map(day => `<td class="status-cell-grid" style="color:var(--st-${(day.status||'Pending').toLowerCase().replace(/ /g,'')})">${day.status === 'Pending' ? '-' : day.status.charAt(0)}</td>`).join('')}</tr>`;
-                }).join('')}</tbody></table></div>`;
-            }).join('');
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        const viewedDate = new Date(currentMonday);
+        viewedDate.setDate(viewedDate.getDate() + selectedDayIdx);
+        const isViewedDayWeekend = (viewedDate.getDay() === 0 || viewedDate.getDay() === 6);
+
+        const table = (document.getElementById('view-outlook')).querySelector('.directory-table');
+        if (table) {
+            const headerCell = table.rows[0].cells[3];
+            if (headerCell) {
+                headerCell.innerHTML = `Status for ${viewedDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })}`;
+            }
         }
 
-        function renderApprovals() {
-            const mount = document.getElementById('approvals-mount');
-            const wcStr = currentMonday.toISOString().split('T')[0];
-            mount.innerHTML = staff.filter(s => s.isManager).sort((a,b) => a.firstName.localeCompare(b.firstName)).map(m => {
-                const reports = staff.filter(s => s.manager === `${m.firstName} ${m.lastName}`);
-                const pendingCount = reports.filter(r => !responses.some(res => res.name === `${r.firstName} ${r.lastName}` && res.weekId === wcStr && res.status === 'Approved')).length;
-                return `<div class="manager-card" style="--accent-color:${teamColors[m.team]}" onclick="openApprovalWorkspace('${m.id}')"><div class="mgr-name">${m.firstName} ${m.lastName}</div><div class="mgr-pending-alert ${pendingCount > 0 ? 'urgent' : 'all-clear'}">${pendingCount > 0 ? `${pendingCount} PENDING ACTIONS` : 'ALL CLEAR'}</div></div>`;
-            }).join('');
+        const weekendLockedCards = ['Office', 'WFH', 'Leave'];
+        const allCards = ['Office', 'WFH', 'Shoot', 'OffSite', 'Leave'];
+        allCards.forEach(id => {
+            const card = document.getElementById(`card-${id}`);
+            if (card) {
+                const isLocked = isViewedDayWeekend && weekendLockedCards.includes(id);
+                card.classList.toggle('locked', isLocked);
+            }
+        });
+
+        const counts = { Office: 0, WFH: 0, Shoot: 0, OffSite: 0, Leave: 0 };
+        
+        mount.innerHTML = staffList.sort((a,b) => a.firstName.localeCompare(b.firstName)).map(s => {
+            const fullName = `${s.firstName} ${s.lastName}`;
+            const sub = rotaRequests.find(sub => sub.staffName === fullName && sub.weekCommencing === wcStr);
+            let rawStatus = 'Office';
+            if (sub && sub.schedule && sub.schedule[selectedDayIdx]) {
+                rawStatus = sub.schedule[selectedDayIdx].status;
+            }
+
+            let status = isViewedDayWeekend ? 'Weekend' : (rawStatus || 'Office');
+
+            if (isViewedDayWeekend) {
+                 if (['Shoot', 'Client / Travel'].includes(rawStatus)) {
+                     status = rawStatus;
+                 }
+            }
+
+            let countKey = ['PTO','Leave','Abroad'].includes(status) ? 'Leave' 
+                         : status === 'Shoot' ? 'Shoot'
+                         : status === 'Client / Travel' ? 'OffSite'
+                         : status;
+            
+            if (counts[countKey] !== undefined) {
+                 counts[countKey]++;
+            }
+
+            let displayStatus = status;
+            
+            const color = teamColors[s.team] || '#CCC';
+            const dots = `<div class="name-dots">${Array(4).fill(`<span style="background:${color}"></span>`).join('')}</div>`;
+            return `<tr>
+                        <td class="name-cell" onclick="openStaffProfile('${s.id}')">${dots} <span>${fullName} ${s.isManager ? '<span class="is-mgr-pill">MGR</span>' : ''}</span></td>
+                        <td class="role-cell">${s.role}</td>
+                        <td class="stream-cell" style="color:${color};">${s.team}</td>
+                        <td class="status-cell">${getStatusIcon(displayStatus)}</td>
+                    </tr>`;
+        }).join('');
+
+        (document.getElementById('count-office')).innerText = String(isViewedDayWeekend ? 0 : counts.Office);
+        (document.getElementById('count-wfh')).innerText = String(isViewedDayWeekend ? 0 : counts.WFH);
+        (document.getElementById('count-shoot')).innerText = String(counts.Shoot);
+        (document.getElementById('count-offsite')).innerText = String(counts.OffSite);
+        (document.getElementById('count-leave')).innerText = String(isViewedDayWeekend ? 0 : counts.Leave);
+    }
+
+    function renderTeamsGrid() {
+        const mount = document.getElementById('teams-grid-mount');
+        if (staffList.length === 0) {
+            mount.innerHTML = `<div class="table-loader">Loading Team Schedules...</div>`;
+            return;
         }
 
-        window.showStatusList = (statusType) => {
-            const viewedDate = new Date(currentMonday); viewedDate.setDate(viewedDate.getDate() + selectedDayIdx);
-            const isWeekend = (viewedDate.getDay() === 0 || viewedDate.getDay() === 6);
-            if (isWeekend && !['Shoot', 'OffSite'].includes(statusType)) return;
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        const dayHeaders = Array.from({ length: 7 }).map((_, i) => {
+            const date = new Date(currentMonday);
+            date.setDate(date.getDate() + i);
+            const dayName = date.toLocaleDateString('en-GB', { weekday: 'short' });
+            const dayOfMonth = date.getDate();
+            return `<th class="status-cell-grid status-cell-grid-header">${dayName} ${dayOfMonth}</th>`;
+        }).join('');
+
+        mount.innerHTML = ['Editorial', 'Production', 'Creative', 'Social', 'Operations', 'Executive'].map(v => {
+            const members = staffList.filter(s => s.team === v);
+            if(members.length === 0) return "";
+            const vCol = teamColors[v];
+            const homeLink = teamHomepages[v];
+            const homeIcon = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></svg>`;
+            const homeButton = homeLink ? `<a href="${homeLink}" target="_blank" class="team-home-btn" style="background-color: ${vCol}">${homeIcon}</a>` : '';
+
+            return `<div class="team-block">
+                        <div class="stream-header">
+                            <div class="stream-header-title">
+                                <div class="stream-dot" style="background:${vCol}"></div>
+                                <span>${v} Stream</span>
+                            </div>
+                            ${homeButton}
+                        </div>
+                        <table class="directory-table">
+                            <thead><tr><th>Name</th>${dayHeaders}</tr></thead>
+                            <tbody>${members.sort((a,b)=>a.firstName.localeCompare(b.firstName)).map(m => {
+                                const sub = rotaRequests.find(s => s.staffName === `${m.firstName} ${m.lastName}` && s.weekCommencing === wcStr);
+                                
+                                let weeklySchedule = (sub && sub.schedule) ? [...sub.schedule] : Array(7).fill({ status: 'Pending' });
+                                while (weeklySchedule.length < 7) {
+                                    weeklySchedule.push({ status: weeklySchedule.length < 5 ? 'Pending' : 'Weekend' });
+                                }
+                                
+                                const color = teamColors[m.team] || '#CCC';
+                                const dots = `<div class="name-dots">${Array(4).fill(`<span style="background:${color}"></span>`).join('')}</div>`;
+                                const fullName = `${m.firstName} ${m.lastName}`;
+
+                                return `<tr>
+                                    <td class="name-cell name-cell-teams" onclick="openStaffProfile('${m.id}')">
+                                        ${dots}
+                                        <div class="name-role-container">
+                                            <span class="name-text">${fullName}</span>
+                                            <span class="role-text-inline">${m.role}</span>
+                                        </div>
+                                    </td>
+                                    ${weeklySchedule.map((day) => {
+                                        return `<td class="status-cell-grid">${getStatusIcon(day.status || 'Pending')}</td>`
+                                    }).join('')}
+                                </tr>`;
+                            }).join('')}</tbody>
+                        </table>
+                    </div>`;
+        }).join('');
+    }
+
+    function renderApprovals() {
+        const mount = document.getElementById('approvals-mount');
+        if (staffList.length === 0) {
+            mount.innerHTML = `<div class="table-loader">Loading Manager Approvals...</div>`;
+            return;
+        }
+
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        mount.innerHTML = staffList.filter(s => s.isManager).sort((a,b) => a.firstName.localeCompare(b.firstName)).map(m => {
+            const name = `${m.firstName} ${m.lastName}`;
+            const reports = staffList.filter(s => s.manager === name);
+            if(reports.length === 0) return "";
+            
+            const pendingCount = reports.filter(r => {
+                const fName = `${r.firstName} ${r.lastName}`;
+                const hasResp = rotaResponses.some(res => res.staffName === fName && res.weekCommencing === wcStr && res.status === 'Approved');
+                return !hasResp;
+            }).length;
+
+            const accent = teamColors[m.team] || '#1C1C1C';
+            let specialClass = '';
+            if (name.includes('Ellie')) specialClass = 'manager-card-ellie';
+            if (name.includes('Nathan')) specialClass = 'manager-card-nathan';
+
+            return `<div class="manager-card ${specialClass}" style="--accent-color: ${accent}" onclick="openApprovalWorkspace('${m.id}')"><div class="mgr-name">${name}</div><div class="mgr-pending-alert ${pendingCount > 0 ? 'urgent' : 'all-clear'}">${pendingCount > 0 ? `${pendingCount} Pending Action${pendingCount > 1 ? 's' : ''}` : 'All Clear'}</div></div>`;
+        }).join('');
+    }
+    
+    window.showStatusList = (statusType) => {
+        const mount = document.getElementById('modal-mount');
+        mount.innerHTML = `<div class="modal-loader"><div class="header-dots">${Array(4).fill(`<div class="dot"></div>`).join('')}</div></div>`;
+        (document.getElementById('global-modal')).classList.add('active');
+
+        setTimeout(() => {
+            const viewedDate = new Date(currentMonday);
+            viewedDate.setDate(viewedDate.getDate() + selectedDayIdx);
+            const isViewedDayWeekend = (viewedDate.getDay() === 0 || viewedDate.getDay() === 6);
+            
+            if (isViewedDayWeekend && !['Shoot', 'OffSite'].includes(statusType)) {
+                window.closeModal();
+                return;
+            }
 
             const wcStr = currentMonday.toISOString().split('T')[0];
-            const list = staff.filter(s => {
-                const sub = submissions.find(sub => sub.name === `${s.firstName} ${s.lastName}` && sub.weekId === wcStr);
-                const status = sub ? sub.schedule[selectedDayIdx].status : 'Office';
-                return statusType === 'Leave' ? ['PTO', 'Leave', 'Abroad'].includes(status) : (statusType === 'OffSite' ? status === 'Client / Travel' : status === statusType);
+            
+            const staffWithStatus = staffList.map(s => {
+                const fullName = `${s.firstName} ${s.lastName}`;
+                const sub = rotaRequests.find(sub => sub.staffName === fullName && sub.weekCommencing === wcStr);
+                const status = (sub && sub.schedule[selectedDayIdx]) ? sub.schedule[selectedDayIdx].status : 'Office';
+                return { ...s, currentStatus: status };
+            }).filter(s => {
+                if (statusType === 'Leave') return ['PTO', 'Leave', 'Abroad'].includes(s.currentStatus);
+                if (statusType === 'Shoot') return s.currentStatus === 'Shoot';
+                if (statusType === 'OffSite') return s.currentStatus === 'Client / Travel';
+                return s.currentStatus === statusType;
             });
-            const mount = document.getElementById('modal-mount');
-            mount.innerHTML = `<h2 style="margin-top:0;">Staff: ${statusType}</h2><div style="font-size:10px; font-weight:800; color:#999; margin-bottom:20px;">${viewedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}</div>${list.map(s => `<div style="padding:12px; background:#F8F9FA; border-radius:12px; margin-bottom:8px; display:flex; justify-content:space-between;"><b>${s.firstName} ${s.lastName}</b><span style="font-size:11px; color:#999;">${s.team}</span></div>`).join('') || 'None logged.'}`;
-            document.getElementById('global-modal').classList.add('active');
-        };
 
-        window.openStaffProfile = (staffId) => {
-            const s = staff.find(x => x.id === staffId);
-            const mount = document.getElementById('modal-mount');
-            const teamCol = teamColors[s.team];
+            const dotsHTML = `<div class="status-modal-dots">${Array(4).fill(`<span></span>`).join('')}</div>`;
+
+            mount.innerHTML = `
+                <div class="close-btn" onclick="closeModal()">×</div>
+                <div class="modal-body">
+                    <div class="status-modal-header">
+                        <span class="status-modal-title-prefix">Status</span>
+                        ${dotsHTML}
+                        <span class="status-modal-title-main">${statusType}</span>
+                    </div>
+                    <div style="font-size:10px; font-weight:800; color:#999; text-transform:uppercase; margin-bottom:20px;">For ${viewedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}</div>
+                    <div>
+                        ${staffWithStatus.length > 0 ? staffWithStatus.map(s => {
+                            let detail = s.team;
+                            let isStreamDetail = true;
+
+                            if (statusType === 'Leave') { detail = "PTO"; isStreamDetail = false; }
+                            if (s.currentStatus === 'PTO' && Math.random() > 0.8) { detail = "Sick Day"; isStreamDetail = false; }
+                            if (statusType === 'Shoot' || statusType === 'OffSite') { detail = Math.random() > 0.5 ? "Full Day" : "9am - 1pm"; isStreamDetail = false; }
+                            
+                            const detailStyle = isStreamDetail ? `style="color: ${teamColors[s.team]}; font-weight: 700;"` : '';
+
+                            return `
+                            <div class="status-list-item">
+                                <span class="status-list-name" onclick="openStaffProfile('${s.id}')">${s.firstName} ${s.lastName}</span>
+                                <span class="status-list-detail" ${detailStyle}>${detail}</span>
+                            </div>`;
+                        }).join('') : `<div style="text-align:center; padding: 20px; color: var(--ink-sub);">No staff members with this status today.</div>`}
+                    </div>
+                </div>
+            `;
+        }, 100);
+    };
+
+    window.openApprovalWorkspace = (mgrId) => {
+        const mount = document.getElementById('modal-mount');
+        const manager = staffList.find(s => s.id === mgrId);
+        if (!manager) return;
+        
+        const accent = teamColors[manager.team] || '#1C1C1C';
+        mount.innerHTML = `<div class="modal-loader"><div class="header-dots">${Array(4).fill(`<div class="dot" style="background-color:${accent}"></div>`).join('')}</div></div>`;
+        (document.getElementById('global-modal')).classList.add('active');
+
+        setTimeout(() => {
+            const wcStr = currentMonday.toISOString().split('T')[0];
+            const mgrName = `${manager.firstName} ${manager.lastName}`;
+            const reports = staffList.filter(s => s.manager === mgrName).sort((a,b) => a.firstName.localeCompare(b.firstName));
+
+            mount.innerHTML = `
+                <div class="close-btn" onclick="closeModal()">×</div>
+                <div class="modal-content-with-accent" style="--modal-accent-color: ${accent};">
+                    <div class="modal-body">
+                        <div class="modal-header-stacked">
+                            <h2 class="modal-mgr-name">${mgrName}</h2>
+                            <div class="modal-sub-title" style="color: ${accent};">Team Workspace</div>
+                        </div>
+                        ${reports.map(r => {
+                            const fName = `${r.firstName} ${r.lastName}`;
+                            const sub = rotaRequests.find(s => s.staffName === fName && s.weekCommencing === wcStr);
+                            const resp = rotaResponses.find(res => res.staffName === fName && res.weekCommencing === wcStr);
+                            const statusColor = resp ? (resp.status === 'Approved' ? 'var(--st-office)' : 'var(--team-editorial)') : '#BBB';
+
+                            return `
+                            <div class="request-item">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <div class="request-name-link" onclick="openStaffProfile('${r.id}')">${fName}</div>
+                                    <span style="font-size:9px; font-weight:900; text-transform:uppercase; color:${statusColor}">${resp ? resp.status : 'Awaiting Submission'}</span>
+                                </div>
+                                ${sub ? `
+                                    <div class="week-strip">
+                                        ${sub.schedule.slice(0,5).map((d, i) => {
+                                            const statusKey = (d.status || 'Pending').replace(/ /g,'');
+                                            const color = statusColors[statusKey] || statusColors.Pending;
+                                            return `<div class="day-box" style="background-color:${color}20; color:${color}"><span class="d-label">${['M','T','W','T','F'][i]}</span><span class="d-val">${d.status.charAt(0)}</span></div>`
+                                        }).join('')}
+                                    </div>
+                                    ${!resp ? `
+                                        <textarea id="comment-${r.id}" class="comment-box" placeholder="Add feedback..."></textarea>
+                                        <div class="action-row">
+                                            <button class="btn-action btn-approve" onclick="handleAction(this, '${fName}', 'Approved', '${r.id}')">Accept</button>
+                                            <button class="btn-action btn-deny" onclick="handleAction(this, '${fName}', 'Denied', '${r.id}')">Deny</button>
+                                        </div>
+                                    ` : `<div style="font-size:12px; color:#999; padding: 10px; background: #fafafa; border-radius: 8px;">Logged: ${resp.comment || 'No comment.'}</div>`}
+                                ` : `
+                                    <div style="font-size:12px; color:var(--team-editorial); margin: 15px 0;">No rota request logged for this week.</div>
+                                    <button class="pill-btn pill-suggest" onclick="openPatternEditor('${fName}', '${wcStr}', 'editor-mount-${r.id}')">Suggest Working Pattern</button>
+                                `}
+                                <div id="editor-mount-${r.id}"></div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }, 100);
+    };
+
+    window.openStaffProfile = (staffId) => {
+        const mount = document.getElementById('modal-mount');
+        const s = staffList.find(x => x.id === staffId);
+        if (!s) return;
+
+        const teamCol = teamColors[s.team];
+        mount.innerHTML = `<div class="modal-loader"><div class="header-dots">${Array(4).fill(`<div class="dot" style="background-color:${teamCol}"></div>`).join('')}</div></div>`;
+        (document.getElementById('global-modal')).classList.add('active');
+
+        setTimeout(() => {
+            const fullName = `${s.firstName} ${s.lastName}`;
+            const wcStr = currentMonday.toISOString().split('T')[0];
+            const sub = rotaRequests.find(sub => sub.staffName === fullName && sub.weekCommencing === wcStr);
+            const status = sub && sub.schedule[selectedDayIdx] ? sub.schedule[selectedDayIdx].status : 'Pending';
+            const statusKey = status.replace(/ /g, '');
+            const color = statusColors[statusKey] || statusColors.Pending;
+            
+            const manager = staffList.find(x => x.fullName === s.manager);
+            const managerColor = manager ? teamColors[manager.team] : 'var(--ink)';
+
             const weeks = [-7, 0, 7].map(offset => { const d = new Date(currentMonday); d.setDate(d.getDate() + offset); return d.toISOString().split('T')[0]; });
 
             mount.innerHTML = `
-                <div style="display:flex; align-items:center; gap:25px; border-bottom:1.5px solid var(--border); padding-bottom:30px; margin-bottom:25px;">
-                    <div class="p-grid-large">${Array(4).fill(`<span style="background:${teamCol}"></span>`).join('')}</div>
-                    <div><h1 style="margin:0; font-size:32px; font-weight:900;">${s.firstName} ${s.lastName}</h1><div style="color:#999; font-weight:700; text-transform:uppercase; font-size:11px;">${s.role} • <span style="color:${teamCol}">${s.team} Stream</span></div></div>
+                <div class="close-btn" onclick="closeModal()">×</div>
+                <div class="modal-body">
+                    <div style="display:flex; align-items:center; gap:25px; border-bottom:1.5px solid var(--border); padding-bottom:25px; margin-bottom: 25px;">
+                        <div class="p-grid-large">${Array(4).fill(`<span style="background:${teamCol}"></span>`).join('')}</div>
+                        <div>
+                            <h1 style="margin:0; font-size:32px; font-weight:900; letter-spacing:-0.03em;">${fullName}</h1>
+                            <div style="color:#999; font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:0.05em; margin-top:4px;">${s.role} • <span style="color:${teamCol}">${s.team} Stream</span></div>
+                        </div>
+                    </div>
+                    <div class="p-meta">
+                        <div class="p-meta-card"><span class="p-meta-label">Status for this day</span><div class="p-meta-val" style="color:${color}">${status}</div></div>
+                        <div class="p-meta-card"><span class="p-meta-label">Direct Manager</span><div class="p-meta-val" style="color:${managerColor};">${s.manager}</div></div>
+                        <div class="p-meta-card"><span class="p-meta-label">Employee Tier</span><div class="p-meta-val grey">${s.seniority || 'Staff'}</div></div>
+                    </div>
+                    <div class="p-section-title">Presence Timeline</div>
+                    <table class="presence-table">
+                        <thead><tr><th>Week</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th><th>Action</th></tr></thead>
+                        <tbody>
+                            ${weeks.map((w, index) => {
+                                const sW = rotaRequests.find(sub => sub.staffName === fullName && sub.weekCommencing === w);
+                                const isPriorWeek = index === 0;
+                                const weekDate = new Date(w);
+                                const label = index === 0 ? 'Prior' : index === 1 ? 'Current' : 'Next';
+                                const dateString = `W/C ${weekDate.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})}`;
+                                
+                                const weekLabel = index > 0 
+                                    ? `${label} <span style="color: ${teamCol}">${dateString}</span>`
+                                    : `${label} ${dateString}`;
+
+                                let scheduleCellsHtml;
+                                if (sW && Array.isArray(sW.schedule)) {
+                                    let scheduleDays = [...sW.schedule];
+                                    while (scheduleDays.length < 7) {
+                                        scheduleDays.push({ status: scheduleDays.length < 5 ? 'Pending' : 'Weekend' });
+                                    }
+                                    
+                                    scheduleCellsHtml = scheduleDays.map((d) => {
+                                        const statusKey = (d.status || 'Pending').replace(/ /g,'');
+                                        const color = statusColors[statusKey] || statusColors.Pending;
+                                        return `<td style="color:${color}">${d.status.charAt(0)}</td>`;
+                                    }).join('');
+                                } else {
+                                    scheduleCellsHtml = `<td colspan="7" style="color:#BBB">Pending</td>`;
+                                }
+
+                                return `<tr class="${isPriorWeek ? 'prior-week' : ''}">
+                                            <td style="text-align:left"><b>${weekLabel}</b></td>
+                                            ${scheduleCellsHtml}
+                                            <td>
+                                                ${!isPriorWeek ? `<button class="pill-btn ${sW?'pill-update':'pill-suggest'}" onclick="openPatternEditor('${fullName}','${w}','pattern-editor-mount')">${sW?'Update':'Suggest'}</button>` : ''}
+                                            </td>
+                                        </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    <div id="pattern-editor-mount" style="margin-top: -1px;"></div>
+                    <div class="p-section-title">Manager Notes</div>
+                    <div style="display:flex; gap:10px; margin-bottom:20px;">
+                        <input type="text" id="new-note-txt" placeholder="Log a reminder or note..." class="comment-box" style="margin:0; border-radius:12px;">
+                        <button class="btn-action btn-post" onclick="postNote(this, '${fullName}', '${s.team}')" style="flex-shrink:0; border-radius:12px;">Post</button>
+                    </div>
+                    <div class="notes-list" id="profile-notes-mount"></div>
                 </div>
-                <div class="p-meta">
-                    <div class="p-meta-card"><span class="p-meta-label">Direct Manager</span><div class="p-meta-val" style="color:${teamColors[staff.find(x => `${x.firstName} ${x.lastName}` === s.manager)?.team] || '#333'}">${s.manager}</div></div>
-                    <div class="p-meta-card"><span class="p-meta-label">Tier</span><div class="p-meta-val tier-val">${s.seniority || 'Staff'}</div></div>
-                </div>
-                <div class="p-section-title">PRESENCE TIMELINE</div>
-                <table class="presence-table">
-                    <thead><tr style="color:var(--team-people);"><th>Week</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>Action</th></tr></thead>
-                    <tbody>
-                        ${weeks.map((w, idx) => {
-                            const sub = submissions.find(x => x.name === `${s.firstName} ${s.lastName}` && x.weekId === w);
-                            return `<tr class="${idx===0?'prior-week':''}"><td><b>${idx===1?'Current':idx===0?'Prior':'Next'} • w/c ${new Date(w).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</b></td>${sub?sub.schedule.map(d=>`<td style="color:${statusColors[d.status.replace(/ /g,'')] || '#BBB'}">${d.status.charAt(0)}</td>`).join(''):'<td colspan="5">Pending</td>'}<td>${idx!==0?`<button class="pill-btn ${sub?'pill-update':'pill-suggest'}" onclick="openPatternEditor('${s.firstName} ${s.lastName}','${w}')">${sub?'Update':'Suggest'}</button>`:''}</td></tr>`;
-                        }).join('')}
-                    </tbody>
-                </table>
-                <div id="pattern-editor-mount"></div>
-                <div class="p-section-title">MANAGER REMINDERS</div>
-                <div style="display:flex; gap:10px; margin-bottom:20px;"><input type="text" id="new-note-txt" placeholder="Log reminder..." class="comment-box" style="width:100%; padding:12px; border:1px solid #EEE; border-radius:12px;"><button class="btn-post" onclick="postNote('${s.firstName} ${s.lastName}', '${s.team}')">Post</button></div>
-                <div id="profile-notes-mount"></div>
             `;
-            renderProfileNotes(`${s.firstName} ${s.lastName}`);
-            document.getElementById('global-modal').classList.add('active');
-        };
+            renderProfileNotes(fullName);
+        }, 100);
+    };
 
-        window.openApprovalWorkspace = (mgrId) => {
-            const manager = staff.find(s => s.id === mgrId);
-            const reports = staff.filter(s => s.manager === `${manager.firstName} ${manager.lastName}`);
-            const wcStr = currentMonday.toISOString().split('T')[0];
-            const mount = document.getElementById('modal-mount');
-            mount.innerHTML = `<h2 style="margin-top:0;">${manager.firstName}'s Workspace</h2>` + reports.map(r => {
-                const sub = submissions.find(s => s.name === `${r.firstName} ${r.lastName}` && s.weekId === wcStr);
-                const resp = responses.find(res => res.name === `${r.firstName} ${r.lastName}` && res.weekId === wcStr);
-                return `<div class="request-item" style="background:#F9F9F9; border-radius:16px; padding:20px; margin-bottom:15px;"><div style="display:flex; justify-content:space-between;"><b>${r.firstName} ${r.lastName}</b><span style="font-size:10px; color:${resp?'var(--st-office)':'#999'}">${resp?resp.status:'Pending'}</span></div>${sub?`<div class="week-strip">${sub.schedule.map(d=>`<div class="day-box">${d.status.charAt(0)}</div>`).join('')}</div>${!resp?`<textarea id="comment-${r.id}" style="width:100%;" placeholder="Feedback..."></textarea><button class="pill-btn pill-suggest" onclick="handleAction('${r.firstName} ${r.lastName}','Approved','${r.id}')">Approve</button>`:''}`:'No submission.'}</div>`;
-            }).join('');
-            document.getElementById('global-modal').classList.add('active');
-        };
+    window.openPatternEditor = (name, weekCommencing, mountId = 'pattern-editor-mount') => {
+        const mount = document.getElementById(mountId);
+        if (mount.querySelector('.pattern-editor')) {
+            mount.innerHTML = '';
+            return;
+        }
+        mount.innerHTML = ''; // Clear previous editors
+        const sub = rotaRequests.find(s => s.staffName === name && s.weekCommencing === weekCommencing);
+        const weekdayLocs = ['Office', 'WFH', 'Shoot', 'Client / Travel', 'PTO'];
+        const weekendLocs = ['Weekend', 'Shoot', 'Client / Travel'];
+        const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-        window.switchView = (v, btn) => {
-            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
-            document.getElementById('view-'+v).classList.add('active');
-            btn.classList.add('active');
-            document.getElementById('week-picker-control').classList.toggle('hidden', v === 'approvals');
-        };
+        mount.innerHTML = `
+            <div class="pattern-editor">
+                <div style="font-size:10px; font-weight:900; margin-bottom:12px; color:var(--team-people); text-transform:uppercase;">Set Working Pattern: ${new Date(weekCommencing).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                <div class="editor-grid">
+                    ${dayLabels.map((day, i) => {
+                        const isWeekend = i >= 5;
+                        const locs = isWeekend ? weekendLocs : weekdayLocs;
+                        const defaultStatus = isWeekend ? 'Weekend' : 'Office';
+                        const cur = sub && sub.schedule && sub.schedule[i] ? sub.schedule[i].status : defaultStatus;
+                        
+                        return `<div>
+                                    <div class="editor-day-label">${day}</div>
+                                    <select class="editor-select" id="edit-day-${i}">${locs.map(l => `<option value="${l}" ${cur === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
+                                </div>`;
+                    }).join('')}
+                </div>
+                <button class="btn-action btn-sync" style="width:100%;" onclick="window.saveOverride(this, '${name}', '${weekCommencing}')">Sync to Cloud</button>
+            </div>
+        `;
+    };
 
-        window.closeModal = () => document.getElementById('global-modal').classList.remove('active');
-        function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 2500); }
-        async function postNote(t, tm) { const txt = document.getElementById('new-note-txt').value; if(!txt.trim()) return; await addDoc(collection(db,'artifacts',appId,'public','data','staff_notes'),{target:t,text:txt,date:new Date().toISOString(),team:tm}); document.getElementById('new-note-txt').value=""; showToast("Note Posted"); renderProfileNotes(t); }
-        function renderProfileNotes(n) { const m = document.getElementById('profile-notes-mount'); const un = notes.filter(x => x.target === n).sort((a,b) => new Date(b.date)-new Date(a.date)); m.innerHTML = un.map(x => `<div class="note-item" style="border-left-color:${teamColors[x.team] || '#CCC'}">${x.text}<span class="note-meta">${new Date(x.date).toLocaleDateString()}</span></div>`).join('') || 'No notes.'; }
-        window.handleAction = async (n, s, id) => { const c = document.getElementById(`comment-${id}`).value; await setDoc(doc(db,'artifacts',appId,'public', 'data','rota_responses',`${currentMonday.toISOString().split('T')[0]}_${n.replace(/ /g,'_')}`),{name:n,weekId:currentMonday.toISOString().split('T')[0],status:s,comment:c,timestamp:new Date().toISOString()}); showToast("Action Logged"); closeModal(); };
-        window.openPatternEditor = (n, w) => { document.getElementById('pattern-editor-mount').innerHTML = `<div class="pattern-editor" style="background:#F9F9F9; padding:15px; border-radius:12px; margin-top:10px;"><div style="display:grid; grid-template-columns:repeat(5,1fr); gap:5px;">${[0,1,2,3,4].map(i => `<select id="edit-day-${i}"><option>Office</option><option>WFH</option><option>Shoot</option><option>Client / Travel</option><option>PTO</option></select>`).join('')}</div><button class="btn-post" style="width:100%; margin-top:10px;" onclick="saveOverride('${n}','${w}')">Sync</button></div>`; };
-        window.saveOverride = async (n, w) => { const s = []; for(let i=0;i<5;i++) s.push({status:document.getElementById(`edit-day-${i}`).value,fullDay:true}); await setDoc(doc(db,'artifacts',appId,'public','data','rota_submissions',`${w}_${n.replace(/ /g,'_')}`),{name:n,weekId:w,schedule:s,timestamp:new Date().toISOString()}); showToast("Synced"); closeModal(); };
-    </script>
+    window.saveOverride = async (buttonEl, name, weekCommencing) => {
+        const originalContent = buttonEl.innerHTML;
+        const loaderHTML = `<div class="sync-loader"><span></span><span></span><span></span></div>`;
+        const successHTML = `<svg class="sync-tick" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+
+        buttonEl.disabled = true;
+        buttonEl.innerHTML = loaderHTML;
+
+        try {
+            const schedule = [];
+            for(let i=0; i<7; i++) {
+                schedule.push({ status: (document.getElementById(`edit-day-${i}`)).value, fullDay: true });
+            }
+            const submissionId = `${weekCommencing}_${name.replace(/\s+/g, '_')}`;
+            
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rota_requests', submissionId), { 
+                staffName: name, 
+                weekCommencing, 
+                schedule, 
+                managerName: staffList.find(s => `${s.firstName} ${s.lastName}` === name)?.manager || 'Unknown', 
+                timestamp: new Date().toISOString() 
+            });
+
+            buttonEl.classList.remove('btn-sync');
+            buttonEl.classList.add('btn-success');
+            buttonEl.innerHTML = successHTML;
+            showToast("Cloud Synced");
+
+            setTimeout(() => {
+                window.closeModal();
+            }, 1500);
+
+        } catch (error) {
+            console.error("Failed to save override:", error);
+            buttonEl.innerHTML = originalContent;
+            buttonEl.disabled = false;
+            showToast("Sync Failed!");
+        }
+    };
+
+    window.handleAction = async (buttonEl, name, status, staffId) => {
+        buttonEl.disabled = true;
+        const otherButton = buttonEl.parentElement?.querySelector('.btn-action');
+        if(otherButton) otherButton.disabled = true;
+
+        buttonEl.innerHTML = `<div class="sync-loader"><span></span><span></span><span></span></div>`;
+
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        const comment = (document.getElementById(`comment-${staffId}`)).value;
+        const respId = `${wcStr}_${name.replace(/\s+/g, '_')}`;
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rota_responses', respId), { 
+            staffName: name, 
+            weekCommencing: wcStr, 
+            status, 
+            comment, 
+            timestamp: new Date().toISOString() 
+        });
+        showToast("Response Recorded");
+        setTimeout(window.closeModal, 500);
+    };
+
+    function renderProfileNotes(name) {
+        const mount = document.getElementById('profile-notes-mount');
+        const userNotes = staffNotes.filter(n => n.target === name).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        mount.innerHTML = userNotes.map(n => `<div class="note-item" style="border-left-color: ${teamColors[n.team] || 'var(--team-people)'}">${n.text}<span class="note-meta">${new Date(n.date).toLocaleDateString()}</span></div>`).join('') || '<div style="font-size:12px; color:#CCC; text-align:center; padding:20px;">No manager notes.</div>';
+    }
+
+    window.postNote = async (buttonEl, target, team) => {
+        const textInput = document.getElementById('new-note-txt');
+        const text = textInput.value;
+        if(!text.trim()) return;
+        
+        buttonEl.disabled = true;
+        const originalContent = buttonEl.innerHTML;
+        buttonEl.innerHTML = `<div class="sync-loader"><span></span><span></span><span></span></div>`;
+
+        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff_notes'), { target, text, date: new Date().toISOString(), team });
+        
+        textInput.value = "";
+        showToast("Note Recorded");
+        
+        buttonEl.disabled = false;
+        buttonEl.innerHTML = originalContent;
+    };
+
+    window.closeModal = () => {
+        const modal = document.getElementById('global-modal');
+        modal.classList.remove('active');
+        // Clear content after transition to prevent stale data
+        setTimeout(() => {
+            (document.getElementById('modal-mount')).innerHTML = '';
+        }, 300);
+    };
+
+    window.switchView = (v, btn) => {
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
+        (document.getElementById('view-'+v)).classList.add('active');
+        btn.classList.add('active');
+
+        const weekPicker = document.getElementById('week-picker-control');
+        if (v === 'approvals') {
+            weekPicker.classList.add('hidden');
+        } else {
+            weekPicker.classList.remove('hidden');
+        }
+    };
+    function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 2500); }
+</script>
 </body>
 </html>
