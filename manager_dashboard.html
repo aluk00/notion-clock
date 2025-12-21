@@ -3,503 +3,376 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DMG Management Hub | Live Cloud</title>
+    <title>Manager Dashboard | DMG New Media</title>
+    <!-- Core Engine CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
         :root {
-            /* Team Colours */
-            --team-editorial: #E94B4B;
-            --team-creative: #E6468B;
-            --team-production: #43B049;
-            --team-social: #F2C316;
-            --team-people: #21A0D8;
-            --team-operations: #21A0D8;
-            --team-executive: #1C1C1C;
-
-            /* Status Colors */
-            --st-office: #2E7D32;
-            --st-wfh: #F9A825;
-            --st-shoot: #2196F3;
-            --st-pto: #F44336;
-
-            /* UI Tokens */
-            --carbon: #1C1C1C;
-            --bg-page: #FFFFFF;
-            --bg-base: #F8F9FA;
-            --border: #EAEAEA;
+            --dmg-blue: #21a0d8;
             --ink: #1C1C1C;
-            --ink-sub: #757575;
-            --radius-lg: 24px;
-            --radius-md: 12px;
-            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            --st-pending: #FF9800;
+            --st-submitted: #43B049;
         }
-
-        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-page);
-            margin: 0; padding: 0; color: var(--ink); min-height: 100vh;
-            overflow-x: hidden;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: #FFFFFF;
+            margin: 0;
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
         }
 
-        .hidden { display: none !important; }
-
-        /* --- IMPACT ANIMATIONS --- */
-        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
-        @keyframes popIn { to { transform: scale(1); } }
-        @keyframes dotCycle {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.1); }
+        /* PIN Pad Symmetry */
+        .numpad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            justify-items: center;
         }
 
-        /* --- AUTH SCREEN --- */
-        #lock-screen {
-            position: fixed; inset: 0; background: #FFF; z-index: 5000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease;
+        .n-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #F8F9FA;
+            border: 1px solid #EAEAEA;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .header-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 44px; height: 44px; }
-        .header-dots .dot { width: 100%; height: 100%; background-color: var(--team-people); border-radius: 50%; }
-        #lock-screen .header-dots .dot { animation: dotCycle 3s infinite ease-in-out; }
-        #lock-screen .header-dots .dot:nth-child(1) { animation-delay: 0s; }
-        #lock-screen .header-dots .dot:nth-child(2) { animation-delay: 0.75s; }
-        #lock-screen .header-dots .dot:nth-child(4) { animation-delay: 1.5s; }
-        #lock-screen .header-dots .dot:nth-child(3) { animation-delay: 2.25s; }
-
-        .pin-field { display: flex; gap: 12px; margin-bottom: 40px; }
-        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); transition: 0.2s; }
-        .pin-dot.filled { background: var(--team-people); border-color: var(--team-people); transform: scale(1.2); }
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 280px; }
-        .n-btn { aspect-ratio: 1.3; border-radius: 12px; background: var(--bg-base); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; cursor: pointer; color: var(--carbon); transition: 0.2s; }
-        .n-btn:active { background: #EEE; transform: scale(0.95); }
-
-        /* --- LAYOUT --- */
-        .main-container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
-        .header-lockup { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 30px; }
-        .title-text { font-size: 3.5rem; font-weight: 900; letter-spacing: -0.04em; text-transform: uppercase; line-height: 1; color: var(--carbon); opacity: 0; transform: translateY(10px); animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-
-        .nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 20px; }
-        .tab-nav { display: flex; gap: 8px; padding: 4px; background: var(--bg-base); border-radius: 99px; border: 1px solid var(--border); }
-        .tab-trigger { border: none; background: none; padding: 10px 24px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border-radius: 99px; color: var(--ink-sub); transition: 0.2s; letter-spacing: 0.05em; }
-        .tab-trigger.active { background: var(--carbon); color: #FFF; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-
-        .week-picker { display: flex; align-items: center; gap: 20px; background: var(--carbon); color: #FFF; padding: 12px 24px; border-radius: 12px; width: fit-content; }
-        .week-btn { background: none; border: none; color: #FFF; font-weight: 900; cursor: pointer; padding: 5px; font-size: 18px; }
-        .week-label { font-size: 11px; font-weight: 800; text-transform: uppercase; min-width: 140px; text-align: center; letter-spacing: 0.1em; }
-
-        /* --- OUTLOOK PILLS --- */
-        .outlook-hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
-        .outlook-card { background: var(--bg-base); padding: 24px; border-radius: 16px; text-align: center; border: 1.5px solid transparent; transition: 0.3s; cursor: pointer; }
-        .outlook-card:hover:not(.locked) { transform: translateY(-4px); background: #FFF; border-color: var(--border); box-shadow: 0 10px 20px rgba(0,0,0,0.03); }
-        .outlook-card.locked { opacity: 0.3; filter: grayscale(1); cursor: not-allowed; }
-        .hero-count { display: block; font-size: 38px; font-weight: 900; line-height: 1; margin-bottom: 6px; }
-        .hero-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.05em; }
-
-        /* DAY SCROLLER */
-        .day-scroller { display: flex; gap: 8px; margin-bottom: 30px; overflow-x: auto; padding-bottom: 10px; }
-        .day-pill { flex: 1; min-width: 100px; padding: 12px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--bg-base); text-align: center; cursor: pointer; transition: 0.2s; }
-        .day-pill.active { background: var(--carbon); border-color: var(--carbon); color: #FFF; }
-        .day-name { display: block; font-size: 11px; font-weight: 900; text-transform: uppercase; }
-        .day-date { display: block; font-size: 12px; font-weight: 700; color: #BBB; }
-
-        /* --- DIRECTORY TABLE --- */
-        .directory-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; background: #FFF; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
-        .directory-table th { text-align: left; padding: 18px; font-size: 9px; font-weight: 900; color: #BBB; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid var(--border); background: var(--bg-base); }
-        .directory-table td { padding: 18px; font-size: 14px; font-weight: 700; border-bottom: 1px solid #F9FAFB; color: var(--carbon); }
-        .name-cell { display: flex; align-items: center; gap: 14px; cursor: pointer; transition: 0.2s; }
-        .name-cell:hover { color: var(--team-people); }
-        .name-dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; flex-shrink: 0; }
-        .name-dots span { width: 6px; height: 6px; border-radius: 50%; }
-
-        .is-mgr-pill { 
-            font-size: 8px; background: var(--team-people); color: #FFF; padding: 3px 8px; 
-            border-radius: 99px; vertical-align: middle; margin-left: 10px; font-weight: 900; 
-            letter-spacing: 0.05em; line-height: 1; display: inline-block;
+        .n-btn:active, .n-btn.key-active {
+            background: #FFF;
+            border-color: var(--dmg-blue);
+            color: var(--dmg-blue);
+            transform: scale(0.9);
+            box-shadow: 0 0 20px rgba(33, 160, 216, 0.2);
         }
 
-        /* --- MODAL --- */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(8px); z-index: 6000; display: none; align-items: center; justify-content: center; padding: 20px; }
-        .modal-overlay.active { display: flex; }
-        .modal-content { background: #fff; width: 100%; max-width: 700px; border-radius: 28px; padding: 40px; box-shadow: 0 40px 100px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; position: relative; }
-        .close-btn { position: absolute; top: 24px; right: 24px; font-size: 24px; font-weight: 800; color: #ccc; cursor: pointer; }
-        
-        /* Profile Sections */
-        .profile-header-dots { display: flex; align-items: center; gap: 10px; margin-top: 40px; margin-bottom: 20px; }
-        .p-section-title { font-size: 22px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; line-height: 1; color: var(--carbon); }
-        .p-grid-large { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 44px; height: 44px; flex-shrink: 0; }
-        .p-grid-large span { width: 100%; height: 100%; border-radius: 50%; }
+        /* Dot Language Components */
+        .dot-grid-mini {
+            display: grid;
+            grid-template-columns: repeat(2, 4px);
+            gap: 3px;
+        }
+        .dot-grid-mini span {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+        }
 
-        .p-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
-        .p-meta-card { padding: 20px; background: var(--bg-base); border-radius: 16px; border: 1.5px solid var(--border); }
-        .p-meta-label { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #999; margin-bottom: 6px; display: block; }
-        .p-meta-val { font-size: 15px; font-weight: 900; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #EEE; border-radius: 10px; }
 
-        /* Presence History Table */
-        .presence-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .presence-table th { padding: 10px; font-size: 9px; color: #BBB; text-align: center; }
-        .presence-table td { padding: 12px; text-align: center; border: 1px solid #F0F0F0; font-size: 11px; font-weight: 800; }
-        .week-row-label { text-align: left !important; font-size: 10px; color: #666; width: 120px; }
-
-        /* Bebo/Manager Notes */
-        .notes-list { margin-top: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .note-item { background: #FDFDFD; border: 1.5px solid #F0F0F0; padding: 16px; border-radius: 14px; font-size: 14px; font-weight: 600; line-height: 1.5; color: var(--carbon); position: relative; border-left: 4px solid var(--team-people); }
-        .note-meta { font-size: 9px; font-weight: 800; color: #BBB; text-transform: uppercase; margin-top: 8px; display: block; letter-spacing: 0.05em; }
-
-        /* Manager Interaction Pills */
-        .pill-btn { border: none; padding: 4px 10px; border-radius: 99px; font-size: 9px; font-weight: 900; text-transform: uppercase; cursor: pointer; transition: 0.2s; margin-top: 4px; display: inline-block; }
-        .pill-suggest { background: #EBF8FF; color: var(--team-people); }
-        .pill-suggest:hover { background: var(--team-people); color: #FFF; }
-        .pill-update { background: #F3F4F6; color: #666; }
-
-        /* Pattern Editor */
-        .pattern-editor { background: var(--bg-base); padding: 20px; border-radius: 16px; border: 1.5px solid var(--border); margin-top: 15px; }
-        .editor-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 15px; }
-        .editor-day { text-align: center; }
-        .editor-select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); font-size: 10px; font-weight: 800; }
-
-        .btn-action { padding: 12px; border: none; border-radius: 10px; font-size: 10px; font-weight: 900; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
-        .btn-approve { background: var(--st-office); color: #FFF; }
-
-        .view-section { display: none; }
-        .view-section.active { display: block; animation: slideUpFade 0.5s forwards; }
-
-        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--carbon); color: #FFF; padding: 12px 30px; border-radius: 99px; font-size: 12px; font-weight: 800; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 9000; }
-        #toast.active { opacity: 1; bottom: 40px; }
+        /* Animation */
+        .fade-up { animation: fadeInUp 0.5s ease-out forwards; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
+    <div id="root"></div>
 
-    <div id="toast">Update Successful</div>
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
-    <!-- LOCK SCREEN -->
-    <div id="lock-screen">
-        <div class="header-lockup" style="flex-direction:column; margin-bottom:40px;">
-            <div class="header-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-            <div class="title-text" style="font-size:2rem; color: var(--carbon); margin-top:20px; opacity: 1; transform: none;">Management Hub</div>
-        </div>
-        <div class="pin-field">
-            <div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div><div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div>
-        </div>
-        <div class="numpad">
-            <div class="n-btn" onclick="press(1)">1</div><div class="n-btn" onclick="press(2)">2</div><div class="n-btn" onclick="press(3)">3</div>
-            <div class="n-btn" onclick="press(4)">4</div><div class="n-btn" onclick="press(5)">5</div><div class="n-btn" onclick="press(6)">6</div>
-            <div class="n-btn" onclick="press(7)">7</div><div class="n-btn" onclick="press(8)">8</div><div class="n-btn" onclick="press(9)">9</div>
-            <div></div><div class="n-btn" onclick="press(0)">0</div>
-        </div>
-    </div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
 
-    <div id="app-shell" class="hidden">
-        <div class="main-container">
-            <header>
-                <div class="header-lockup">
-                    <div class="title-text">Management</div>
-                    <div class="header-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-                    <div class="title-text">Hub</div>
-                </div>
-                <div class="nav-row">
-                    <nav class="tab-nav">
-                        <button class="tab-trigger active" onclick="switchView('outlook', this)">Directory</button>
-                        <button class="tab-trigger" onclick="switchView('teams', this)">Teams</button>
-                        <button class="tab-trigger" onclick="switchView('approvals', this)">Approvals</button>
-                    </nav>
-                    <div class="week-picker">
-                        <button class="week-btn" onclick="changeWeek(-1)">←</button>
-                        <span class="week-label" id="wc-label">WC ...</span>
-                        <button class="week-btn" onclick="changeWeek(1)">→</button>
-                    </div>
-                </div>
-            </header>
+        // Firebase Initialisation
+        const firebaseConfig = JSON.parse(__firebase_config);
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'dmg-command-system';
 
-            <section id="view-outlook" class="view-section active">
-                <div class="outlook-hero">
-                    <div class="outlook-card" id="pill-Office"><span class="hero-count" id="count-office" style="color:var(--st-office)">0</span><span class="hero-label">In Building</span></div>
-                    <div class="outlook-card" id="pill-WFH"><span class="hero-count" id="count-wfh" style="color:var(--st-wfh)">0</span><span class="hero-label">Remote</span></div>
-                    <div class="outlook-card" id="pill-Shoot"><span class="hero-count" id="count-shoot" style="color:var(--st-shoot)">0</span><span class="hero-label">Off-Site</span></div>
-                    <div class="outlook-card" id="pill-Leave"><span class="hero-count" id="count-leave" style="color:var(--st-pto)">0</span><span class="hero-label">Leave</span></div>
-                </div>
-                <div class="day-scroller" id="day-mount"></div>
-                <table class="directory-table">
-                    <thead><tr><th>Staff Name</th><th>Role</th><th>Stream</th><th>Today's Status</th></tr></thead>
-                    <tbody id="directory-mount"></tbody>
-                </table>
-            </section>
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [isLocked, setIsLocked] = useState(true);
+            const [pin, setPin] = useState("");
+            const [activeTab, setActiveTab] = useState('outlook');
+            const [staff, setStaff] = useState([]);
+            const [requests, setRequests] = useState([]);
+            const [allTasks, setAllTasks] = useState([]);
+            const [selectedStaff, setSelectedStaff] = useState(null);
+            const [newTask, setNewTask] = useState("");
 
-            <section id="view-teams" class="view-section"><div id="teams-grid-mount"></div></section>
-            <section id="view-approvals" class="view-section"><div class="approvals-grid" id="approvals-mount"></div></section>
-        </div>
-    </div>
+            // Keyboard Detection for PIN
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (!isLocked) return;
+                    if (e.key >= '0' && e.key <= '9') handlePress(e.key);
+                    if (e.key === 'Backspace' || e.key === 'Escape') setPin("");
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [isLocked, pin]);
 
-    <!-- GLOBAL MODAL -->
-    <div class="modal-overlay" id="global-modal" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="close-btn" onclick="closeModal()">×</div>
-            <div id="modal-mount"></div>
-        </div>
-    </div>
+            // Authentication Guard (RULE 3)
+            useEffect(() => {
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await auth.signInWithCustomToken(__initial_auth_token).catch(() => auth.signInAnonymously());
+                    } else {
+                        await auth.signInAnonymously();
+                    }
+                };
+                initAuth();
+                const unsubscribe = auth.onAuthStateChanged(u => {
+                    setUser(u);
+                });
+                return () => unsubscribe();
+            }, []);
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+            // Data Listeners - Guarded by User (RULE 3)
+            useEffect(() => {
+                if (!user) return;
+                
+                // Base Path for all queries
+                const basePath = db.collection('artifacts').doc(appId).collection('public').doc('data');
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-      authDomain: "dmg-command-centre-native.firebaseapp.com",
-      projectId: "dmg-command-centre-native",
-      storageBucket: "dmg-command-centre-native.firebasestorage.app",
-      messagingSenderId: "223535956454",
-      appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
-      measurementId: "G-5HNGPRJGZY"
-    };
+                // Listen to Directory
+                const unsubStaff = basePath.collection('staff_directory')
+                    .onSnapshot(snap => {
+                        const list = [];
+                        snap.forEach(doc => list.push({ id: doc.id, ...doc.data(), fullName: `${doc.data().firstName || ''} ${doc.data().lastName || ''}` }));
+                        setStaff(list);
+                    }, (err) => console.error("Staff Listener Error:", err));
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const appId = 'dmg-command-centre-native';
+                // Listen to Requests
+                const unsubReqs = basePath.collection('rota_requests')
+                    .onSnapshot(snap => {
+                        const list = [];
+                        snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+                        setRequests(list);
+                    }, (err) => console.error("Requests Listener Error:", err));
 
-    let staff = [];
-    let submissions = [];
-    let responses = [];
-    let notes = [];
+                // Listen to Tasks (RULE 2: Fetch all and filter in JS)
+                const unsubTasks = basePath.collection('manager_tasks')
+                    .onSnapshot(snap => {
+                        const list = [];
+                        snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+                        setAllTasks(list);
+                    }, (err) => console.error("Tasks Listener Error:", err));
 
-    const teamColors = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#21A0D8', Executive: '#1C1C1C' };
-    
-    function getMonday(d) {
-        const date = new Date(d);
-        const day = date.getDay();
-        const diff = (day === 0) ? 1 : 8 - day;
-        const result = new Date(date.getTime() + diff * 24 * 60 * 60 * 1000);
-        if (day === 1) return d;
-        const final = new Date(date);
-        final.setDate(date.getDate() - (date.getDay() === 0 ? 6 : date.getDay() - 1));
-        return final;
-    }
-    
-    let currentMonday = getMonday(new Date());
-    let selectedDayIdx = (new Date().getDay() >= 1 && new Date().getDay() <= 5) ? new Date().getDay() - 1 : 0;
+                return () => {
+                    unsubStaff();
+                    unsubReqs();
+                    unsubTasks();
+                };
+            }, [user]);
 
-    let pin = "";
-    window.press = (n) => {
-        pin += n;
-        document.getElementById('p'+pin.length).classList.add('filled');
-        if(pin.length === 4) {
-            if(pin === "2025") {
-                document.getElementById('lock-screen').style.opacity = 0;
-                setTimeout(() => { document.getElementById('lock-screen').classList.add('hidden'); document.getElementById('app-shell').classList.remove('hidden'); init(); }, 500);
-            } else { pin = ""; document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled')); }
-        }
-    };
+            const currentStaffTasks = useMemo(() => {
+                if (!selectedStaff) return [];
+                return allTasks.filter(t => t.staffId === selectedStaff.id);
+            }, [allTasks, selectedStaff]);
 
-    async function init() {
-        await signInAnonymously(auth);
-        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => { staff = []; snap.forEach(d => staff.push({id: d.id, ...d.data()})); updateUI(); });
-        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_submissions'), (snap) => { submissions = []; snap.forEach(d => submissions.push(d.data())); updateUI(); });
-        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_responses'), (snap) => { responses = []; snap.forEach(d => responses.push({id: d.id, ...d.data()})); updateUI(); });
-        onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_notes'), (snap) => { notes = []; snap.forEach(d => notes.push({id: d.id, ...d.data()})); updateUI(); });
-    }
+            const handlePress = (val) => {
+                if (pin.length < 4) {
+                    const newPin = pin + val;
+                    setPin(newPin);
+                    if (newPin === "2025") {
+                        setTimeout(() => setIsLocked(false), 200);
+                    }
+                }
+            };
 
-    function updateUI() {
-        document.getElementById('wc-label').innerText = `WC ${currentMonday.toLocaleDateString('en-GB', {day:'numeric', month:'short'})}`;
-        renderDayScroller();
-        renderOutlook();
-        renderTeamsGrid();
-        renderApprovals();
-    }
+            const addTask = async () => {
+                if (!newTask.trim() || !selectedStaff) return;
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('manager_tasks').add({
+                    staffId: selectedStaff.id,
+                    content: newTask,
+                    status: 'pending',
+                    timestamp: Date.now()
+                });
+                setNewTask("");
+            };
 
-    window.changeWeek = (offset) => { currentMonday.setDate(currentMonday.getDate() + (offset * 7)); updateUI(); };
-    window.selectDay = (idx) => { selectedDayIdx = idx; updateUI(); };
+            const toggleTask = async (taskId, currentStatus) => {
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('manager_tasks').doc(taskId).update({
+                    status: currentStatus === 'done' ? 'pending' : 'done'
+                });
+            };
 
-    function renderDayScroller() {
-        const mount = document.getElementById('day-mount');
-        mount.innerHTML = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((d, i) => {
-            const date = new Date(currentMonday.getTime() + i * 24 * 60 * 60 * 1000);
-            return `<div class="day-pill ${selectedDayIdx === i ? 'active' : ''}" onclick="selectDay(${i})"><span class="day-name">${d}</span><span class="day-date">${date.getDate()} ${date.toLocaleDateString('en-GB', {month:'short'})}</span></div>`;
-        }).join('');
-    }
-
-    function renderOutlook() {
-        const mount = document.getElementById('directory-mount');
-        const wcStr = currentMonday.toISOString().split('T')[0];
-        const now = new Date();
-        const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
-        
-        ['Office','WFH','Leave'].forEach(id => document.getElementById('pill-'+id).classList.toggle('locked', isWeekend));
-
-        const counts = { Office: 0, WFH: 0, Shoot: 0, Leave: 0 };
-        mount.innerHTML = staff.sort((a,b) => a.firstName.localeCompare(b.firstName)).map(s => {
-            const fullName = `${s.firstName} ${s.lastName}`;
-            const sub = submissions.find(sub => sub.name === fullName && sub.weekId === wcStr);
-            const rawStatus = (sub && sub.schedule[selectedDayIdx]) ? sub.schedule[selectedDayIdx].status : 'Office';
-            const status = rawStatus || 'Office';
-
-            let countKey = ['PTO','Leave','Abroad','Client / Travel'].includes(status) ? 'Leave' : status;
-            
-            // Directory specific weekend display
-            let displayStatus = status;
-            let statusColor = `var(--st-${status.toLowerCase().replace(/ /g,'')})`;
-            
-            if(isWeekend && countKey !== 'Shoot') {
-                displayStatus = "Weekend";
-                statusColor = "#BBB";
-            }
-
-            // Global counts
-            if (countKey === 'Shoot') {
-                counts.Shoot++;
-            } else if (!isWeekend) {
-                if(counts[countKey] !== undefined) counts[countKey]++;
-            }
-
-            const color = teamColors[s.team] || '#CCC';
-            const dots = `<div class="name-dots">${Array(4).fill(`<span style="background:${color}"></span>`).join('')}</div>`;
-            return `<tr><td class="name-cell" onclick="openStaffProfile('${s.id}')">${dots} ${fullName} ${s.isManager ? '<span class="is-mgr-pill">MGR</span>' : ''}</td><td style="color:#999; font-size:11px;">${s.role}</td><td style="color:${color}; text-transform:uppercase; font-size:10px; font-weight:800;">${s.team}</td><td style="font-weight:900; color:${statusColor}">${displayStatus}</td></tr>`;
-        }).join('');
-        ['office','wfh','shoot','leave'].forEach(k => document.getElementById('count-'+k).innerText = isWeekend && k !== 'shoot' ? 0 : counts[k.charAt(0).toUpperCase() + k.slice(1)]);
-    }
-
-    function renderTeamsGrid() {
-        const mount = document.getElementById('teams-grid-mount');
-        const wcStr = currentMonday.toISOString().split('T')[0];
-        mount.innerHTML = ['Editorial', 'Production', 'Creative', 'Social', 'Operations'].map(v => {
-            const members = staff.filter(s => s.team === v);
-            if(members.length === 0) return "";
-            const vCol = teamColors[v];
-            return `<div class="team-block"><div class="stream-header"><div class="stream-dot" style="background:${vCol}"></div>${v} Stream</div><table class="directory-table"><thead><tr><th>Name</th>${['M','T','W','T','F'].map(d => `<th class="status-cell-grid">${d}</th>`).join('')}</tr></thead><tbody>${members.sort((a,b)=>a.firstName.localeCompare(b.firstName)).map(m => {
-                const sub = submissions.find(s => s.name === `${m.firstName} ${m.lastName}` && s.weekId === wcStr);
-                const sched = sub ? sub.schedule : Array(5).fill({status: 'Pending'});
-                return `<tr><td class="name-cell" onclick="openStaffProfile('${m.id}')">${m.firstName} ${m.lastName}</td>${sched.map(day => {
-                    const st = day.status || 'Pending';
-                    return `<td class="status-cell-grid" style="color:var(--st-${st.toLowerCase().replace(/ /g,'')})">${st === 'Pending' ? '-' : st.charAt(0)}</td>`
-                }).join('')}</tr>`;
-            }).join('')}</tbody></table></div>`;
-        }).join('');
-    }
-
-    function renderApprovals() {
-        const mount = document.getElementById('approvals-mount');
-        const wcStr = currentMonday.toISOString().split('T')[0];
-        mount.innerHTML = staff.filter(s => s.isManager).map(m => {
-            const name = `${m.firstName} ${m.lastName}`;
-            const reports = staff.filter(s => s.manager === name);
-            if(reports.length === 0) return "";
-            const pending = reports.filter(r => !responses.find(res => res.name === `${r.firstName} ${r.lastName}` && res.weekId === wcStr) && submissions.find(s => s.name === `${r.firstName} ${r.lastName}` && s.weekId === wcStr));
-            const accent = teamColors[m.team] || '#1C1C1C';
-            return `<div class="manager-card" style="border-left-color:${accent}" onclick="openApprovalWorkspace('${name}')"><div class="mgr-name">${name}</div><div class="mgr-pending-alert ${pending.length > 0 ? 'urgent' : 'all-clear'}">${pending.length > 0 ? pending.length + ' PENDING ACTIONS' : 'ALL CLEAR'}</div></div>`;
-        }).join('');
-    }
-
-    // --- STAFF PROFILE WORKSPACE ---
-    window.openStaffProfile = (staffId) => {
-        const s = staff.find(x => x.id === staffId);
-        const mount = document.getElementById('modal-mount');
-        const fullName = `${s.firstName} ${s.lastName}`;
-        const teamCol = teamColors[s.team];
-        const wcStr = currentMonday.toISOString().split('T')[0];
-        const sub = submissions.find(sub => sub.name === fullName && sub.weekId === wcStr);
-        const todayStatus = sub ? sub.schedule[selectedDayIdx].status : 'Pending';
-
-        const weeks = [-7, 0, 7].map(offset => { const d = new Date(currentMonday); d.setDate(d.getDate() + offset); return d.toISOString().split('T')[0]; });
-        const profileHeader = (label) => `<div class="profile-header-dots"><div class="p-grid-small">${Array(4).fill(`<span style="background:${teamCol}"></span>`).join('')}</div><div class="p-section-title">${label}</div></div>`;
-
-        mount.innerHTML = `
-            <div style="display:flex; align-items:center; gap:20px; border-bottom:1.5px solid #F0F0F0; padding-bottom:30px;">
-                <div class="p-grid-large">${Array(4).fill(`<span style="background:${teamCol}"></span>`).join('')}</div>
-                <div>
-                    <h1 style="margin:0; font-size:32px; font-weight:900; letter-spacing:-0.03em;">${fullName}</h1>
-                    <div style="color:#999; font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:0.05em; margin-top:4px;">${s.role} • <span style="color:${teamCol}">${s.team} Stream</span></div>
-                </div>
-            </div>
-            <div class="p-meta">
-                <div class="p-meta-card"><span class="p-meta-label">Today's Status</span><div class="p-meta-val" style="color:var(--st-${todayStatus.toLowerCase().replace(/ /g,'')})">${todayStatus}</div></div>
-                <div class="p-meta-card"><span class="p-meta-label">Direct Manager</span><div class="p-meta-val">${s.manager}</div></div>
-                <div class="p-meta-card"><span class="p-meta-label">Vertical</span><div class="p-meta-val" style="color:${teamCol}">${s.team}</div></div>
-            </div>
-            ${profileHeader('Presence by Week')}
-            <table class="presence-table">
-                <thead><tr><th class="week-row-label">Week Beginning</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>Action</th></tr></thead>
-                <tbody>
-                    ${weeks.map(w => {
-                        const sW = submissions.find(sub => sub.name === fullName && sub.weekId === w);
-                        const label = w === weeks[1] ? 'CURRENT' : (w === weeks[0] ? 'PREVIOUS' : 'UPCOMING');
-                        return `<tr><td class="week-row-label"><b>${label}</b><br><small>${new Date(w).toLocaleDateString('en-GB', {day:'numeric', month:'short'})}</small></td>${sW ? sW.schedule.map(d => `<td style="color:var(--st-${d.status.toLowerCase().replace(/ /g,'')})">${d.status.charAt(0)}</td>`).join('') : '<td colspan="5" style="color:#CCC; font-style:italic;">Pending</td>'}<td><button class="pill-btn ${sW ? 'pill-update' : 'pill-suggest'}" onclick="openPatternEditor('${fullName}', '${w}')">${sW ? 'Update' : 'Suggest?'}</button></td></tr>`;
-                    }).join('')}
-                </tbody>
-            </table>
-            <div id="pattern-editor-mount"></div>
-            ${profileHeader('Manager Notes')}
-            <div class="notes-input" style="display:flex; gap:10px; margin-bottom:20px;">
-                <input type="text" id="new-note-txt" placeholder="Thursday shoot @ 9am..." class="comment-box" style="margin:0; border-radius:12px;">
-                <button class="btn-action btn-approve" onclick="postNote('${fullName}')" style="flex:0 0 100px; border-radius:12px;">Post</button>
-            </div>
-            <div class="notes-list" id="profile-notes-mount"></div>
-        `;
-        renderProfileNotes(fullName);
-        document.getElementById('global-modal').classList.add('active');
-    };
-
-    window.openPatternEditor = (name, weekId) => {
-        const mount = document.getElementById('pattern-editor-mount');
-        const sub = submissions.find(s => s.name === name && s.weekId === weekId);
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        const locs = ['Office', 'WFH', 'Shoot', 'Client / Travel', 'PTO'];
-        
-        mount.innerHTML = `
-            <div class="pattern-editor">
-                <div style="font-size:10px; font-weight:900; text-transform:uppercase; margin-bottom:12px; color:var(--team-people);">Overriding Pattern: WC ${weekId}</div>
-                <div class="editor-grid">
-                    ${days.map((d, i) => {
-                        const current = sub ? sub.schedule[i].status : 'Office';
-                        return `
-                            <div class="editor-day">
-                                <span style="font-size:8px; font-weight:900; color:#BBB; display:block; margin-bottom:4px;">${d.charAt(0)}</span>
-                                <select class="editor-select" id="edit-day-${i}">
-                                    ${locs.map(l => `<option value="${l}" ${current === l ? 'selected' : ''}>${l}</option>`).join('')}
-                                </select>
+            if (isLocked) {
+                return (
+                    <div className="fixed inset-0 bg-white z-[1000] flex flex-col items-center justify-center p-6">
+                        <div className="max-w-sm w-full text-center">
+                            <div className="flex justify-center gap-2 mb-10">
+                                {[1,2,3,4].map(i => <div key={i} className={`w-3 h-3 rounded-full transition-all duration-300 ${pin.length >= i ? 'bg-[#21a0d8] scale-125 shadow-lg shadow-blue-200' : 'bg-gray-100'}`} />)}
                             </div>
-                        `;
-                    }).join('')}
+                            <h1 className="text-3xl font-black uppercase tracking-tighter mb-2">Manager Access</h1>
+                            <p className="text-gray-400 font-bold text-[10px] tracking-[0.3em] uppercase mb-12">New Media Command Centre</p>
+                            
+                            <div className="numpad-grid mb-10">
+                                {[1,2,3,4,5,6,7,8,9].map(n => (
+                                    <button key={n} onClick={() => handlePress(n.toString())} className="n-btn">{n}</button>
+                                ))}
+                                <div />
+                                <button onClick={() => handlePress("0")} className="n-btn">0</button>
+                                <button onClick={() => setPin("")} className="text-[10px] font-black text-gray-300 uppercase tracking-widest hover:text-red-500 transition-colors">Clear</button>
+                            </div>
+                            <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest opacity-50">Keyboard input enabled</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen flex flex-col bg-white">
+                    {/* MASTER HEADER */}
+                    <header className="px-12 py-10 border-b border-gray-100 flex items-center justify-between">
+                        <div className="flex items-center gap-6 leading-none">
+                            <h1 className="text-5xl font-black tracking-tighter uppercase">Manager</h1>
+                            <div className="grid grid-cols-2 gap-1.5 rotate-45">
+                                {[1,2,3,4].map(i => <div key={i} className="w-2.5 h-2.5 rounded-full bg-[#21a0d8]" />)}
+                            </div>
+                            <h1 className="text-5xl font-black tracking-tighter uppercase">Dashboard</h1>
+                        </div>
+                        <nav className="flex gap-2 p-1.5 bg-gray-50 rounded-full border border-gray-100">
+                            {['outlook', 'teams', 'approvals'].map(tab => (
+                                <button 
+                                    key={tab} 
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-[#21a0d8] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </nav>
+                    </header>
+
+                    <main className="flex-1 p-12 max-w-7xl mx-auto w-full">
+                        {/* VIEW: OUTLOOK */}
+                        {activeTab === 'outlook' && (
+                            <div className="fade-up space-y-12">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-[11px] font-black uppercase tracking-[0.3em] text-gray-400">Staff Overview</span>
+                                    <div className="flex-1 h-px bg-gray-50" />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {staff.length > 0 ? staff.map(p => {
+                                        const req = requests.find(r => r.staffName === p.fullName);
+                                        const status = req ? req.status : 'none';
+                                        return (
+                                            <button 
+                                                key={p.id} 
+                                                onClick={() => setSelectedStaff(p)}
+                                                className="group flex items-center justify-between p-8 bg-white border border-gray-100 rounded-[2rem] hover:border-[#21a0d8] transition-all hover:shadow-2xl text-left"
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span className="font-black text-xl tracking-tight uppercase group-hover:text-[#21a0d8] transition-colors">{p.fullName}</span>
+                                                    <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1">{p.role}</span>
+                                                </div>
+                                                <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${status === 'pending' ? 'bg-[#FF9800] text-white shadow-lg shadow-orange-100' : (status === 'approved' || status === 'submitted') ? 'bg-[#43B049] text-white shadow-lg shadow-green-100' : 'bg-gray-50 text-gray-300'}`}>
+                                                    {status === 'pending' ? 'Pending' : (status === 'approved' || status === 'submitted') ? 'Submitted' : 'No Data'}
+                                                </div>
+                                            </button>
+                                        );
+                                    }) : (
+                                        <div className="col-span-full py-20 text-center">
+                                            <div className="flex gap-2 justify-center mb-4">
+                                                {[1,2,3].map(i => <div key={i} className="w-2 h-2 rounded-full bg-gray-100 animate-pulse" style={{animationDelay: `${i*0.2}s`}} />)}
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase text-gray-300 tracking-widest">Awaiting cloud synchronisation</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'teams' && <div className="text-gray-300 font-black uppercase tracking-widest text-center py-20">Teams Filtration Engine active</div>}
+                        {activeTab === 'approvals' && <div className="text-gray-300 font-black uppercase tracking-widest text-center py-20">Decision Queue Ready</div>}
+                    </main>
+
+                    {/* STAFF MODAL (Tasks + To-Do) */}
+                    {selectedStaff && (
+                        <div className="fixed inset-0 z-[500] flex items-center justify-center p-6 bg-black/30 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setSelectedStaff(null)}>
+                            <div className="bg-white w-full max-w-2xl rounded-[3rem] p-12 relative shadow-2xl flex flex-col max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+                                <button onClick={() => setSelectedStaff(null)} className="absolute top-8 right-8 text-gray-300 hover:text-red-500 transition-colors"><X size={32} /></button>
+                                
+                                <div className="flex flex-col gap-6 mb-12 border-b border-gray-100 pb-10">
+                                    <div className="flex items-center gap-4 text-[10px] font-black text-gray-400 tracking-[0.4em] uppercase">
+                                        <span>Staff Identity</span>
+                                        <div className="flex gap-1">
+                                            {[1,2,3,4].map(i => <div key={i} className="w-2 h-2 rounded-full bg-[#21a0d8]" />)}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-end gap-6 leading-none">
+                                        <h3 className="text-5xl font-black uppercase tracking-tighter">{selectedStaff.firstName}</h3>
+                                        <h3 className="text-5xl font-black uppercase tracking-tighter text-gray-200">{selectedStaff.lastName}</h3>
+                                    </div>
+                                    <p className="text-xs font-bold text-[#21a0d8] uppercase tracking-[0.2em]">{selectedStaff.role} • {selectedStaff.team} stream</p>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-12">
+                                    {/* TASKS + TO-DO SECTION */}
+                                    <section>
+                                        <div className="flex items-center gap-4 mb-8">
+                                            <div className="dot-grid-mini"><span></span><span></span><span></span><span></span></div>
+                                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[#1C1C1C]">Tasks + To-do</span>
+                                            <div className="flex-1 h-px bg-gray-50" />
+                                        </div>
+                                        
+                                        <div className="flex gap-4 mb-8">
+                                            <input 
+                                                type="text" 
+                                                value={newTask}
+                                                onChange={e => setNewTask(e.target.value)}
+                                                placeholder="Enter a task or reminder..." 
+                                                className="flex-1 p-5 bg-gray-50 border-2 border-transparent focus:border-[#21a0d8] focus:bg-white rounded-2xl text-sm font-bold transition-all outline-none"
+                                            />
+                                            <button onClick={addTask} className="px-8 bg-[#1C1C1C] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#333]">Add</button>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            {currentStaffTasks.length > 0 ? currentStaffTasks.sort((a,b) => b.timestamp - a.timestamp).map(t => (
+                                                <div key={t.id} className="flex items-center justify-between p-6 bg-white border border-gray-100 rounded-3xl group hover:border-[#21a0d8] transition-all">
+                                                    <div className="flex items-center gap-5">
+                                                        <button 
+                                                            onClick={() => toggleTask(t.id, t.status)}
+                                                            className={`w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center ${t.status === 'done' ? 'bg-[#43B049] border-[#43B049]' : 'border-gray-200 group-hover:border-[#21a0d8]'}`}
+                                                        >
+                                                            {t.status === 'done' && <Check size={14} className="text-white" />}
+                                                        </button>
+                                                        <span className={`text-sm font-bold uppercase tracking-tight transition-all ${t.status === 'done' ? 'text-gray-300 line-through' : 'text-[#1C1C1C]'}`}>{t.content}</span>
+                                                    </div>
+                                                    <span className="text-[8px] font-black text-gray-200 group-hover:text-gray-400 transition-colors">#{t.id.substring(0,4).toUpperCase()}</span>
+                                                </div>
+                                            )) : (
+                                                <p className="text-center py-10 text-gray-200 text-[10px] font-black uppercase tracking-[0.4em]">No active tasks assigned</p>
+                                            )}
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
-                <button class="btn-action btn-approve" style="width:100%;" onclick="savePatternOverride('${name}', '${weekId}')">Save & Sync to Cloud</button>
-            </div>
-        `;
-    };
+            );
+        };
 
-    window.savePatternOverride = async (name, weekId) => {
-        const schedule = [];
-        for(let i=0; i<5; i++) {
-            schedule.push({ status: document.getElementById(`edit-day-${i}`).value, fullDay: true });
-        }
-        const submissionId = `${weekId}_${name.replace(/\s+/g, '_')}`;
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rota_submissions', submissionId), {
-            name, weekId, schedule, manager: staff.find(s => `${s.firstName} ${s.lastName}` === name).manager, timestamp: new Date().toISOString()
-        });
-        showToast("Cloud Synced");
-        openStaffProfile(staff.find(s => `${s.firstName} ${s.lastName}` === name).id);
-    };
+        // Lucide Icons Wrapper
+        const X = (props) => <svg {...props} width={props.size || 24} height={props.size || 24} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+        const Check = (props) => <svg {...props} width={props.size || 24} height={props.size || 24} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
 
-    function renderProfileNotes(name) {
-        const mount = document.getElementById('profile-notes-mount');
-        const userNotes = notes.filter(n => n.target === name).sort((a,b) => new Date(b.date) - new Date(a.date));
-        mount.innerHTML = userNotes.map(n => `<div class="note-item">${n.text}<span class="note-meta">${new Date(n.date).toLocaleDateString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})}</span></div>`).join('') || '<div style="font-size:12px; color:#CCC; text-align:center; padding:20px;">No manager notes logged.</div>';
-    }
-
-    window.postNote = async (target) => {
-        const text = document.getElementById('new-note-txt').value;
-        if(!text) return;
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff_notes'), { target, text, date: new Date().toISOString() });
-        document.getElementById('new-note-txt').value = "";
-        showToast("Note Recorded");
-    };
-
-    window.closeModal = () => document.getElementById('global-modal').classList.remove('active');
-    window.switchView = (v, btn) => {
-        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
-        document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
-        document.getElementById('view-'+v).classList.add('active');
-        btn.classList.add('active');
-    };
-
-    function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.classList.add('active'); setTimeout(() => t.classList.remove('active'), 2500); }
-</script>
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
 </body>
 </html>
