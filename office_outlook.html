@@ -1,73 +1,347 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DMG Office Outlook</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMG Office Outlook</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --carbon: #1C1C1C;
+            --text-main: #1C1C1C;
+            --text-sub: #888;
+            --border: #eeeeee;
+            --bg-light: #f9f9f9;
+            
+            /* Team Colors */
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-people: #21A0D8;
+            --team-operations: #21A0D8;
+            --team-executive: #1C1C1C;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: transparent;
+            padding: 10px;
+        }
 
-  <script src="https://cdn.tailwindcss.com"></script>
+        /* Animation utilities */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+    </style>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
-
-  <style>
-    :root {
-      --dmg-blue: #21a0d8;
-      --carbon: #1C1C1C;
-      --text-main: #1C1C1C;
-      --text-sub: #888;
-      --border: #eeeeee;
-      --bg-light: #f9f9f9;
-      --st-office: #2E7D32;
-      --st-wfh: #F9A825;
-      --st-shoot: #2196F3;
-      --st-pto: #F44336;
-
-      --team-editorial: #E94B4B;
-      --team-creative: #E6468B;
-      --team-production: #43B049;
-      --team-social: #F2C316;
-      --team-people: #21A0D8;
-      --team-operations: #21A0D8;
-      --team-executive: #1C1C1C;
-    }
-
-    html, body { margin: 0; padding: 0; }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: transparent; /* Notion embed */
-    }
-
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
-  </style>
-
-  <script type="importmap">
-  {
-    "imports": {
-      "react": "https://esm.sh/react@18.3.1",
-      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-      "firebase/app": "https://esm.sh/firebase@10.12.2/app",
-      "firebase/firestore": "https://esm.sh/firebase@10.12.2/firestore",
-      "firebase/auth": "https://esm.sh/firebase@10.12.2/auth"
-    }
-  }
-  </script>
-
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- React & Firebase Scripts -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase Compat (v9/v10) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 </head>
+<body>
 
-<body class="p-2.5">
-  <div id="root"></div>
+<div id="root"></div>
 
-  <!-- IMPORTANT: this loads your local repo file index.tsx via GitHub Pages -->
-  <script
-    type="text/babel"
-    data-type="module"
-    data-presets="env,react,typescript"
-    src="./index.tsx"
-  ></script>
+<script type="text/babel">
+    const { useState, useEffect, useMemo, useCallback } = React;
+
+    // --- FIREBASE CONFIGURATION ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+        authDomain: "dmg-command-centre-native.firebaseapp.com",
+        projectId: "dmg-command-centre-native",
+        storageBucket: "dmg-command-centre-native.firebasestorage.app",
+        messagingSenderId: "223535956454",
+        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const appId = 'dmg-command-centre-native';
+
+    // --- COMPONENTS ---
+
+    // 1. Toast Component
+    const Toast = ({ message, isVisible }) => {
+        return (
+            <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 bg-[var(--carbon)] text-white px-5 py-2 rounded-full text-[11px] font-extrabold uppercase z-50 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+                {message}
+            </div>
+        );
+    };
+
+    // 2. StatusPill Component
+    const StatusPill = ({ label, count, isLocked, onClick }) => {
+        const lockedClasses = "opacity-30 grayscale cursor-default pointer-events-none";
+        const activeClasses = "cursor-pointer transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-[0_0_15px_rgba(33,160,216,0.4)]";
+
+        return (
+            <div
+                onClick={onClick}
+                className={`bg-white p-4 rounded-xl text-center border-2 border-[var(--dmg-blue)] ${isLocked ? lockedClasses : activeClasses}`}
+            >
+                <span className={`block text-4xl font-black leading-none mb-1 text-[var(--dmg-blue)]`}>
+                    {count}
+                </span>
+                <span className="block text-[10px] font-extrabold uppercase text-[var(--text-sub)] tracking-wider">
+                    {label}
+                </span>
+            </div>
+        );
+    };
+
+    // 3. StatusModal Component
+    const teamColorMap = {
+        Editorial: 'var(--team-editorial)',
+        Creative: 'var(--team-creative)',
+        Production: 'var(--team-production)',
+        Social: 'var(--team-social)',
+        Operations: 'var(--team-operations)',
+        People: 'var(--team-people)',
+        Executive: 'var(--team-executive)',
+        Staff: 'var(--carbon)',
+    };
+
+    const StatusModal = ({ statusType, onClose, detailedUsers, todayDateString }) => {
+        const DotGrid = () => (
+            <div className="grid grid-cols-2 gap-1">
+                <span className="w-2 h-2 rounded-full bg-gray-300"></span>
+                <span className="w-2 h-2 rounded-full bg-gray-300"></span>
+                <span className="w-2 h-2 rounded-full bg-gray-300"></span>
+                <span className="w-2 h-2 rounded-full bg-gray-300"></span>
+            </div>
+        );
+
+        return (
+            <div
+                className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
+                onClick={onClose}
+            >
+                <div
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col border border-gray-200"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="p-6 border-b border-gray-100">
+                        <div className="flex items-center gap-4 mb-1">
+                            <span className="text-2xl font-black text-gray-400 uppercase tracking-tighter">Status</span>
+                            <DotGrid />
+                            <span className="text-2xl font-black text-[var(--dmg-blue)] uppercase tracking-tighter">{statusType}</span>
+                        </div>
+                         <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                            For {todayDateString}
+                        </div>
+                    </div>
+
+                    <div className="overflow-y-auto p-6 space-y-2">
+                        {detailedUsers.length > 0 ? (
+                            detailedUsers.map(user => (
+                                <div key={user.id || user.name} className="flex justify-between items-center bg-gray-50/70 p-3 rounded-lg">
+                                    <p className="font-bold text-sm text-[var(--dmg-blue)]">{user.name}
+                                        {user.time && <span className="text-xs font-semibold text-[var(--dmg-blue)] ml-2">{user.time}</span>}
+                                    </p>
+                                    <p 
+                                        className="text-xs font-bold uppercase" 
+                                        style={{ color: teamColorMap[user.team] || 'var(--carbon)' }}
+                                    >
+                                        {user.team || 'Staff'}
+                                    </p>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-10">
+                                <p className="text-gray-400 font-semibold">No staff logged for this status.</p>
+                            </div>
+                        )}
+                    </div>
+                     <div className="p-4 border-t border-gray-100">
+                        <button onClick={onClose} className="w-full bg-[var(--dmg-blue)] text-white py-2 rounded-lg text-sm font-bold hover:brightness-110 transition-all">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // --- MAIN APP COMPONENT ---
+    const App = () => {
+        const [submissions, setSubmissions] = useState([]);
+        const [directory, setDirectory] = useState([]);
+        const [modalStatus, setModalStatus] = useState(null);
+        const [showToast, setShowToast] = useState(false);
+
+        // Initial Data Fetch
+        useEffect(() => {
+            auth.signInAnonymously().catch((error) => console.error("Anonymous sign-in failed:", error));
+
+            const unsubscribe = auth.onAuthStateChanged((user) => {
+                if (user) {
+                    const submissionsRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions');
+                    const directoryRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory');
+
+                    const unsubSubmissions = submissionsRef.onSnapshot((snap) => {
+                        const subs = [];
+                        snap.forEach(doc => subs.push(doc.data()));
+                        setSubmissions(subs);
+                    });
+
+                    const unsubDirectory = directoryRef.onSnapshot((snap) => {
+                        const staff = [];
+                        snap.forEach(doc => staff.push({ id: doc.id, ...doc.data() }));
+                        setDirectory(staff);
+                    });
+                    
+                    return () => {
+                        unsubSubmissions();
+                        unsubDirectory();
+                    };
+                }
+            });
+
+            return () => unsubscribe();
+        }, []);
+
+        // Computed Properties
+        const { scheduleIndex, isWeekend, todayDateString } = useMemo(() => {
+            const today = new Date();
+            const day = today.getDay(); // Sun=0, Mon=1..Sat=6
+            const dateString = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+            return {
+                scheduleIndex: day === 0 ? 6 : day - 1, // Correctly mapped: Mon=0 ... Sun=6 (Though weekends often treated as locked)
+                isWeekend: day === 0 || day === 6,
+                todayDateString: dateString
+            };
+        }, []);
+
+        const statusCounts = useMemo(() => {
+            const counts = { Office: 0, WFH: 0, Shoot: 0, PTO: 0 };
+            
+            submissions.forEach(sub => {
+                const dayData = sub.schedule?.[scheduleIndex];
+                if (!dayData) return;
+                const status = dayData.status;
+
+                // Weekend Logic: Only Shoots/Travel persist
+                if (isWeekend) {
+                    if (['Shoot', 'Client / Travel'].includes(status)) counts.Shoot++;
+                    return;
+                }
+
+                if (status === 'Office') counts.Office++;
+                else if (status === 'WFH') counts.WFH++;
+                else if (['Shoot', 'Client / Travel'].includes(status)) counts.Shoot++;
+                else if (['PTO', 'Leave', 'Abroad'].includes(status)) counts.PTO++;
+                else counts.Office++; // Default fallback
+            });
+            return counts;
+        }, [submissions, scheduleIndex, isWeekend]);
+        
+        const detailedUsers = useMemo(() => {
+            if (!modalStatus) return [];
+
+            return submissions
+                .filter(sub => {
+                    const dayData = sub.schedule?.[scheduleIndex];
+                    if (!dayData) return false;
+                    const status = dayData.status;
+
+                    if (modalStatus === 'Office') return !isWeekend && status === 'Office';
+                    if (modalStatus === 'WFH') return !isWeekend && status === 'WFH';
+                    if (modalStatus === 'Shoot') return ['Shoot', 'Client / Travel'].includes(status);
+                    if (modalStatus === 'PTO') return !isWeekend && ['PTO', 'Leave', 'Abroad'].includes(status);
+                    return false;
+                })
+                .map(sub => {
+                    const dirEntry = directory.find(d => `${d.firstName} ${d.lastName}` === sub.name) || {};
+                    const dayData = sub.schedule?.[scheduleIndex];
+                    let time = "";
+                    if(dayData && (dayData.status === 'Shoot' || dayData.status === 'Client / Travel') && !dayData.fullDay && dayData.start && dayData.end) {
+                        time = `(${dayData.start}-${dayData.end})`;
+                    }
+
+                    return {
+                        name: sub.name,
+                        time,
+                        ...dirEntry,
+                    };
+                })
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+        }, [modalStatus, submissions, directory, scheduleIndex, isWeekend]);
+
+        const handlePillClick = useCallback((status) => {
+            if (isWeekend && status !== 'Shoot') {
+                setShowToast(true);
+                setTimeout(() => setShowToast(false), 2000);
+                return;
+            }
+            setModalStatus(status);
+        }, [isWeekend]);
+
+        return (
+            <div className="bg-white border border-[var(--border)] rounded-2xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] max-w-3xl mx-auto">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <StatusPill
+                        label="In Building"
+                        count={statusCounts.Office}
+                        isLocked={isWeekend}
+                        onClick={() => handlePillClick('Office')}
+                    />
+                    <StatusPill
+                        label="Remote"
+                        count={statusCounts.WFH}
+                        isLocked={isWeekend}
+                        onClick={() => handlePillClick('WFH')}
+                    />
+                    <StatusPill
+                        label="Off-Site"
+                        count={statusCounts.Shoot}
+                        isLocked={false}
+                        onClick={() => handlePillClick('Shoot')}
+                    />
+                    <StatusPill
+                        label="Leave"
+                        count={statusCounts.PTO}
+                        isLocked={isWeekend}
+                        onClick={() => handlePillClick('PTO')}
+                    />
+                </div>
+                {modalStatus && (
+                    <StatusModal
+                        statusType={modalStatus}
+                        onClose={() => setModalStatus(null)}
+                        detailedUsers={detailedUsers}
+                        todayDateString={todayDateString}
+                    />
+                )}
+                <Toast message="Weekend: Office Closed" isVisible={showToast} />
+            </div>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+</script>
+
 </body>
 </html>
 
