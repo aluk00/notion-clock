@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Publishing Queue | DMG New Media</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --social-yellow: #F2C316;
+            --editorial-red: #E94B4B;
+            --ink: #1C1C1C;
+        }
+        body {
+            background-color: transparent;
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0; padding: 10px;
+            overflow: hidden;
+        }
+
+        /* Logic explanation: 
+           DMG distribution happens at .00, .15, .30, and .45.
+           This container uses a dynamic border-color to signal urgency.
+        */
+        .countdown-container {
+            background: #FFFFFF;
+            border: 1.5px solid #F0F0F0;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .slot-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: #F9F9F9;
+            border-radius: 12px;
+            border-left: 6px solid var(--social-yellow);
+            transition: border-color 0.3s ease;
+        }
+
+        .slot-time {
+            font-size: 11px;
+            font-weight: 900;
+            color: var(--ink);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .timer-display {
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            color: var(--dmg-blue);
+        }
+
+        /* Urgency Logic: Under 3 minutes turns red and pulses */
+        .critical { border-left-color: var(--editorial-red) !important; }
+        .critical .timer-display { color: var(--editorial-red); animation: heartbeat 1.5s infinite; }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+
+        .label-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #757575;
+            margin-bottom: 8px;
+        }
+
+        .dots-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px;
+            width: 14px;
+            height: 14px;
+        }
+        .dot { background: var(--social-yellow); border-radius: 50%; width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+
+    <div class="label-row">
+        <div class="dots-grid"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        Active Distribution Windows
+    </div>
+
+    <div class="countdown-container">
+        <div id="next-slot" class="slot-card">
+            <div>
+                <div class="slot-time">Next Slot: <span id="slot-target">--:--</span></div>
+                <div class="text-[10px] font-bold text-gray-400">Global Feed (FB/IG/TT)</div>
+            </div>
+            <div id="timer" class="timer-display">00:00</div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * LOGIC:
+         * 1. Get current minutes.
+         * 2. Calculate the next 15-minute boundary (0, 15, 30, 45, 60).
+         * 3. Subtract current time from that boundary to get the countdown.
+         * 4. If countdown < 3 mins, apply 'critical' class.
+         */
+        function updateCountdown() {
+            const now = new Date();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            
+            // Find next interval
+            let nextSlotMins = Math.ceil((minutes + 0.1) / 15) * 15;
+            let nextSlotHours = now.getHours();
+            
+            if (nextSlotMins === 60) {
+                nextSlotMins = 0;
+                nextSlotHours += 1;
+            }
+
+            const target = new Date();
+            target.setHours(nextSlotHours, nextSlotMins, 0, 0);
+
+            const diff = target - now;
+            const m = Math.floor(diff / 1000 / 60);
+            const s = Math.floor((diff / 1000) % 60);
+
+            const display = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            document.getElementById('timer').innerText = display;
+            document.getElementById('slot-target').innerText = `${String(nextSlotHours).padStart(2, '0')}:${String(nextSlotMins).padStart(2, '0')}`;
+
+            const card = document.getElementById('next-slot');
+            if (m < 3) {
+                card.classList.add('critical');
+            } else {
+                card.classList.remove('critical');
+            }
+        }
+
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+    </script>
+</body>
+</html>
