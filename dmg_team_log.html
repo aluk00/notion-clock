@@ -1,642 +1,653 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DMG Rota Request | Live Cloud</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap" rel="stylesheet">
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: transparent;
-      }
-      .pills-scroller::-webkit-scrollbar {
-        display: none;
-      }
-      .pills-scroller {
-        -ms-overflow-style: none;  /* IE and Edge */
-        scrollbar-width: none;  /* Firefox */
-      }
-      @keyframes slideDown { 
-        from { opacity: 0; transform: translateY(-10px); } 
-        to { opacity: 1; transform: translateY(0); } 
-      }
-      .animate-slideDown {
-        animation: slideDown 0.3s ease;
-      }
-      @keyframes fadeIn { 
-        from { opacity: 0; } 
-        to { opacity: 1; } 
-      }
-      .animate-fadeIn {
-        animation: fadeIn 0.3s ease;
-      }
-      .autocomplete-scroller::-webkit-scrollbar {
-          width: 6px;
-      }
-      .autocomplete-scroller::-webkit-scrollbar-track {
-          background: #f1f1f1;
-      }
-      .autocomplete-scroller::-webkit-scrollbar-thumb {
-          background: #ccc;
-          border-radius: 6px;
-      }
-      .autocomplete-scroller::-webkit-scrollbar-thumb:hover {
-          background: #aaa;
-      }
-
-      /* Dot loading animation */
-      @keyframes pulse {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(0.9); }
-      }
-      .dot-animate-1 { animation: pulse 1.4s infinite ease-in-out; animation-delay: 0s; }
-      .dot-animate-2 { animation: pulse 1.4s infinite ease-in-out; animation-delay: 0.2s; }
-      .dot-animate-3 { animation: pulse 1.4s infinite ease-in-out; animation-delay: 0.2s; }
-      .dot-animate-4 { animation: pulse 1.4s infinite ease-in-out; animation-delay: 0.4s; }
-
-      /* Animated checkmark */
-      .checkmark {
-        width: 64px;
-        height: 64px;
-        border-radius: 50%;
-        display: block;
-        stroke-width: 3;
-        stroke: #fff;
-        stroke-miterlimit: 10;
-        box-shadow: inset 0px 0px 0px #E6468B;
-        animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
-      }
-      .checkmark__circle {
-          stroke-dasharray: 166;
-          stroke-dashoffset: 166;
-          stroke-width: 3;
-          stroke-miterlimit: 10;
-          stroke: #E6468B;
-          fill: none;
-          animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
-      }
-      .checkmark__check {
-          transform-origin: 50% 50%;
-          stroke-dasharray: 48;
-          stroke-dashoffset: 48;
-          animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
-      }
-      @keyframes stroke {
-        100% { stroke-dashoffset: 0; }
-      }
-      @keyframes scale {
-        0%, 100% { transform: none; }
-        50% { transform: scale3d(1.1, 1.1, 1); }
-      }
-      @keyframes fill {
-        100% { box-shadow: inset 0px 0px 0px 32px #E6468B; }
-      }
-    </style>
-  <script type="importmap">
-  {
-    "imports": {
-      "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-      "firebase/app": "https://esm.sh/firebase@10.12.2/app",
-      "firebase/firestore": "https://esm.sh/firebase@10.12.2/firestore",
-      "firebase/auth": "https://esm.sh/firebase@10.12.2/auth",
-      "react": "https://esm.sh/react@18.3.1"
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>DMG Rota Request | Live Cloud</title>
+  <style>
+    :root{
+      --brand-black:#000000;
+      --brand-pink:#E6468B;
+      --brand-blue:#21a0d8;
+      --bg-grey:#FAFAFA;
+      --border:#E0E0E0;
+      --text-main:#111;
+      --text-sub:#666;
+      --transition:all .3s cubic-bezier(.16,1,.3,1);
     }
-  }
-  </script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    *{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+    body{
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:transparent;margin:0;padding:20px;color:var(--text-main);
+      height:100vh;display:flex;justify-content:center;overflow:hidden;
+    }
+    .widget-card{
+      background:#fff;width:100%;max-width:440px;height:92vh;
+      display:flex;flex-direction:column;border-radius:16px;
+      box-shadow:0 10px 40px rgba(0,0,0,.08);
+      border:1px solid var(--border);overflow:hidden;position:relative;
+    }
+
+    .dot-grid{display:grid;grid-template-columns:repeat(2,6px);gap:4px;width:fit-content}
+    .dot-grid span{width:6px;height:6px;border-radius:50%;background:var(--brand-pink)}
+
+    .header{padding:22px 24px;border-bottom:1px solid var(--border);background:#fff}
+    .title-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .title-left{display:flex;align-items:center;gap:12px}
+    h1{font-size:20px;font-weight:900;text-transform:uppercase;margin:0;letter-spacing:-.02em}
+
+    .week-nav{display:flex;align-items:center;gap:10px}
+    .nav-btn{
+      width:34px;height:34px;border-radius:10px;border:1.5px solid var(--border);
+      background:var(--bg-grey);cursor:pointer;font-weight:900;transition:.2s;
+      display:flex;align-items:center;justify-content:center;user-select:none;
+    }
+    .nav-btn:hover{border-color:rgba(230,70,139,.45);background:#fff}
+    .nav-btn:active{transform:scale(.97)}
+    .week-chip{
+      font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;
+      color:var(--brand-pink);
+      background:rgba(230,70,139,.08);
+      border:1px solid rgba(230,70,139,.18);
+      padding:6px 10px;border-radius:999px;white-space:nowrap;
+    }
+    .week-chip.locked{color:#999;background:#f3f3f3;border-color:#e6e6e6}
+
+    .input-group{margin-top:14px;position:relative}
+    .input-label{
+      font-size:10px;font-weight:800;color:#999;text-transform:uppercase;
+      margin-bottom:6px;display:block;letter-spacing:.05em;
+    }
+    .styled-input,.styled-select{
+      width:100%;padding:12px;font-size:14px;font-weight:700;
+      border:1.5px solid var(--border);border-radius:10px;background:var(--bg-grey);
+      outline:none;transition:.2s;color:#111;
+    }
+    .styled-input:focus,.styled-select:focus{border-color:var(--brand-pink);background:#fff}
+
+    .scroll-content{flex:1;overflow-y:auto;padding:22px 24px;background:#fff}
+    .day-row{margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #f5f5f5}
+    .day-title{font-size:14px;font-weight:800;margin-bottom:2px}
+    .day-date{
+      font-size:10px;font-weight:700;color:var(--brand-pink);
+      text-transform:uppercase;margin-bottom:12px;display:block;letter-spacing:.08em;
+    }
+
+    .pills-scroller{display:flex;gap:8px;overflow-x:auto;padding-bottom:5px;scrollbar-width:none;margin-bottom:12px}
+    .pills-scroller::-webkit-scrollbar{display:none}
+
+    .loc-pill{
+      flex-shrink:0;padding:8px 14px;border-radius:20px;font-size:11px;font-weight:900;
+      border:1.5px solid var(--border);cursor:pointer;background:#fff;transition:var(--transition);color:#888;
+    }
+    .loc-pill:hover{
+      border-color:rgba(230,70,139,.35);
+      box-shadow:0 0 0 2px rgba(230,70,139,.06);
+    }
+    .loc-pill.selected{
+      background:var(--brand-pink);color:#fff;border-color:var(--brand-pink);
+      box-shadow:0 2px 10px rgba(230,70,139,.22);
+    }
+
+    .shoot-meta{
+      background:var(--bg-grey);padding:14px;border-radius:12px;margin-top:10px;
+      border:1px solid #f0f0f0;
+      animation:slideDown .25s ease;
+    }
+    @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    .meta-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px}
+    .meta-label{font-size:11px;font-weight:800;color:#666}
+    .time-inputs{display:flex;align-items:center;gap:8px}
+    .time-box{
+      padding:6px 8px;border-radius:8px;border:1px solid var(--border);
+      font-size:12px;font-weight:800;width:92px;background:#fff;
+    }
+
+    .toggle-btn{
+      background:#eee;border:none;padding:6px 12px;border-radius:8px;
+      font-size:10px;font-weight:900;cursor:pointer;text-transform:uppercase;transition:.2s;
+      box-shadow:0 0 0 0 rgba(33,160,216,0);
+    }
+    .toggle-btn:hover{box-shadow:0 0 0 2px rgba(33,160,216,.10)}
+    .toggle-btn.active{background:var(--brand-blue);color:#fff}
+
+    .footer{padding:18px 24px;border-top:1px solid var(--border);background:#fff}
+    .submit-btn{
+      width:100%;background:var(--brand-black);color:#fff;border:none;
+      padding:16px;border-radius:12px;font-size:13px;font-weight:900;
+      text-transform:uppercase;cursor:pointer;transition:.2s;letter-spacing:.12em;
+    }
+    .submit-btn:hover{transform:translateY(-2px);background:var(--brand-pink)}
+    .submit-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+    /* Read-only mode */
+    .readonly .styled-input,
+    .readonly .styled-select,
+    .readonly .loc-pill,
+    .readonly .toggle-btn,
+    .readonly .time-box,
+    .readonly .submit-btn{
+      pointer-events:none;
+      opacity:.45;
+      filter:grayscale(.25);
+    }
+    .readonly .submit-btn{background:#111;color:#fff;opacity:.35}
+
+    /* Overlays */
+    .overlay{
+      position:absolute;inset:0;background:rgba(255,255,255,.92);
+      backdrop-filter:blur(6px);display:none;flex-direction:column;
+      align-items:center;justify-content:center;z-index:100;text-align:center;padding:34px;
+    }
+    .overlay.active{display:flex}
+    .edit-btn{
+      background:var(--brand-blue);color:#fff;border:none;padding:12px 22px;border-radius:999px;
+      font-weight:900;font-size:11px;cursor:pointer;text-transform:uppercase;letter-spacing:.08em;
+    }
+
+    /* Submit “frost + dots + check” overlay */
+    .submit-overlay{
+      position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+      background:rgba(255,255,255,.78);backdrop-filter:blur(10px);
+      z-index:120;text-align:center;padding:32px;
+    }
+    .submit-overlay.active{display:flex}
+    .submit-card{
+      width:min(320px,90%);background:#fff;border:1px solid var(--border);
+      border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.10);
+      padding:22px 18px;
+    }
+    .loading-dots{display:flex;justify-content:center;gap:8px;margin:8px 0 14px}
+    .loading-dots span{
+      width:10px;height:10px;border-radius:50%;background:var(--brand-pink);
+      opacity:.25;transform:scale(.85);
+      animation:dotCycle 1s infinite ease-in-out;
+    }
+    .loading-dots span:nth-child(2){animation-delay:.15s}
+    .loading-dots span:nth-child(3){animation-delay:.30s}
+    .loading-dots span:nth-child(4){animation-delay:.45s}
+    @keyframes dotCycle{
+      0%,100%{opacity:.25;transform:scale(.85)}
+      50%{opacity:1;transform:scale(1.1)}
+    }
+    .checkmark{
+      width:58px;height:58px;margin:8px auto 10px;display:none;
+    }
+    .checkmark svg{width:100%;height:100%}
+    .checkmark path{
+      stroke:var(--brand-pink);
+      stroke-width:6;
+      fill:none;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      stroke-dasharray:100;
+      stroke-dashoffset:100;
+      animation:draw .6s ease forwards;
+    }
+    @keyframes draw{to{stroke-dashoffset:0}}
+
+    #toast{
+      position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+      background:#000;color:#fff;padding:10px 16px;border-radius:999px;
+      font-size:11px;font-weight:900;opacity:0;transition:.25s;pointer-events:none;
+      z-index:1000;text-transform:uppercase;letter-spacing:.08em;
+    }
+    #toast.visible{opacity:1;bottom:30px}
+    .muted-note{font-size:12px;color:#777;line-height:1.4;margin-top:10px}
+    .muted-note b{color:#111}
+  </style>
 </head>
-  <body class="p-5 flex justify-center bg-transparent overflow-hidden">
-    <div id="root" class="h-full w-full"></div>
-    <script type="text/babel" data-type="module">
-      import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-      import ReactDOM from 'react-dom/client';
-      import { initializeApp } from "firebase/app";
-      import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "firebase/firestore";
-      import { getAuth, signInAnonymously } from "firebase/auth";
+<body>
+  <div id="toast">Updated</div>
 
-      // --- FIREBASE CONFIGURATION ---
-      const firebaseConfig = {
-          apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-          authDomain: "dmg-command-centre-native.firebaseapp.com",
-          projectId: "dmg-command-centre-native",
-          storageBucket: "dmg-command-centre-native.firebasestorage.app",
-          messagingSenderId: "223535956454",
-          appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
-          measurementId: "G-5HNGPRJGZY"
-      };
+  <div class="widget-card" id="card">
+    <div class="header">
+      <div class="title-row">
+        <div class="title-left">
+          <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+          <h1>Rota Request</h1>
+        </div>
 
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      const auth = getAuth(app);
-      const appId = 'dmg-command-centre-native';
+        <div class="week-nav">
+          <button class="nav-btn" id="prev-week" title="Previous week" aria-label="Previous week">‹</button>
+          <div class="week-chip" id="wc-chip">W/C ...</div>
+          <button class="nav-btn" id="next-week" title="Next week" aria-label="Next week">›</button>
+        </div>
+      </div>
 
-      // --- CONSTANTS & HELPERS ---
-      const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-      const LOCATIONS = ['Office', 'WFH', 'Shoot', 'Off-Site', 'PTO'];
-      const WEEKEND_LOCATIONS = ['Weekend', 'Shoot'];
+      <div class="input-group">
+        <label class="input-label">Your Name</label>
+        <input type="text" id="staff-name" list="staff-list" class="styled-input" placeholder="Start typing name..." />
+        <datalist id="staff-list"></datalist>
+      </div>
 
-      const getNextMonday = () => {
-          const d = new Date();
-          d.setHours(0, 0, 0, 0); // Normalize to the start of the day
-          const day = d.getDay();
-          // if Sunday (0), we want next Monday (+1 day). If Monday (1), we want next Monday (+7 days), etc.
-          const diff = day === 0 ? 1 : 8 - day;
-          d.setDate(d.getDate() + diff);
-          return d;
-      };
+      <div class="input-group">
+        <label class="input-label">Line Manager</label>
+        <select id="manager-select" class="styled-select">
+          <option value="" disabled selected>Select Manager...</option>
+        </select>
+      </div>
+    </div>
 
+    <div class="scroll-content" id="days-mount"></div>
 
-      const formatDate = (date) => {
-          return date.toLocaleString('en-GB', { day: 'numeric', month: 'short' });
-      };
+    <div class="footer">
+      <button class="submit-btn" id="submit-btn">Submit</button>
+    </div>
 
-      const createInitialSelections = () => {
-          return DAYS.reduce((acc, day) => {
-              if (day === 'Saturday' || day === 'Sunday') {
-                  acc[day] = { status: 'Weekend', fullDay: true, start: '09:00', end: '17:30' };
-              } else {
-                  acc[day] = { status: 'Office', fullDay: true, start: '09:00', end: '17:30' };
-              }
-              return acc;
-          }, {});
-      };
+    <!-- Already submitted overlay (only for next week) -->
+    <div id="already-submitted-overlay" class="overlay">
+      <div class="dot-grid" style="margin-bottom:16px;"><span></span><span></span><span></span><span></span></div>
+      <h2 style="font-weight:900;margin:0 0 6px;">ALREADY SUBMITTED</h2>
+      <p style="margin:0 0 14px;">You have already logged a rota for <span id="wc-date-display"></span>.</p>
+      <button class="edit-btn" id="edit-btn">Want to edit?</button>
+    </div>
 
-      // --- UI COMPONENTS ---
-      const DotGrid = ({ brandColor = 'bg-[#E6468B]' }) => (
-          <div className="grid grid-cols-2 gap-0.5 w-fit">
-              <span className={`w-2 h-2 rounded-full ${brandColor}`}></span>
-              <span className={`w-2 h-2 rounded-full ${brandColor}`}></span>
-              <span className={`w-2 h-2 rounded-full ${brandColor}`}></span>
-              <span className={`w-2 h-2 rounded-full ${brandColor}`}></span>
-          </div>
-      );
+    <!-- Submit animation overlay -->
+    <div id="submit-overlay" class="submit-overlay" aria-live="polite">
+      <div class="submit-card">
+        <div class="dot-grid" style="margin:0 auto 10px;"><span></span><span></span><span></span><span></span></div>
 
-      const AnimatedCheckmark = () => (
-          <svg className="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-              <circle className="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
-              <path className="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        <div id="submit-loading">
+          <div class="loading-dots"><span></span><span></span><span></span><span></span></div>
+          <div style="font-weight:900;letter-spacing:.08em;text-transform:uppercase;font-size:11px;color:#111;">Syncing to cloud</div>
+        </div>
+
+        <div class="checkmark" id="submit-check">
+          <svg viewBox="0 0 52 52" role="img" aria-label="Success">
+            <path d="M14 27 L22 35 L39 17"></path>
           </svg>
-      );
+        </div>
 
-      const LoadingOverlay = ({ isVisible }) => {
-          if (!isVisible) return null;
-          return (
-              <div className="absolute inset-0 bg-white/80 backdrop-blur-md flex flex-col items-center justify-center z-50 animate-fadeIn">
-                  <div className="grid grid-cols-2 gap-1.5 w-fit">
-                      <span className="w-3 h-3 rounded-full bg-[#E6468B] dot-animate-1"></span>
-                      <span className="w-3 h-3 rounded-full bg-[#E6468B] dot-animate-2"></span>
-                      <span className="w-3 h-3 rounded-full bg-[#E6468B] dot-animate-3"></span>
-                      <span className="w-3 h-3 rounded-full bg-[#E6468B] dot-animate-4"></span>
-                  </div>
-              </div>
-          );
-      };
+        <div id="submit-message" class="muted-note"></div>
 
-      const ShootDetails = ({ day, selection, onToggleFullDay, onTimeChange, isPast }) => (
-          <div className="bg-gray-50 p-4 rounded-xl mt-2.5 animate-slideDown">
-              <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-xs font-bold text-gray-500">Full Day Shoot?</span>
-                  <button
-                      onClick={() => onToggleFullDay(day)}
-                      className={`px-3 py-1 text-[10px] rounded-md font-black uppercase transition-colors ${selection.fullDay ? 'bg-[#21a0d8] text-white' : 'bg-gray-200 text-gray-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
-                      disabled={isPast}
-                  >
-                      {selection.fullDay ? 'Yes' : 'No'}
-                  </button>
+        <button class="edit-btn" id="done-btn" style="display:none;background:#000;margin-top:14px;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getFirestore, doc, setDoc, getDoc, collection, onSnapshot
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+      authDomain: "dmg-command-centre-native.firebaseapp.com",
+      projectId: "dmg-command-centre-native",
+      storageBucket: "dmg-command-centre-native.firebasestorage.app",
+      messagingSenderId: "223535956454",
+      appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+    };
+
+    const appId = "dmg-command-centre-native";
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const days = ["Monday","Tuesday","Wednesday","Thursday","Friday"];
+    const locs = ["Office","WFH","Shoot","Client / Travel","PTO"];
+
+    const el = (id) => document.getElementById(id);
+
+    const state = {
+      weekOffset: 0, // 0 = next week (default), -1 = previous week, etc
+      weekCommencing: "",
+      mondayDate: null,
+      staffDirectory: [],
+      selections: {},
+      readOnly: false,
+      existingDoc: null
+    };
+
+    function toast(msg){
+      const t = el("toast");
+      t.textContent = msg;
+      t.classList.add("visible");
+      setTimeout(()=>t.classList.remove("visible"), 2000);
+    }
+
+    function startOfDay(d){
+      const x = new Date(d);
+      x.setHours(0,0,0,0);
+      return x;
+    }
+
+    // Next Monday (for “upcoming rota”)
+    function getNextMonday(baseDate = new Date()){
+      const d = startOfDay(baseDate);
+      const day = d.getDay(); // Sun=0..Sat=6
+      const diff = (day === 0) ? 1 : (8 - day);
+      return new Date(d.getTime() + diff * 86400000);
+    }
+
+    function addDays(date, n){
+      return new Date(date.getTime() + n * 86400000);
+    }
+
+    function fmtShort(date){
+      return date.toLocaleDateString("en-GB", { day:"numeric", month:"short" });
+    }
+
+    function fmtWcChip(monday){
+      return `W/C ${fmtShort(monday)}`;
+    }
+
+    function initSelections(){
+      const s = {};
+      days.forEach(d => {
+        s[d] = { status:"Office", fullDay:true, start:"09:00", end:"17:30" };
+      });
+      state.selections = s;
+    }
+
+    function computeWeek(){
+      const nextMon = getNextMonday(new Date());
+      const monday = addDays(nextMon, state.weekOffset * 7);
+      state.mondayDate = monday;
+      state.weekCommencing = monday.toISOString().split("T")[0];
+
+      // Read-only for any week in the past relative to nextMon
+      state.readOnly = monday.getTime() < nextMon.getTime();
+
+      const chip = el("wc-chip");
+      chip.textContent = fmtWcChip(monday);
+      chip.classList.toggle("locked", state.readOnly);
+
+      el("wc-date-display").textContent = fmtWcChip(monday);
+      el("card").classList.toggle("readonly", state.readOnly);
+
+      // “Already submitted” overlay only applies to weekOffset === 0
+      el("already-submitted-overlay").classList.remove("active");
+      state.existingDoc = null;
+    }
+
+    function populateLists(){
+      const listMount = el("staff-list");
+      const mgrMount = el("manager-select");
+
+      listMount.innerHTML = state.staffDirectory
+        .map(s => `<option value="${s.firstName} ${s.lastName}">`)
+        .join("");
+
+      const managers = [...new Set(
+        state.staffDirectory
+          .filter(s => s.isManager)
+          .map(s => `${s.firstName} ${s.lastName}`)
+      )].sort();
+
+      if(!managers.includes("Anaïs Lukaku")) managers.push("Anaïs Lukaku");
+
+      mgrMount.innerHTML =
+        '<option value="" disabled selected>Select Manager...</option>' +
+        managers.map(m => `<option value="${m}">${m}</option>`).join("");
+    }
+
+    function renderDays(){
+      const mount = el("days-mount");
+      mount.innerHTML = days.map((d,i)=>{
+        const current = addDays(state.mondayDate, i);
+        const sel = state.selections[d];
+        const pills = locs.map(l => {
+          const selected = sel.status === l ? "selected" : "";
+          return `<div class="loc-pill ${selected}" data-day="${d}" data-loc="${l}">${l}</div>`;
+        }).join("");
+
+        const shootMeta = (sel.status === "Shoot" || sel.status === "Client / Travel") ? `
+          <div class="shoot-meta">
+            <div class="meta-row">
+              <span class="meta-label">Full Day?</span>
+              <button class="toggle-btn ${sel.fullDay ? "active":""}" data-toggle-day="${d}">
+                ${sel.fullDay ? "Yes" : "No"}
+              </button>
+            </div>
+            ${!sel.fullDay ? `
+              <div class="meta-row">
+                <span class="meta-label">On-site times</span>
+                <div class="time-inputs">
+                  <input type="time" class="time-box" value="${sel.start}" data-time-day="${d}" data-time-key="start" />
+                  <span style="font-size:10px;font-weight:900;">-</span>
+                  <input type="time" class="time-box" value="${sel.end}" data-time-day="${d}" data-time-key="end" />
+                </div>
               </div>
-              {!selection.fullDay && (
-                  <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-gray-500">On-Site Times</span>
-                      <div className="flex items-center gap-2">
-                          <input type="time" className="p-1.5 rounded-md border border-gray-200 text-xs font-bold w-24 disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed" value={selection.start} onChange={(e) => onTimeChange(day, 'start', e.target.value)} disabled={isPast} />
-                          <span className="text-xs font-black">-</span>
-                          <input type="time" className="p-1.5 rounded-md border border-gray-200 text-xs font-bold w-24 disabled:bg-gray-100 disabled:opacity-70 disabled:cursor-not-allowed" value={selection.end} onChange={(e) => onTimeChange(day, 'end', e.target.value)} disabled={isPast} />
-                      </div>
-                  </div>
-              )}
+            ` : ``}
           </div>
-      );
+        ` : ``;
 
-      const DayRow = ({ day, date, selection, onSelectLocation, onToggleFullDay, onTimeChange, isPast }) => {
-          const availableLocations = ['Saturday', 'Sunday'].includes(day) ? WEEKEND_LOCATIONS : LOCATIONS;
-
-          return (
-              <div className="mb-6 pb-6 border-b border-gray-100 last:border-b-0">
-                  <h3 className="text-sm font-extrabold">{day}</h3>
-                  <span className="text-[10px] font-bold text-[#E6468B] uppercase mb-3 block">{formatDate(date)}</span>
-                  <div className="flex gap-2 overflow-x-auto py-4 px-2 mb-3 pills-scroller">
-                      {availableLocations.map(loc => {
-                          const isSelected = selection.status === loc;
-                          let buttonClasses = 'shrink-0 px-4 py-2 rounded-full text-[11px] font-extrabold border-[1.5px] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed ';
-
-                          if (isSelected) {
-                              if (loc === 'Weekend') {
-                                  buttonClasses += 'bg-gray-600 text-white border-gray-600 shadow-[0_0_10px_rgba(107,114,128,0.4)]';
-                              } else {
-                                  buttonClasses += 'bg-[#E6468B] text-white border-[#E6468B] shadow-[0_0_10px_rgba(230,70,139,0.4)]';
-                              }
-                          } else {
-                              buttonClasses += 'bg-white text-gray-600 border-gray-200';
-                          }
-
-                          return (
-                              <button
-                                  key={loc}
-                                  onClick={() => onSelectLocation(day, loc)}
-                                  className={buttonClasses}
-                                  disabled={isPast}
-                              >
-                                  {loc}
-                              </button>
-                          );
-                      })}
-                  </div>
-                  {selection.status === 'Shoot' && <ShootDetails day={day} selection={selection} onToggleFullDay={onToggleFullDay} onTimeChange={onTimeChange} isPast={isPast} />}
-              </div>
-          );
-      }
-
-      const Overlay = ({ isVisible, children }) => {
-        if (!isVisible) return null;
-        return (
-          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center z-50 text-center p-10">
-            {children}
+        return `
+          <div class="day-row">
+            <div class="day-title">${d}</div>
+            <span class="day-date">${fmtShort(current)}</span>
+            <div class="pills-scroller">${pills}</div>
+            ${shootMeta}
           </div>
-        );
-      };
+        `;
+      }).join("");
+    }
 
-      const StaffAutocomplete = ({ staffDirectory, value, onChange, placeholder }) => {
-          const [filteredStaff, setFilteredStaff] = useState(staffDirectory);
-          const [showDropdown, setShowDropdown] = useState(false);
-          const wrapperRef = useRef(null);
+    function wireDayInteractions(){
+      el("days-mount").addEventListener("click", (e) => {
+        if(state.readOnly) return;
 
-          useEffect(() => {
-              if (!value) {
-                  setFilteredStaff(staffDirectory);
-              } else {
-                  setFilteredStaff(
-                      staffDirectory.filter(s =>
-                          `${s.firstName} ${s.lastName}`.toLowerCase().includes(value.toLowerCase())
-                      )
-                  );
-              }
-          }, [value, staffDirectory]);
+        const pill = e.target.closest(".loc-pill");
+        if(pill){
+          const day = pill.getAttribute("data-day");
+          const loc = pill.getAttribute("data-loc");
+          state.selections[day].status = loc;
+          // reset shoot defaults if switching into shoot
+          if(loc === "Shoot" || loc === "Client / Travel"){
+            if(typeof state.selections[day].fullDay !== "boolean") state.selections[day].fullDay = true;
+            if(!state.selections[day].start) state.selections[day].start = "09:00";
+            if(!state.selections[day].end) state.selections[day].end = "17:30";
+          }
+          renderDays();
+          return;
+        }
 
-          useEffect(() => {
-              function handleClickOutside(event) {
-                  if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
-                      setShowDropdown(false);
-                  }
-              }
-              document.addEventListener("mousedown", handleClickOutside);
-              return () => document.removeEventListener("mousedown", handleClickOutside);
-          }, [wrapperRef]);
+        const toggle = e.target.closest("[data-toggle-day]");
+        if(toggle){
+          const day = toggle.getAttribute("data-toggle-day");
+          state.selections[day].fullDay = !state.selections[day].fullDay;
+          renderDays();
+          return;
+        }
+      });
 
-          const handleSelect = (name) => {
-              onChange(name);
-              setShowDropdown(false);
-          };
+      el("days-mount").addEventListener("change", (e) => {
+        if(state.readOnly) return;
 
-          return (
-              <div className="relative" ref={wrapperRef}>
-                  <input
-                      type="text"
-                      value={value}
-                      onChange={(e) => onChange(e.target.value)}
-                      onFocus={() => setShowDropdown(true)}
-                      placeholder={placeholder}
-                      autoComplete="off"
-                      className="w-full p-3 text-sm font-bold border-2 border-gray-200 rounded-lg bg-gray-50 outline-none focus:border-[#E6468B] focus:bg-white transition"
-                  />
-                  {showDropdown && filteredStaff.length > 0 && (
-                      <ul className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto animate-slideDown autocomplete-scroller">
-                          {filteredStaff.map(s => (
-                              <li
-                                  key={s.id}
-                                  onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      handleSelect(`${s.firstName} ${s.lastName}`);
-                                  }}
-                                  className="px-4 py-3 text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition-colors"
-                              >
-                                  {s.firstName} {s.lastName}
-                              </li>
-                          ))}
-                      </ul>
-                  )}
-              </div>
-          );
-      };
+        const t = e.target;
+        if(t && t.matches("[data-time-day]")){
+          const day = t.getAttribute("data-time-day");
+          const key = t.getAttribute("data-time-key");
+          state.selections[day][key] = t.value;
+        }
+      });
+    }
 
-      // --- MAIN APP COMPONENT ---
-      function App() {
-          const [staffDirectory, setStaffDirectory] = useState([]);
-          const [selections, setSelections] = useState(createInitialSelections());
-          const [staffName, setStaffName] = useState('');
-          const [manager, setManager] = useState('');
-          const [weekCommencing, setWeekCommencing] = useState('');
-          const [weekCommencingDate, setWeekCommencingDate] = useState(null);
-          const [initialMonday, setInitialMonday] = useState(null);
+    function submissionIdFor(name){
+      return `${state.weekCommencing}_${name.replace(/\\s+/g, "_")}`;
+    }
 
+    async function loadExistingIfAny(){
+      const name = el("staff-name").value.trim();
+      if(name.length < 3) return;
 
-          const [isLoading, setIsLoading] = useState(false);
-          const [toastMessage, setToastMessage] = useState(null);
-          const [showAlreadySubmitted, setShowAlreadySubmitted] = useState(false);
-          const [showSuccess, setShowSuccess] = useState(false);
+      const id = submissionIdFor(name);
+      const snap = await getDoc(doc(db, "artifacts", appId, "public", "data", "rota_submissions", id));
 
-          const managers = useMemo(() => {
-              const managerSet = new Set(staffDirectory.filter(s => s.isManager).map(s => `${s.firstName} ${s.lastName}`));
-              if (!managerSet.has("Anaïs Lukaku")) {
-                  managerSet.add("Anaïs Lukaku");
-              }
-              return Array.from(managerSet).sort();
-          }, [staffDirectory]);
+      if(snap.exists()){
+        state.existingDoc = snap.data();
 
-          const showToast = (message) => {
-              setToastMessage(message);
-              setTimeout(() => setToastMessage(null), 2000);
-          };
-          
-          useEffect(() => {
-              const monday = getNextMonday();
-              setWeekCommencingDate(monday);
-              setInitialMonday(monday);
+        // Fill manager if present
+        if(state.existingDoc.manager){
+          el("manager-select").value = state.existingDoc.manager;
+        }
 
-              const init = async () => {
-                  try {
-                      await signInAnonymously(auth);
-                      const staffRef = collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory');
-                      onSnapshot(staffRef, (snap) => {
-                          const staffData = [];
-                          snap.forEach(doc => staffData.push({ id: doc.id, ...doc.data() }));
-                          staffData.sort((a, b) => 
-                              `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`)
-                          );
-                          setStaffDirectory(staffData);
-                      });
-                  } catch (error) {
-                      console.error("Firebase initialization error:", error);
-                      showToast("Error connecting to server.");
-                  }
-              };
-              init();
-          }, []);
+        // Load schedule into selections
+        // Stored as array Monday..Friday in your schema
+        const sch = state.existingDoc.schedule;
+        if(Array.isArray(sch) && sch.length >= 5){
+          days.forEach((dayName, idx) => {
+            const v = sch[idx] || {};
+            state.selections[dayName] = {
+              status: v.status || "Office",
+              fullDay: (v.fullDay !== undefined) ? !!v.fullDay : true,
+              start: v.start || "09:00",
+              end: v.end || "17:30"
+            };
+          });
+          renderDays();
+        }
 
-          useEffect(() => {
-              if (weekCommencingDate) {
-                  setWeekCommencing(weekCommencingDate.toISOString().split('T')[0]);
-              }
-          }, [weekCommencingDate]);
-          
-          const handleNameChange = useCallback((name) => {
-              setStaffName(name);
-              const selectedStaff = staffDirectory.find(s => `${s.firstName} ${s.lastName}` === name);
-              if (selectedStaff && selectedStaff.manager) {
-                  setManager(selectedStaff.manager);
-              } else if (!selectedStaff) {
-                  setManager('');
-              }
-          }, [staffDirectory]);
-
-          useEffect(() => {
-              const checkForSubmission = async () => {
-                  setShowAlreadySubmitted(false);
-                  setSelections(createInitialSelections()); // Reset to default before fetching new data
-
-                  if (!staffName || staffName.length < 3 || !weekCommencing || !weekCommencingDate || !initialMonday) return;
-          
-                  const selectedStaff = staffDirectory.find(s => `${s.firstName} ${s.lastName}` === staffName);
-                  if (!selectedStaff) return;
-          
-                  const submissionId = `${weekCommencing}_${staffName.replace(/\s+/g, '_')}`;
-                  const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'rota_submissions', submissionId);
-                  const docSnap = await getDoc(docRef);
-          
-                  if (docSnap.exists()) {
-                      const data = docSnap.data();
-                      
-                      if (data.schedule && Array.isArray(data.schedule) && data.schedule.length === DAYS.length) {
-                          const loadedSelections = DAYS.reduce((acc, day, index) => {
-                              acc[day] = data.schedule[index];
-                              return acc;
-                          }, {});
-                          setSelections(loadedSelections);
-                      }
-
-                      if (data.manager) setManager(data.manager);
-
-                      const isPast = weekCommencingDate.getTime() < initialMonday.getTime();
-                      if (!isPast) {
-                          setShowAlreadySubmitted(true);
-                      }
-                  }
-              };
-              checkForSubmission();
-          }, [staffName, weekCommencing, staffDirectory, initialMonday, weekCommencingDate]);
-
-          const handleUnlockForEdit = () => {
-              setShowAlreadySubmitted(false);
-              showToast("Edit mode active");
-          };
-
-          const handleSelectLocation = (day, location) => {
-              setSelections(prev => ({ ...prev, [day]: { ...prev[day], status: location } }));
-          };
-
-          const handleToggleFullDay = (day) => {
-              setSelections(prev => ({ ...prev, [day]: { ...prev[day], fullDay: !prev[day].fullDay } }));
-          };
-
-          const handleTimeChange = (day, type, value) => {
-              setSelections(prev => ({ ...prev, [day]: { ...prev[day], [type]: value } }));
-          };
-
-          const handlePreviousWeek = () => {
-              if (!weekCommencingDate) return;
-              const newDate = new Date(weekCommencingDate);
-              newDate.setDate(newDate.getDate() - 7);
-              setWeekCommencingDate(newDate);
-          };
-          
-          const handleNextWeek = () => {
-              if (!weekCommencingDate) return;
-              const newDate = new Date(weekCommencingDate);
-              newDate.setDate(newDate.getDate() + 7);
-              setWeekCommencingDate(newDate);
-          };
-
-          const handleSubmit = async () => {
-              if (!staffName || !manager) {
-                  alert("Please enter your name and select a manager.");
-                  return;
-              }
-              setIsLoading(true);
-              const submissionId = `${weekCommencing}_${staffName.replace(/\s+/g, '_')}`;
-              const submissionData = {
-                  name: staffName,
-                  manager,
-                  weekId: weekCommencing,
-                  schedule: DAYS.map(d => selections[d]),
-                  submittedAt: new Date().toISOString()
-              };
-              
-              try {
-                  // Simulate network delay for animation
-                  await new Promise(resolve => setTimeout(resolve, 1500));
-                  await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rota_submissions', submissionId), submissionData);
-                  setShowSuccess(true);
-              } catch (e) {
-                  console.error(e);
-                  alert("Error: " + (e instanceof Error ? e.message : "An unknown error occurred."));
-              } finally {
-                  setIsLoading(false);
-              }
-          };
-
-          const resetForm = () => {
-              setShowSuccess(false);
-              setStaffName('');
-              setManager('');
-              setSelections(createInitialSelections());
-              setWeekCommencingDate(initialMonday);
-              showToast("Form reset.");
-          };
-
-          const isPastWeek = weekCommencingDate && initialMonday && weekCommencingDate.getTime() < initialMonday.getTime();
-
-          return (
-              <div className="bg-white w-full max-w-md h-[92vh] flex flex-col rounded-2xl shadow-2xl shadow-gray-500/10 border border-gray-200 overflow-hidden relative font-sans text-gray-800">
-                  {/* Header Section */}
-                  <div className="p-6 border-b border-gray-200 bg-white">
-                      <div className="flex items-center gap-3 mb-4">
-                          <DotGrid />
-                          <h1 className="text-xl font-black uppercase tracking-tighter">Rota Request</h1>
-                      </div>
-                      <div className="space-y-4">
-                          <div className="input-group">
-                              <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">Your Name</label>
-                              <StaffAutocomplete
-                                  staffDirectory={staffDirectory}
-                                  value={staffName}
-                                  onChange={handleNameChange}
-                                  placeholder="Start typing name..."
-                              />
-                          </div>
-                          <div className="input-group">
-                              <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1.5 block">Line Manager</label>
-                              <select
-                                  value={manager}
-                                  onChange={(e) => setManager(e.target.value)}
-                                  disabled
-                                  className="w-full p-3 text-sm font-bold border-2 border-gray-200 rounded-lg bg-gray-50 outline-none focus:border-[#E6468B] focus:bg-white transition appearance-none disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                              >
-                                  <option value="" disabled>Select Manager...</option>
-                                  {managers.map(m => <option key={m} value={m}>{m}</option>)}
-                              </select>
-                          </div>
-                      </div>
-                  </div>
-
-                  {/* Week Navigator */}
-                  <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white">
-                      <button
-                          onClick={handlePreviousWeek}
-                          className="bg-[#E6468B] text-white p-2 rounded-full disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                          aria-label="Previous week"
-                      >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-                          </svg>
-                      </button>
-                      <span className="text-sm font-black text-[#E6468B] uppercase">
-                          w/c {weekCommencingDate && formatDate(weekCommencingDate)}
-                      </span>
-                      <button
-                          onClick={handleNextWeek}
-                          className="bg-[#E6468B] text-white p-2 rounded-full transition-colors"
-                          aria-label="Next week"
-                      >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                          </svg>
-                      </button>
-                  </div>
-
-
-                  {/* Scrollable Content */}
-                  <div className="flex-1 overflow-y-auto p-6 bg-white">
-                      {DAYS.map((day, i) => {
-                          const currentDay = new Date((weekCommencingDate?.getTime() || 0) + i * 24 * 60 * 60 * 1000);
-                          return (
-                              <DayRow
-                                  key={day + weekCommencing}
-                                  day={day}
-                                  date={currentDay}
-                                  selection={selections[day]}
-                                  onSelectLocation={handleSelectLocation}
-                                  onToggleFullDay={handleToggleFullDay}
-                                  onTimeChange={handleTimeChange}
-                                  isPast={!!isPastWeek}
-                              />
-                          );
-                      })}
-                  </div>
-
-                  {/* Footer */}
-                  <div className="p-6 border-t border-gray-200 bg-white">
-                      <button
-                          onClick={handleSubmit}
-                          disabled={isLoading || isPastWeek}
-                          className="w-full bg-[#E6468B] text-white p-4 rounded-xl text-[13px] font-black uppercase tracking-widest cursor-pointer transition-all hover:brightness-110 hover:-translate-y-0.5 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                      >
-                          {isPastWeek ? 'Viewing Past Rota' : (isLoading ? "Syncing..." : "Submit")}
-                      </button>
-                  </div>
-                  
-                  {/* Overlays */}
-                  <LoadingOverlay isVisible={isLoading} />
-
-                  <Overlay isVisible={showAlreadySubmitted}>
-                      <DotGrid />
-                      <h2 className="font-black text-2xl mt-5 mb-2">ALREADY SUBMITTED</h2>
-                      <p className="text-gray-600 text-sm">You have already logged a rota for the week commencing <span className="font-bold">{weekCommencingDate && formatDate(weekCommencingDate)}</span>.</p>
-                      <button onClick={handleUnlockForEdit} className="mt-6 bg-[#21a0d8] text-white px-6 py-3 rounded-full font-extrabold text-xs uppercase">Want to edit?</button>
-                  </Overlay>
-
-                  <Overlay isVisible={showSuccess}>
-                      <AnimatedCheckmark />
-                      <h2 className="font-black text-2xl mb-2 mt-4">SUBMITTED</h2>
-                      <p className="text-gray-600 text-sm">
-                          <span className="font-bold">{staffName}</span> has been submitted for w/c <span className="font-bold">{weekCommencingDate && formatDate(weekCommencingDate)}</span>.
-                      </p>
-                      <button onClick={resetForm} className="mt-6 bg-black text-white px-6 py-3 rounded-full font-extrabold text-xs uppercase">Submit Another</button>
-                  </Overlay>
-                  
-                  {/* Toast Notification */}
-                  {toastMessage && (
-                      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-black text-white px-5 py-2.5 rounded-full text-[11px] font-extrabold z-[100] transition-all duration-300 animate-slide-up">
-                          {toastMessage}
-                      </div>
-                  )}
-              </div>
-          );
+        // If it is next week (editable week) show “already submitted” lock overlay
+        if(state.weekOffset === 0 && !state.readOnly){
+          el("already-submitted-overlay").classList.add("active");
+        }
       }
-      
-      const rootElement = document.getElementById('root');
-      if (!rootElement) {
-        throw new Error("Could not find root element to mount to");
+    }
+
+    function setSubmitOverlay(mode, messageHTML){
+      const overlay = el("submit-overlay");
+      const loading = el("submit-loading");
+      const check = el("submit-check");
+      const msg = el("submit-message");
+      const done = el("done-btn");
+
+      overlay.classList.add("active");
+
+      if(mode === "loading"){
+        loading.style.display = "block";
+        check.style.display = "none";
+        done.style.display = "none";
+        msg.innerHTML = "";
       }
 
-      const root = ReactDOM.createRoot(rootElement);
-      root.render(
-        <React.StrictMode>
-          <App />
-        </React.StrictMode>
-      );
-    </script>
-  </body>
+      if(mode === "success"){
+        loading.style.display = "none";
+        check.style.display = "block";
+        msg.innerHTML = messageHTML || "";
+        done.style.display = "inline-flex";
+      }
+    }
+
+    function clearSubmitOverlay(){
+      el("submit-overlay").classList.remove("active");
+      el("submit-loading").style.display = "block";
+      el("submit-check").style.display = "none";
+      el("submit-message").innerHTML = "";
+      el("done-btn").style.display = "none";
+    }
+
+    async function submitRota(){
+      if(state.readOnly){
+        toast("Viewing past rota");
+        return;
+      }
+
+      const name = el("staff-name").value.trim();
+      const mgr = el("manager-select").value;
+      if(!name || !mgr){
+        alert("Enter your name and select a manager.");
+        return;
+      }
+
+      const btn = el("submit-btn");
+      btn.disabled = true;
+
+      setSubmitOverlay("loading");
+
+      const id = submissionIdFor(name);
+      const payload = {
+        name,
+        manager: mgr,
+        weekId: state.weekCommencing,
+        schedule: days.map(d => state.selections[d]),
+        submittedAt: new Date().toISOString()
+      };
+
+      try{
+        await setDoc(doc(db, "artifacts", appId, "public", "data", "rota_submissions", id), payload);
+
+        const msg = `<b>${name}</b> submitted for <b>${fmtWcChip(state.mondayDate)}</b>.`;
+        setSubmitOverlay("success", msg);
+
+      }catch(err){
+        alert("Error: " + (err?.message || err));
+        clearSubmitOverlay();
+      }finally{
+        btn.disabled = false;
+      }
+    }
+
+    function setSubmitButtonLabel(){
+      const btn = el("submit-btn");
+      if(state.readOnly){
+        btn.textContent = "Viewing Past Rota";
+        btn.disabled = true;
+      }else{
+        btn.textContent = "Submit";
+        btn.disabled = false;
+      }
+    }
+
+    async function changeWeek(delta){
+      state.weekOffset += delta;
+      computeWeek();
+      initSelections();
+      renderDays();
+      setSubmitButtonLabel();
+      // attempt to load existing for this week (if name already typed)
+      await loadExistingIfAny();
+    }
+
+    // --- Boot ---
+    (async function boot(){
+      initSelections();
+      computeWeek();
+      renderDays();
+      wireDayInteractions();
+
+      await signInAnonymously(auth);
+
+      // Staff directory live feed
+      onSnapshot(collection(db, "artifacts", appId, "public", "data", "staff_directory"), (snap) => {
+        state.staffDirectory = [];
+        snap.forEach(d => state.staffDirectory.push(d.data()));
+        populateLists();
+      });
+
+      // Name typing triggers check/load
+      let nameTimer = null;
+      el("staff-name").addEventListener("input", () => {
+        if(nameTimer) clearTimeout(nameTimer);
+        nameTimer = setTimeout(loadExistingIfAny, 250);
+      });
+
+      // Manager change does not auto-submit; purely selection
+      el("manager-select").addEventListener("change", () => { /* noop */ });
+
+      // Week nav
+      el("prev-week").addEventListener("click", () => changeWeek(-1));
+      el("next-week").addEventListener("click", () => changeWeek(1));
+
+      // Edit unlock (only for next week submissions)
+      el("edit-btn").addEventListener("click", () => {
+        el("already-submitted-overlay").classList.remove("active");
+        toast("Edit mode active");
+      });
+
+      // Submit
+      el("submit-btn").addEventListener("click", submitRota);
+
+      // Done
+      el("done-btn").addEventListener("click", () => location.reload());
+
+      setSubmitButtonLabel();
+    })();
+  </script>
+</body>
 </html>
+
