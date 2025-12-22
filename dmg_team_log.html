@@ -27,7 +27,7 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: transparent; /* Notion support */
+            background-color: transparent;
             margin: 0;
             padding: 20px;
             color: var(--text-main);
@@ -62,11 +62,10 @@
         .scroll-content::-webkit-scrollbar { width: 6px; }
         .scroll-content::-webkit-scrollbar-thumb { background-color: #E0E0E0; border-radius: 3px; }
 
-        /* Frosted Glass Read-Only State */
+        /* Frosted Glass Read-Only State - Scrolling Enabled */
         .frosted-view {
-            filter: grayscale(0.5);
-            opacity: 0.6;
-            pointer-events: none;
+            filter: grayscale(0.8) opacity(0.5);
+            /* Removed pointer-events: none to allow scrolling */
             user-select: none;
         }
 
@@ -89,6 +88,15 @@
 
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slideDown { animation: slideDown 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+        
+        /* New Status Pulse */
+        @keyframes pulse-soft { 
+            0%, 100% { transform: scale(1); opacity: 1; } 
+            50% { transform: scale(1.05); opacity: 0.8; } 
+        }
+        .status-pulse { animation: pulse-soft 2s infinite ease-in-out; }
     </style>
 
     <!-- React & Firebase -->
@@ -106,9 +114,9 @@
 <div id="root"></div>
 
 <script type="text/babel">
-    const { useState, useEffect, useMemo, useCallback, useRef } = React;
+    const { useState, useEffect, useMemo, useCallback } = React;
 
-    // --- FIREBASE CONFIGURATION (CANONICAL) ---
+    // --- FIREBASE CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
         authDomain: "dmg-command-centre-native.firebaseapp.com",
@@ -126,22 +134,24 @@
     const appId = 'dmg-command-centre-native';
 
     // --- HELPERS ---
-    const getNextMonday = (base = new Date()) => {
-        const d = new Date(base); d.setHours(0,0,0,0);
-        const day = d.getDay();
-        const diff = (day === 0) ? 1 : (8 - day);
-        return new Date(d.getTime() + diff * 86400000);
+    const getThisMonday = (base = new Date()) => {
+        const d = new Date(base);
+        d.setHours(0,0,0,0);
+        const day = d.getDay(); // 0=Sun, 1=Mon...
+        const diff = (day === 0) ? -6 : 1 - day;
+        d.setDate(d.getDate() + diff);
+        return d;
     };
 
     const addDays = (date, n) => new Date(date.getTime() + n * 86400000);
     const fmtShort = (date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-    const normalize = (n) => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    const normalize = (n) => n ? n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase() : "";
 
     // --- COMPONENTS ---
 
-    const DotGrid = () => (
+    const DotGrid = ({ color = "var(--dmg-blue)" }) => (
         <div className="grid grid-cols-2 gap-1 w-fit">
-            {[...Array(4)].map((_, i) => <span key={i} className="dot w-1.5 h-1.5 rounded-full bg-[var(--dmg-blue)]"></span>)}
+            {[...Array(4)].map((_, i) => <span key={i} className="dot w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }}></span>)}
         </div>
     );
 
@@ -152,23 +162,26 @@
         const [managerName, setManagerName] = useState("");
         const [selections, setSelections] = useState({});
         const [staffDirectory, setStaffDirectory] = useState([]);
+        const [submissions, setSubmissions] = useState([]);
         const [filteredStaff, setFilteredStaff] = useState([]);
         const [showAutocomplete, setShowAutocomplete] = useState(false);
         const [isEditing, setIsEditing] = useState(false);
-        const [isSubmittedView, setIsSubmittedView] = useState(false);
         const [isSubmitting, setIsSubmitting] = useState(false);
-        const [submittedAt, setSubmittedAt] = useState(null);
+        const [isSuccess, setIsSuccess] = useState(false);
 
         // Date Computations
-        const mondayDate = useMemo(() => addDays(getNextMonday(), weekOffset * 7), [weekOffset]);
+        const mondayDate = useMemo(() => addDays(getThisMonday(), weekOffset * 7), [weekOffset]);
         const weekCommencing = mondayDate.toISOString().split("T")[0];
-        const isPastWeek = mondayDate.getTime() < addDays(getNextMonday(), -7).getTime();
+        const isPastWeek = useMemo(() => {
+            const todayMonday = getThisMonday();
+            return mondayDate.getTime() < todayMonday.getTime();
+        }, [mondayDate]);
 
         const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
         const locs = ["Office", "WFH", "Shoot", "Off-Site", "PTO"];
         const weekendLocs = ["Weekend", "Shoot", "Off-Site"];
 
-        // Initial Data Sync
+        // Initial Auth and Directory Sync
         useEffect(() => {
             auth.signInAnonymously();
             auth.onAuthStateChanged(user => {
@@ -176,41 +189,40 @@
                     db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory')
                         .onSnapshot(snap => {
                             const list = [];
-                            snap.forEach(doc => list.push(doc.data()));
+                            snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
                             setStaffDirectory(list);
+                        });
+                    
+                    db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions')
+                        .onSnapshot(snap => {
+                            const list = [];
+                            snap.forEach(doc => list.push(doc.data()));
+                            setSubmissions(list);
                         });
                 }
             });
         }, []);
 
-        // Load / Reset Flow
+        const existingSubmission = useMemo(() => {
+            if (!staffName || staffName.length < 3) return null;
+            const normName = normalize(staffName);
+            return submissions.find(s => s.weekId === weekCommencing && normalize(s.name) === normName);
+        }, [submissions, staffName, weekCommencing]);
+
+        const isSubmittedView = !!existingSubmission;
+
         useEffect(() => {
-            const checkExisting = async () => {
-                if (!staffName || staffName.length < 3) {
-                    resetSelections();
-                    setIsSubmittedView(false);
-                    return;
-                }
-
-                const docId = `${weekCommencing}_${normalize(staffName).replace(/\s+/g, "_")}`;
-                const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions').doc(docId).get();
-
-                if (snap.exists) {
-                    const data = snap.data();
-                    const loaded = {};
-                    days.forEach((d, i) => loaded[d] = data.schedule[i]);
-                    setSelections(loaded);
-                    setManagerName(data.manager || "");
-                    setSubmittedAt(data.submittedAt);
-                    setIsSubmittedView(true);
-                    setIsEditing(false);
-                } else {
-                    resetSelections();
-                    setIsSubmittedView(false);
-                }
-            };
-            checkExisting();
-        }, [staffName, weekCommencing]);
+            if (existingSubmission && !isEditing) {
+                const loaded = {};
+                days.forEach((d, i) => {
+                    loaded[d] = existingSubmission.schedule[i] || { status: (d === "Saturday" || d === "Sunday" ? "Weekend" : "Office"), fullDay: true, start: "09:00", end: "17:30" };
+                });
+                setSelections(loaded);
+                if (existingSubmission.manager) setManagerName(existingSubmission.manager);
+            } else if (!existingSubmission && !isEditing) {
+                resetSelections();
+            }
+        }, [existingSubmission, isEditing, weekCommencing]);
 
         const resetSelections = () => {
             const initial = {};
@@ -239,9 +251,11 @@
             setStaffName(name);
             setManagerName(u.manager || "");
             setShowAutocomplete(false);
+            setIsEditing(false);
         };
 
         const updateDay = (day, field, value) => {
+            if (isSubmittedView && !isEditing) return;
             setSelections(prev => ({
                 ...prev,
                 [day]: { ...prev[day], [field]: value }
@@ -264,29 +278,42 @@
             try {
                 await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions').doc(docId).set(payload);
                 setIsSubmitting(false);
-                setIsSubmittedView(true);
                 setIsEditing(false);
+                setIsSuccess(true);
             } catch (e) {
                 alert("Cloud Sync Error: " + e.message);
                 setIsSubmitting(false);
             }
         };
 
+        if (isSuccess) {
+            return (
+                <div className="widget-card flex flex-col items-center justify-center p-8 text-center animate-fadeIn">
+                    <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mb-6">
+                        <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <h2 className="text-2xl font-black uppercase text-gray-900 mb-2">Sync Successful</h2>
+                    <p className="text-sm text-gray-500 font-medium mb-8">Your pattern for w/c {fmtShort(mondayDate)} has been updated in the cloud.</p>
+                    <button onClick={() => setIsSuccess(false)} className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-all">Done</button>
+                </div>
+            );
+        }
+
         return (
             <div className="widget-card flex flex-col">
                 {/* HEADER */}
-                <div className="p-6 border-b border-gray-100 shrink-0">
+                <div className="p-6 border-b border-gray-100 shrink-0 bg-white z-20">
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
                             <DotGrid />
                             <h1 className="text-xl font-black uppercase tracking-tighter">Rota Request</h1>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 rounded-lg border border-gray-200 bg-gray-50 font-bold hover:bg-white transition-all">‹</button>
+                            <button onClick={() => {setWeekOffset(prev => prev - 1); setIsEditing(false);}} className="w-8 h-8 rounded-lg border border-gray-200 bg-gray-50 font-bold hover:bg-white transition-all">‹</button>
                             <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${isPastWeek ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-blue-50 text-[var(--dmg-blue)] border-blue-100'}`}>
                                 <span className="opacity-50 mr-1 font-bold">W/C</span> {fmtShort(mondayDate)}
                             </div>
-                            <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 rounded-lg border border-gray-200 bg-gray-50 font-bold hover:bg-white transition-all">›</button>
+                            <button onClick={() => {setWeekOffset(prev => prev + 1); setIsEditing(false);}} className="w-8 h-8 rounded-lg border border-gray-200 bg-gray-50 font-bold hover:bg-white transition-all">›</button>
                         </div>
                     </div>
 
@@ -309,33 +336,39 @@
                                 </div>
                             )}
                         </div>
-                        <div className="grid grid-cols-1 gap-4">
-                            <div>
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-1.5">Line Manager</label>
-                                <select 
-                                    value={managerName} 
-                                    onChange={(e) => setManagerName(e.target.value)}
-                                    className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold focus:border-[var(--dmg-blue)] focus:bg-white transition-all outline-none appearance-none cursor-pointer"
-                                    disabled={isPastWeek || (isSubmittedView && !isEditing)}
-                                >
-                                    <option value="" disabled>Select Manager...</option>
-                                    {[...new Set(staffDirectory.filter(s => s.isManager).map(s => `${s.firstName} ${s.lastName}`))].sort().map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                            </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-1.5">Line Manager</label>
+                            <select 
+                                value={managerName} 
+                                onChange={(e) => setManagerName(e.target.value)}
+                                className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold focus:border-[var(--dmg-blue)] focus:bg-white transition-all outline-none appearance-none cursor-pointer"
+                                disabled={isPastWeek || (isSubmittedView && !isEditing)}
+                            >
+                                <option value="" disabled>Select Manager...</option>
+                                {[...new Set(staffDirectory.filter(s => s.isManager).map(s => `${s.firstName} ${s.lastName}`))].sort().map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
                         </div>
                     </div>
                 </div>
 
-                {/* ALREADY SUBMITTED BANNER */}
+                {/* PREMIUM "ALREADY SUBMITTED" BANNER */}
                 {isSubmittedView && !isEditing && (
-                    <div className="bg-blue-50 border-b border-blue-100 px-6 py-4 text-center animate-fadeIn shrink-0">
-                        <h2 className="text-sm font-black uppercase text-[var(--dmg-blue)]">Already Submitted</h2>
-                        <p className="text-[11px] font-bold text-blue-400 mt-0.5">Logged: {new Date(submittedAt).toLocaleDateString()} @ {new Date(submittedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                    <div className="bg-white border-b border-gray-100 px-6 py-4 animate-fadeIn shrink-0 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="status-pulse bg-green-500 w-2 h-2 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                            <div>
+                                <h2 className="text-[11px] font-black uppercase text-gray-900 tracking-wider">Already Submitted</h2>
+                                <p className="text-[10px] font-bold text-gray-400">
+                                    Logged: {new Date(existingSubmission.submittedAt).toLocaleDateString('en-GB')} @ {new Date(existingSubmission.submittedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </p>
+                            </div>
+                        </div>
+                        <DotGrid color="#DDD" />
                     </div>
                 )}
 
                 {/* SCROLL CONTENT */}
-                <div className={`scroll-content flex-1 overflow-y-auto p-6 space-y-8 bg-white ${(isSubmittedView && !isEditing) ? 'frosted-view' : ''}`}>
+                <div className={`scroll-content flex-1 overflow-y-auto p-6 space-y-8 bg-white ${(isSubmittedView && !isEditing) || isPastWeek ? 'frosted-view' : ''}`}>
                     {days.map((day, i) => {
                         const date = addDays(mondayDate, i);
                         const sel = selections[day] || {};
@@ -355,6 +388,7 @@
                                             key={l} 
                                             onClick={() => updateDay(day, 'status', l)}
                                             className={`loc-pill px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-wide border-2 ${sel.status === l ? (l === 'Weekend' ? 'weekend-selected' : 'selected') : 'bg-white text-gray-400'}`}
+                                            disabled={(isSubmittedView && !isEditing) || isPastWeek}
                                         >
                                             {l}
                                         </button>
@@ -374,9 +408,9 @@
                                             <div className="flex items-center justify-between border-t border-gray-200 pt-3">
                                                 <span className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Shift Hours</span>
                                                 <div className="flex items-center gap-2">
-                                                    <input type="time" value={sel.start} onChange={(e) => updateDay(day, 'start', e.target.value)} className="p-2 rounded-lg border border-gray-200 bg-white text-xs font-bold w-24 text-center outline-none focus:border-[var(--dmg-blue)]" />
+                                                    <input type="time" value={sel.start} onChange={(e) => updateDay(day, 'start', e.target.value)} className="p-2 rounded-lg border border-gray-200 bg-white text-xs font-bold w-24 text-center outline-none focus:border-[var(--dmg-blue)]" disabled={(isSubmittedView && !isEditing) || isPastWeek} />
                                                     <span className="font-black text-gray-300">-</span>
-                                                    <input type="time" value={sel.end} onChange={(e) => updateDay(day, 'end', e.target.value)} className="p-2 rounded-lg border border-gray-200 bg-white text-xs font-bold w-24 text-center outline-none focus:border-[var(--dmg-blue)]" />
+                                                    <input type="time" value={sel.end} onChange={(e) => updateDay(day, 'end', e.target.value)} className="p-2 rounded-lg border border-gray-200 bg-white text-xs font-bold w-24 text-center outline-none focus:border-[var(--dmg-blue)]" disabled={(isSubmittedView && !isEditing) || isPastWeek} />
                                                 </div>
                                             </div>
                                         )}
