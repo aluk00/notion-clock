@@ -56,9 +56,8 @@
 <div id="root"></div>
 
 <script type="text/babel">
-    const { useState, useEffect, useMemo, useCallback } = React;
+    const { useState, useEffect, useMemo } = React;
 
-    // --- FIREBASE CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
         authDomain: "dmg-command-centre-native.firebaseapp.com",
@@ -68,53 +67,27 @@
         appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
     };
 
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
     const appId = 'dmg-command-centre-native';
 
-    // --- COMPONENTS ---
+    const normalize = (n) => {
+        if (!n || typeof n !== 'string') return "";
+        return n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    };
 
-    const Toast = ({ message, isVisible }) => (
-        <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 bg-[var(--carbon)] text-white px-5 py-2 rounded-full text-[11px] font-extrabold uppercase z-50 transition-all duration-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-            {message}
+    const StatusPill = ({ label, count, isLocked, onClick }) => (
+        <div onClick={onClick} className={`bg-white p-4 rounded-xl text-center border-2 border-[var(--dmg-blue)] ${isLocked ? "opacity-30 grayscale cursor-default pointer-events-none" : "cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_15px_rgba(33,160,216,0.4)]"}`}>
+            <span className="block text-4xl font-black leading-none mb-1 text-[var(--dmg-blue)]">{count}</span>
+            <span className="block text-[10px] font-extrabold uppercase text-[var(--text-sub)] tracking-wider">{label}</span>
         </div>
     );
 
-    const StatusPill = ({ label, count, isLocked, onClick }) => {
-        const lockedClasses = "opacity-30 grayscale cursor-default pointer-events-none";
-        const activeClasses = "cursor-pointer transition-all duration-300 ease-in-out hover:-translate-y-1 hover:shadow-[0_0_15px_rgba(33,160,216,0.4)]";
-
-        return (
-            <div
-                onClick={onClick}
-                className={`bg-white p-4 rounded-xl text-center border-2 border-[var(--dmg-blue)] ${isLocked ? lockedClasses : activeClasses}`}
-            >
-                <span className={`block text-4xl font-black leading-none mb-1 text-[var(--dmg-blue)]`}>
-                    {count}
-                </span>
-                <span className="block text-[10px] font-extrabold uppercase text-[var(--text-sub)] tracking-wider">
-                    {label}
-                </span>
-            </div>
-        );
-    };
-
     const StatusModal = ({ statusType, onClose, detailedUsers, todayDateString }) => {
-        const teamColorMap = {
-            Editorial: 'var(--team-editorial)',
-            Creative: 'var(--team-creative)',
-            Production: 'var(--team-production)',
-            Social: 'var(--team-social)',
-            Operations: 'var(--team-operations)',
-            People: 'var(--team-people)',
-            Executive: 'var(--team-executive)',
-        };
-
+        const teamColorMap = { Editorial: 'var(--team-editorial)', Creative: 'var(--team-creative)', Production: 'var(--team-production)', Social: 'var(--team-social)', Operations: 'var(--team-operations)', People: 'var(--team-people)', Executive: 'var(--team-executive)' };
         return (
-            <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+            <div className="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col border border-gray-200" onClick={(e) => e.stopPropagation()}>
                     <div className="p-6 border-b border-gray-100">
                         <div className="flex items-center gap-4 mb-1">
@@ -128,12 +101,12 @@
                     </div>
                     <div className="overflow-y-auto p-6 space-y-2">
                         {detailedUsers.map(user => (
-                            <div key={user.id || user.name} className="flex justify-between items-center bg-gray-50/70 p-3 rounded-lg">
-                                <p className="font-bold text-sm text-[var(--dmg-blue)]">{user.name} {user.time && <span className="text-xs ml-2 opacity-60">{user.time}</span>}</p>
+                            <div key={user.name} className="flex justify-between items-center bg-gray-50/70 p-3 rounded-lg">
+                                <p className="font-bold text-sm text-[var(--dmg-blue)]">{user.name}</p>
                                 <p className="text-xs font-bold uppercase" style={{ color: teamColorMap[user.team] || 'var(--carbon)' }}>{user.team || 'Staff'}</p>
                             </div>
                         ))}
-                        {detailedUsers.length === 0 && <p className="text-center py-10 text-gray-400 font-semibold">No staff logged for this status.</p>}
+                        {detailedUsers.length === 0 && <p className="text-center py-10 text-gray-400 font-semibold">No staff logged.</p>}
                     </div>
                     <div className="p-4 border-t border-gray-100">
                         <button onClick={onClose} className="w-full bg-[var(--dmg-blue)] text-white py-2 rounded-lg text-sm font-bold hover:brightness-110">Close</button>
@@ -143,43 +116,32 @@
         );
     };
 
-    // --- APP COMPONENT ---
     const App = () => {
         const [submissions, setSubmissions] = useState([]);
         const [directory, setDirectory] = useState([]);
         const [modalStatus, setModalStatus] = useState(null);
-        const [showToast, setShowToast] = useState(false);
 
         useEffect(() => {
             auth.signInAnonymously();
             auth.onAuthStateChanged((user) => {
                 if (user) {
-                    db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions')
-                        .onSnapshot(snap => {
-                            const list = [];
-                            snap.forEach(doc => list.push(doc.data()));
-                            setSubmissions(list);
-                        });
-                    db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory')
-                        .onSnapshot(snap => {
-                            const list = [];
-                            snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-                            setDirectory(list);
-                        });
+                    db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions').onSnapshot(snap => {
+                        const list = []; snap.forEach(doc => list.push(doc.data())); setSubmissions(list);
+                    });
+                    db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory').onSnapshot(snap => {
+                        const list = []; snap.forEach(doc => list.push({ id: doc.id, ...doc.data() })); setDirectory(list);
+                    });
                 }
             });
         }, []);
 
         const { scheduleIndex, weekId, isWeekend, todayDateString } = useMemo(() => {
             const today = new Date();
-            const day = today.getDay(); // 0=Sun, 1=Mon...
-            
-            // Calculate this week's Monday
+            const day = today.getDay();
             const d = new Date(today);
             d.setHours(0,0,0,0);
             const diff = (day === 0) ? 6 : day - 1;
             d.setDate(d.getDate() - diff);
-            
             return {
                 scheduleIndex: day === 0 ? 6 : day - 1,
                 weekId: d.toISOString().split("T")[0],
@@ -188,21 +150,13 @@
             };
         }, []);
 
-        // Logic Guard: deduplicate by week AND normalized name
         const currentWeekSubmissions = useMemo(() => {
             const map = new Map();
-            const normalize = (n) => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-            
-            // 1. Filter for current week only
-            // 2. Sort by time so newest overwrites oldest in the Map
             [...submissions]
                 .filter(s => s.weekId === weekId)
                 .sort((a, b) => new Date(a.submittedAt || 0) - new Date(b.submittedAt || 0))
                 .forEach(sub => {
-                    if (sub.name) {
-                        const key = normalize(sub.name);
-                        map.set(key, sub);
-                    }
+                    if (sub.name) map.set(normalize(sub.name), sub);
                 });
             return Array.from(map.values());
         }, [submissions, weekId]);
@@ -213,12 +167,7 @@
                 const day = sub.schedule?.[scheduleIndex];
                 if (!day) return;
                 const status = day.status;
-
-                if (isWeekend) {
-                    if (['Shoot', 'Client / Travel'].includes(status)) counts.Shoot++;
-                    return;
-                }
-
+                if (isWeekend) { if (['Shoot', 'Client / Travel'].includes(status)) counts.Shoot++; return; }
                 if (status === 'Office') counts.Office++;
                 else if (status === 'WFH') counts.WFH++;
                 else if (['Shoot', 'Client / Travel'].includes(status)) counts.Shoot++;
@@ -240,10 +189,7 @@
                     return false;
                 })
                 .map(sub => {
-                    const dir = directory.find(d => {
-                        const fullName = `${d.firstName} ${d.lastName}`.toLowerCase();
-                        return fullName === sub.name.toLowerCase() || fullName.includes(sub.name.toLowerCase());
-                    }) || {};
+                    const dir = directory.find(d => normalize(`${d.firstName} ${d.lastName}`) === normalize(sub.name)) || {};
                     return { name: sub.name, ...dir };
                 })
                 .sort((a, b) => a.name.localeCompare(b.name));
@@ -258,7 +204,6 @@
                     <StatusPill label="Leave" count={statusCounts.PTO} isLocked={isWeekend} onClick={() => setModalStatus('PTO')} />
                 </div>
                 {modalStatus && <StatusModal statusType={modalStatus} onClose={() => setModalStatus(null)} detailedUsers={detailedUsers} todayDateString={todayDateString} />}
-                <Toast message="Weekend: Office Closed" isVisible={showToast} />
             </div>
         );
     };
