@@ -4,23 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMG Rota Request | Live Cloud</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
     <style>
         :root {
-            --brand-black: #000000;
+            --brand-black: #1C1C1C;
             --brand-pink: #E6468B;
-            --brand-blue: #21a0d8;
-            --bg-grey: #FAFAFA;
-            --border: #E0E0E0;
-            --text-main: #111;
-            --text-sub: #666;
+            --dmg-blue: #21a0d8;
+            --bg-grey: #F9FAFB;
+            --border: #EAECEF;
+            --text-main: #1C1C1C;
+            --text-sub: #757575;
             --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: transparent;
+            background-color: transparent; /* Notion support */
             margin: 0;
             padding: 20px;
             color: var(--text-main);
@@ -30,7 +37,14 @@
             overflow: hidden;
         }
 
-        /* Widget Container */
+        /* Heartbeat Loading Animation */
+        @keyframes heartbeat { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+        .dot { animation: heartbeat 3s infinite ease-in-out; }
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.75s; }
+        .dot:nth-child(4) { animation-delay: 1.5s; }
+        .dot:nth-child(3) { animation-delay: 2.25s; }
+
         .widget-card {
             background: #FFFFFF;
             width: 100%;
@@ -38,52 +52,51 @@
             height: 92vh;
             display: flex;
             flex-direction: column;
-            border-radius: 16px;
+            border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
             border: 1px solid var(--border);
             overflow: hidden;
             position: relative;
         }
 
-        /* Custom Scrollbar */
-        .scroll-content::-webkit-scrollbar {
-            width: 6px;
-        }
-        .scroll-content::-webkit-scrollbar-thumb {
-            background-color: #E0E0E0;
-            border-radius: 3px;
+        .scroll-content::-webkit-scrollbar { width: 6px; }
+        .scroll-content::-webkit-scrollbar-thumb { background-color: #E0E0E0; border-radius: 3px; }
+
+        /* Frosted Glass Read-Only State */
+        .frosted-view {
+            filter: grayscale(0.5);
+            opacity: 0.6;
+            pointer-events: none;
+            user-select: none;
         }
 
-        /* Animations */
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .animate-slideDown { animation: slideDown 0.25s ease forwards; }
-        .animate-fadeIn { animation: fadeIn 0.3s ease forwards; }
-
-        /* Custom Styles for React Components */
+        .loc-pill {
+            transition: var(--transition);
+            border: 2.5px solid var(--border);
+        }
         .loc-pill.selected {
-            background-color: var(--brand-pink);
+            background-color: var(--dmg-blue);
             color: white;
-            border-color: var(--brand-pink);
-            box-shadow: 0 0 10px rgba(230, 70, 139, 0.3);
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 15px rgba(33, 160, 216, 0.4);
         }
         .loc-pill.weekend-selected {
-            background-color: #e9ecef;
+            background-color: #f1f3f5;
             color: #495057;
-            border-color: #ced4da;
+            border-color: #dee2e6;
             box-shadow: none;
         }
 
-        .submit-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
-        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; filter: none; }
-
-        .readonly { pointer-events: none; opacity: 0.6; filter: grayscale(0.2); }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slideDown { animation: slideDown 0.3s ease-out forwards; }
     </style>
-    
+
     <!-- React & Firebase -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -93,9 +106,9 @@
 <div id="root"></div>
 
 <script type="text/babel">
-    const { useState, useEffect, useMemo, useRef } = React;
+    const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-    // --- FIREBASE CONFIGURATION ---
+    // --- FIREBASE CONFIGURATION (CANONICAL) ---
     const firebaseConfig = {
         apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
         authDomain: "dmg-command-centre-native.firebaseapp.com",
@@ -112,10 +125,9 @@
     const auth = firebase.auth();
     const appId = 'dmg-command-centre-native';
 
-    // --- UTILS ---
-    const getNextMonday = (baseDate = new Date()) => {
-        const d = new Date(baseDate);
-        d.setHours(0,0,0,0);
+    // --- HELPERS ---
+    const getNextMonday = (base = new Date()) => {
+        const d = new Date(base); d.setHours(0,0,0,0);
         const day = d.getDay();
         const diff = (day === 0) ? 1 : (8 - day);
         return new Date(d.getTime() + diff * 86400000);
@@ -123,11 +135,18 @@
 
     const addDays = (date, n) => new Date(date.getTime() + n * 86400000);
     const fmtShort = (date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-    const submissionIdFor = (weekCommencing, name) => `${weekCommencing}_${name.replace(/\s+/g, "_")}`;
+    const normalize = (n) => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
-    // --- COMPONENT: ROTA REQUEST ---
-    const RotaRequestWidget = () => {
-        // State
+    // --- COMPONENTS ---
+
+    const DotGrid = () => (
+        <div className="grid grid-cols-2 gap-1 w-fit">
+            {[...Array(4)].map((_, i) => <span key={i} className="dot w-1.5 h-1.5 rounded-full bg-[var(--dmg-blue)]"></span>)}
+        </div>
+    );
+
+    // --- MAIN APP ---
+    const App = () => {
         const [weekOffset, setWeekOffset] = useState(0);
         const [staffName, setStaffName] = useState("");
         const [managerName, setManagerName] = useState("");
@@ -135,252 +154,188 @@
         const [staffDirectory, setStaffDirectory] = useState([]);
         const [filteredStaff, setFilteredStaff] = useState([]);
         const [showAutocomplete, setShowAutocomplete] = useState(false);
-        const [existingDoc, setExistingDoc] = useState(null);
+        const [isEditing, setIsEditing] = useState(false);
+        const [isSubmittedView, setIsSubmittedView] = useState(false);
         const [isSubmitting, setIsSubmitting] = useState(false);
-        const [submitStatus, setSubmitStatus] = useState(null); // 'success' | null
-        const [toastMsg, setToastMsg] = useState(null);
+        const [submittedAt, setSubmittedAt] = useState(null);
 
-        // Refs
-        const nameInputRef = useRef(null);
-
-        // Computed Values
-        const mondayDate = useMemo(() => {
-            const nextMon = getNextMonday();
-            return addDays(nextMon, weekOffset * 7);
-        }, [weekOffset]);
-
+        // Date Computations
+        const mondayDate = useMemo(() => addDays(getNextMonday(), weekOffset * 7), [weekOffset]);
         const weekCommencing = mondayDate.toISOString().split("T")[0];
-        const isReadOnly = useMemo(() => {
-            const currentWeekMonday = addDays(getNextMonday(), -7);
-            return mondayDate.getTime() < currentWeekMonday.getTime();
-        }, [mondayDate]);
+        const isPastWeek = mondayDate.getTime() < addDays(getNextMonday(), -7).getTime();
 
         const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
         const locs = ["Office", "WFH", "Shoot", "Off-Site", "PTO"];
         const weekendLocs = ["Weekend", "Shoot", "Off-Site"];
 
-        // --- EFFECTS ---
-
-        // 1. Init & Auth
+        // Initial Data Sync
         useEffect(() => {
-            const init = async () => {
-                try {
-                    await auth.signInAnonymously();
-                    // Load Directory
+            auth.signInAnonymously();
+            auth.onAuthStateChanged(user => {
+                if (user) {
                     db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory')
                         .onSnapshot(snap => {
                             const list = [];
                             snap.forEach(doc => list.push(doc.data()));
-                            setStaffDirectory(list.sort((a,b) => a.firstName.localeCompare(b.firstName)));
+                            setStaffDirectory(list);
                         });
-                } catch (e) {
-                    console.error("Auth/Init Error:", e);
                 }
-            };
-            init();
+            });
         }, []);
 
-        // 2. Initialize Selections for new week
+        // Load / Reset Flow
         useEffect(() => {
-            if (existingDoc && existingDoc.weekId === weekCommencing) {
-                // If we have an existing doc for this week, use it (handled in checkExisting)
-                return; 
-            }
-            
-            // Default new week
-            const newSelections = {};
-            days.forEach(d => {
-                const isWeekend = d === "Saturday" || d === "Sunday";
-                newSelections[d] = {
-                    status: isWeekend ? "Weekend" : "Office",
-                    fullDay: true,
-                    start: "09:00",
-                    end: "17:30"
-                };
-            });
-            setSelections(newSelections);
-        }, [weekCommencing]);
+            const checkExisting = async () => {
+                if (!staffName || staffName.length < 3) {
+                    resetSelections();
+                    setIsSubmittedView(false);
+                    return;
+                }
 
-        // 3. Check for existing submission when name/week changes
-        useEffect(() => {
-            if (staffName.length > 2) {
-                const checkExisting = async () => {
-                    const id = submissionIdFor(weekCommencing, staffName);
-                    const docSnap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions').doc(id).get();
-                    
-                    if (docSnap.exists) {
-                        const data = docSnap.data();
-                        setExistingDoc(data);
-                        // Populate form with existing data
-                        if (data.schedule && data.schedule.length === 7) {
-                             const loadedSelections = {};
-                             days.forEach((day, idx) => loadedSelections[day] = data.schedule[idx]);
-                             setSelections(loadedSelections);
-                        }
-                        if (data.manager) setManagerName(data.manager);
-                    } else {
-                        setExistingDoc(null);
-                        // Reset to defaults if not found (unless we are just changing weeks and keeping selections? No, reset for new week)
-                        // Actually, logic in Effect 2 handles reset.
-                    }
-                };
-                checkExisting();
-            }
+                const docId = `${weekCommencing}_${normalize(staffName).replace(/\s+/g, "_")}`;
+                const snap = await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions').doc(docId).get();
+
+                if (snap.exists) {
+                    const data = snap.data();
+                    const loaded = {};
+                    days.forEach((d, i) => loaded[d] = data.schedule[i]);
+                    setSelections(loaded);
+                    setManagerName(data.manager || "");
+                    setSubmittedAt(data.submittedAt);
+                    setIsSubmittedView(true);
+                    setIsEditing(false);
+                } else {
+                    resetSelections();
+                    setIsSubmittedView(false);
+                }
+            };
+            checkExisting();
         }, [staffName, weekCommencing]);
 
+        const resetSelections = () => {
+            const initial = {};
+            days.forEach(d => {
+                const isWeekend = d === "Saturday" || d === "Sunday";
+                initial[d] = { status: isWeekend ? "Weekend" : "Office", fullDay: true, start: "09:00", end: "17:30" };
+            });
+            setSelections(initial);
+        };
 
-        // --- HANDLERS ---
-
-        const handleNameInput = (e) => {
-            const val = e.target.value;
+        const handleNameInput = (val) => {
             setStaffName(val);
-            if (val.length > 0) {
-                const filtered = staffDirectory.filter(s => 
+            if (val.length > 1) {
+                const matches = staffDirectory.filter(s => 
                     `${s.firstName} ${s.lastName}`.toLowerCase().includes(val.toLowerCase())
                 );
-                setFilteredStaff(filtered);
+                setFilteredStaff(matches);
                 setShowAutocomplete(true);
             } else {
                 setShowAutocomplete(false);
             }
         };
 
-        const selectStaff = (staff) => {
-            const fullName = `${staff.firstName} ${staff.lastName}`;
-            setStaffName(fullName);
-            setManagerName(staff.manager || "");
+        const selectUser = (u) => {
+            const name = `${u.firstName} ${u.lastName}`;
+            setStaffName(name);
+            setManagerName(u.manager || "");
             setShowAutocomplete(false);
         };
 
-        const handlePillClick = (day, loc) => {
-            if (isReadOnly || (existingDoc && !isEditing)) return;
+        const updateDay = (day, field, value) => {
             setSelections(prev => ({
                 ...prev,
-                [day]: { ...prev[day], status: loc }
-            }));
-        };
-
-        const updateTime = (day, field, val) => {
-            setSelections(prev => ({
-                ...prev,
-                [day]: { ...prev[day], [field]: val }
-            }));
-        };
-
-        const toggleFullDay = (day, isFull) => {
-            setSelections(prev => ({
-                ...prev,
-                [day]: { ...prev[day], fullDay: isFull }
+                [day]: { ...prev[day], [field]: value }
             }));
         };
 
         const handleSubmit = async () => {
-            if (!staffName || !managerName) {
-                alert("Please enter your name and manager.");
-                return;
-            }
-
+            if (!staffName || !managerName) return alert("Please complete name and manager selection.");
             setIsSubmitting(true);
             
-            const id = submissionIdFor(weekCommencing, staffName);
-            const scheduleArray = days.map(d => selections[d]);
-            
+            const docId = `${weekCommencing}_${normalize(staffName).replace(/\s+/g, "_")}`;
+            const payload = {
+                name: staffName,
+                manager: managerName,
+                weekId: weekCommencing,
+                schedule: days.map(d => selections[d]),
+                submittedAt: new Date().toISOString()
+            };
+
             try {
-                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions').doc(id).set({
-                    name: staffName,
-                    manager: managerName,
-                    weekId: weekCommencing,
-                    schedule: scheduleArray,
-                    submittedAt: new Date().toISOString()
-                });
-                setSubmitStatus('success');
+                await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions').doc(docId).set(payload);
+                setIsSubmitting(false);
+                setIsSubmittedView(true);
+                setIsEditing(false);
             } catch (e) {
-                alert("Error submitting: " + e.message);
+                alert("Cloud Sync Error: " + e.message);
                 setIsSubmitting(false);
             }
         };
 
-        const [isEditing, setIsEditing] = useState(false);
-
-        // --- RENDER HELPERS ---
-
-        const managersList = [...new Set(staffDirectory.filter(s => s.isManager).map(s => `${s.firstName} ${s.lastName}`))].sort();
-        if(!managersList.includes("Anaïs Lukaku")) managersList.push("Anaïs Lukaku");
-
-        // --- RENDER ---
         return (
-            <div className={`widget-card font-inter ${isReadOnly ? 'readonly' : ''}`}>
-                
+            <div className="widget-card flex flex-col">
                 {/* HEADER */}
-                <div className="p-6 border-b border-gray-200 bg-white z-20">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="p-6 border-b border-gray-100 shrink-0">
+                    <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center gap-3">
-                            <div className="grid grid-cols-2 gap-1 w-fit">
-                                {[...Array(4)].map((_, i) => <span key={i} className="w-1.5 h-1.5 rounded-full bg-[var(--brand-pink)]"></span>)}
-                            </div>
-                            <h1 className="text-xl font-black uppercase tracking-tight text-[var(--text-main)]">Rota Request</h1>
+                            <DotGrid />
+                            <h1 className="text-xl font-black uppercase tracking-tighter">Rota Request</h1>
                         </div>
-                        
                         <div className="flex items-center gap-2">
-                            <button onClick={() => setWeekOffset(weekOffset - 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-[var(--bg-grey)] hover:bg-white transition-colors font-bold">‹</button>
-                            <div className={`text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border ${isReadOnly ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-pink-50 text-[var(--brand-pink)] border-pink-100'}`}>
-                                W/C {fmtShort(mondayDate)}
+                            <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 rounded-lg border border-gray-200 bg-gray-50 font-bold hover:bg-white transition-all">‹</button>
+                            <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${isPastWeek ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-blue-50 text-[var(--dmg-blue)] border-blue-100'}`}>
+                                <span className="opacity-50 mr-1 font-bold">W/C</span> {fmtShort(mondayDate)}
                             </div>
-                            <button onClick={() => setWeekOffset(weekOffset + 1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 bg-[var(--bg-grey)] hover:bg-white transition-colors font-bold">›</button>
+                            <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 rounded-lg border border-gray-200 bg-gray-50 font-bold hover:bg-white transition-all">›</button>
                         </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         <div className="relative">
-                            <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1.5">Your Name</label>
+                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-1.5">Staff Identity</label>
                             <input 
                                 type="text" 
                                 value={staffName} 
-                                onChange={handleNameInput}
-                                className="w-full p-3 text-sm font-bold bg-[var(--bg-grey)] border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[var(--brand-pink)] focus:bg-white transition-all placeholder-gray-400 text-gray-900"
-                                placeholder="Start typing name..."
-                                disabled={isReadOnly || (existingDoc && !isEditing)}
+                                onChange={(e) => handleNameInput(e.target.value)}
+                                className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold focus:border-[var(--dmg-blue)] focus:bg-white transition-all outline-none"
+                                placeholder="Start typing your name..."
+                                disabled={isPastWeek || (isSubmittedView && !isEditing)}
                             />
-                            {showAutocomplete && (
+                            {showAutocomplete && filteredStaff.length > 0 && (
                                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
-                                    {filteredStaff.length > 0 ? (
-                                        filteredStaff.map(s => (
-                                            <div key={s.id} onClick={() => selectStaff(s)} className="p-3 text-sm font-bold hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 text-gray-800">
-                                                {s.firstName} {s.lastName}
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="p-3 text-sm text-gray-400 text-center">No staff found</div>
-                                    )}
+                                    {filteredStaff.map(u => (
+                                        <div key={u.id} onClick={() => selectUser(u)} className="p-3 text-sm font-bold hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0">{u.firstName} {u.lastName}</div>
+                                    ))}
                                 </div>
                             )}
                         </div>
-
-                        <div>
-                            <label className="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-1.5">Line Manager</label>
-                            <select 
-                                value={managerName} 
-                                onChange={(e) => setManagerName(e.target.value)}
-                                className="w-full p-3 text-sm font-bold bg-[var(--bg-grey)] border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[var(--brand-pink)] focus:bg-white transition-all text-gray-900 appearance-none cursor-pointer disabled:opacity-50"
-                                disabled={isReadOnly || (existingDoc && !isEditing)}
-                            >
-                                <option value="" disabled>Select Manager...</option>
-                                {managersList.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
+                        <div className="grid grid-cols-1 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest block mb-1.5">Line Manager</label>
+                                <select 
+                                    value={managerName} 
+                                    onChange={(e) => setManagerName(e.target.value)}
+                                    className="w-full p-3 bg-gray-50 border-2 border-gray-100 rounded-xl text-sm font-bold focus:border-[var(--dmg-blue)] focus:bg-white transition-all outline-none appearance-none cursor-pointer"
+                                    disabled={isPastWeek || (isSubmittedView && !isEditing)}
+                                >
+                                    <option value="" disabled>Select Manager...</option>
+                                    {[...new Set(staffDirectory.filter(s => s.isManager).map(s => `${s.firstName} ${s.lastName}`))].sort().map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* BANNER FOR EXISTING SUBMISSION */}
-                {existingDoc && !isEditing && (
-                    <div className="px-6 py-4 bg-pink-50 border-b border-pink-100 text-center animate-fadeIn">
-                        <h2 className="text-sm font-black uppercase text-[var(--brand-pink)] mb-1">Already Submitted</h2>
-                        <p className="text-xs text-gray-600">You have logged a rota for this week.</p>
+                {/* ALREADY SUBMITTED BANNER */}
+                {isSubmittedView && !isEditing && (
+                    <div className="bg-blue-50 border-b border-blue-100 px-6 py-4 text-center animate-fadeIn shrink-0">
+                        <h2 className="text-sm font-black uppercase text-[var(--dmg-blue)]">Already Submitted</h2>
+                        <p className="text-[11px] font-bold text-blue-400 mt-0.5">Logged: {new Date(submittedAt).toLocaleDateString()} @ {new Date(submittedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                     </div>
                 )}
 
-                {/* DAYS SCROLLER */}
-                <div className={`flex-1 overflow-y-auto p-6 bg-white ${existingDoc && !isEditing ? 'opacity-60 pointer-events-none grayscale' : ''}`}>
+                {/* SCROLL CONTENT */}
+                <div className={`scroll-content flex-1 overflow-y-auto p-6 space-y-8 bg-white ${(isSubmittedView && !isEditing) ? 'frosted-view' : ''}`}>
                     {days.map((day, i) => {
                         const date = addDays(mondayDate, i);
                         const sel = selections[day] || {};
@@ -388,63 +343,40 @@
                         const options = isWeekend ? weekendLocs : locs;
 
                         return (
-                            <div key={day} className="mb-6 pb-6 border-b border-gray-100 last:border-0 last:pb-0 last:mb-0">
-                                <div className="flex items-baseline gap-2 mb-3">
-                                    <span className="text-sm font-extrabold text-gray-900">{day}</span>
-                                    <span className="text-[10px] font-bold text-[var(--brand-pink)] uppercase tracking-wide">{fmtShort(date)}</span>
+                            <div key={day} className="border-b border-gray-50 last:border-0 pb-8 last:pb-0">
+                                <div className="flex items-baseline gap-2 mb-4">
+                                    <span className="text-sm font-black uppercase tracking-tight text-gray-900">{day}</span>
+                                    <span className="text-[10px] font-bold text-[var(--brand-pink)] uppercase tracking-widest">{fmtShort(date)}</span>
                                 </div>
-                                
+
                                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                    {options.map(loc => (
-                                        <div 
-                                            key={loc} 
-                                            onClick={() => handlePillClick(day, loc)}
-                                            className={`
-                                                flex-shrink-0 px-4 py-2 rounded-full text-[11px] font-bold border-2 cursor-pointer transition-all
-                                                ${sel.status === loc 
-                                                    ? (loc === 'Weekend' ? 'bg-gray-200 border-gray-200 text-gray-500 shadow-none' : 'bg-[var(--brand-pink)] border-[var(--brand-pink)] text-white shadow-md shadow-pink-200')
-                                                    : 'bg-white border-gray-200 text-gray-500 hover:border-pink-200'
-                                                }
-                                            `}
+                                    {options.map(l => (
+                                        <button 
+                                            key={l} 
+                                            onClick={() => updateDay(day, 'status', l)}
+                                            className={`loc-pill px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-wide border-2 ${sel.status === l ? (l === 'Weekend' ? 'weekend-selected' : 'selected') : 'bg-white text-gray-400'}`}
                                         >
-                                            {loc}
-                                        </div>
+                                            {l}
+                                        </button>
                                     ))}
                                 </div>
 
                                 {sel.status === "Shoot" && (
-                                    <div className="mt-3 p-4 bg-[var(--bg-grey)] rounded-xl border border-gray-100 animate-slideDown">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-[11px] font-bold text-gray-500">Full Day?</span>
-                                            <div className="flex gap-1 bg-white p-1 rounded-lg border border-gray-200">
-                                                <button 
-                                                    onClick={() => toggleFullDay(day, true)}
-                                                    className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${sel.fullDay ? 'bg-[var(--brand-pink)] text-white shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}
-                                                >YES</button>
-                                                <button 
-                                                    onClick={() => toggleFullDay(day, false)}
-                                                    className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${!sel.fullDay ? 'bg-[var(--brand-pink)] text-white shadow-sm' : 'text-gray-400 hover:bg-gray-50'}`}
-                                                >NO</button>
+                                    <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-4 animate-slideDown">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Full Day?</span>
+                                            <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-200">
+                                                <button onClick={() => updateDay(day, 'fullDay', true)} className={`px-4 py-1 rounded-md text-[10px] font-black uppercase transition-all ${sel.fullDay ? 'bg-[var(--dmg-blue)] text-white' : 'text-gray-300'}`}>Yes</button>
+                                                <button onClick={() => updateDay(day, 'fullDay', false)} className={`px-4 py-1 rounded-md text-[10px] font-black uppercase transition-all ${!sel.fullDay ? 'bg-[var(--dmg-blue)] text-white' : 'text-gray-300'}`}>No</button>
                                             </div>
                                         </div>
-                                        
                                         {!sel.fullDay && (
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[11px] font-bold text-gray-500">Hours</span>
+                                            <div className="flex items-center justify-between border-t border-gray-200 pt-3">
+                                                <span className="text-[11px] font-black uppercase text-gray-400 tracking-wider">Shift Hours</span>
                                                 <div className="flex items-center gap-2">
-                                                    <input 
-                                                        type="time" 
-                                                        value={sel.start} 
-                                                        onChange={(e) => updateTime(day, 'start', e.target.value)}
-                                                        className="p-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-700 bg-white focus:border-pink-300 outline-none w-20 text-center"
-                                                    />
-                                                    <span className="text-gray-300 font-bold">-</span>
-                                                    <input 
-                                                        type="time" 
-                                                        value={sel.end} 
-                                                        onChange={(e) => updateTime(day, 'end', e.target.value)}
-                                                        className="p-1.5 rounded-lg border border-gray-200 text-xs font-bold text-gray-700 bg-white focus:border-pink-300 outline-none w-20 text-center"
-                                                    />
+                                                    <input type="time" value={sel.start} onChange={(e) => updateDay(day, 'start', e.target.value)} className="p-2 rounded-lg border border-gray-200 bg-white text-xs font-bold w-24 text-center outline-none focus:border-[var(--dmg-blue)]" />
+                                                    <span className="font-black text-gray-300">-</span>
+                                                    <input type="time" value={sel.end} onChange={(e) => updateDay(day, 'end', e.target.value)} className="p-2 rounded-lg border border-gray-200 bg-white text-xs font-bold w-24 text-center outline-none focus:border-[var(--dmg-blue)]" />
                                                 </div>
                                             </div>
                                         )}
@@ -456,47 +388,32 @@
                 </div>
 
                 {/* FOOTER */}
-                <div className="p-5 border-t border-gray-200 bg-white z-20">
-                    {existingDoc && !isEditing ? (
+                <div className="p-6 border-t border-gray-100 bg-white shrink-0">
+                    {isSubmittedView && !isEditing ? (
                         <button 
                             onClick={() => setIsEditing(true)}
-                            className="w-full bg-[var(--brand-blue)] text-white py-4 rounded-xl text-[13px] font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-blue-100"
+                            className="w-full py-4 bg-[var(--dmg-blue)] text-white rounded-xl text-sm font-black uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-blue-100"
                         >
                             Want to edit?
                         </button>
                     ) : (
                         <button 
                             onClick={handleSubmit}
-                            disabled={isSubmitting || isReadOnly}
-                            className="w-full bg-black text-white py-4 rounded-xl text-[13px] font-black uppercase tracking-widest hover:bg-[var(--brand-pink)] hover:shadow-lg hover:shadow-pink-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isSubmitting || isPastWeek || !staffName || !managerName}
+                            className="w-full py-4 bg-[var(--brand-black)] text-white rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[var(--dmg-blue)] transition-all disabled:bg-gray-200"
                         >
-                            {isSubmitting ? 'Syncing...' : (existingDoc ? 'Update Rota' : 'Submit')}
+                            {isSubmitting ? 'Syncing...' : (isEditing ? 'Update Patterns' : 'Submit Patterns')}
                         </button>
                     )}
+                    {isPastWeek && <p className="text-[10px] text-center mt-3 text-red-400 font-bold uppercase tracking-wider">Note: This week is locked for historical records.</p>}
                 </div>
-
-                {/* SUCCESS OVERLAY */}
-                {submitStatus === 'success' && (
-                    <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-8 text-center animate-fadeIn">
-                        <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mb-6">
-                            <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <h2 className="text-2xl font-black uppercase text-[var(--text-main)] mb-2">Logged</h2>
-                        <p className="text-sm text-gray-500 font-medium mb-8 max-w-[200px]">Your patterns have been synced to the office cloud for next week.</p>
-                        <button 
-                            onClick={() => window.location.reload()}
-                            className="bg-black text-white px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest hover:bg-gray-800 transition-colors"
-                        >
-                            Done
-                        </button>
-                    </div>
-                )}
             </div>
         );
     };
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<RotaRequestWidget />);
+    root.render(<App />);
 </script>
+
 </body>
 </html>
