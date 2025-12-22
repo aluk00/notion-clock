@@ -13,7 +13,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Custom Styles -->
     <style>
         :root {
             --dmg-blue: #21a0d8;
@@ -39,12 +38,10 @@
             padding: 10px;
         }
 
-        /* Animation utilities */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
     </style>
 
-    <!-- React & Firebase Scripts -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -117,7 +114,7 @@
         };
 
         return (
-            <div className="fixed inset-0 bg-white z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+            <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
                 <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col border border-gray-200" onClick={(e) => e.stopPropagation()}>
                     <div className="p-6 border-b border-gray-100">
                         <div className="flex items-center gap-4 mb-1">
@@ -173,32 +170,46 @@
             });
         }, []);
 
-        const { scheduleIndex, isWeekend, todayDateString } = useMemo(() => {
+        const { scheduleIndex, weekId, isWeekend, todayDateString } = useMemo(() => {
             const today = new Date();
-            const day = today.getDay();
+            const day = today.getDay(); // 0=Sun, 1=Mon...
+            
+            // Calculate this week's Monday
+            const d = new Date(today);
+            d.setHours(0,0,0,0);
+            const diff = (day === 0) ? 6 : day - 1;
+            d.setDate(d.getDate() - diff);
+            
             return {
                 scheduleIndex: day === 0 ? 6 : day - 1,
+                weekId: d.toISOString().split("T")[0],
                 isWeekend: day === 0 || day === 6,
                 todayDateString: today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
             };
         }, []);
 
-        // DEDUPLICATION LOGIC: Keeps only the newest submission per person
-        const uniqueSubmissions = useMemo(() => {
+        // Logic Guard: deduplicate by week AND normalized name
+        const currentWeekSubmissions = useMemo(() => {
             const map = new Map();
             const normalize = (n) => n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
             
+            // 1. Filter for current week only
+            // 2. Sort by time so newest overwrites oldest in the Map
             [...submissions]
+                .filter(s => s.weekId === weekId)
                 .sort((a, b) => new Date(a.submittedAt || 0) - new Date(b.submittedAt || 0))
                 .forEach(sub => {
-                    if (sub.name) map.set(normalize(sub.name), sub);
+                    if (sub.name) {
+                        const key = normalize(sub.name);
+                        map.set(key, sub);
+                    }
                 });
             return Array.from(map.values());
-        }, [submissions]);
+        }, [submissions, weekId]);
 
         const statusCounts = useMemo(() => {
             const counts = { Office: 0, WFH: 0, Shoot: 0, PTO: 0 };
-            uniqueSubmissions.forEach(sub => {
+            currentWeekSubmissions.forEach(sub => {
                 const day = sub.schedule?.[scheduleIndex];
                 if (!day) return;
                 const status = day.status;
@@ -215,11 +226,11 @@
                 else counts.Office++;
             });
             return counts;
-        }, [uniqueSubmissions, scheduleIndex, isWeekend]);
+        }, [currentWeekSubmissions, scheduleIndex, isWeekend]);
 
         const detailedUsers = useMemo(() => {
             if (!modalStatus) return [];
-            return uniqueSubmissions
+            return currentWeekSubmissions
                 .filter(sub => {
                     const status = sub.schedule?.[scheduleIndex]?.status;
                     if (modalStatus === 'Office') return !isWeekend && status === 'Office';
@@ -229,11 +240,14 @@
                     return false;
                 })
                 .map(sub => {
-                    const dir = directory.find(d => `${d.firstName} ${d.lastName}`.toLowerCase().includes(sub.name.toLowerCase())) || {};
+                    const dir = directory.find(d => {
+                        const fullName = `${d.firstName} ${d.lastName}`.toLowerCase();
+                        return fullName === sub.name.toLowerCase() || fullName.includes(sub.name.toLowerCase());
+                    }) || {};
                     return { name: sub.name, ...dir };
                 })
                 .sort((a, b) => a.name.localeCompare(b.name));
-        }, [modalStatus, uniqueSubmissions, directory, scheduleIndex, isWeekend]);
+        }, [modalStatus, currentWeekSubmissions, directory, scheduleIndex, isWeekend]);
 
         return (
             <div className="bg-white border border-[var(--border)] rounded-2xl p-6 shadow-sm max-w-3xl mx-auto">
