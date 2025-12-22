@@ -4,9 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DMG Management Hub | Live Cloud</title>
+    
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Compat SDK (Stable for Single File) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
     <style>
         :root {
             /* Team Colours */
@@ -283,6 +291,54 @@
         .btn-action .sync-tick { width: 24px; height: 24px; transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); transform: scale(0); fill: currentColor; }
         .btn-success .sync-tick { transform: scale(1); }
 
+        /* --- GRANULAR APPROVAL STYLES --- */
+        .approval-strip-container {
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .approval-strip { 
+            display: flex; 
+            gap: 12px; 
+            min-width: min-content; 
+        }
+        .approval-day { 
+            background: #f4f6f8; 
+            border-radius: var(--radius-md); 
+            padding: 12px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            border: 2px solid transparent; 
+            transition: 0.3s; 
+            position: relative; 
+            flex: 0 0 130px; /* Consistent card width */
+        }
+        .approval-day.decided-yes { border-color: var(--st-office); background: #e8f5e9; }
+        .approval-day.decided-no { border-color: var(--st-pto); background: #ffebee; }
+        .approval-day.decided-suggest { border-color: var(--st-wfh); background: #fffde7; }
+        
+        .day-title { font-size: 10px; font-weight: 900; color: #999; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em; }
+        .requested-status { font-size: 14px; font-weight: 900; color: var(--carbon); margin-bottom: 12px; }
+        
+        .decision-group { display: flex; gap: 6px; }
+        .dec-btn { 
+            width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border); 
+            background: #FFF; display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; transition: 0.2s; font-size: 14px; font-weight: 800;
+        }
+        .dec-btn:hover { border-color: var(--carbon); }
+        .dec-btn.active-yes { background: var(--st-office); color: #FFF; border-color: var(--st-office); }
+        .dec-btn.active-no { background: var(--st-pto); color: #FFF; border-color: var(--st-pto); }
+        .dec-btn.active-suggest { background: var(--st-wfh); color: #FFF; border-color: var(--st-wfh); }
+        
+        .day-comment-input {
+            width: 100%; margin-top: 10px; padding: 8px; font-size: 11px; font-weight: 600;
+            border: 1px solid var(--border); border-radius: 8px; outline: none;
+        }
+
         .view-section { display: none; }
         .view-section.active { display: block; opacity: 0; transform: translateY(10px); animation: slideUpFade 0.5s 0.2s forwards; }
 
@@ -439,11 +495,6 @@
             flex-shrink: 1;
         }
 
-        .week-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 15px 0; }
-        .day-box { background: #EEE; text-align: center; padding: 10px; border-radius: 8px; }
-        .d-label { display: block; font-size: 9px; font-weight: 800; color: #999; }
-        .d-val { font-weight: 900; font-size: 16px; }
-
         .comment-box { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin: 10px 0; font-family: inherit; font-size: 14px; }
         .action-row { display: flex; gap: 10px; margin-top: 10px; }
 
@@ -594,30 +645,8 @@
         </div>
     </div>
 
-<script type="module">
-    // Fix: Add a global interface to declare custom properties on the Window object.
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    // CANONICAL: Use Admin Control Centre's Firebase project config.
+<script>
+    // --- FIREBASE SETUP (COMPAT MODE) ---
     const firebaseConfig = {
       apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
       authDomain: "dmg-command-centre-native.firebaseapp.com",
@@ -628,14 +657,17 @@
       measurementId: "G-5HNGPRJGZY"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    // CANONICAL: Use Admin Control Centre's artifact root ID.
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    // CANONICAL ROOT
     const appId = "dmg-command-centre-native";
 
+    // --- STATE & DATA ---
     let staffList = [];
-    let rotaRequests = [];
+    let rotaSubmissions = []; // Canonical presence data
     let rotaResponses = [];
     let staffNotes = [];
 
@@ -648,6 +680,12 @@
         Production: "https://www.notion.so/WIP_PRODUCTION-2c8b73e3901e80388954fb6e14c43b73?source=copy_link",
         Social: "https://www.notion.so/WIP_SOCIAL-2c8b73e3901e80bf9c3ce8f15629cfd5?source=copy_link",
         Editorial: "https://www.notion.so/WIP_EDITORIAL-2c8b73e3901e8090a2a0d09615970b79?source=copy_link"
+    };
+
+    // --- HELPERS ---
+    const normalize = (n) => {
+        if (!n || typeof n !== 'string') return "";
+        return n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
     };
 
     const statusIcons = {
@@ -699,14 +737,14 @@
     const press = (n) => {
         if (pin.length >= 4) return;
         pin += n;
-        (document.getElementById('p'+pin.length)).classList.add('filled');
+        document.getElementById('p'+pin.length).classList.add('filled');
         if(pin.length === 4) {
             setTimeout(() => {
                 if(pin === "2025") {
-                    (document.getElementById('lock-screen')).style.opacity = '0';
+                    document.getElementById('lock-screen').style.opacity = '0';
                     setTimeout(() => { 
-                        (document.getElementById('lock-screen')).classList.add('hidden'); 
-                        (document.getElementById('app-shell')).classList.remove('hidden'); 
+                        document.getElementById('lock-screen').classList.add('hidden'); 
+                        document.getElementById('app-shell').classList.remove('hidden'); 
                     }, 500);
                 } else { 
                     clearPin();
@@ -716,7 +754,7 @@
     };
 
     function setupPinPad() {
-        document.querySelector('.numpad')?.addEventListener('click', (event) => {
+        document.querySelector('.numpad').addEventListener('click', (event) => {
             const target = event.target;
             const button = target.closest('.n-btn');
             if (button) {
@@ -747,7 +785,7 @@
                     event.preventDefault();
                     buttonToAnimate.classList.add('n-btn--active');
                     setTimeout(() => { 
-                        buttonToAnimate?.classList.remove('n-btn--active');
+                        buttonToAnimate.classList.remove('n-btn--active');
                     }, 150);
                 }
             }
@@ -760,53 +798,49 @@
         todayBtn.addEventListener('click', () => window.jumpToToday());
     }
 
-    onAuthStateChanged(auth, (user) => {
+    auth.onAuthStateChanged((user) => {
         if (user && !listenersInitialised) {
             console.log("Authenticated. Initialising Firestore listeners...");
             listenersInitialised = true;
             
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), 
-                (snap) => { 
+            // 1. Staff Directory
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory')
+                .onSnapshot(snap => { 
                     staffList = []; 
                     snap.forEach(d => staffList.push({id: d.id, ...d.data()})); 
                     updateUI(); 
-                },
-                (error) => { console.error("Error fetching staff_directory:", error); }
-            );
+                }, error => console.error("Error fetching staff_directory:", error));
 
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_requests'), 
-                (snap) => { 
-                    rotaRequests = []; 
-                    snap.forEach(d => rotaRequests.push(d.data())); 
+            // 2. Rota Submissions (CANONICAL PRESENCE)
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions')
+                .onSnapshot(snap => { 
+                    rotaSubmissions = []; 
+                    snap.forEach(d => rotaSubmissions.push(d.data())); 
                     updateUI(); 
-                },
-                (error) => { console.error("Error fetching rota_requests:", error); }
-            );
+                }, error => console.error("Error fetching rota_submissions:", error));
             
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'rota_responses'), 
-                (snap) => { 
+            // 3. Rota Responses (AUDIT LOG ONLY)
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_responses')
+                .onSnapshot(snap => { 
                     rotaResponses = []; 
                     snap.forEach(d => rotaResponses.push({id: d.id, ...d.data()})); 
                     updateUI(); 
-                },
-                (error) => { console.error("Error fetching rota_responses:", error); }
-            );
+                }, error => console.error("Error fetching rota_responses:", error));
 
-            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_notes'), 
-                (snap) => { 
+            // 4. Notes
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_notes')
+                .onSnapshot(snap => { 
                     staffNotes = []; 
                     snap.forEach(d => staffNotes.push({id: d.id, ...d.data()})); 
                     updateUI(); 
-                },
-                (error) => { console.error("Error fetching staff_notes:", error); }
-            );
+                }, error => console.error("Error fetching staff_notes:", error));
         } else if (!user) {
             console.log("User not signed in. Waiting for authentication.");
             listenersInitialised = false;
         }
     });
     
-    signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
+    auth.signInAnonymously().catch((error) => console.error("Anonymous sign-in failed:", error));
 
     function updateUI() {
         currentMonday.setHours(0,0,0,0);
@@ -816,7 +850,7 @@
         const startDateFormatted = currentMonday.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
         const endDateFormatted = weekEndDate.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
         
-        (document.getElementById('wc-label')).innerHTML = `<span class="wc-prefix">W/C</span> ${startDateFormatted} - ${endDateFormatted}`;
+        document.getElementById('wc-label').innerHTML = `<span class="wc-prefix">W/C</span> ${startDateFormatted} - ${endDateFormatted}`;
         
         renderDayScroller();
         renderOutlook();
@@ -868,7 +902,7 @@
         viewedDate.setDate(viewedDate.getDate() + selectedDayIdx);
         const isViewedDayWeekend = (viewedDate.getDay() === 0 || viewedDate.getDay() === 6);
 
-        const table = (document.getElementById('view-outlook')).querySelector('.directory-table');
+        const table = document.getElementById('view-outlook').querySelector('.directory-table');
         if (table) {
             const headerCell = table.rows[0].cells[3];
             if (headerCell) {
@@ -890,7 +924,11 @@
         
         mount.innerHTML = staffList.sort((a,b) => a.firstName.localeCompare(b.firstName)).map(s => {
             const fullName = `${s.firstName} ${s.lastName}`;
-            const sub = rotaRequests.find(sub => sub.staffName === fullName && sub.weekCommencing === wcStr);
+            const sub = rotaSubmissions.find(sub => 
+                normalize(sub.name) === normalize(fullName) && 
+                sub.weekId === wcStr
+            );
+            
             let rawStatus = 'Office';
             if (sub && sub.schedule && sub.schedule[selectedDayIdx]) {
                 rawStatus = sub.schedule[selectedDayIdx].status;
@@ -925,11 +963,11 @@
                     </tr>`;
         }).join('');
 
-        (document.getElementById('count-office')).innerText = String(isViewedDayWeekend ? 0 : counts.Office);
-        (document.getElementById('count-wfh')).innerText = String(isViewedDayWeekend ? 0 : counts.WFH);
-        (document.getElementById('count-shoot')).innerText = String(counts.Shoot);
-        (document.getElementById('count-offsite')).innerText = String(counts.OffSite);
-        (document.getElementById('count-leave')).innerText = String(isViewedDayWeekend ? 0 : counts.Leave);
+        document.getElementById('count-office').innerText = String(isViewedDayWeekend ? 0 : counts.Office);
+        document.getElementById('count-wfh').innerText = String(isViewedDayWeekend ? 0 : counts.WFH);
+        document.getElementById('count-shoot').innerText = String(counts.Shoot);
+        document.getElementById('count-offsite').innerText = String(counts.OffSite);
+        document.getElementById('count-leave').innerText = String(isViewedDayWeekend ? 0 : counts.Leave);
     }
 
     function renderTeamsGrid() {
@@ -967,7 +1005,11 @@
                         <table class="directory-table">
                             <thead><tr><th>Name</th>${dayHeaders}</tr></thead>
                             <tbody>${members.sort((a,b)=>a.firstName.localeCompare(b.firstName)).map(m => {
-                                const sub = rotaRequests.find(s => s.staffName === `${m.firstName} ${m.lastName}` && s.weekCommencing === wcStr);
+                                const fullName = `${m.firstName} ${m.lastName}`;
+                                const sub = rotaSubmissions.find(s => 
+                                    normalize(s.name) === normalize(fullName) && 
+                                    s.weekId === wcStr
+                                );
                                 
                                 let weeklySchedule = (sub && sub.schedule) ? [...sub.schedule] : Array(7).fill({ status: 'Pending' });
                                 while (weeklySchedule.length < 7) {
@@ -976,7 +1018,6 @@
                                 
                                 const color = teamColors[m.team] || '#CCC';
                                 const dots = `<div class="name-dots">${Array(4).fill(`<span style="background:${color}"></span>`).join('')}</div>`;
-                                const fullName = `${m.firstName} ${m.lastName}`;
 
                                 return `<tr>
                                     <td class="name-cell name-cell-teams" onclick="openStaffProfile('${m.id}')">
@@ -1011,8 +1052,19 @@
             
             const pendingCount = reports.filter(r => {
                 const fName = `${r.firstName} ${r.lastName}`;
-                const hasResp = rotaResponses.some(res => res.staffName === fName && res.weekCommencing === wcStr && res.status === 'Approved');
-                return !hasResp;
+                
+                // ROBUST LOGIC: Use normalize() and check for existence of response
+                const hasResp = rotaResponses.some(res => 
+                    normalize(res.staffName) === normalize(fName) && 
+                    res.weekCommencing === wcStr
+                );
+                
+                const hasSubmission = rotaSubmissions.some(sub => 
+                    normalize(sub.name) === normalize(fName) && 
+                    sub.weekId === wcStr
+                );
+                
+                return hasSubmission && !hasResp;
             }).length;
 
             const accent = teamColors[m.team] || '#1C1C1C';
@@ -1027,7 +1079,7 @@
     window.showStatusList = (statusType) => {
         const mount = document.getElementById('modal-mount');
         mount.innerHTML = `<div class="modal-loader"><div class="header-dots">${Array(4).fill(`<div class="dot"></div>`).join('')}</div></div>`;
-        (document.getElementById('global-modal')).classList.add('active');
+        document.getElementById('global-modal').classList.add('active');
 
         setTimeout(() => {
             const viewedDate = new Date(currentMonday);
@@ -1043,7 +1095,11 @@
             
             const staffWithStatus = staffList.map(s => {
                 const fullName = `${s.firstName} ${s.lastName}`;
-                const sub = rotaRequests.find(sub => sub.staffName === fullName && sub.weekCommencing === wcStr);
+                const sub = rotaSubmissions.find(sub => 
+                    normalize(sub.name) === normalize(fullName) && 
+                    sub.weekId === wcStr
+                );
+                
                 const status = (sub && sub.schedule[selectedDayIdx]) ? sub.schedule[selectedDayIdx].status : 'Office';
                 return { ...s, currentStatus: status };
             }).filter(s => {
@@ -1094,7 +1150,7 @@
         
         const accent = teamColors[manager.team] || '#1C1C1C';
         mount.innerHTML = `<div class="modal-loader"><div class="header-dots">${Array(4).fill(`<div class="dot" style="background-color:${accent}"></div>`).join('')}</div></div>`;
-        (document.getElementById('global-modal')).classList.add('active');
+        document.getElementById('global-modal').classList.add('active');
 
         setTimeout(() => {
             const wcStr = currentMonday.toISOString().split('T')[0];
@@ -1107,37 +1163,50 @@
                     <div class="modal-body">
                         <div class="modal-header-stacked">
                             <h2 class="modal-mgr-name">${mgrName}</h2>
-                            <div class="modal-sub-title" style="color: ${accent};">Team Workspace</div>
+                            <div class="modal-sub-title" style="color: ${accent};">Approval Workspace</div>
                         </div>
                         ${reports.map(r => {
                             const fName = `${r.firstName} ${r.lastName}`;
-                            const sub = rotaRequests.find(s => s.staffName === fName && s.weekCommencing === wcStr);
-                            const resp = rotaResponses.find(res => res.staffName === fName && res.weekCommencing === wcStr);
-                            const statusColor = resp ? (resp.status === 'Approved' ? 'var(--st-office)' : 'var(--team-editorial)') : '#BBB';
-
+                            const sub = rotaSubmissions.find(s => normalize(s.name) === normalize(fName) && s.weekId === wcStr);
+                            
+                            // ROBUST LOOKUP: Use normalize()
+                            const resp = rotaResponses.find(res => 
+                                normalize(res.staffName) === normalize(fName) && 
+                                res.weekCommencing === wcStr
+                            );
+                            
                             return `
-                            <div class="request-item">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <div class="request-item" id="req-card-${r.id}">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                                     <div class="request-name-link" onclick="openStaffProfile('${r.id}')">${fName}</div>
-                                    <span style="font-size:9px; font-weight:900; text-transform:uppercase; color:${statusColor}">${resp ? resp.status : 'Awaiting Submission'}</span>
+                                    <span style="font-size:9px; font-weight:900; text-transform:uppercase; color:${resp ? 'var(--st-office)' : 'var(--team-editorial)'}">
+                                        ${resp ? 'Reviewed' : 'Awaiting Review'}
+                                    </span>
                                 </div>
                                 ${sub ? `
-                                    <div class="week-strip">
-                                        ${sub.schedule.slice(0,5).map((d, i) => {
-                                            const statusKey = (d.status || 'Pending').replace(/ /g,'');
-                                            const color = statusColors[statusKey] || statusColors.Pending;
-                                            return `<div class="day-box" style="background-color:${color}20; color:${color}"><span class="d-label">${['M','T','W','T','F'][i]}</span><span class="d-val">${d.status.charAt(0)}</span></div>`
-                                        }).join('')}
-                                    </div>
-                                    ${!resp ? `
-                                        <textarea id="comment-${r.id}" class="comment-box" placeholder="Add feedback..."></textarea>
-                                        <div class="action-row">
-                                            <button class="btn-action btn-approve" onclick="handleAction(this, '${fName}', 'Approved', '${r.id}')">Accept</button>
-                                            <button class="btn-action btn-deny" onclick="handleAction(this, '${fName}', 'Denied', '${r.id}')">Deny</button>
+                                    <div class="approval-strip-container">
+                                        <div class="approval-strip">
+                                            ${sub.schedule.slice(0,5).map((d, i) => {
+                                                const dayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'][i];
+                                                return `
+                                                <div class="approval-day" id="app-day-${r.id}-${i}">
+                                                    <span class="day-title">${dayName}</span>
+                                                    <span class="requested-status">${d.status}</span>
+                                                    <div class="decision-group">
+                                                        <div class="dec-btn" title="Approve" onclick="setDailyDecision('${r.id}', ${i}, 'yes')">✓</div>
+                                                        <div class="dec-btn" title="Deny" onclick="setDailyDecision('${r.id}', ${i}, 'no')">✕</div>
+                                                        <div class="dec-btn" title="Suggest" onclick="openPatternEditor('${fName}', '${wcStr}', 'editor-mount-${r.id}')">?</div>
+                                                    </div>
+                                                    <input type="text" class="day-comment-input hidden" id="comm-${r.id}-${i}" placeholder="Why?">
+                                                </div>`;
+                                            }).join('')}
                                         </div>
-                                    ` : `<div style="font-size:12px; color:#999; padding: 10px; background: #fafafa; border-radius: 8px;">Logged: ${resp.comment || 'No comment.'}</div>`}
+                                    </div>
+                                    <div class="action-row">
+                                        <button class="btn-action btn-sync" style="width:100%;" onclick="saveDetailedApproval(this, '${fName}', '${r.id}')">Confirm Approval Log</button>
+                                    </div>
                                 ` : `
-                                    <div style="font-size:12px; color:var(--team-editorial); margin: 15px 0;">No rota request logged for this week.</div>
+                                    <div style="font-size:12px; color:var(--team-editorial); margin: 15px 0; font-weight:700;">No submission found for this week.</div>
                                     <button class="pill-btn pill-suggest" onclick="openPatternEditor('${fName}', '${wcStr}', 'editor-mount-${r.id}')">Suggest Working Pattern</button>
                                 `}
                                 <div id="editor-mount-${r.id}"></div>
@@ -1149,6 +1218,71 @@
         }, 100);
     };
 
+    window.setDailyDecision = (staffId, dayIdx, type) => {
+        const container = document.getElementById(`app-day-${staffId}-${dayIdx}`);
+        const commInput = document.getElementById(`comm-${staffId}-${dayIdx}`);
+        
+        // Clear previous classes
+        container.classList.remove('decided-yes', 'decided-no', 'decided-suggest');
+        container.querySelectorAll('.dec-btn').forEach(b => b.classList.remove('active-yes', 'active-no', 'active-suggest'));
+        
+        if (type === 'yes') {
+            container.classList.add('decided-yes');
+            container.querySelector('.dec-btn[title="Approve"]').classList.add('active-yes');
+            commInput.classList.add('hidden');
+        } else if (type === 'no') {
+            container.classList.add('decided-no');
+            container.querySelector('.dec-btn[title="Deny"]').classList.add('active-no');
+            commInput.classList.remove('hidden');
+            commInput.focus();
+        } else {
+            container.classList.add('decided-suggest');
+            container.querySelector('.dec-btn[title="Suggest"]').classList.add('active-suggest');
+            commInput.classList.add('hidden');
+        }
+    };
+
+    window.saveDetailedApproval = async (buttonEl, name, staffId) => {
+        const originalContent = buttonEl.innerHTML;
+        buttonEl.disabled = true;
+        buttonEl.innerHTML = `<div class="sync-loader"><span></span><span></span><span></span></div>`;
+
+        const wcStr = currentMonday.toISOString().split('T')[0];
+        const decisions = [];
+        
+        for (let i = 0; i < 5; i++) {
+            const container = document.getElementById(`app-day-${staffId}-${i}`);
+            let decisionStatus = 'Pending';
+            if (container.classList.contains('decided-yes')) decisionStatus = 'Approved';
+            if (container.classList.contains('decided-no')) decisionStatus = 'Denied';
+            if (container.classList.contains('decided-suggest')) decisionStatus = 'Suggest';
+
+            decisions.push({
+                dayIndex: i,
+                status: decisionStatus,
+                comment: document.getElementById(`comm-${staffId}-${i}`).value || ""
+            });
+        }
+
+        const respId = `${wcStr}_${normalize(name).replace(/\s+/g, '_')}`;
+        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_responses').doc(respId).set({ 
+            staffName: name, 
+            weekCommencing: wcStr, 
+            status: 'Reviewed', 
+            dailyDecisions: decisions,
+            timestamp: new Date().toISOString() 
+        });
+
+        buttonEl.classList.remove('btn-sync');
+        buttonEl.classList.add('btn-success');
+        buttonEl.innerHTML = `<svg class="sync-tick" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+        showToast("Review Recorded");
+        
+        setTimeout(() => {
+            window.closeModal();
+        }, 1000);
+    };
+
     window.openStaffProfile = (staffId) => {
         const mount = document.getElementById('modal-mount');
         const s = staffList.find(x => x.id === staffId);
@@ -1156,12 +1290,16 @@
 
         const teamCol = teamColors[s.team];
         mount.innerHTML = `<div class="modal-loader"><div class="header-dots">${Array(4).fill(`<div class="dot" style="background-color:${teamCol}"></div>`).join('')}</div></div>`;
-        (document.getElementById('global-modal')).classList.add('active');
+        document.getElementById('global-modal').classList.add('active');
 
         setTimeout(() => {
             const fullName = `${s.firstName} ${s.lastName}`;
             const wcStr = currentMonday.toISOString().split('T')[0];
-            const sub = rotaRequests.find(sub => sub.staffName === fullName && sub.weekCommencing === wcStr);
+            const sub = rotaSubmissions.find(sub => 
+                normalize(sub.name) === normalize(fullName) && 
+                sub.weekId === wcStr
+            );
+            
             const status = sub && sub.schedule[selectedDayIdx] ? sub.schedule[selectedDayIdx].status : 'Pending';
             const statusKey = status.replace(/ /g, '');
             const color = statusColors[statusKey] || statusColors.Pending;
@@ -1191,7 +1329,10 @@
                         <thead><tr><th>Week</th><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th><th>Action</th></tr></thead>
                         <tbody>
                             ${weeks.map((w, index) => {
-                                const sW = rotaRequests.find(sub => sub.staffName === fullName && sub.weekCommencing === w);
+                                const sW = rotaSubmissions.find(sub => 
+                                    normalize(sub.name) === normalize(fullName) && 
+                                    sub.weekId === w
+                                );
                                 const isPriorWeek = index === 0;
                                 const weekDate = new Date(w);
                                 const label = index === 0 ? 'Prior' : index === 1 ? 'Current' : 'Next';
@@ -1247,7 +1388,10 @@
             return;
         }
         mount.innerHTML = ''; // Clear previous editors
-        const sub = rotaRequests.find(s => s.staffName === name && s.weekCommencing === weekCommencing);
+        const sub = rotaSubmissions.find(s => 
+            normalize(s.name) === normalize(name) && 
+            s.weekId === weekCommencing
+        );
         const weekdayLocs = ['Office', 'WFH', 'Shoot', 'Client / Travel', 'PTO'];
         const weekendLocs = ['Weekend', 'Shoot', 'Client / Travel'];
         const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -1275,35 +1419,32 @@
 
     window.saveOverride = async (buttonEl, name, weekCommencing) => {
         const originalContent = buttonEl.innerHTML;
-        const loaderHTML = `<div class="sync-loader"><span></span><span></span><span></span></div>`;
-        const successHTML = `<svg class="sync-tick" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
-
         buttonEl.disabled = true;
-        buttonEl.innerHTML = loaderHTML;
+        buttonEl.innerHTML = `<div class="sync-loader"><span></span><span></span><span></span></div>`;
 
         try {
             const schedule = [];
             for(let i=0; i<7; i++) {
-                schedule.push({ status: (document.getElementById(`edit-day-${i}`)).value, fullDay: true });
+                schedule.push({ status: document.getElementById(`edit-day-${i}`).value, fullDay: true });
             }
-            const submissionId = `${weekCommencing}_${name.replace(/\s+/g, '_')}`;
+            const submissionId = `${weekCommencing}_${normalize(name).replace(/\s+/g, '_')}`;
             
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rota_requests', submissionId), { 
-                staffName: name, 
-                weekCommencing, 
+            await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions').doc(submissionId).set({ 
+                name: name,  
+                weekId: weekCommencing, 
                 schedule, 
-                managerName: staffList.find(s => `${s.firstName} ${s.lastName}` === name)?.manager || 'Unknown', 
+                managerName: staffList.find(s => normalize(`${s.firstName} ${s.lastName}`) === normalize(name))?.manager || 'Unknown', 
                 timestamp: new Date().toISOString() 
             });
 
             buttonEl.classList.remove('btn-sync');
             buttonEl.classList.add('btn-success');
-            buttonEl.innerHTML = successHTML;
+            buttonEl.innerHTML = `<svg class="sync-tick" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
             showToast("Cloud Synced");
 
             setTimeout(() => {
                 window.closeModal();
-            }, 1500);
+            }, 1000);
 
         } catch (error) {
             console.error("Failed to save override:", error);
@@ -1313,30 +1454,9 @@
         }
     };
 
-    window.handleAction = async (buttonEl, name, status, staffId) => {
-        buttonEl.disabled = true;
-        const otherButton = buttonEl.parentElement?.querySelector('.btn-action');
-        if(otherButton) otherButton.disabled = true;
-
-        buttonEl.innerHTML = `<div class="sync-loader"><span></span><span></span><span></span></div>`;
-
-        const wcStr = currentMonday.toISOString().split('T')[0];
-        const comment = (document.getElementById(`comment-${staffId}`)).value;
-        const respId = `${wcStr}_${name.replace(/\s+/g, '_')}`;
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rota_responses', respId), { 
-            staffName: name, 
-            weekCommencing: wcStr, 
-            status, 
-            comment, 
-            timestamp: new Date().toISOString() 
-        });
-        showToast("Response Recorded");
-        setTimeout(window.closeModal, 500);
-    };
-
     function renderProfileNotes(name) {
         const mount = document.getElementById('profile-notes-mount');
-        const userNotes = staffNotes.filter(n => n.target === name).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const userNotes = staffNotes.filter(n => normalize(n.target) === normalize(name)).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         mount.innerHTML = userNotes.map(n => `<div class="note-item" style="border-left-color: ${teamColors[n.team] || 'var(--team-people)'}">${n.text}<span class="note-meta">${new Date(n.date).toLocaleDateString()}</span></div>`).join('') || '<div style="font-size:12px; color:#CCC; text-align:center; padding:20px;">No manager notes.</div>';
     }
 
@@ -1349,7 +1469,7 @@
         const originalContent = buttonEl.innerHTML;
         buttonEl.innerHTML = `<div class="sync-loader"><span></span><span></span><span></span></div>`;
 
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff_notes'), { target, text, date: new Date().toISOString(), team });
+        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_notes').add({ target, text, date: new Date().toISOString(), team });
         
         textInput.value = "";
         showToast("Note Recorded");
@@ -1361,16 +1481,15 @@
     window.closeModal = () => {
         const modal = document.getElementById('global-modal');
         modal.classList.remove('active');
-        // Clear content after transition to prevent stale data
         setTimeout(() => {
-            (document.getElementById('modal-mount')).innerHTML = '';
+            document.getElementById('modal-mount').innerHTML = '';
         }, 300);
     };
 
     window.switchView = (v, btn) => {
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.tab-trigger').forEach(t => t.classList.remove('active'));
-        (document.getElementById('view-'+v)).classList.add('active');
+        document.getElementById('view-'+v).classList.add('active');
         btn.classList.add('active');
 
         const weekPicker = document.getElementById('week-picker-control');
