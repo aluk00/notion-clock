@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Team – Today</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f9fafb;
+            --card-bg-color: #ffffff;
+            --text-color: #1f2937;
+            --text-color-subtle: #6b7280;
+            --border-color: #e5e7eb;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-red: #ef4444;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin-bottom: 2rem;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        .status-section {
+            background-color: var(--card-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+        }
+        .status-section h2 {
+            font-size: 0.875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0 0 1rem 0;
+            display: flex;
+            align-items: center;
+        }
+        .status-dot {
+            width: 0.625rem;
+            height: 0.625rem;
+            border-radius: 50%;
+            margin-right: 0.75rem;
+        }
+        .status-section[data-status="office"] .status-dot { background-color: var(--accent-green); }
+        .status-section[data-status="wfh"] .status-dot { background-color: var(--accent-blue); }
+        .status-section[data-status="location"] .status-dot { background-color: var(--accent-purple); }
+        .status-section[data-status="leave"] .status-dot { background-color: var(--accent-red); }
+        
+        .staff-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .staff-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .staff-list li:last-child {
+            border-bottom: none;
+        }
+        .no-entries {
+            color: var(--text-color-subtle);
+            font-style: italic;
+            font-weight: 400;
+        }
+        .loader {
+            text-align: center;
+            padding: 2rem;
+            font-weight: 600;
+            color: var(--text-color-subtle);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Production Team – Today</h1>
+        <div class="status-grid">
+            <div class="status-section" data-status="office">
+                <h2><span class="status-dot"></span>In Office</h2>
+                <ul class="staff-list" id="office-list"><div class="loader">Loading...</div></ul>
+            </div>
+            <div class="status-section" data-status="wfh">
+                <h2><span class="status-dot"></span>WFH</h2>
+                <ul class="staff-list" id="wfh-list"><div class="loader">Loading...</div></ul>
+            </div>
+            <div class="status-section" data-status="location">
+                <h2><span class="status-dot"></span>Shoot / Client / Travel</h2>
+                <ul class="staff-list" id="location-list"><div class="loader">Loading...</div></ul>
+            </div>
+            <div class="status-section" data-status="leave">
+                <h2><span class="status-dot"></span>Leave / PTO</h2>
+                <ul class="staff-list" id="leave-list"><div class="loader">Loading...</div></ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase Modular SDK v10 imports from CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // --- Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+        };
+        const appId = "dmg-command-centre-native";
+        let firestoreListenerUnsubscribe = null;
+
+        // --- DOM References ---
+        const lists = {
+            office: document.getElementById('office-list'),
+            wfh: document.getElementById('wfh-list'),
+            location: document.getElementById('location-list'),
+            leave: document.getElementById('leave-list')
+        };
+
+        // --- UI Rendering ---
+        function renderStaff(staffList) {
+            // Clear previous content
+            Object.values(lists).forEach(list => list.innerHTML = '');
+
+            if (staffList.length === 0) {
+                Object.values(lists).forEach(list => {
+                    list.innerHTML = '<li class="no-entries">No entries yet</li>';
+                });
+                return;
+            }
+            
+            // NOTE: Client-side filtering based on a hypothetical `currentStatus` field
+            // as the required data source does not contain daily rota information.
+            const statusMap = {
+                office: staffList.filter(s => s.currentStatus === 'Office'),
+                wfh: staffList.filter(s => s.currentStatus === 'WFH'),
+                location: staffList.filter(s => ['Shoot', 'Client / Travel'].includes(s.currentStatus)),
+                leave: staffList.filter(s => ['Leave', 'PTO'].includes(s.currentStatus))
+            };
+
+            for (const [status, staff] of Object.entries(statusMap)) {
+                const listElement = lists[status];
+                if (staff.length > 0) {
+                    const fragment = document.createDocumentFragment();
+                    staff
+                        .sort((a, b) => a.firstName.localeCompare(b.firstName))
+                        .forEach(person => {
+                            const li = document.createElement('li');
+                            li.textContent = `${person.firstName} ${person.lastName}`;
+                            fragment.appendChild(li);
+                        });
+                    listElement.appendChild(fragment);
+                } else {
+                    listElement.innerHTML = '<li class="no-entries">None</li>';
+                }
+            }
+        }
+
+        // --- Firebase Initialization & Logic ---
+        try {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    console.log("Authenticated anonymously. User UID:", user.uid);
+                    // Prevent attaching multiple listeners
+                    if (firestoreListenerUnsubscribe) return;
+
+                    const staffDirectoryPath = `artifacts/${appId}/public/data/staff_directory`;
+                    const staffDirectoryCol = collection(db, staffDirectoryPath);
+
+                    firestoreListenerUnsubscribe = onSnapshot(staffDirectoryCol, (snapshot) => {
+                        const staffList = [];
+                        snapshot.forEach(doc => {
+                            staffList.push(doc.data());
+                        });
+                        renderStaff(staffList);
+                    }, (error) => {
+                        console.error("Error fetching Firestore data:", error);
+                        Object.values(lists).forEach(list => list.innerHTML = '<li class="no-entries">Error loading data.</li>');
+                    });
+                } else {
+                    console.log("User is signed out.");
+                    if (firestoreListenerUnsubscribe) {
+                        firestoreListenerUnsubscribe();
+                        firestoreListenerUnsubscribe = null;
+                    }
+                }
+            });
+
+            signInAnonymously(auth).catch(error => {
+                console.error("Anonymous sign-in failed:", error);
+            });
+
+        } catch (e) {
+            console.error("Firebase initialization failed:", e);
+             Object.values(lists).forEach(list => list.innerHTML = '<li class="no-entries">Initialization failed.</li>');
+        }
+
+    </script>
+</body>
+</html>
