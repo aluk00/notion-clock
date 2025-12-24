@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Navigation Hub</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+    <style>
+        :root {
+            --prod-green: #43B049;
+            --carbon: #1C1C1C;
+            --border-grey: #EAECEF;
+            --bg-white: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFFFFF;
+            margin: 0;
+            padding: 15px;
+            min-height: auto;
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-grey);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        /* --- CARD STYLING --- */
+        .nav-card {
+            background: var(--bg-white);
+            border: 1.5px solid var(--border-grey);
+            border-radius: 12px;
+            padding: 8px 16px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--carbon);
+            white-space: nowrap;
+        }
+
+        .nav-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--prod-green);
+            box-shadow: 0 8px 20px rgba(67, 176, 73, 0.12);
+        }
+
+        /* --- DOT MOTIF --- */
+        .dots-2x2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3px;
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .dot {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: var(--prod-green);
+        }
+
+        .hub-title {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            line-height: 1.1;
+        }
+
+        /* --- QUICK LINKS SECTION --- */
+        .quick-links-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding-left: 20px;
+            border-left: 1.5px solid var(--border-grey);
+            min-width: 150px;
+        }
+
+        .quick-link-item {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #999;
+            text-decoration: none;
+            transition: color 0.2s;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .quick-link-item:hover {
+            color: var(--prod-green);
+        }
+
+        .quick-link-item::before {
+            content: '';
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background-color: #EEE;
+        }
+
+        .quick-link-item:hover::before {
+            background-color: var(--prod-green);
+        }
+
+        /* --- MANAGE UI --- */
+        .plus-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #F3F4F6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 900;
+            color: #AAA;
+            cursor: pointer;
+            transition: 0.2s;
+            border: none;
+            flex-shrink: 0;
+        }
+        .plus-btn:hover {
+            background: var(--prod-green);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .manage-item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #F9FAFB;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out; }
+    </style>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // --- FIREBASE CONFIG ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+        authDomain: "dmg-command-centre-native.firebaseapp.com",
+        projectId: "dmg-command-centre-native",
+        storageBucket: "dmg-command-centre-native.firebasestorage.app",
+        messagingSenderId: "223535956454",
+        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const appId = 'dmg-command-centre-native';
+
+    const App = () => {
+        const [hubs, setHubs] = useState([]);
+        const [links, setLinks] = useState([]);
+        const [showModal, setShowModal] = useState(false);
+        const [modalType, setModalType] = useState(''); // 'hubs' or 'links'
+        const [newItem, setNewItem] = useState({ name: '', url: '' });
+
+        useEffect(() => {
+            auth.signInAnonymously();
+            const unsubscribe = db.collection('artifacts').doc(appId)
+                .collection('public').doc('data')
+                .collection('production_nav_assets')
+                .onSnapshot(snap => {
+                    const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    if (data.length === 0) seedDefaults();
+
+                    setHubs(data.filter(i => i.type === 'hub'));
+                    setLinks(data.filter(i => i.type === 'link'));
+                });
+            return () => unsubscribe();
+        }, []);
+
+        const seedDefaults = async () => {
+            const defaults = [
+                { name: 'Video Editing Hub', url: 'https://notion.so/video-editing-hub', type: 'hub' },
+                { name: 'Design Hub', url: 'https://notion.so/design-hub', type: 'hub' },
+                { name: 'Form Generator', url: 'https://aluk00.github.io/notion-clock/creative_suite.html', type: 'link' },
+                { name: 'Master Ledger', url: 'https://notion.so/master-ledger', type: 'link' },
+                { name: 'Production Rota', url: 'https://aluk00.github.io/notion-clock/management_hub.html', type: 'link' }
+            ];
+            const col = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('production_nav_assets');
+            for (const item of defaults) {
+                await col.add({ ...item, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+            }
+        };
+
+        const addItem = async () => {
+            if (!newItem.name || !newItem.url) return;
+            await db.collection('artifacts').doc(appId)
+                .collection('public').doc('data')
+                .collection('production_nav_assets')
+                .add({
+                    ...newItem,
+                    type: modalType === 'hubs' ? 'hub' : 'link',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            setNewItem({ name: '', url: '' });
+        };
+
+        const removeItem = async (id) => {
+            await db.collection('artifacts').doc(appId)
+                .collection('public').doc('data')
+                .collection('production_nav_assets')
+                .doc(id).delete();
+        };
+
+        return (
+            <div className="flex items-center gap-6 animate-fadeIn">
+                
+                {/* HUBS SECTION */}
+                <div className="flex items-center gap-4">
+                    {hubs.map(hub => (
+                        <a key={hub.id} href={hub.url} target="_top" class="nav-card">
+                            <div className="dots-2x2">
+                                <div className="dot"></div><div className="dot"></div>
+                                <div className="dot"></div><div className="dot"></div>
+                            </div>
+                            <div className="hub-title" dangerouslySetInnerHTML={{ __html: hub.name.replace(' ', '<br>') }}></div>
+                        </a>
+                    ))}
+                    <button onClick={() => { setModalType('hubs'); setShowModal(true); }} className="plus-btn" title="Manage Hub Cards">+</button>
+                </div>
+
+                {/* QUICK LINKS SECTION */}
+                <div className="quick-links-container">
+                    <div className="flex items-center justify-between gap-4 mb-0.5">
+                        <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest">Utilities</div>
+                        <button 
+                            onClick={() => { setModalType('links'); setShowModal(true); }} 
+                            className="w-3.5 h-3.5 flex items-center justify-center text-[10px] text-gray-300 hover:text-[#43B049] transition-colors font-black"
+                        >+</button>
+                    </div>
+                    {links.map(link => (
+                        <a key={link.id} href={link.url} target="_top" className="quick-link-item">{link.name}</a>
+                    ))}
+                </div>
+
+                {/* MANAGEMENT MODAL */}
+                {showModal && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+                        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xs font-black uppercase tracking-widest text-[#1C1C1C]">Manage {modalType === 'hubs' ? 'Hub Cards' : 'Utilities'}</h2>
+                                <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-black">✕</button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto pr-2 mb-6">
+                                {(modalType === 'hubs' ? hubs : links).map(item => (
+                                    <div key={item.id} className="manage-item-row">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-[#43B049]"></div>
+                                            <span className="text-xs font-bold text-[#1C1C1C]">{item.name}</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => removeItem(item.id)}
+                                            className="text-[9px] font-black text-red-500 uppercase hover:underline"
+                                        >Remove</button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="pt-6 border-t border-gray-100">
+                                <div className="text-[9px] font-black uppercase text-gray-400 mb-4 tracking-widest">Add New</div>
+                                <div className="space-y-3">
+                                    <input 
+                                        className="w-full border-2 border-gray-100 rounded-lg p-2.5 text-xs font-bold focus:border-[#43B049] outline-none text-[#1C1C1C]"
+                                        placeholder="Display Label"
+                                        value={newItem.name}
+                                        onChange={e => setNewItem({...newItem, name: e.target.value})}
+                                    />
+                                    <input 
+                                        className="w-full border-2 border-gray-100 rounded-lg p-2.5 text-xs font-bold focus:border-[#43B049] outline-none text-[#1C1C1C]"
+                                        placeholder="Destination URL"
+                                        value={newItem.url}
+                                        onChange={e => setNewItem({...newItem, url: e.target.value})}
+                                    />
+                                    <button 
+                                        onClick={addItem}
+                                        className="w-full bg-[#43B049] text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:brightness-110 transition-all shadow-md"
+                                    >
+                                        Add to Registry
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+            </div>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+</script>
+
+</body>
+</html>
