@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Ledger | DMG New Media</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --carbon: #000000;
+            --danger: #E94B4B;
+            --success: #43B049;
+            --surface: #FFFFFF;
+            --border: #E5E7EB;
+            --border-light: #F3F4F6;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --radius-xl: 32px;
+            --radius-lg: 16px;
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+
+            /* Team Palette */
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-operations: #21A0D8;
+            --team-sales: #21A0D8;
+            --team-executive: #1C1C1C;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #FFFFFF;
+            color: var(--ink);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        .hidden { display: none !important; }
+
+        /* --- LAYOUT --- */
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 80px;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 80px 40px;
+        }
+
+        @media (max-width: 1100px) {
+            .app-container { grid-template-columns: 1fr; padding: 40px 20px; }
+            .preview-panel { display: none; }
+        }
+
+        /* --- SIGNATURE HEADER --- */
+        .header { 
+            display: flex; 
+            flex-direction: row;
+            flex-wrap: nowrap;
+            align-items: center; 
+            margin-bottom: 80px;
+            gap: 40px;
+            width: 100%;
+        }
+
+        .header-main {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            flex-shrink: 0;
+        }
+
+        .graphic-text { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            text-transform: uppercase;
+            color: var(--carbon);
+            line-height: 0.85;
+        }
+
+        .header-title { 
+            font-size: 4.8rem; 
+            margin: 0;
+            transform: scaleY(0.9);
+            transform-origin: left center;
+        }
+
+        .header-dots {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            width: 82px; 
+            height: 82px;
+            flex-shrink: 0;
+        }
+
+        .header-dots span { 
+            background: var(--dmg-blue); 
+            border-radius: 50%; 
+            animation: dotCycle 3s infinite ease-in-out; 
+        }
+
+        @keyframes dotCycle {
+            0%, 100% { opacity: 0.4; transform: scale(0.9); }
+            50% { opacity: 0.8; transform: scale(1); }
+        }
+
+        .header-context { 
+            max-width: 550px; 
+            border-left: 1.5px solid var(--border);
+            padding-left: 40px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+        }
+        .header-context p { 
+            margin: 0; 
+            font-size: 13.5px; 
+            font-weight: 600; 
+            color: var(--ink-sub); 
+            line-height: 1.6; 
+        }
+
+        /* --- WIZARD SYSTEM --- */
+        .step { 
+            display: none; 
+            opacity: 0;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .step.active { 
+            display: block; 
+            opacity: 1;
+            animation: stepIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes stepIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .step.fade-out {
+            animation: stepOut 0.35s ease forwards;
+        }
+        @keyframes stepOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+
+        .step-label { font-size: 11px; font-weight: 800; color: var(--dmg-blue); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; display: block; }
+        
+        .step-title { 
+            font-size: 2.8rem; 
+            margin-bottom: 12px;
+            transform: scaleY(0.9);
+            transform-origin: left center;
+            white-space: nowrap;
+        }
+        .step-hint { font-size: 16px; color: var(--ink-sub); margin-bottom: 50px; font-weight: 500; }
+
+        /* Selection Cards */
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+        .select-card {
+            border: 2.5px solid var(--dmg-blue);
+            padding: 35px 30px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+            background: #FFFFFF;
+        }
+        .select-card:hover { border-color: var(--dmg-blue); transform: translateY(-5px); box-shadow: 0 15px 35px rgba(33, 160, 216, 0.1); background: #F8FCFF; }
+        .select-card.selected { background: #F0F9FF; box-shadow: 0 0 0 4px rgba(33, 160, 216, 0.1); border-width: 3.5px; }
+        .select-card h4 { font-size: 16px; font-weight: 900; text-transform: uppercase; color: var(--dmg-blue); margin-bottom: 10px; }
+        .select-card p { font-size: 14px; color: var(--ink-sub); line-height: 1.5; font-weight: 600; }
+
+        /* Personnel Search */
+        .staff-search-wrapper { position: relative; margin-bottom: 30px; }
+        .staff-search-input { width: 100%; padding: 22px; padding-left: 65px; border: 1.5px solid var(--border); border-radius: 16px; font-size: 16px; font-weight: 600; outline: none; transition: 0.2s; background: #FFFFFF; }
+        .staff-search-input:focus { border-color: var(--dmg-blue); box-shadow: 0 0 0 5px rgba(33, 160, 216, 0.05); }
+        .staff-search-wrapper::before { content: "🔍"; position: absolute; left: 25px; top: 50%; transform: translateY(-50%); opacity: 0.3; font-size: 20px; }
+        
+        .staff-list { max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 16px; background: #FFFFFF; }
+        .staff-item { display: flex; align-items: center; gap: 18px; padding: 18px 30px; cursor: pointer; border-bottom: 1px solid var(--border-light); transition: 0.2s; }
+        .staff-item:hover { background: #F8FCFF; }
+        .staff-item.selected { background: #F0F9FF; border-left: 6px solid var(--dmg-blue); }
+        
+        .name-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 14px; height: 14px; flex-shrink: 0; }
+        .name-dots span { width: 100%; height: 100%; border-radius: 50%; }
+
+        .staff-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 13px; text-transform: uppercase; flex-shrink: 0; }
+        .staff-info h5 { font-size: 16px; font-weight: 700; color: var(--carbon); }
+        .staff-info span { font-size: 11px; color: var(--ink-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; }
+
+        /* Forms */
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .form-group { margin-bottom: 30px; }
+        label { display: block; font-size: 10px; font-weight: 800; color: #BBB; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; }
+        input, textarea, .select-trigger { width: 100%; padding: 20px; border: 1.5px solid var(--border); border-radius: 14px; font-size: 15px; font-weight: 600; color: var(--carbon); background: #FFFFFF; outline: none; transition: 0.2s; }
+        input:focus, textarea:focus { border-color: var(--dmg-blue); }
+
+        /* Internal Due Date Checkbox logic */
+        .date-gate { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink-sub); }
+        .date-gate input { width: 18px; height: 18px; cursor: pointer; }
+        .input-wrap-gate { transition: 0.3s; }
+        .input-wrap-gate.disabled { opacity: 0.2; pointer-events: none; background: #F3F4F6; border-radius: 14px; filter: grayscale(1); }
+
+        /* Designed File Upload */
+        .upload-zone { 
+            border: 2.5px dashed var(--dmg-blue); border-radius: 20px; padding: 50px; 
+            text-align: center; cursor: pointer; transition: 0.3s; background: #F0F9FF;
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+        }
+        .upload-zone:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(33, 160, 216, 0.12); background: #FFFFFF; }
+        .upload-zone .upload-icon { font-size: 32px; }
+        .upload-zone p { font-size: 13px; font-weight: 900; color: var(--dmg-blue); text-transform: uppercase; letter-spacing: 0.1em; }
+
+        /* Property Control Button */
+        .add-prop-btn { 
+            width: 100%; padding: 20px; 
+            background: #FFFFFF; color: var(--dmg-blue); 
+            border: 2px dashed var(--dmg-blue); border-radius: 16px; 
+            font-size: 12px; font-weight: 900; cursor: pointer; 
+            text-transform: uppercase; letter-spacing: 0.08em; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin-top: 20px;
+        }
+        .add-prop-btn:hover { background: #F0F9FF; transform: translateY(-2px); }
+
+        .property-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 25px; }
+        .property-field { padding: 25px; background: #FFFFFF; border: 1.5px solid var(--border); border-radius: 16px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .remove-property { position: absolute; top: 15px; right: 15px; border: none; background: transparent; color: #CCC; font-size: 20px; cursor: pointer; line-height: 1; transition: 0.2s; }
+        .remove-property:hover { color: var(--danger); }
+
+        /* Manifest Manifest */
+        .recap-card { background: #FFFFFF; border: 2.5px solid var(--dmg-blue); border-radius: 24px; padding: 50px; }
+        .manifest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .manifest-item label { font-size: 10px; font-weight: 900; color: #BBB; text-transform: uppercase; margin-bottom: 10px; display: block; }
+        .manifest-item p { margin: 0; font-size: 18px; font-weight: 700; color: var(--carbon); line-height: 1.3; }
+
+        /* Buttons */
+        .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 80px; padding-top: 40px; border-top: 1px solid var(--border-light); }
+        .btn { display: inline-flex; align-items: center; gap: 12px; padding: 22px 50px; border-radius: 14px; font-size: 14px; font-weight: 800; cursor: pointer; transition: 0.3s; border: none; text-transform: uppercase; letter-spacing: 0.12em; }
+        .btn-back { background: transparent; color: var(--ink-sub); }
+        .btn-back:hover { background: #F9FAFB; color: var(--carbon); }
+        .btn-next { background: var(--carbon); color: white; }
+        .btn-next:hover:not(:disabled) { background: var(--dmg-blue); transform: translateY(-3px); box-shadow: 0 10px 25px rgba(33, 160, 216, 0.2); }
+        .btn-next:disabled { opacity: 0.2; cursor: not-allowed; }
+        .btn-submit { background: var(--success); color: white; width: 100%; justify-content: center; }
+
+        /* Sidebar Preview */
+        .preview-panel { position: sticky; top: 80px; height: fit-content; }
+        .preview-card { background: #FFFFFF; border-radius: 24px; border: 1px solid var(--border); padding: 45px; box-shadow: 0 4px 30px rgba(0,0,0,0.02); }
+        .preview-header { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-light); }
+        .preview-header h3 { font-size: 12px; font-weight: 800; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.12em; }
+        .preview-title { font-size: 22px; font-weight: 900; color: var(--dmg-blue); margin-bottom: 25px; line-height: 1.2; letter-spacing: -0.02em; }
+        .preview-row { padding: 14px 0; border-bottom: 1px solid #F5F6F8; }
+        .preview-row:last-child { border-bottom: none; }
+        .preview-label { font-size: 10px; font-weight: 800; color: #BBB; text-transform: uppercase; margin-bottom: 6px; }
+        .preview-value { font-size: 14px; font-weight: 700; color: var(--carbon); }
+
+        /* Custom Dropdowns */
+        .custom-select { position: relative; width: 100%; }
+        .select-options { 
+            position: absolute; top: calc(100% + 10px); left: 0; right: 0; 
+            background: white; border: 1px solid var(--border); border-radius: 16px; 
+            box-shadow: 0 20px 80px rgba(0,0,0,0.15); z-index: 9999; 
+            max-height: 250px; overflow-y: auto; display: none; 
+        }
+        .custom-select.open .select-options { display: block; }
+        .option { padding: 16px 20px; cursor: pointer; font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--border-light); color: var(--carbon); }
+        .option:hover { background: #F3F9FF; color: var(--dmg-blue); }
+
+        /* Property Tile Grid */
+        .property-grid-modal { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .property-tile { 
+            padding: 20px; border: 2px solid var(--border-light); border-radius: 14px; 
+            display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.2s; 
+        }
+        .property-tile:hover { border-color: var(--dmg-blue); background: #F8FCFF; transform: translateY(-2px); }
+        .property-tile .tile-icon { font-size: 22px; width: 44px; height: 44px; background: #F9FAFB; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .property-tile .tile-label { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--carbon); letter-spacing: 0.04em; line-height: 1.2; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(15px); display: none; align-items: center; justify-content: center; z-index: 10000; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 32px; width: 560px; max-height: 85vh; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 20px 80px rgba(0,0,0,0.15); }
+
+        .segmented-control { display: flex; background: #F3F4F6; padding: 6px; border-radius: 14px; margin-bottom: 20px; border: 1px solid var(--border); }
+        .seg-btn { flex: 1; padding: 12px; border: none; background: transparent; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; color: #888; transition: 0.2s; }
+        .seg-btn.active { background: white; color: var(--dmg-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+    </style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- Modal Overlay -->
+<div class="modal-overlay" id="propModalOverlay">
+    <div class="modal">
+        <div class="modal-header" style="padding: 35px; border-bottom: 1px solid var(--border-light); font-weight: 900; text-transform: uppercase; font-size: 15px;">ADD PROJECT DETAILS / TAG PERSONNEL</div>
+        <div class="modal-body" id="modalList" style="padding: 25px; overflow-y: auto; max-height: 450px;"></div>
+        <div class="modal-footer" style="padding: 20px 35px; border-top: 1px solid var(--border-light);">
+            <button class="btn btn-back" style="width:100%; border:1px solid #EEE;" onclick="window.closePropertyModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="app-container">
+    <main>
+        <header class="header">
+            <div class="header-main">
+                <div class="header-dots"><span></span><span></span><span></span><span></span></div>
+                <h1 class="header-title graphic-text">PROJECT<br>LEDGER</h1>
+            </div>
+            <div class="header-context">
+                <p>Log your work into the Master Ledger. This populates your personal to-do list, team scheduling queues, and wider capacity maps across the department in real-time.</p>
+            </div>
+        </header>
+
+        <div class="wizard-card">
+            <!-- PHASE 01 -->
+            <div class="step active" data-step="1">
+                <div class="step-label">Phase 01</div>
+                <h2 class="step-title graphic-text">What are we working on?</h2>
+                <p class="step-hint">Choose the entry category to begin.</p>
+                <div class="card-grid" id="typeGrid">
+                    <div class="select-card" data-val="Commercial Brief" onclick="window.autoAdvanceType(this)">
+                        <h4>Commercial Brief</h4>
+                        <p>Sales response / Decks / Pitching</p>
+                    </div>
+                    <div class="select-card" data-val="Original Format" onclick="window.autoAdvanceType(this)">
+                        <h4>Original Format</h4>
+                        <p>Shows, Deep Dives, Global Debate</p>
+                    </div>
+                    <div class="select-card" data-val="Daily Output" onclick="window.autoAdvanceType(this)">
+                        <h4>Daily Output</h4>
+                        <p>Now You Know, Breakdown, PopOff</p>
+                    </div>
+                    <div class="select-card" data-val="Reactive" onclick="window.autoAdvanceType(this)">
+                        <h4>Daily / Reactive</h4>
+                        <p>Trending turns and news rapids</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PHASE 02 -->
+            <div class="step" data-step="2">
+                <div class="step-label">Phase 02</div>
+                <h2 class="step-title graphic-text">Who's filing this?</h2>
+                <p class="step-hint">Search for your name in the directory.</p>
+                <div class="staff-search-wrapper"><input type="text" class="staff-search-input" id="staffSearch" placeholder="Search team member..." oninput="window.filterStaff()"></div>
+                <div class="staff-list" id="staffList"></div>
+                <div class="step-nav"><button class="btn btn-back" onclick="window.goToStep(1)">← Back</button></div>
+            </div>
+
+            <!-- PHASE 03 -->
+            <div class="step" data-step="3">
+                <div class="step-label">Phase 03</div>
+                <h2 class="step-title graphic-text" id="step3Title">Project Details</h2>
+                <p class="step-hint" id="step3Hint">Identify the brand and campaign context.</p>
+                
+                <div class="form-group">
+                    <label>Brand / Client</label>
+                    <div class="segmented-control">
+                        <button class="seg-btn active" id="btnExisting" onclick="window.toggleClient(false)">Existing</button>
+                        <button class="seg-btn" id="btnNew" onclick="window.toggleClient(true)">New Brand</button>
+                    </div>
+                    <div id="clientSelectMount"></div>
+                    <input type="text" id="inpClient" placeholder="Enter brand name..." class="hidden" oninput="window.updatePreview()">
+                </div>
+
+                <div class="form-group" id="briefNameGroup">
+                    <label id="titleLabel">Brief / Campaign Name</label>
+                    <input type="text" id="pTitle" placeholder="e.g. Little Wins Campaign" oninput="window.updatePreview()">
+                </div>
+
+                <div id="commercialFields" class="hidden">
+                    <div class="form-row">
+                        <div class="form-group"><label>Deal Stage</label><div id="stageSelectMount"></div></div>
+                        <div class="form-group"><label>Deal Value ($)</label><input type="number" id="pValue" placeholder="0" oninput="window.updatePreview()"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Campaign Duration</label>
+                        <div class="segmented-control">
+                            <button class="seg-btn active" onclick="window.setLongTerm(false, this)">Short Term</button>
+                            <button class="seg-btn" onclick="window.setLongTerm(true, this)">Long Term Campaign</button>
+                        </div>
+                        <input type="text" id="timelineInput" placeholder="Proposed timeline (e.g. March - June)..." class="hidden" oninput="window.updatePreview()">
+                    </div>
+                    <div class="form-group">
+                        <label>Response Type Needed</label>
+                        <div id="formatSelectMount"></div>
+                    </div>
+                </div>
+
+                <div class="step-nav">
+                    <button class="btn btn-back" onclick="window.goToStep(2)">← Back</button>
+                    <button class="btn btn-next" id="btnStep3Next" onclick="window.goToStep(4)">Continue →</button>
+                </div>
+            </div>
+
+            <!-- PHASE 04 -->
+            <div class="step" data-step="4">
+                <div class="step-label">Phase 04</div>
+                <h2 class="step-title graphic-text">Assets & Context</h2>
+                <p class="step-hint">Attach materials and set internal deadlines.</p>
+
+                <div class="form-row">
+                    <div class="form-group"><label>(CLIENT) DUE DATE</label><input type="date" id="dClient" onchange="window.updatePreview()"></div>
+                    <div class="form-group">
+                        <div class="date-gate" onclick="document.getElementById('checkInternal').click()">
+                            <input type="checkbox" id="checkInternal" onchange="window.toggleInternalDate()">
+                            <label style="margin:0;">Set (INTERNAL) DUE DATE?</label>
+                        </div>
+                        <div class="input-wrap-gate disabled" id="dInternalWrap">
+                            <input type="date" id="dInternal" onchange="window.updatePreview()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>BRIEF MATERIALS (Local Upload)</label>
+                    <div class="upload-zone" onclick="document.getElementById('fileInp').click()">
+                        <div class="upload-icon">📁</div>
+                        <p id="uploadTxt">Select Files from Computer</p>
+                        <input type="file" id="fileInp" class="hidden" multiple onchange="window.handleFiles()">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>(SALES) NOTES</label>
+                    <textarea id="pNotes" style="height:150px;" placeholder="Details for the team..." oninput="window.updatePreview()"></textarea>
+                </div>
+
+                <button class="add-prop-btn" onclick="window.openPropertyModal()">
+                    <span>+</span> Add additional information / Tag someone else
+                </button>
+                <div id="extraMount" class="property-grid"></div>
+
+                <div class="step-nav">
+                    <button class="btn btn-back" onclick="window.goToStep(3)">← Back</button>
+                    <button class="btn btn-next" id="btnStep4Next" onclick="window.goToStep(5)">Review Manifest →</button>
+                </div>
+            </div>
+
+            <!-- PHASE 05 -->
+            <div class="step" data-step="5">
+                <div class="step-label">Phase 05</div>
+                <h2 class="step-title graphic-text">Final Recap</h2>
+                <p class="step-hint">Confirm the project details before uploading to Notion.</p>
+                <div id="recapMount" class="recap-card"></div>
+                <div class="step-nav">
+                    <button class="btn btn-back" onclick="window.goToStep(4)">← Back</button>
+                    <button class="btn btn-next btn-submit" id="btnSubmit" onclick="window.submitLedger()">UPLOAD ✓</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <aside class="preview-panel">
+        <div class="preview-card">
+            <div class="preview-header">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:2px; width:12px;"><span style="width:5px; height:5px; background:var(--dmg-blue); border-radius:50%;"></span><span style="width:5px; height:5px; background:var(--dmg-blue); border-radius:50%;"></span><span style="width:5px; height:5px; background:var(--dmg-blue); border-radius:50%;"></span><span style="width:5px; height:5px; background:var(--dmg-blue); border-radius:50%;"></span></div>
+                <h3>Live Preview</h3>
+            </div>
+            <div class="preview-title" id="preTitle">New Entry</div>
+            <div class="preview-row" id="preClientRow"><span class="preview-label">Brand / Client</span><span class="preview-value" id="preClient">-</span></div>
+            <div class="preview-row" id="preTypeRow"><span class="preview-label">Type</span><span class="preview-value" id="preType">-</span></div>
+            <div class="preview-row" id="preUserRow"><span class="preview-label">Filed By</span><span class="preview-value" id="preUser">-</span></div>
+            <div id="preDynamic"></div>
+        </div>
+    </aside>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, addDoc, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const appId = "dmg-command-centre-native";
+    const firebaseConfig = {
+        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+        authDomain: "dmg-command-centre-native.firebaseapp.com",
+        projectId: "dmg-command-centre-native",
+        storageBucket: "dmg-command-centre-native.firebasestorage.app",
+        messagingSenderId: "223535956454",
+        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const NOTION_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+    const teamColors = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#21A0D8', Sales: '#21A0D8', People: '#21A0D8', Executive: '#1C1C1C' };
+    
+    // Canonical Notion Mapping
+    const extraFieldsList = [
+        { id: 'creativeLead', label: 'CREATIVE LEAD(S)', icon: '🎨', type: 'person', team: 'Creative' },
+        { id: 'productionLead', label: 'PRODUCTION LEAD(S)', icon: '🎬', type: 'person', team: 'Production' },
+        { id: 'socialLead', label: 'SOCIAL LEAD(S)', icon: '📱', type: 'person', team: 'Social' },
+        { id: 'contentCreators', label: 'CONTENT CREATOR(S)', icon: '✍️', type: 'person', team: 'all' },
+        { id: 'decisionMakers', label: 'DECISION MAKER(S)', icon: '🎯', type: 'person', team: 'all' },
+        { id: 'priorityLevel', label: 'PRIORITY LEVEL', icon: '⚡', type: 'select', options: ['Low', 'Medium', 'High'] },
+        { id: 'effortScore', label: 'EFFORT SCORE', icon: '📊', type: 'number' },
+        { id: 'vertical', label: 'VERTICAL', icon: '📏', type: 'select', options: ['Social', 'Editorial', 'Shows', 'Distribution', 'Commercial', 'Hybrid'] },
+        { id: 'assetsNeeded', label: 'ASSET(S) NEEDED', icon: '📦', type: 'select', options: ['Misc.', 'Static Graphics', 'Thumbnail', '16:9 Video', '9:16 Video'] },
+        { id: 'internalAssets', label: 'INTERNAL ASSETS', icon: '📁', type: 'url' },
+        { id: 'liveLink', label: 'LIVE LINK', icon: '🌐', type: 'url' },
+        { id: 'deskState', label: 'DESK STATE', icon: '🖥️', type: 'select', options: ['With Design', 'Ready for Edit', 'Edit Blocked', 'Ready for Social', 'Completed'] }
+    ];
+
+    let state = { step: 1, type: '', user: null, extra: [], staff: [], isAuth: false };
+
+    // --- GLOBALLY SCOPED FUNCTIONS ---
+    window.createCustomSelect = (id, options, placeholder, mountId, onSelect) => {
+        const mount = document.getElementById(mountId);
+        if(!mount) return;
+        mount.innerHTML = `<div class="custom-select" id="${id}"><div class="select-trigger">${placeholder}</div><div class="select-options">${options.map(o => `<div class="option" data-val="${o}">${o}</div>`).join('')}</div></div>`;
+        const select = document.getElementById(id);
+        const trigger = select.querySelector('.select-trigger');
+        trigger.onclick = (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.custom-select').forEach(s => s !== select && s.classList.remove('open'));
+            select.classList.toggle('open');
+        };
+        select.querySelectorAll('.option').forEach(opt => {
+            opt.onclick = (e) => {
+                e.stopPropagation();
+                const val = opt.dataset.val;
+                trigger.textContent = val;
+                select.dataset.value = val;
+                select.classList.remove('open');
+                if(onSelect) onSelect(val);
+                window.updatePreview();
+            };
+        });
+    };
+
+    window.goToStep = (s) => {
+        if (s > state.step && !validateSteps()) return;
+        const current = document.querySelector('.step.active');
+        if(current) {
+            current.classList.add('fade-out');
+            setTimeout(() => {
+                current.classList.remove('active', 'fade-out');
+                state.step = s;
+                if(s === 5) renderRecap();
+                const target = document.querySelector(`.step[data-step="${s}"]`);
+                target.classList.add('active');
+                document.querySelectorAll('.progress-step').forEach((el, i) => {
+                    el.classList.toggle('active', i+1 === s);
+                    el.classList.toggle('complete', i+1 < s);
+                });
+            }, 350);
+        }
+    };
+
+    function validateSteps() {
+        if(state.step === 3 && state.type === 'Commercial Brief') {
+            const format = document.getElementById('pFormat')?.dataset.value;
+            const btn = document.getElementById('btnStep3Next');
+            if(!format) { btn.disabled = true; return false; }
+            btn.disabled = false;
+        }
+        if(state.step === 4) {
+            const date = document.getElementById('dClient').value;
+            const btn = document.getElementById('btnStep4Next');
+            if(!date) { btn.disabled = true; return false; }
+            btn.disabled = false;
+        }
+        return true;
+    }
+
+    window.autoAdvanceType = (el) => {
+        document.querySelectorAll('#typeGrid .select-card').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        state.type = el.dataset.val;
+        
+        const isComm = state.type === 'Commercial Brief';
+        document.getElementById('commercialFields').classList.toggle('hidden', !isComm);
+        document.getElementById('step3Title').textContent = isComm ? 'Commercial Brief' : 'Project Details';
+        document.getElementById('titleLabel').textContent = isComm ? 'Campaign Name' : 'Project Title';
+
+        window.createCustomSelect('selClient', ['Sky Vegas', 'McDonald\'s', 'Trading 212', 'Nationwide', 'Next', 'Primark', 'Jaecoo', 'Chery', 'Supercell'], 'Select Brand...', 'clientSelectMount');
+        if(isComm) {
+            window.createCustomSelect('pStage', ['Brief Received', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete'], 'Select Status...', 'stageSelectMount');
+            window.createCustomSelect('pFormat', ['DMG Branded Deck', 'DMG Branded PDF', 'Plain Word Doc'], 'Required Format...', 'formatSelectMount');
+        }
+        window.updatePreview();
+        setTimeout(() => window.goToStep(2), 400);
+    };
+
+    window.renderStaff = () => {
+        const mount = document.getElementById('staffList');
+        const query = (document.getElementById('staffSearch')?.value || '').toLowerCase();
+        const filtered = state.staff.filter(s => s.name.toLowerCase().includes(query)).sort((a,b) => a.name.localeCompare(b.name));
+        mount.innerHTML = filtered.map(s => {
+            const col = teamColors[s.team] || '#EEE';
+            const initials = s.firstName[0] + (s.lastName ? s.lastName[0] : '');
+            return `
+                <div class="staff-item" id="staff-${s.id}">
+                    <div class="name-dots"><span style="background:${col}"></span><span style="background:${col}"></span><span style="background:${col}"></span><span style="background:${col}"></span></div>
+                    <div class="staff-avatar" style="background:${col}">${initials}</div>
+                    <div class="staff-info"><h5>${s.name}</h5><span>${s.team}</span></div>
+                </div>
+            `;
+        }).join('');
+        filtered.forEach(s => {
+            document.getElementById(`staff-${s.id}`).onclick = () => {
+                document.querySelectorAll('.staff-item').forEach(i => i.classList.remove('selected'));
+                document.getElementById(`staff-${s.id}`).classList.add('selected');
+                state.user = s;
+                window.updatePreview();
+                setTimeout(() => window.goToStep(3), 350);
+            };
+        });
+    }
+
+    window.filterStaff = () => window.renderStaff();
+
+    window.toggleClient = (isNew) => {
+        document.getElementById('btnExisting').classList.toggle('active', !isNew);
+        document.getElementById('btnNew').classList.toggle('active', isNew);
+        document.getElementById('clientSelectMount').classList.toggle('hidden', isNew);
+        document.getElementById('inpClient').classList.toggle('hidden', !isNew);
+        window.updatePreview();
+    };
+
+    window.toggleInternalDate = () => {
+        const chk = document.getElementById('checkInternal');
+        document.getElementById('dInternalWrap').classList.toggle('disabled', !chk.checked);
+    };
+
+    window.handleFiles = () => {
+        const count = document.getElementById('fileInp').files.length;
+        document.getElementById('uploadTxt').textContent = count > 0 ? `${count} File(s) Ready` : `Select Files from Computer`;
+    };
+
+    // --- MODAL & PROPERTY SYSTEM ---
+    window.openPropertyModal = () => {
+        const mount = document.getElementById('modalList');
+        mount.innerHTML = `<div class="property-grid-modal">${extraFieldsList.map(f => `
+            <div class="property-tile" onclick="window.addExtraProp('${f.id}')">
+                <div class="tile-icon">${f.icon}</div>
+                <div class="tile-label">${f.label}</div>
+            </div>
+        `).join('')}</div>`;
+        document.getElementById('propModalOverlay').classList.add('active');
+    };
+    window.closePropertyModal = () => document.getElementById('propModalOverlay').classList.remove('active');
+
+    window.addExtraProp = (id) => {
+        const field = extraFieldsList.find(x => x.id === id);
+        state.extra.push({...field, value: ''});
+        window.renderExtra();
+        window.closePropertyModal();
+    };
+
+    window.deleteProperty = (i) => {
+        state.extra.splice(i, 1);
+        window.renderExtra();
+        window.updatePreview();
+    };
+
+    window.renderExtra = () => {
+        const mount = document.getElementById('extraMount');
+        mount.innerHTML = state.extra.map((f, i) => {
+            let inputHtml = '';
+            if(f.type === 'person') {
+                const teamStaff = f.team === 'all' ? state.staff : state.staff.filter(s => s.team === f.team);
+                const names = teamStaff.map(s => `${s.firstName} ${s.lastName}`).sort();
+                inputHtml = `<div id="mount-extra-${i}"></div>`;
+                setTimeout(() => {
+                    window.createCustomSelect(`extra-sel-${i}`, names, `Select ${f.team === 'all' ? 'Personnel' : f.team}...`, `mount-extra-${i}`, (val) => {
+                        state.extra[i].value = val;
+                    });
+                }, 10);
+            } else if(f.type === 'select') {
+                inputHtml = `<div id="mount-extra-${i}"></div>`;
+                setTimeout(() => {
+                    window.createCustomSelect(`extra-sel-${i}`, f.options, 'Choose...', `mount-extra-${i}`, (val) => {
+                        state.extra[i].value = val;
+                    });
+                }, 10);
+            } else {
+                inputHtml = `<input type="${f.type}" value="${f.value}" placeholder="Enter details..." oninput="state.extra[${i}].value=this.value; window.updatePreview();">`;
+            }
+
+            return `
+                <div class="property-field">
+                    <label>${f.icon} ${f.label}</label>
+                    ${inputHtml}
+                    <button class="remove-property" onclick="window.deleteProperty(${i})">✕</button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.updatePreview = () => {
+        const client = document.getElementById('inpClient').classList.contains('hidden') ? (document.getElementById('selClient')?.dataset.value || '-') : (document.getElementById('inpClient').value || '-');
+        const val = document.getElementById('pValue')?.value;
+        const set = (id, txt) => { if(document.getElementById(id)) document.getElementById(id).textContent = txt; };
+        set('preTitle', document.getElementById('pTitle').value || 'New Entry');
+        set('preClient', client);
+        set('preType', state.type || '-');
+        set('preUser', state.user ? state.user.name : '-');
+        
+        const dyn = document.getElementById('preDynamic');
+        if(dyn) dyn.innerHTML = state.extra.filter(x => x.value).map(x => `<div class="preview-row"><span class="preview-label">${x.label}</span><span class="preview-value">${x.value}</span></div>`).join('');
+        validateSteps();
+    };
+
+    function renderRecap() {
+        const client = document.getElementById('inpClient').classList.contains('hidden') ? (document.getElementById('selClient')?.dataset.value || 'None') : document.getElementById('inpClient').value;
+        const format = document.getElementById('pFormat')?.dataset.value || 'N/A';
+        document.getElementById('recapMount').innerHTML = `
+            <div class="manifest-grid">
+                <div class="manifest-item"><label>Brand / Client</label><p>${client}</p></div>
+                <div class="manifest-item"><label>Campaign</label><p>${document.getElementById('pTitle').value || 'Unnamed'}</p></div>
+                <div class="manifest-item"><label>Type</label><p>${state.type}</p></div>
+                <div class="manifest-item"><label>Response Needed</label><p>${format}</p></div>
+                <div class="manifest-item"><label>Filed By</label><p>${state.user?.name || '-'}</p></div>
+                <div class="manifest-item"><label>Client Due</label><p>${document.getElementById('dClient').value || 'TBC'}</p></div>
+            </div>
+        `;
+    }
+
+    window.submitLedger = async () => {
+        const btn = document.getElementById('btnSubmit');
+        btn.disabled = true; btn.innerHTML = 'UPLOADING...';
+        const client = document.getElementById('inpClient').classList.contains('hidden') ? (document.getElementById('selClient')?.dataset.value || '') : document.getElementById('inpClient').value;
+
+        // Map strings to Notion allowed select options
+        let finalFormat = 'Deck';
+        const formatValue = document.getElementById('pFormat')?.dataset.value;
+        if (formatValue && (formatValue.includes('Doc') || formatValue.includes('PDF'))) finalFormat = 'Google Doc';
+
+        const payload = {
+            TITLE: document.getElementById('pTitle').value,
+            "PROJECT TYPE": state.type,
+            "CLIENT / EXTERNAL PARTNER": client,
+            "DEAL STAGE": document.getElementById('pStage')?.dataset.value || '',
+            "DEAL VALUE": parseFloat(document.getElementById('pValue')?.value) || 0,
+            "RESPONSE TYPE NEEDED": finalFormat,
+            "(CLIENT) DUE DATE": document.getElementById('dClient').value,
+            "(INTERNAL) DUE DATE": document.getElementById('dInternal').value,
+            "(SALES) NOTES": document.getElementById('pNotes').value,
+            "SALES LEAD(S)": state.user?.name,
+            timestamp: serverTimestamp()
+        };
+        state.extra.forEach(x => { if(x.value) payload[x.label] = x.value; });
+
+        try {
+            await addDoc(collection(db, "artifacts", appId, "public", "data", "projects"), payload);
+            await fetch(NOTION_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const toast = document.getElementById('toast');
+            toast.textContent = '✓ Upload Complete'; toast.classList.add('active', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } catch (e) { btn.disabled = false; btn.innerHTML = 'Error - Try Again'; }
+    };
+
+    // --- INITIAL CONNECTION ---
+    signInAnonymously(auth);
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) return;
+        state.isAuth = true;
+        const staffRef = collection(db, "artifacts", appId, "public", "data", "staff_directory");
+        onSnapshot(staffRef, (snap) => {
+            state.staff = [];
+            snap.forEach(doc => state.staff.push({ id: doc.id, name: `${doc.data().firstName} ${doc.data().lastName}`, ...doc.data() }));
+            window.renderStaff();
+        });
+    });
+</script>
+</body>
+</html>
