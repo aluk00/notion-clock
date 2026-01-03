@@ -230,13 +230,13 @@
         .remove-property { position: absolute; top: 15px; right: 15px; border: none; background: transparent; color: #CCC; font-size: 20px; cursor: pointer; line-height: 1; transition: 0.2s; }
         .remove-property:hover { color: var(--danger); }
 
-        /* Manifest Manifest */
+        /* Manifest Recap */
         .recap-card { background: #FFFFFF; border: 2.5px solid var(--dmg-blue); border-radius: 24px; padding: 50px; }
         .manifest-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
         .manifest-item label { font-size: 10px; font-weight: 900; color: #BBB; text-transform: uppercase; margin-bottom: 10px; display: block; }
         .manifest-item p { margin: 0; font-size: 18px; font-weight: 700; color: var(--carbon); line-height: 1.3; }
 
-        /* Buttons */
+        /* Navigation Buttons */
         .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 80px; padding-top: 40px; border-top: 1px solid var(--border-light); }
         .btn { display: inline-flex; align-items: center; gap: 12px; padding: 22px 50px; border-radius: 14px; font-size: 14px; font-weight: 800; cursor: pointer; transition: 0.3s; border: none; text-transform: uppercase; letter-spacing: 0.12em; }
         .btn-back { background: transparent; color: var(--ink-sub); }
@@ -246,7 +246,7 @@
         .btn-next:disabled { opacity: 0.2; cursor: not-allowed; }
         .btn-submit { background: var(--success); color: white; width: 100%; justify-content: center; }
 
-        /* Sidebar Preview */
+        /* Preview Sidebar */
         .preview-panel { position: sticky; top: 80px; height: fit-content; }
         .preview-card { background: #FFFFFF; border-radius: 24px; border: 1px solid var(--border); padding: 45px; box-shadow: 0 4px 30px rgba(0,0,0,0.02); }
         .preview-header { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-light); }
@@ -257,7 +257,7 @@
         .preview-label { font-size: 10px; font-weight: 800; color: #BBB; text-transform: uppercase; margin-bottom: 6px; }
         .preview-value { font-size: 14px; font-weight: 700; color: var(--carbon); }
 
-        /* Custom Dropdowns */
+        /* Custom Dropdown Styling */
         .custom-select { position: relative; width: 100%; }
         .select-options { 
             position: absolute; top: calc(100% + 10px); left: 0; right: 0; 
@@ -355,7 +355,7 @@
             <div class="step" data-step="3">
                 <div class="step-label">Phase 03</div>
                 <h2 class="step-title graphic-text" id="step3Title">Project Details</h2>
-                <p class="step-hint" id="step3Hint">Identify the brand and campaign context.</p>
+                <p class="step-hint" id="step3Hint">Identify the brand / client and campaign context.</p>
                 
                 <div class="form-group">
                     <label>Brand / Client</label>
@@ -427,7 +427,7 @@
 
                 <div class="form-group">
                     <label>(SALES) NOTES</label>
-                    <textarea id="pNotes" style="height:150px;" placeholder="Details for the team..." oninput="window.updatePreview()"></textarea>
+                    <textarea id="pNotes" style="height:120px;" placeholder="Details for the team..." oninput="window.updatePreview()"></textarea>
                 </div>
 
                 <button class="add-prop-btn" onclick="window.openPropertyModal()">
@@ -598,7 +598,10 @@
             const initials = s.firstName[0] + (s.lastName ? s.lastName[0] : '');
             return `
                 <div class="staff-item" id="staff-${s.id}">
-                    <div class="name-dots"><span style="background:${col}"></span><span style="background:${col}"></span><span style="background:${col}"></span><span style="background:${col}"></span></div>
+                    <div class="name-dots">
+                        <span style="background:${col}"></span><span style="background:${col}"></span>
+                        <span style="background:${col}"></span><span style="background:${col}"></span>
+                    </div>
                     <div class="staff-avatar" style="background:${col}">${initials}</div>
                     <div class="staff-info"><h5>${s.name}</h5><span>${s.team}</span></div>
                 </div>
@@ -633,6 +636,14 @@
     window.handleFiles = () => {
         const count = document.getElementById('fileInp').files.length;
         document.getElementById('uploadTxt').textContent = count > 0 ? `${count} File(s) Ready` : `Select Files from Computer`;
+    };
+
+    window.setLongTerm = (isLong, el) => {
+        state.isLongTerm = isLong;
+        el.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('timelineInput').classList.toggle('hidden', !isLong);
+        window.updatePreview();
     };
 
     // --- MODAL & PROPERTY SYSTEM ---
@@ -766,7 +777,10 @@
         const staffRef = collection(db, "artifacts", appId, "public", "data", "staff_directory");
         onSnapshot(staffRef, (snap) => {
             state.staff = [];
-            snap.forEach(doc => state.staff.push({ id: doc.id, name: `${doc.data().firstName} ${doc.data().lastName}`, ...doc.data() }));
+            snap.forEach(doc => {
+                const d = doc.data();
+                state.staff.push({ id: doc.id, name: `${d.firstName} ${d.lastName}`, ...d });
+            });
             window.renderStaff();
         });
     });
