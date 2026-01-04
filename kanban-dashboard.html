@@ -2,26 +2,23 @@
 <html lang="en-GB">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Command Centre | DMG New Media</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root { --dmg-blue: #21a0d8; --surface: #FFFFFF; --border: #E5E7EB; --border-light: #F3F4F6; --ink: #1C1C1C; --ink-sub: #6B7280; --success: #10B981; --warning: #F59E0B; --danger: #EF4444; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: #F9FAFB; color: var(--ink); min-height: 100vh; }
+        :root { --dmg-blue: #21a0d8; --surface: #FFFFFF; --border: #E5E7EB; --border-light: #F3F4F6; --ink: #1C1C1C; --ink-sub: #6B7280; }
+        body { font-family: 'Inter', sans-serif; background: #F9FAFB; color: var(--ink); margin: 0; }
         .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-        .header-title { font-size: 1.25rem; font-weight: 900; text-transform: uppercase; }
-        .refresh-btn { background: var(--surface); border: 1.5px solid var(--border); padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        .stats-bar { padding: 20px 40px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 40px; overflow-x: auto; }
+        .refresh-btn { background: var(--surface); border: 1.5px solid var(--border); padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .stats-bar { padding: 20px 40px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 40px; }
         .stat-value { font-size: 28px; font-weight: 900; line-height: 1; }
         .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); }
         .kanban-container { padding: 24px 40px; overflow-x: auto; }
         .kanban-board { display: flex; gap: 16px; min-width: max-content; }
-        .kanban-column { width: 300px; flex-shrink: 0; }
+        .kanban-column { width: 280px; flex-shrink: 0; }
         .column-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-radius: 10px 10px 0 0; border: 1px solid var(--border); }
         .column-name { font-size: 11px; font-weight: 800; text-transform: uppercase; }
-        .column-body { background: var(--border-light); border-radius: 0 0 10px 10px; padding: 10px; min-height: 400px; display: flex; flex-direction: column; gap: 10px; }
-        .project-card { background: var(--surface); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; border: 1.5px solid transparent; }
+        .column-body { background: var(--border-light); border-radius: 0 0 10px 10px; padding: 10px; min-height: 500px; display: flex; flex-direction: column; gap: 10px; }
+        .project-card { background: var(--surface); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1.5px solid transparent; }
         .card-client { font-size: 9px; font-weight: 800; text-transform: uppercase; color: var(--dmg-blue); }
         .card-title { font-size: 14px; font-weight: 700; margin: 8px 0; }
         .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; }
@@ -29,9 +26,9 @@
     </style>
 </head>
 <body>
-<div class="loading-overlay" id="loadingOverlay"><div>Loading...</div></div>
+<div class="loading-overlay" id="loadingOverlay"><div>Syncing Ledger...</div></div>
 <header class="header">
-    <h1 class="header-title">Project Command Centre</h1>
+    <h1 style="font-size:1.25rem; font-weight:900; text-transform:uppercase; margin:0;">Command Centre</h1>
     <div>
         <span id="lastUpdated" style="font-size:11px; color:gray; margin-right:15px;"></span>
         <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
@@ -39,16 +36,11 @@
 </header>
 <div class="stats-bar" id="statsBar">
     <div class="stat-item"><span class="stat-value" id="statTotal">0</span><br><span class="stat-label">Total Projects</span></div>
-    <div class="stat-item"><span class="stat-value" id="statOverdue">0</span><br><span class="stat-label">Overdue</span></div>
 </div>
-<div class="kanban-container">
-    <div class="kanban-board" id="kanbanBoard"></div>
-</div>
+<div class="kanban-container"><div class="kanban-board" id="kanbanBoard"></div></div>
 
 <script>
     const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
-    
-    // THESE MUST MATCH YOUR NOTION LABELS EXACTLY
     const STAGES = [
         { id: 'To Be Briefed', name: 'To Be Briefed', color: '#6B7280' },
         { id: 'Pitch Sent', name: 'Pitch Sent', color: '#3B82F6' },
@@ -60,43 +52,32 @@
     async function loadAll() {
         document.getElementById('loadingOverlay').classList.remove('hidden');
         try {
-            const [statsRes, projRes] = await Promise.all([
-                fetch(API_URL + '/stats'),
-                fetch(API_URL + '/projects')
-            ]);
+            const [statsRes, projRes] = await Promise.all([ fetch(API_URL + '/stats'), fetch(API_URL + '/projects') ]);
             const statsData = await statsRes.json();
             const projData = await projRes.json();
 
-            if (statsData.success) {
-                document.getElementById('statTotal').textContent = statsData.stats.total;
-                document.getElementById('statOverdue').textContent = statsData.stats.overdue;
-            }
+            if (statsData.success) { document.getElementById('statTotal').textContent = statsData.stats.total; }
 
             const board = document.getElementById('kanbanBoard');
             board.innerHTML = STAGES.map(stage => {
                 const stageProjects = (projData.projects || []).filter(p => p.stage === stage.id);
                 return `
                     <div class="kanban-column">
-                        <div class="column-header">
-                            <span class="column-name">${stage.name}</span>
-                            <span style="font-size:10px; font-weight:800; color:gray;">${stageProjects.length}</span>
-                        </div>
+                        <div class="column-header"><span class="column-name">${stage.name}</span><span style="font-size:10px; font-weight:800; color:gray;">${stageProjects.length}</span></div>
                         <div class="column-body">
-                            ${stageProjects.length === 0 ? '<div style="text-align:center; padding:20px; font-size:11px; color:gray;">No items</div>' : 
+                            ${stageProjects.length === 0 ? '<div style="text-align:center; padding:20px; font-size:11px; color:gray;">No active items</div>' : 
                             stageProjects.map(p => `
                                 <div class="project-card">
                                     <div class="card-client">${p.client}</div>
                                     <div class="card-title">${p.title}</div>
-                                    <div style="font-size:10px; color:gray;">Due: ${p.dueDate || 'No Date'}</div>
+                                    <div style="font-size:10px; color:gray;">Due: ${p.dueDate || 'TBC'}</div>
                                 </div>
                             `).join('')}
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
-            
-            document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
-        } catch (e) { console.error(e); }
+            document.getElementById('lastUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+        } catch (e) { console.error('Sync Error:', e); }
         document.getElementById('loadingOverlay').classList.add('hidden');
     }
     loadAll();
