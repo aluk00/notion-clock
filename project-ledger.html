@@ -1,44 +1,226 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-    <meta charset="UTF-8"><title>Project Ledger</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Intake | DMG New Media</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style> body { font-family: 'Inter', sans-serif; } .btn-submit { background: #43B049; color: white; width: 100%; padding: 20px; border-radius: 12px; font-weight: 800; } </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --carbon: #000000;
+            --border: #E5E7EB;
+            --border-light: #F3F4F6;
+            --transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #FFFFFF; color: var(--carbon); -webkit-font-smoothing: antialiased; }
+        .hidden { display: none !important; }
+
+        /* --- SIGNATURE HEADER --- */
+        .header { display: flex; align-items: center; gap: 35px; padding: 40px; border-bottom: 1.5px solid #F3F4F6; margin-bottom: 50px; }
+        .header-main { display: flex; align-items: center; gap: 20px; }
+        .header-title { font-size: 3.2rem; font-weight: 900; letter-spacing: -0.05em; text-transform: uppercase; line-height: 0.85; transform: scaleY(0.9); transform-origin: left center; }
+        
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 75px; height: 75px; flex-shrink: 0; }
+        .dots-grid span { background: var(--dmg-blue); border-radius: 50%; animation: dotCycle 3s infinite ease-in-out; opacity: 0.8; }
+        @keyframes dotCycle { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+        .dots-grid span:nth-child(1) { animation-delay: 0s; }
+        .dots-grid span:nth-child(2) { animation-delay: 0.75s; }
+        .dots-grid span:nth-child(4) { animation-delay: 1.5s; }
+        .dots-grid span:nth-child(3) { animation-delay: 2.25s; }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 0 40px 100px; }
+        
+        /* --- FORM COMPONENTS --- */
+        .m-label { font-size: 10px; font-weight: 900; color: #BBB; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 12px; display: block; }
+        .m-input { width: 100%; padding: 18px; border: 1.5px solid var(--border); border-radius: 14px; font-size: 15px; font-weight: 600; outline: none; margin-bottom: 25px; background: #FFFFFF; transition: 0.2s; }
+        .m-input:focus { border-color: var(--dmg-blue); background: #F8FBFC; }
+
+        .section-card { background: #FFFFFF; padding: 45px; border-radius: 28px; border: 1.5px solid var(--border-light); margin-bottom: 30px; position: relative; opacity: 0; transform: translateY(20px); animation: slideIn 0.6s forwards; }
+        @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+        
+        .card-header-lockup { display: flex; align-items: center; gap: 12px; margin-bottom: 25px; }
+        .card-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 14px; height: 14px; opacity: 0.5; }
+        .card-dots span { background: var(--dmg-blue); border-radius: 50%; }
+        .phase-tag { font-size: 10px; font-weight: 900; color: var(--dmg-blue); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Custom Select UI */
+        .select-card { border: 1.5px solid var(--border); padding: 30px; border-radius: 20px; cursor: pointer; transition: var(--transition); background: #FFF; position: relative; }
+        .select-card:hover { border-color: var(--dmg-blue); background: #F8FBFC; transform: translateY(-3px); }
+        .select-card.active { border-color: var(--dmg-blue); border-width: 3px; background: #F0F9FF; }
+        .select-card h4 { font-size: 14px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
+        .select-card p { font-size: 11px; font-weight: 600; color: #999; }
+
+        /* Staff List */
+        .staff-list { max-height: 300px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 16px; margin-bottom: 20px; }
+        .staff-item { display: flex; align-items: center; gap: 15px; padding: 15px 25px; cursor: pointer; border-bottom: 1px solid #F9FAFB; transition: 0.2s; }
+        .staff-item:hover { background: #F8FBFC; }
+        .staff-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--dmg-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; }
+
+        .btn-submit { background: var(--carbon); color: white; width: 100%; padding: 24px; border-radius: 18px; font-weight: 900; text-transform: uppercase; font-size: 14px; letter-spacing: 0.1em; transition: 0.3s; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 15px; }
+        .btn-submit:hover { transform: translateY(-4px); box-shadow: 0 15px 40px rgba(0,0,0,0.15); background: var(--dmg-blue); }
+
+        .step { display: none; }
+        .step.active { display: block; }
+
+        #success-screen { display: none; text-align: center; padding: 120px 40px; }
+    </style>
 </head>
-<body class="p-10">
-    <div class="max-w-xl mx-auto bg-white p-8 border rounded-2xl shadow-sm">
-        <h2 class="text-3xl font-black mb-8 uppercase tracking-tight">Log New Project</h2>
-        <div class="space-y-4">
-            <label class="block text-xs font-black text-gray-400 uppercase">Project Title</label>
-            <input type="text" id="pTitle" class="w-full p-4 border rounded-xl" placeholder="e.g. Little Wins 2026">
-            <label class="block text-xs font-black text-gray-400 uppercase">Client</label>
-            <input type="text" id="pClient" class="w-full p-4 border rounded-xl" placeholder="e.g. Sky Vegas">
-            <label class="block text-xs font-black text-gray-400 uppercase">Project Type</label>
-            <select id="pType" class="w-full p-4 border rounded-xl">
-                <option value="Commercial Brief">Commercial Brief</option>
-                <option value="Original Format">Original Format</option>
-            </select>
-            <button onclick="upload()" id="btnSubmit" class="btn-submit uppercase">Create in Notion ✓</button>
+<body>
+
+<div id="form-screen">
+    <header class="header">
+        <div class="header-main">
+            <div class="dots-grid"><span></span><span></span><span></span><span></span></div>
+            <h1 class="header-title">LOG NEW<br>MASTER PROJECT</h1>
+        </div>
+        <button type="button" onclick="location.reload()" style="font-size:11px; font-weight:800; text-transform:uppercase; color:#999; padding:10px 22px; border:1px solid #EEE; border-radius:99px; background:transparent; cursor:pointer;">Reset</button>
+    </header>
+
+    <div class="container">
+        <div class="step active" id="step1">
+            <div class="section-card">
+                <div class="card-header-lockup">
+                    <div class="card-dots"><span></span><span></span><span></span><span></span></div>
+                    <span class="phase-tag">Phase 01: Workstream Type</span>
+                </div>
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="select-card" onclick="setProjectType('Commercial Brief', this)">
+                        <h4>Commercial Brief</h4>
+                        <p>Sales response & Client Decks</p>
+                    </div>
+                    <div class="select-card" onclick="setProjectType('Original Format', this)">
+                        <h4>Original Format</h4>
+                        <p>Internal Series & Documentaries</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="step" id="step2">
+            <div class="section-card">
+                <div class="card-header-lockup">
+                    <div class="card-dots"><span></span><span></span><span></span><span></span></div>
+                    <span class="phase-tag">Phase 02: Sales Lead</span>
+                </div>
+                <input type="text" id="staffSearch" class="m-input" placeholder="Search team member..." oninput="filterStaff()">
+                <div class="staff-list" id="staffList"></div>
+            </div>
+        </div>
+
+        <div class="step" id="step3">
+            <div class="section-card">
+                <div class="card-header-lockup">
+                    <div class="card-dots"><span></span><span></span><span></span><span></span></div>
+                    <span class="phase-tag">Phase 03: Project Details</span>
+                </div>
+                <label class="m-label">Brand / Client / External Partner</label>
+                <input type="text" id="pClient" class="m-input" placeholder="e.g. SKY VEGAS">
+                
+                <label class="m-label">Campaign Title</label>
+                <input type="text" id="pTitle" class="m-input" placeholder="e.g. LITTLE WINS 2026">
+                
+                <label class="m-label">Initial Deliverables Count</label>
+                <input type="number" id="pAssets" class="m-input" value="1" min="1">
+
+                <button type="button" class="btn-submit" onclick="finaliseIntake()" id="submitBtn">
+                    Create in Master Ledger ✓
+                </button>
+            </div>
         </div>
     </div>
+</div>
 
-<script>
+<div id="success-screen">
+    <div class="dots-grid mx-auto mb-10"><span></span><span></span><span></span><span></span></div>
+    <h2 style="font-size:3.5rem; font-weight:900; letter-spacing:-0.04em; text-transform:uppercase; line-height:0.9;">Project<br>Synced</h2>
+    <p style="color:#666; margin-top:20px; font-weight:600; font-size:18px;">The entry has been successfully filed in Notion.</p>
+    <button onclick="location.reload()" class="btn-submit mt-12 max-w-xs mx-auto">Log Another Entry</button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
+    const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
     const BRIDGE = 'https://createnotionproject-223535956454.us-central1.run.app';
-    async function upload() {
-        const btn = document.getElementById('btnSubmit');
-        btn.innerText = 'UPLOADING...';
+
+    let allStaff = [];
+    let state = { type: '', user: null };
+
+    // Set Project Type and Advance
+    window.setProjectType = (type, el) => {
+        state.type = type;
+        document.querySelectorAll('.select-card').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        setTimeout(() => {
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step2').classList.add('active');
+        }, 400);
+    };
+
+    // Filter Staff
+    window.filterStaff = () => {
+        const q = document.getElementById('staffSearch').value.toLowerCase();
+        const filtered = allStaff.filter(s => s.name.toLowerCase().includes(q));
+        renderStaffList(filtered);
+    };
+
+    function renderStaffList(list) {
+        const mount = document.getElementById('staffList');
+        mount.innerHTML = list.map(s => `
+            <div class="staff-item" onclick="selectStaff('${s.name}')">
+                <div class="staff-avatar">${s.name.split(' ').map(n=>n[0]).join('')}</div>
+                <div style="font-size:13px; font-weight:700;">${s.name}</div>
+            </div>
+        `).join('');
+    }
+
+    window.selectStaff = (name) => {
+        state.user = name;
+        document.getElementById('step2').classList.remove('active');
+        document.getElementById('step3').classList.add('active');
+    };
+
+    window.finaliseIntake = async () => {
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true; btn.innerText = "Syncing with Notion...";
+
+        const assetCount = parseInt(document.getElementById('pAssets').value);
+        const deliverables = [];
+        for(let i=1; i <= assetCount; i++) { deliverables.push({ title: `Deliverable ${i}` }); }
+
         const payload = {
             TITLE: document.getElementById('pTitle').value,
             "CLIENT / EXTERNAL PARTNER": document.getElementById('pClient').value,
-            "PROJECT TYPE": document.getElementById('pType').value
+            "PROJECT TYPE": state.type,
+            "SALES LEAD(S)": state.user,
+            "DELIVERABLES": deliverables
         };
+
         try {
             const res = await fetch(BRIDGE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (res.ok) { alert('✓ Logged to Notion'); location.reload(); }
-            else { alert('Error - Check Connection'); }
-        } catch (e) { alert('Error - Check Console'); }
-        btn.innerText = 'Create in Notion ✓';
-    }
+            if (res.ok) {
+                document.getElementById('form-screen').style.display = 'none';
+                document.getElementById('success-screen').style.display = 'block';
+            } else { alert('Sync Failed. Check Terminal.'); btn.disabled = false; btn.innerText = "Try Again"; }
+        } catch (e) { alert('Connection Error'); btn.disabled = false; }
+    };
+
+    signInAnonymously(auth);
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) return;
+        const snap = await getDocs(collection(db, "artifacts", "dmg-command-centre-native", "public", "data", "staff_directory"));
+        allStaff = snap.docs.map(doc => {
+            const d = doc.data();
+            return { id: doc.id, name: `${d.firstName} ${d.lastName}` };
+        }).sort((a,b) => a.name.localeCompare(b.name));
+        renderStaffList(allStaff);
+    });
 </script>
 </body>
 </html>
