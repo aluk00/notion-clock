@@ -1,44 +1,105 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-    <meta charset="UTF-8"><title>Project Ledger</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style> body { font-family: 'Inter', sans-serif; } .btn-submit { background: #43B049; color: white; width: 100%; padding: 20px; border-radius: 12px; font-weight: 800; } </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Command Centre | DMG New Media</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --dmg-blue: #21a0d8; --surface: #FFFFFF; --border: #E5E7EB; --border-light: #F3F4F6; --ink: #1C1C1C; --ink-sub: #6B7280; --success: #10B981; --warning: #F59E0B; --danger: #EF4444; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #F9FAFB; color: var(--ink); min-height: 100vh; }
+        .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+        .header-title { font-size: 1.25rem; font-weight: 900; text-transform: uppercase; }
+        .refresh-btn { background: var(--surface); border: 1.5px solid var(--border); padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .stats-bar { padding: 20px 40px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 40px; overflow-x: auto; }
+        .stat-value { font-size: 28px; font-weight: 900; line-height: 1; }
+        .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); }
+        .kanban-container { padding: 24px 40px; overflow-x: auto; }
+        .kanban-board { display: flex; gap: 16px; min-width: max-content; }
+        .kanban-column { width: 300px; flex-shrink: 0; }
+        .column-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-radius: 10px 10px 0 0; border: 1px solid var(--border); }
+        .column-name { font-size: 11px; font-weight: 800; text-transform: uppercase; }
+        .column-body { background: var(--border-light); border-radius: 0 0 10px 10px; padding: 10px; min-height: 400px; display: flex; flex-direction: column; gap: 10px; }
+        .project-card { background: var(--surface); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; border: 1.5px solid transparent; }
+        .card-client { font-size: 9px; font-weight: 800; text-transform: uppercase; color: var(--dmg-blue); }
+        .card-title { font-size: 14px; font-weight: 700; margin: 8px 0; }
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .hidden { display: none !important; }
+    </style>
 </head>
-<body class="p-10">
-    <div class="max-w-xl mx-auto bg-white p-8 border rounded-2xl shadow-sm">
-        <h2 class="text-3xl font-black mb-8 uppercase tracking-tight">Log New Project</h2>
-        <div class="space-y-4">
-            <label class="block text-xs font-black text-gray-400 uppercase">Project Title</label>
-            <input type="text" id="pTitle" class="w-full p-4 border rounded-xl" placeholder="e.g. Little Wins 2026">
-            <label class="block text-xs font-black text-gray-400 uppercase">Client</label>
-            <input type="text" id="pClient" class="w-full p-4 border rounded-xl" placeholder="e.g. Sky Vegas">
-            <label class="block text-xs font-black text-gray-400 uppercase">Project Type</label>
-            <select id="pType" class="w-full p-4 border rounded-xl">
-                <option value="Commercial Brief">Commercial Brief</option>
-                <option value="Original Format">Original Format</option>
-            </select>
-            <button onclick="upload()" id="btnSubmit" class="btn-submit uppercase">Create in Notion ✓</button>
-        </div>
+<body>
+<div class="loading-overlay" id="loadingOverlay"><div>Loading...</div></div>
+<header class="header">
+    <h1 class="header-title">Project Command Centre</h1>
+    <div>
+        <span id="lastUpdated" style="font-size:11px; color:gray; margin-right:15px;"></span>
+        <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
     </div>
+</header>
+<div class="stats-bar" id="statsBar">
+    <div class="stat-item"><span class="stat-value" id="statTotal">0</span><br><span class="stat-label">Total Projects</span></div>
+    <div class="stat-item"><span class="stat-value" id="statOverdue">0</span><br><span class="stat-label">Overdue</span></div>
+</div>
+<div class="kanban-container">
+    <div class="kanban-board" id="kanbanBoard"></div>
+</div>
 
 <script>
-    const BRIDGE = 'https://createnotionproject-223535956454.us-central1.run.app';
-    async function upload() {
-        const btn = document.getElementById('btnSubmit');
-        btn.innerText = 'UPLOADING...';
-        const payload = {
-            TITLE: document.getElementById('pTitle').value,
-            "CLIENT / EXTERNAL PARTNER": document.getElementById('pClient').value,
-            "PROJECT TYPE": document.getElementById('pType').value
-        };
+    const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+    
+    // THESE MUST MATCH YOUR NOTION LABELS EXACTLY
+    const STAGES = [
+        { id: 'To Be Briefed', name: 'To Be Briefed', color: '#6B7280' },
+        { id: 'Pitch Sent', name: 'Pitch Sent', color: '#3B82F6' },
+        { id: 'Deal Agreed', name: 'Deal Agreed', color: '#8B5CF6' },
+        { id: 'Sales Review', name: 'Sales Review', color: '#F59E0B' },
+        { id: 'Complete', name: 'Complete', color: '#10B981' }
+    ];
+
+    async function loadAll() {
+        document.getElementById('loadingOverlay').classList.remove('hidden');
         try {
-            const res = await fetch(BRIDGE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (res.ok) { alert('✓ Logged to Notion'); location.reload(); }
-            else { alert('Error - Check Connection'); }
-        } catch (e) { alert('Error - Check Console'); }
-        btn.innerText = 'Create in Notion ✓';
+            const [statsRes, projRes] = await Promise.all([
+                fetch(API_URL + '/stats'),
+                fetch(API_URL + '/projects')
+            ]);
+            const statsData = await statsRes.json();
+            const projData = await projRes.json();
+
+            if (statsData.success) {
+                document.getElementById('statTotal').textContent = statsData.stats.total;
+                document.getElementById('statOverdue').textContent = statsData.stats.overdue;
+            }
+
+            const board = document.getElementById('kanbanBoard');
+            board.innerHTML = STAGES.map(stage => {
+                const stageProjects = (projData.projects || []).filter(p => p.stage === stage.id);
+                return `
+                    <div class="kanban-column">
+                        <div class="column-header">
+                            <span class="column-name">${stage.name}</span>
+                            <span style="font-size:10px; font-weight:800; color:gray;">${stageProjects.length}</span>
+                        </div>
+                        <div class="column-body">
+                            ${stageProjects.length === 0 ? '<div style="text-align:center; padding:20px; font-size:11px; color:gray;">No items</div>' : 
+                            stageProjects.map(p => `
+                                <div class="project-card">
+                                    <div class="card-client">${p.client}</div>
+                                    <div class="card-title">${p.title}</div>
+                                    <div style="font-size:10px; color:gray;">Due: ${p.dueDate || 'No Date'}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+        } catch (e) { console.error(e); }
+        document.getElementById('loadingOverlay').classList.add('hidden');
     }
+    loadAll();
 </script>
 </body>
 </html>
