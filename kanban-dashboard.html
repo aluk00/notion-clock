@@ -2,81 +2,193 @@
 <html lang="en-GB">
 <head>
     <meta charset="UTF-8">
-    <title>Project Command Centre | DMG New Media</title>
+    <title>Command Centre | DMG New Media</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root { --dmg-blue: #21a0d8; --surface: #FFFFFF; --border: #E5E7EB; --border-light: #F3F4F6; --ink: #1C1C1C; --ink-sub: #6B7280; }
-        body { font-family: 'Inter', sans-serif; background: #F9FAFB; color: var(--ink); margin: 0; }
-        .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-        .refresh-btn { background: var(--surface); border: 1.5px solid var(--border); padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
-        .stats-bar { padding: 20px 40px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; gap: 40px; }
-        .stat-value { font-size: 28px; font-weight: 900; line-height: 1; }
-        .stat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); }
-        .kanban-container { padding: 24px 40px; overflow-x: auto; }
-        .kanban-board { display: flex; gap: 16px; min-width: max-content; }
-        .kanban-column { width: 280px; flex-shrink: 0; }
-        .column-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-radius: 10px 10px 0 0; border: 1px solid var(--border); }
-        .column-name { font-size: 11px; font-weight: 800; text-transform: uppercase; }
-        .column-body { background: var(--border-light); border-radius: 0 0 10px 10px; padding: 10px; min-height: 500px; display: flex; flex-direction: column; gap: 10px; }
-        .project-card { background: var(--surface); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border: 1.5px solid transparent; }
-        .card-client { font-size: 9px; font-weight: 800; text-transform: uppercase; color: var(--dmg-blue); }
-        .card-title { font-size: 14px; font-weight: 700; margin: 8px 0; }
-        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        :root { 
+            --dmg-blue: #21a0d8; 
+            --carbon: #000000; 
+            --surface: #FFFFFF; 
+            --border: #E5E7EB; 
+            --border-light: #F3F4F6; 
+            --ink: #1C1C1C; 
+            --ink-sub: #6B7280; 
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #FFFFFF; color: var(--carbon); -webkit-font-smoothing: antialiased; }
         .hidden { display: none !important; }
+
+        /* --- SIGNATURE BOLD HEADER (Matches Ledger/Shoot Widgets) --- */
+        .header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 40px; 
+            border-bottom: 1.5px solid #F3F4F6; 
+            margin-bottom: 30px; 
+            background: #FFF;
+        }
+        .header-left { display: flex; align-items: center; gap: 25px; }
+        .header-title { 
+            font-size: 3.2rem; 
+            font-weight: 900; 
+            letter-spacing: -0.05em; 
+            text-transform: uppercase; 
+            line-height: 0.85; 
+            transform: scaleY(0.9); 
+            transform-origin: left center; 
+        }
+        
+        /* Animated Dot Grid */
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 75px; height: 75px; flex-shrink: 0; }
+        .dots-grid span { background: var(--dmg-blue); border-radius: 50%; animation: dotCycle 3s infinite ease-in-out; opacity: 0.8; }
+        @keyframes dotCycle { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+        .dots-grid span:nth-child(1) { animation-delay: 0s; }
+        .dots-grid span:nth-child(2) { animation-delay: 0.75s; }
+        .dots-grid span:nth-child(4) { animation-delay: 1.5s; }
+        .dots-grid span:nth-child(3) { animation-delay: 2.25s; }
+
+        .refresh-btn { 
+            font-size: 11px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            color: #999; 
+            padding: 12px 24px; 
+            border: 1px solid #EEE; 
+            border-radius: 99px; 
+            background: transparent; 
+            cursor: pointer; 
+            transition: 0.2s; 
+        }
+        .refresh-btn:hover { border-color: var(--dmg-blue); color: var(--dmg-blue); }
+
+        /* --- STATS BAR --- */
+        .stats-bar { padding: 0 40px 40px; display: flex; gap: 50px; }
+        .stat-item { display: flex; flex-direction: column; gap: 4px; }
+        .stat-value { font-size: 32px; font-weight: 900; color: var(--carbon); line-height: 1; letter-spacing: -0.02em; }
+        .stat-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #BBB; letter-spacing: 0.1em; }
+
+        /* --- KANBAN LAYOUT --- */
+        .kanban-container { padding: 0 40px 100px; overflow-x: auto; }
+        .kanban-board { display: flex; gap: 20px; min-width: max-content; }
+        .kanban-column { width: 300px; flex-shrink: 0; }
+        
+        .column-header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 15px 5px; 
+            margin-bottom: 10px;
+        }
+        .column-name { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dmg-blue); }
+        .column-count { font-size: 11px; font-weight: 900; color: #BBB; }
+        
+        .column-body { 
+            background: #F9FAFB; 
+            border-radius: 24px; 
+            padding: 15px; 
+            min-height: 600px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            border: 1px solid #F3F4F6;
+        }
+
+        /* --- PROJECT CARDS --- */
+        .project-card { 
+            background: var(--surface); 
+            border-radius: 18px; 
+            padding: 22px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03); 
+            border: 1.5px solid transparent; 
+            transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+        }
+        .project-card:hover { transform: translateY(-4px); border-color: var(--dmg-blue); box-shadow: 0 12px 30px rgba(33, 160, 216, 0.1); }
+        
+        .card-client { font-size: 9px; font-weight: 900; text-transform: uppercase; color: #BBB; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+        .card-title { font-size: 15px; font-weight: 800; color: var(--carbon); line-height: 1.3; margin-bottom: 15px; }
+        .card-meta { font-size: 10px; font-weight: 700; color: #999; display: flex; align-items: center; gap: 8px; }
+        .card-meta span::before { content: "•"; margin-right: 8px; opacity: 0.3; }
+
+        .loading-overlay { position: fixed; inset: 0; background: #FFF; display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 900; text-transform: uppercase; letter-spacing: 0.2em; color: var(--dmg-blue); }
     </style>
 </head>
 <body>
-<div class="loading-overlay" id="loadingOverlay"><div>Syncing Ledger...</div></div>
+
+<div class="loading-overlay" id="loadingOverlay">Syncing Command Centre...</div>
+
 <header class="header">
-    <h1 style="font-size:1.25rem; font-weight:900; text-transform:uppercase; margin:0;">Command Centre</h1>
-    <div>
-        <span id="lastUpdated" style="font-size:11px; color:gray; margin-right:15px;"></span>
+    <div class="header-left">
+        <div class="dots-grid"><span></span><span></span><span></span><span></span></div>
+        <h1 class="header-title">Project<br>Command Centre</h1>
+    </div>
+    <div style="display:flex; align-items:center; gap:20px;">
+        <span id="lastUpdated" style="font-size:10px; font-weight:800; color:#BBB; text-transform:uppercase;"></span>
         <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
     </div>
 </header>
-<div class="stats-bar" id="statsBar">
-    <div class="stat-item"><span class="stat-value" id="statTotal">0</span><br><span class="stat-label">Total Projects</span></div>
+
+<div class="stats-bar">
+    <div class="stat-item">
+        <span class="stat-value" id="statTotal">0</span>
+        <span class="stat-label">Active Projects</span>
+    </div>
 </div>
-<div class="kanban-container"><div class="kanban-board" id="kanbanBoard"></div></div>
+
+<div class="kanban-container">
+    <div class="kanban-board" id="kanbanBoard"></div>
+</div>
 
 <script>
     const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
     const STAGES = [
-        { id: 'To Be Briefed', name: 'To Be Briefed', color: '#6B7280' },
-        { id: 'Pitch Sent', name: 'Pitch Sent', color: '#3B82F6' },
-        { id: 'Deal Agreed', name: 'Deal Agreed', color: '#8B5CF6' },
-        { id: 'Sales Review', name: 'Sales Review', color: '#F59E0B' },
-        { id: 'Complete', name: 'Complete', color: '#10B981' }
+        { id: 'To Be Briefed', name: 'To Be Briefed' },
+        { id: 'Pitch Sent', name: 'Pitch Sent' },
+        { id: 'Deal Agreed', name: 'Deal Agreed' },
+        { id: 'Sales Review', name: 'Sales Review' },
+        { id: 'Complete', name: 'Complete' }
     ];
 
     async function loadAll() {
         document.getElementById('loadingOverlay').classList.remove('hidden');
         try {
-            const [statsRes, projRes] = await Promise.all([ fetch(API_URL + '/stats'), fetch(API_URL + '/projects') ]);
+            const [statsRes, projRes] = await Promise.all([ 
+                fetch(API_URL + '/stats'), 
+                fetch(API_URL + '/projects') 
+            ]);
             const statsData = await statsRes.json();
             const projData = await projRes.json();
 
-            if (statsData.success) { document.getElementById('statTotal').textContent = statsData.stats.total; }
+            if (statsData.success) { 
+                document.getElementById('statTotal').textContent = statsData.stats.total; 
+            }
 
             const board = document.getElementById('kanbanBoard');
             board.innerHTML = STAGES.map(stage => {
                 const stageProjects = (projData.projects || []).filter(p => p.stage === stage.id);
                 return `
                     <div class="kanban-column">
-                        <div class="column-header"><span class="column-name">${stage.name}</span><span style="font-size:10px; font-weight:800; color:gray;">${stageProjects.length}</span></div>
+                        <div class="column-header">
+                            <span class="column-name">${stage.name}</span>
+                            <span class="column-count">${stageProjects.length}</span>
+                        </div>
                         <div class="column-body">
-                            ${stageProjects.length === 0 ? '<div style="text-align:center; padding:20px; font-size:11px; color:gray;">No active items</div>' : 
+                            ${stageProjects.length === 0 ? '<div style="text-align:center; padding:40px; font-size:10px; font-weight:800; color:#CCC; text-transform:uppercase; letter-spacing:0.1em;">Empty</div>' : 
                             stageProjects.map(p => `
-                                <div class="project-card">
-                                    <div class="card-client">${p.client}</div>
+                                <div class="project-card" onclick="window.open('${p.url}', '_blank')">
+                                    <span class="card-client">${p.client || 'Internal'}</span>
                                     <div class="card-title">${p.title}</div>
-                                    <div style="font-size:10px; color:gray;">Due: ${p.dueDate || 'TBC'}</div>
+                                    <div class="card-meta">
+                                        <span>Due ${p.dueDate || 'TBC'}</span>
+                                    </div>
                                 </div>
                             `).join('')}
                         </div>
                     </div>`;
             }).join('');
-            document.getElementById('lastUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+            document.getElementById('lastUpdated').textContent = 'Last Sync: ' + new Date().toLocaleTimeString();
         } catch (e) { console.error('Sync Error:', e); }
         document.getElementById('loadingOverlay').classList.add('hidden');
     }
