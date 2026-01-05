@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Shoot | DMG New Media</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --team-production: #06402B;
+            --carbon: #000000;
+            --border: #E5E7EB;
+            --border-light: #F3F4F6;
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        body { font-family: 'Inter', sans-serif; background: #FFFFFF; color: var(--carbon); -webkit-font-smoothing: antialiased; }
+        
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 40px; border-bottom: 1.5px solid #F3F4F6; margin-bottom: 50px; }
+        .header-title { font-size: 2.2rem; font-weight: 900; letter-spacing: -0.05em; text-transform: uppercase; line-height: 0.85; transform: scaleY(0.9); transform-origin: left center; }
+        
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 54px; height: 54px; }
+        .dots-grid span { background: var(--team-production); border-radius: 50%; animation: dotCycle 3s infinite ease-in-out; }
+        @keyframes dotCycle { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 40px 100px; }
+        .m-label { font-size: 10px; font-weight: 900; color: #BBB; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px; display: block; }
+        .m-input, .m-textarea { width: 100%; padding: 18px; border: 1.5px solid var(--border); border-radius: 14px; font-size: 15px; font-weight: 600; outline: none; margin-bottom: 25px; background: #F9FAFB; transition: 0.2s; }
+        
+        .panel { background: #FFFFFF; border: 1.5px solid var(--border); border-radius: 28px; padding: 50px; margin-bottom: 30px; box-shadow: 0 4px 30px rgba(0,0,0,0.02); }
+        
+        .btn-save { background: var(--team-production); color: white; padding: 22px 50px; border-radius: 16px; font-weight: 900; text-transform: uppercase; font-size: 13px; cursor: pointer; transition: 0.3s; }
+        .btn-save:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(6, 64, 43, 0.2); }
+        .btn-delete { color: #EF4444; font-size: 11px; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+
+        #loader { position: fixed; inset: 0; background: #FFF; display: flex; align-items: center; justify-content: center; z-index: 1000; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: var(--team-production); }
+    </style>
+</head>
+<body>
+
+<div id="loader">Syncing Shoot Manifest...</div>
+
+<header class="header">
+    <div style="display:flex; align-items:center; gap:25px;">
+        <div class="dots-grid"><span></span><span></span><span></span><span></span></div>
+        <h1 class="header-title">SHOOT<br>MANAGEMENT</h1>
+    </div>
+    <!-- Adjusted link to go back to the logging form for now, as the calendar widget doesn't exist yet -->
+    <a href="shoot-logging.html" style="font-size:11px; font-weight:800; text-transform:uppercase; color:#999; text-decoration:none; padding:10px 20px; border:1px solid #EEE; border-radius:99px;">Back to Log</a>
+</header>
+
+<div class="container">
+    <form id="detailForm">
+        <div class="panel">
+            <span class="m-label" style="color:var(--team-production)">Linked Project Detail</span>
+            <h2 id="displayTitle" style="font-size:36px; font-weight:900; line-height:1.1; margin-bottom:40px; letter-spacing:-0.03em; text-transform:uppercase; transform:scaleY(0.9); transform-origin:left;">-</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="m-label">Current Status</label>
+                    <select id="status" style="width:100%; padding:15px; border-radius:12px; border:1px solid #EEE; font-weight: 600;">
+                        <option value="tentative">Tentative</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="m-label">Producer / Lead</label>
+                    <select id="ownerStaffId" style="width:100%; padding:15px; border-radius:12px; border:1px solid #EEE; font-weight: 600;"></select>
+                </div>
+                <div>
+                    <!-- CHANGED: 'Category' to 'Format' to match shoot-logging.html -->
+                    <label class="m-label">Format</label>
+                    <select id="format" style="width:100%; padding:15px; border-radius:12px; border:1px solid #EEE; font-weight: 600;">
+                        <option value="Street Talks">Street Talks</option>
+                        <option value="Deep Dive">Deep Dive</option>
+                        <option value="Headlines">Headlines</option>
+                        <option value="Mail Talks">Mail Talks</option>
+                        <option value="Spotlight">Spotlight</option>
+                        <option value="Editorial">Editorial (General)</option>
+                        <option value="Commercial">Commercial</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 mt-6">
+                <div><label class="m-label">Start Date & Time</label><input type="datetime-local" id="start" class="m-input"></div>
+                <div><label class="m-label">End Date & Time</label><input type="datetime-local" id="end" class="m-input"></div>
+            </div>
+
+            <label class="m-label">Location</label>
+            <input type="text" id="location" class="m-input" placeholder="UK Venue / Address">
+        </div>
+
+        <div class="panel">
+            <label class="m-label">Detailed Logistics & Notes</label>
+            <textarea id="notes" class="m-textarea" rows="12" placeholder="Extensive kit lists, Frame.io links, or contact numbers..."></textarea>
+            
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:20px; background:#F9FAFB; border-radius:18px; border: 1px solid var(--border-light);">
+                 <span style="font-size:10px; font-weight:900; color:#BBB; text-transform:uppercase;">Attached Resources</span>
+                 <button type="button" style="font-size:11px; font-weight:800; color:var(--team-production); text-decoration:underline;">View All Project Files</button>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0 20px;">
+            <span class="btn-delete" onclick="window.deleteEvent()">Remove from Calendar</span>
+            <button type="submit" class="btn-save" id="saveBtn">Apply All Changes</button>
+        </div>
+    </form>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const appId = "dmg-command-centre-native";
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
+    const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
+
+    const eventId = new URLSearchParams(window.location.search).get('id');
+    let currentEvent = null;
+
+    signInAnonymously(auth);
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) return;
+        
+        // If no ID is present, we can't edit anything.
+        if (!eventId) {
+            document.getElementById('loader').innerText = "Select a Shoot from the Calendar to Edit";
+            return;
+        }
+
+        const staffSnap = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+        const producers = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Removed filter so all staff can be selected if needed, or re-enable .filter(s => s.role...)
+        document.getElementById('ownerStaffId').innerHTML = '<option value="">-- Unassigned --</option>' + producers.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName}</option>`).join('');
+
+        onSnapshot(doc(db, "artifacts", appId, "public", "data", "shoot_calendar_events", eventId), (docSnap) => {
+            if (!docSnap.exists()) {
+                 alert("Event not found");
+                 return;
+            }
+            currentEvent = { id: docSnap.id, ...docSnap.data() };
+            renderForm();
+            document.getElementById('loader').style.display = 'none';
+        });
+    });
+
+    function renderForm() {
+        document.getElementById('displayTitle').innerText = currentEvent.title || "Untitled Shoot";
+        document.getElementById('status').value = currentEvent.status || 'tentative';
+        document.getElementById('ownerStaffId').value = currentEvent.ownerStaffId || '';
+        // Updated to use 'format' to match logging form
+        document.getElementById('format').value = currentEvent.format || 'Editorial';
+        
+        // Handle DateTime inputs (requires YYYY-MM-DDTHH:mm format)
+        if (currentEvent.startDateTime) document.getElementById('start').value = currentEvent.startDateTime;
+        if (currentEvent.endDateTime) document.getElementById('end').value = currentEvent.endDateTime;
+        
+        document.getElementById('location').value = currentEvent.location || '';
+        document.getElementById('notes').value = currentEvent.notes || '';
+    }
+
+    document.getElementById('detailForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true; btn.innerText = "Syncing...";
+        
+        const data = {
+            status: document.getElementById('status').value,
+            ownerStaffId: document.getElementById('ownerStaffId').value,
+            format: document.getElementById('format').value, // Changed from category
+            startDateTime: document.getElementById('start').value,
+            endDateTime: document.getElementById('end').value,
+            location: document.getElementById('location').value,
+            notes: document.getElementById('notes').value,
+            updatedAt: serverTimestamp()
+        };
+        
+        try {
+            await updateDoc(doc(db, "artifacts", appId, "public", "data", "shoot_calendar_events", eventId), data);
+            btn.innerText = "Changes Saved";
+            setTimeout(() => { btn.innerText = "Apply All Changes"; btn.disabled = false; }, 2000);
+        } catch (err) {
+            console.error(err);
+            btn.innerText = "Error Saving";
+        }
+    };
+
+    window.deleteEvent = async () => {
+        if(!confirm("Are you sure? This deletes the shoot entry permanently.")) return;
+        await deleteDoc(doc(db, "artifacts", appId, "public", "data", "shoot_calendar_events", eventId));
+        // Redirect back to logging or calendar
+        window.location.href = "shoot-logging.html"; 
+    };
+</script>
+</body>
+</html>
