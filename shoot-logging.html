@@ -1,44 +1,459 @@
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-    <meta charset="UTF-8"><title>Log Shoot</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Shoot | DMG New Media</title>
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY&libraries=places"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --team-production: #06402B;
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-social: #F2C316;
+            --team-sales: #21a0d8;
+            --carbon: #000000;
+            --border: #E5E7EB;
+            --border-light: #F3F4F6;
+            --dmg-blue: #21a0d8;
+            --transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #FFFFFF; color: var(--carbon); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+        .hidden { display: none !important; }
+
+        /* --- SIGNATURE HEADER --- */
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 40px; border-bottom: 1.5px solid #F3F4F6; margin-bottom: 50px; background: #FFF; }
+        .header-main { display: flex; align-items: center; gap: 20px; }
+        .header-title { font-size: 3.2rem; font-weight: 900; letter-spacing: -0.05em; text-transform: uppercase; line-height: 0.85; transform: scaleY(0.9); transform-origin: left center; }
+        
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 75px; height: 75px; flex-shrink: 0; }
+        .dots-grid span { background: var(--team-production); border-radius: 50%; animation: dotCycle 3s infinite ease-in-out; opacity: 0.8; }
+        @keyframes dotCycle { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+        .dots-grid span:nth-child(1) { animation-delay: 0s; }
+        .dots-grid span:nth-child(2) { animation-delay: 0.75s; }
+        .dots-grid span:nth-child(4) { animation-delay: 1.5s; }
+        .dots-grid span:nth-child(3) { animation-delay: 2.25s; }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 0 40px 100px; }
+        
+        /* --- FORM COMPONENTS --- */
+        .m-label { font-size: 10px; font-weight: 900; color: #BBB; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 12px; display: block; }
+        .m-input, .m-textarea { width: 100%; padding: 18px; border: 1.5px solid var(--border); border-radius: 14px; font-size: 15px; font-weight: 600; outline: none; margin-bottom: 25px; background: #FFFFFF; transition: var(--transition); }
+        .m-input:focus { border-color: var(--team-production); background: #F8FCF8; box-shadow: 0 0 0 4px rgba(6, 64, 43, 0.05); }
+
+        .section-card { background: #FFFFFF; padding: 45px; border-radius: 28px; border: 1.5px solid var(--border-light); margin-bottom: 30px; position: relative; transition: var(--transition); }
+        .section-card:hover { border-color: #DDD; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
+        
+        .card-header-lockup { display: flex; align-items: center; gap: 12px; margin-bottom: 25px; }
+        .card-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 14px; height: 14px; opacity: 0.5; }
+        .card-dots span { background: var(--team-production); border-radius: 50%; }
+        .phase-tag { font-size: 10px; font-weight: 900; color: var(--team-production); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Custom Select UI with Smooth Transitions */
+        .custom-select { position: relative; width: 100%; margin-bottom: 25px; }
+        .select-trigger { padding: 18px; background: #FFFFFF; border: 1.5px solid var(--border); border-radius: 14px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: var(--transition); color: var(--carbon); border-left: 4px solid var(--team-production); }
+        .select-trigger:hover { border-color: var(--team-production); background: #F8FCF8; }
+        .select-trigger::after { content: '▾'; opacity: 0.3; font-size: 12px; transition: transform 0.3s ease; }
+        .custom-select.open .select-trigger::after { transform: rotate(180deg); }
+        .select-options { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 20px 80px rgba(0,0,0,0.12); z-index: 9999; max-height: 250px; overflow-y: auto; display: none; transform: translateY(10px); opacity: 0; transition: var(--transition); }
+        .custom-select.open .select-options { display: block; transform: translateY(0); opacity: 1; }
+        
+        .option { padding: 14px 20px; cursor: pointer; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--border-light); color: var(--carbon); transition: background 0.2s; display: flex; align-items: center; gap: 12px; }
+        .option:hover { background: #F1F8F1; color: var(--team-production); }
+        .option:last-child { border-bottom: none; }
+
+        /* Signature Dots for Personnel Options */
+        .opt-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 12px; height: 12px; flex-shrink: 0; }
+        .opt-dots span { border-radius: 50%; width: 5px; height: 5px; }
+
+        /* Segmented Control */
+        .segmented { display: flex; background: #F3F4F6; padding: 4px; border-radius: 12px; margin-bottom: 15px; width: fit-content; border: 1px solid #EEE; }
+        .seg-btn { padding: 8px 20px; border-radius: 8px; border: none; font-size: 10px; font-weight: 900; text-transform: uppercase; cursor: pointer; color: #888; transition: 0.3s; }
+        .seg-btn.active { background: white; color: var(--team-production); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        /* Crew Manifest Grid - Updated for Alignment */
+        /* Columns: Role(160px) | Name(1fr) | Email(1fr) | FreelanceToggle(30px) | Delete(44px) */
+        .crew-manifest-header { display: grid; grid-template-columns: 160px 1fr 1fr 30px 44px; gap: 15px; margin-bottom: 10px; padding: 0 10px; align-items: center; }
+        .crew-row { display: grid; grid-template-columns: 160px 1fr 1fr 30px 44px; gap: 15px; margin-bottom: 12px; align-items: start; animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* Adjust alignment for inputs inside grid */
+        .crew-row .custom-select, .crew-row .m-input { margin-bottom: 0; } 
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .remove-crew { width: 44px; height: 54px; border-radius: 14px; border: 1.5px solid #FEE2E2; color: #EF4444; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 900; transition: 0.2s; background: white; }
+        .remove-crew:hover { background: #EF4444; color: white; border-color: #EF4444; transform: scale(0.95); }
+        
+        /* Freelance Toggle in Crew Row */
+        .row-toggle { width: 30px; height: 54px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0.4; transition: 0.3s; }
+        .row-toggle:hover, .row-toggle.active { opacity: 1; color: var(--team-production); }
+        .row-toggle svg { width: 18px; height: 18px; fill: currentColor; }
+
+        .add-crew-btn { font-size: 10px; font-weight: 900; text-transform: uppercase; color: var(--team-production); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border: 1.5px solid var(--team-production); border-radius: 16px; transition: 0.3s; background: white; }
+        .add-crew-btn:hover { background: var(--team-production); color: white; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(6, 64, 43, 0.1); }
+
+        /* Location Toggles */
+        .quick-loc { display: flex; gap: 10px; margin-bottom: 15px; }
+        .loc-btn { flex: 1; padding: 16px; border: 1.5px solid var(--border); border-radius: 14px; font-size: 11px; font-weight: 900; text-transform: uppercase; cursor: pointer; text-align: center; transition: 0.3s; background: white; color: #BBB; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .loc-btn .btn-dot { width: 6px; height: 6px; background: #EEE; border-radius: 50%; transition: 0.3s; }
+        .loc-btn:hover { border-color: var(--team-production); color: var(--team-production); }
+        .loc-btn.active { background: var(--team-production); border-color: var(--team-production); color: white; }
+        .loc-btn.active .btn-dot { background: white; }
+
+        .address-container { max-height: 0; overflow: hidden; transition: max-height 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease; opacity: 0; }
+        .address-container.show { max-height: 200px; margin-top: 15px; opacity: 1; }
+
+        .btn-submit { background: var(--team-production); color: white; width: 100%; padding: 26px; border-radius: 20px; font-weight: 900; text-transform: uppercase; font-size: 14px; letter-spacing: 0.1em; transition: 0.3s; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 15px; }
+        .btn-submit:hover { transform: translateY(-4px); box-shadow: 0 15px 40px rgba(6, 64, 43, 0.25); }
+
+        /* Document Grid */
+        /* Added spacing above this section */
+        .optional-docs-section { margin-top: 60px; }
+        .doc-card { background: #FFFFFF; border: 1.5px solid var(--border); border-radius: 20px; padding: 25px; transition: 0.3s; }
+        .doc-card h5 { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--carbon); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .doc-card h5::before { content: ""; width: 6px; height: 6px; background: var(--team-production); border-radius: 50%; opacity: 0.4; }
+        .doc-badge { display: inline-block; padding: 5px 10px; border-radius: 6px; background: #F3F4F6; color: #999; font-size: 8px; font-weight: 900; text-transform: uppercase; }
+
+        #success-screen { display: none; text-align: center; padding: 120px 40px; }
+    </style>
 </head>
-<body class="p-10 bg-gray-50">
-    <div class="max-w-lg mx-auto bg-white p-8 rounded-3xl border shadow-sm">
-        <h2 class="text-2xl font-black mb-6 uppercase">Log Shoot</h2>
-        <form id="shootForm" class="space-y-4">
-            <input type="text" id="title" placeholder="Shoot Title / Project" class="w-full p-4 border rounded-xl" required>
-            <input type="date" id="date" class="w-full p-4 border rounded-xl" required>
-            <div class="grid grid-cols-2 gap-4">
-                <input type="time" id="start" class="p-4 border rounded-xl" required>
-                <input type="time" id="end" class="p-4 border rounded-xl" required>
+<body>
+
+<div id="form-screen">
+    <header class="header">
+        <div class="header-main">
+            <div class="dots-grid"><span></span><span></span><span></span><span></span></div>
+            <h1 class="header-title">LOG NEW<br>PRODUCTION SHOOT</h1>
+        </div>
+        <button type="button" onclick="location.reload()" style="font-size:10px; font-weight:900; text-transform:uppercase; color:#999; padding:10px 22px; border:1px solid #EEE; border-radius:99px; background:transparent; cursor:pointer;">Reset Form</button>
+    </header>
+
+    <div class="container">
+        <form id="shootForm">
+            <!-- PHASE 01: PROJECT MAPPING -->
+            <div class="section-card">
+                <div class="card-header-lockup">
+                    <div class="card-dots"><span></span><span></span><span></span><span></span></div>
+                    <span class="phase-tag">Phase 01: Project Mapping</span>
+                </div>
+                <label class="m-label">Active Master Ledger Project</label>
+                <div id="projectSelectMount"></div>
+                
+                <label class="m-label">Target Asset / Deliverable</label>
+                <div id="assetSelectMount"></div>
             </div>
-            <input type="text" id="loc" placeholder="Location" class="w-full p-4 border rounded-xl">
-            <button type="submit" class="w-full bg-green-900 text-white p-5 rounded-2xl font-black uppercase">Sync to Calendar</button>
+
+            <!-- PHASE 02: LOGISTICS -->
+            <div class="section-card">
+                <div class="card-header-lockup">
+                    <div class="card-dots"><span></span><span></span><span></span><span></span></div>
+                    <span class="phase-tag">Phase 02: Logistics & Schedule</span>
+                </div>
+                <div class="grid grid-cols-2 gap-10">
+                    <div><label class="m-label">Shoot Date</label><input type="date" id="date" class="m-input" required></div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="m-label">Call Time</label><input type="time" id="startTime" class="m-input" required></div>
+                        <div><label class="m-label">Wrap</label><input type="time" id="endTime" class="m-input" required></div>
+                    </div>
+                </div>
+
+                <label class="m-label">Studio Assignment</label>
+                <div class="quick-loc">
+                    <div class="loc-btn" data-loc="Studio 1 (HQ)" onclick="window.setStudio(this)"><span class="btn-dot"></span> Studio 1</div>
+                    <div class="loc-btn" data-loc="Studio 2 (HQ)" onclick="window.setStudio(this)"><span class="btn-dot"></span> Studio 2</div>
+                    <div class="loc-btn" data-loc="Studio 3 (HQ)" onclick="window.setStudio(this)"><span class="btn-dot"></span> Studio 3</div>
+                    <div class="loc-btn" id="newLocBtn" onclick="window.toggleNewLocation()"><span class="btn-dot"></span> New Location</div>
+                </div>
+                
+                <div id="addressBar" class="address-container">
+                    <label class="m-label">Location Address (Google Maps Search)</label>
+                    <input type="text" id="location" class="m-input" placeholder="Search address...">
+                </div>
+            </div>
+
+            <!-- PHASE 03: CREW & SUMMARY (CLEANED UP LAYOUT) -->
+            <div class="section-card">
+                <div class="card-header-lockup">
+                    <div class="card-dots"><span></span><span></span><span></span><span></span></div>
+                    <span class="phase-tag">Phase 03: Crew & Summary</span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-10 pb-10 border-b border-gray-100">
+                    <div>
+                        <label class="m-label">Lead Producer</label>
+                        <div class="segmented">
+                            <button type="button" id="tabStaff" onclick="window.toggleTeam('staff')" class="seg-btn active">Staff</button>
+                            <button type="button" id="tabFreelance" onclick="window.toggleTeam('free')" class="seg-btn">Freelancer</button>
+                        </div>
+                        <div id="producerSelectMount"></div>
+                        <!-- Updated Freelancer Section with Email -->
+                        <div id="freelanceInputs" class="hidden">
+                            <input type="text" id="freelanceProducer" class="m-input" placeholder="Enter full name...">
+                            <input type="email" id="freelanceEmail" class="m-input" placeholder="Enter email address..." style="margin-top:-10px;">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="m-label">Production Format</label>
+                        <div id="formatSelectMount"></div>
+                        <input type="text" id="newFormatInput" class="m-input hidden" placeholder="Enter custom format name...">
+                    </div>
+                </div>
+
+                <!-- Updated Grid Headers -->
+                <div class="crew-manifest-header">
+                    <span class="m-label">Role</span>
+                    <span class="m-label">Name</span>
+                    <span class="m-label">Email</span>
+                    <span></span> <!-- Toggle Space -->
+                    <span></span> <!-- Delete Space -->
+                </div>
+                <div id="crewListMount" class="mb-6">
+                    <!-- Dynamic Crew Rows -->
+                </div>
+                <div class="add-crew-btn" onclick="addCrewRow()">
+                    <span style="font-size:16px;">+</span> Add Crew Member
+                </div>
+
+                <div class="mt-12">
+                    <label class="m-label">Production Summary & Materials</label>
+                    <textarea id="notes" class="m-textarea" rows="4" placeholder="Brief details for the crew, Frame.io links, etc."></textarea>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">Log Shoot to Calendar</button>
+
+            <!-- OPTIONAL: DOCUMENT GENERATION (Moved Down & Updated Badges) -->
+            <div class="optional-docs-section">
+                <div class="card-header-lockup">
+                    <div class="card-dots"><span></span><span></span><span></span><span></span></div>
+                    <label class="m-label" style="color:var(--team-production); margin-bottom: 0;">Optional: Document Generation Suite</label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+                    <div class="doc-card"><h5>Call Sheet</h5><div class="doc-badge">Optional</div></div>
+                    <div class="doc-card"><h5>Legal Releases</h5><div class="doc-badge">Optional</div></div>
+                    <div class="doc-card"><h5>Risk Assessment</h5><div class="doc-badge">Optional</div></div>
+                </div>
+            </div>
         </form>
     </div>
+</div>
+
+<div id="success-screen">
+    <div class="dots-grid mx-auto mb-10"><span></span><span></span><span></span><span></span></div>
+    <h2 style="font-size:3.5rem; font-weight:900; letter-spacing:-0.04em; text-transform:uppercase;">Shoot Synced</h2>
+    <p style="color:#666; margin-top:20px; font-weight:600; font-size:18px;">The event has been successfully logged.</p>
+    <button onclick="location.reload()" class="btn-submit mt-10 max-w-xs mx-auto">Log Another Entry</button>
+</div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    
+    import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const appId = "dmg-command-centre-native";
     const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+    const TEAM_COLS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', People: '#21a0d8', Sales: '#21a0d8' };
+    
+    const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
+
+    let projects = []; let deliverables = []; let staff = [];
+    let state = { selectedProject: null, selectedAsset: null, selectedProducer: null, selectedFormat: null, ownerMode: 'staff', crew: [] };
+
+    const CREW_ROLES = ["Creator", "Videographer", "Creative", "Designer", "Art Director", "Gaffer", "Sound Recordist", "MUA"];
+
+    function initAutocomplete() {
+        const input = document.getElementById('location');
+        if (typeof google === 'undefined' || !google.maps || !google.maps.places) return;
+        const autocomplete = new google.maps.places.Autocomplete(input, { componentRestrictions: { country: "uk" }, fields: ["formatted_address", "name"] });
+        autocomplete.addListener("place_changed", () => { const place = autocomplete.getPlace(); input.value = place.formatted_address || place.name; });
+    }
+    window.addEventListener('load', initAutocomplete);
+
+    // --- ENHANCED CUSTOM SELECT RENDERER ---
+    window.renderCustomSelect = (containerId, options, placeholder, onSelect, isPersonnel = false) => {
+        const mount = document.getElementById(containerId);
+        mount.className = 'custom-select';
+        mount.innerHTML = `
+            <div class="select-trigger">${placeholder}</div>
+            <div class="select-options">
+                ${options.map(o => {
+                    let style = ''; let dots = '';
+                    if (isPersonnel && o.team) {
+                        const col = TEAM_COLS[o.team] || '#CCC';
+                        style = `style="color: ${col}; font-weight: 800;"`;
+                        dots = `<div class="opt-dots">${Array(4).fill(`<span style="background:${col}"></span>`).join('')}</div>`;
+                    }
+                    return `<div class="option" data-id="${o.id}">${dots}<span ${style}>${o.name}</span></div>`;
+                }).join('')}
+            </div>
+        `;
+        const trigger = mount.querySelector('.select-trigger');
+        trigger.onclick = (e) => { e.stopPropagation(); document.querySelectorAll('.custom-select').forEach(s => s !== mount && s.classList.remove('open')); mount.classList.toggle('open'); };
+        mount.querySelectorAll('.option').forEach(opt => {
+            opt.onclick = () => { trigger.innerHTML = opt.innerHTML; mount.classList.remove('open'); onSelect(opt.dataset.id, opt.innerText); }
+        });
+    };
+
+    window.addCrewRow = () => {
+        const id = Date.now();
+        const row = document.createElement('div');
+        row.className = 'crew-row';
+        row.id = `crew-${id}`;
+        
+        // Structure: Role | Name (Picker or Input) | Email (Input) | Toggle | Delete
+        row.innerHTML = `
+            <div id="roleSelect-${id}"></div>
+            <div id="personContainer-${id}">
+                <div id="crewSelect-${id}"></div>
+                <input type="text" id="manualName-${id}" class="m-input hidden" placeholder="Full Name">
+            </div>
+            <div id="emailContainer-${id}">
+                 <input type="email" id="manualEmail-${id}" class="m-input hidden" placeholder="Email Address" >
+                 <div class="m-label" style="margin-top:20px; text-align:center; opacity:0.3;">---</div>
+            </div>
+            <div class="row-toggle" onclick="toggleCrewType(${id})" title="Toggle Freelancer">
+                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            </div>
+            <div class="remove-crew" onclick="removeCrewRow(${id})">×</div>
+        `;
+        
+        document.getElementById('crewListMount').appendChild(row);
+        
+        // 1. Role Dropdown
+        window.renderCustomSelect(`roleSelect-${id}`, CREW_ROLES.map(r => ({id: r, name: r})), "Select Role", (rid) => updateCrew(id, 'role', rid));
+        
+        // 2. Personnel Dropdown
+        const staffOptions = staff.map(s => ({ id: s.id, name: `${s.firstName} ${s.lastName}`, team: s.team }));
+        window.renderCustomSelect(`crewSelect-${id}`, staffOptions.sort((a,b)=>a.name.localeCompare(b.name)), "Select Staff", (sid, sname) => {
+            updateCrew(id, 'personId', sid);
+            updateCrew(id, 'personName', sname);
+            updateCrew(id, 'isFreelance', false);
+        }, true);
+        
+        state.crew.push({ id, role: '', personId: '', personName: '', isFreelance: false, email: '' });
+    };
+
+    window.toggleCrewType = (id) => {
+        const row = document.getElementById(`crew-${id}`);
+        const selectContainer = document.getElementById(`crewSelect-${id}`);
+        const inputName = document.getElementById(`manualName-${id}`);
+        const inputEmail = document.getElementById(`manualEmail-${id}`);
+        const dash = document.querySelector(`#emailContainer-${id} .m-label`);
+        const toggleBtn = row.querySelector('.row-toggle');
+
+        const isNowFreelance = !inputName.classList.contains('hidden'); // Currently freelance?
+
+        if (isNowFreelance) {
+            // Switch back to Staff
+            selectContainer.classList.remove('hidden');
+            inputName.classList.add('hidden');
+            inputEmail.classList.add('hidden');
+            dash.classList.remove('hidden');
+            toggleBtn.classList.remove('active');
+            updateCrew(id, 'isFreelance', false);
+        } else {
+            // Switch to Freelance
+            selectContainer.classList.add('hidden');
+            inputName.classList.remove('hidden');
+            inputEmail.classList.remove('hidden');
+            dash.classList.add('hidden');
+            toggleBtn.classList.add('active');
+            updateCrew(id, 'isFreelance', true);
+        }
+    };
+
+    window.removeCrewRow = (id) => { document.getElementById(`crew-${id}`).remove(); state.crew = state.crew.filter(c => c.id !== id); };
+    window.updateCrew = (id, key, val) => { const item = state.crew.find(c => c.id === id); if (item) item[key] = val; };
+
+    signInAnonymously(auth);
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) return;
+        try {
+            const [projRes, delRes, staffSnap] = await Promise.all([
+                fetch(`${API_URL}/projects`).then(r => r.json()),
+                fetch(`${API_URL}/deliverables`).then(r => r.json()),
+                getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"))
+            ]);
+
+            projects = projRes.projects || [];
+            deliverables = delRes.deliverables || [];
+            staff = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            window.renderCustomSelect('projectSelectMount', projects.map(p => ({ id: p.id, name: p.title })), 'Choose Campaign...', (id, name) => {
+                state.selectedProject = { id, name };
+                const assets = deliverables.filter(d => d.campaignId === id).map(a => ({ id: a.id, name: a.title }));
+                window.renderCustomSelect('assetSelectMount', assets, assets.length > 0 ? 'Select Asset...' : 'No Assets Found', (aid, aname) => state.selectedAsset = { id: aid, name: aname });
+            });
+
+            const staffOptions = staff.map(s => ({ id: s.id, name: `${s.firstName} ${s.lastName}`, team: s.team }));
+            window.renderCustomSelect('producerSelectMount', staffOptions.filter(s => s.name.toLowerCase().includes('')).sort((a,b)=>a.name.localeCompare(b.name)), 'Select Producer...', (id, name) => state.selectedProducer = { id, name }, true);
+
+            const formats = ["Street Talks", "Deep Dive", "Headlines", "Mail Talks", "Spotlight", "New Format"].map(f => ({ id: f, name: f }));
+            window.renderCustomSelect('formatSelectMount', formats, 'Choose Format...', (id, name) => {
+                state.selectedFormat = id;
+                document.getElementById('newFormatInput').classList.toggle('hidden', id !== 'New Format');
+            });
+
+        } catch (e) { console.error("Data load error:", e); }
+    });
+
+    window.setStudio = (btn) => { document.querySelectorAll('.loc-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); document.getElementById('location').value = btn.dataset.loc; document.getElementById('addressBar').classList.remove('show'); };
+    window.toggleNewLocation = () => { document.querySelectorAll('.loc-btn').forEach(b => b.classList.remove('active')); document.getElementById('newLocBtn').classList.add('active'); document.getElementById('addressBar').classList.add('show'); document.getElementById('location').value = ''; };
+    
+    window.toggleTeam = (mode) => { 
+        state.ownerMode = mode; 
+        const isStaff = mode === 'staff'; 
+        document.getElementById('producerSelectMount').classList.toggle('hidden', !isStaff); 
+        document.getElementById('freelanceInputs').classList.toggle('hidden', isStaff); 
+        document.getElementById('tabStaff').classList.toggle('active', isStaff); 
+        document.getElementById('tabFreelance').classList.toggle('active', !isStaff); 
+    };
+
+    document.addEventListener('click', () => document.querySelectorAll('.custom-select').forEach(s => s.classList.remove('open')));
 
     document.getElementById('shootForm').onsubmit = async (e) => {
         e.preventDefault();
+        const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.innerText = "Syncing...";
+        
+        // Capture Crew Data including Manual inputs
+        const finalCrew = state.crew.map(c => {
+            if (c.isFreelance) {
+                const nameVal = document.getElementById(`manualName-${c.id}`).value;
+                const emailVal = document.getElementById(`manualEmail-${c.id}`).value;
+                return { role: c.role, name: nameVal, email: emailVal, type: 'freelance' };
+            } else {
+                return { role: c.role, name: c.personName, id: c.personId, type: 'staff' };
+            }
+        });
+
+        const finalFormat = state.selectedFormat === 'New Format' ? document.getElementById('newFormatInput').value : state.selectedFormat;
+        
         const data = {
-            title: document.getElementById('title').value,
-            startDateTime: `${document.getElementById('date').value}T${document.getElementById('start').value}`,
-            endDateTime: `${document.getElementById('date').value}T${document.getElementById('end').value}`,
-            location: document.getElementById('loc').value,
+            projectId: state.selectedProject?.id,
+            assetId: state.selectedAsset?.id,
+            title: `${state.selectedProject?.name || 'Manual'} | ${state.selectedAsset?.name || 'Shoot'}`,
+            startDateTime: `${document.getElementById('date').value}T${document.getElementById('startTime').value}`,
+            endDateTime: `${document.getElementById('date').value}T${document.getElementById('endTime').value}`,
+            ownerStaffId: state.ownerMode === 'staff' ? state.selectedProducer?.id : null,
+            freelanceOwnerName: state.ownerMode === 'free' ? document.getElementById('freelanceProducer').value : '',
+            freelanceOwnerEmail: state.ownerMode === 'free' ? document.getElementById('freelanceEmail').value : '',
+            location: document.getElementById('location').value,
+            format: finalFormat,
+            crew: finalCrew,
+            notes: document.getElementById('notes').value,
+            status: 'tentative',
             createdAt: serverTimestamp()
         };
-        await addDoc(collection(db, "artifacts", "dmg-command-centre-native", "public", "data", "shoot_calendar_events"), data);
-        alert('Shoot Logged!');
-        location.reload();
+        try {
+            await addDoc(collection(db, "artifacts", appId, "public", "data", "shoot_calendar_events"), data);
+            document.getElementById('form-screen').style.display = 'none';
+            document.getElementById('success-screen').style.display = 'block';
+        } catch (error) { console.error(error); btn.disabled = false; btn.innerText = "Error - Try Again"; }
     };
 </script>
 </body>
