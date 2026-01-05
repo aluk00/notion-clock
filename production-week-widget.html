@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Carousel | DMG New Media</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --team-production: #06402B; /* Unified Green */
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-social: #F2C316;
+            --team-sales: #21a0d8;
+            --team-people: #21a0d8;
+            --team-exec: #000000;
+            --carbon: #000000;
+            --surface: #FFFFFF;
+            --border: #E5E7EB;
+            --border-light: #F3F4F6;
+            --overlay: rgba(0, 0, 0, 0.75);
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            --status-confirmed: #06402B;
+            --status-tentative: #F59E0B;
+            --status-cancelled: #EF4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #FFFFFF; color: var(--carbon); overflow: hidden; }
+
+        .widget-wrapper { padding: 20px; background: #FFF; width: 100%; max-width: 1200px; margin: 0 auto; position: relative; }
+        .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; padding: 0 10px; }
+        .header-title { font-size: 1.2rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; transform: scaleY(0.95); transform-origin: left; }
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 24px; height: 24px; }
+        .dots-grid span { background: var(--team-production); border-radius: 50%; opacity: 0.8; }
+
+        .carousel-nav { display: flex; gap: 8px; }
+        .nav-btn { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border); background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.2s; color: #888; }
+        .nav-btn:hover { border-color: var(--team-production); color: var(--team-production); }
+
+        .carousel-outer { overflow: hidden; width: 100%; }
+        .carousel-inner { display: flex; gap: 12px; transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1); padding: 10px; }
+        .carousel-item { flex: 0 0 calc(20% - 10px); min-width: 210px; }
+
+        .event-card { background: #FFF; border: 1.5px solid var(--border); border-radius: 16px; padding: 20px; cursor: pointer; transition: var(--transition); position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); height: 100%; }
+        .event-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+        .event-card:hover { transform: translateY(-4px); border-color: var(--team-production); box-shadow: 0 10px 25px rgba(6, 64, 43, 0.15); }
+        .status-confirmed::before { background: var(--status-confirmed); }
+        .status-tentative::before { background: var(--status-tentative); }
+        .status-cancelled::before { background: var(--status-cancelled); }
+
+        .card-date-header { display: flex; flex-direction: column; margin-bottom: 2px; }
+        .card-day { font-size: 9px; font-weight: 900; color: #BBB; text-transform: uppercase; letter-spacing: 0.05em; }
+        .card-date-num { font-size: 13px; font-weight: 800; color: var(--carbon); }
+        .card-title { font-size: 12px; font-weight: 800; color: var(--carbon); line-height: 1.3; margin-top: 5px; height: 32px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .card-meta { font-size: 8px; font-weight: 900; color: #BBB; text-transform: uppercase; display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 10px; border-top: 1px solid #F9FAFB; }
+        .card-crew-row { display: flex; align-items: center; gap: -6px; margin-top: 5px; }
+        .crew-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 900; color: white; margin-left: -6px; position: relative; z-index: 1; }
+        .crew-dot:first-child { margin-left: 0; }
+
+        .modal-overlay { position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(12px); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 20px; }
+        .modal { background: white; border-radius: 32px; width: 100%; max-width: 620px; padding: 50px; position: relative; box-shadow: 0 40px 100px rgba(0,0,0,0.2); animation: pop 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-height: 90vh; overflow-y: auto; }
+        @keyframes pop { from { transform: scale(0.95) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .modal-close { position: absolute; top: 40px; right: 40px; cursor: pointer; font-size: 24px; color: #CCC; transition: 0.2s; }
+        .modal-close:hover { color: var(--team-production); }
+        .m-badge { display: inline-block; padding: 5px 12px; background: #F2FDF5; border-radius: 8px; font-size: 10px; font-weight: 900; text-transform: uppercase; color: var(--team-production); margin-bottom: 12px; }
+        .m-title { font-size: 2.4rem; font-weight: 900; line-height: 1; color: var(--carbon); margin-bottom: 40px; text-transform: uppercase; transform: scaleY(0.9); transform-origin: left; letter-spacing: -0.04em; }
+        .m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 35px; }
+        .info-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #BBB; letter-spacing: 0.1em; margin-bottom: 6px; display: block; }
+        .info-val { font-size: 15px; font-weight: 800; color: var(--carbon); }
+
+        .person-tag { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: #FFF; border: 1.5px solid var(--border); border-radius: 16px; margin-top: 8px; cursor: pointer; transition: 0.2s; }
+        .person-tag:hover { border-color: var(--team-production); background: #F2FDF5; }
+        .avatar-outline { width: 32px; height: 32px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; border: 2px solid white; outline: 1.5px solid var(--border); flex-shrink: 0; }
+        .p-name { font-size: 13px; font-weight: 800; color: var(--carbon); line-height: 1.1; }
+        .p-role { font-size: 9px; font-weight: 900; color: #BBB; text-transform: uppercase; margin-top: 2px; }
+
+        .sync-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 50px; padding-top: 30px; border-top: 1.5px solid var(--border-light); }
+        .btn-sync { padding: 14px; background: #FFF; border: 1.5px solid var(--border); border-radius: 12px; font-size: 9px; font-weight: 900; text-transform: uppercase; color: var(--carbon); text-align: center; display: flex; align-items: center; justify-content: center; transition: 0.2s; text-decoration: none; }
+        .btn-sync:hover { border-color: var(--team-production); color: var(--team-production); background: #F2FDF5; }
+        .footer-row { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn-full { padding: 22px; background: var(--carbon); color: white; border-radius: 18px; font-size: 11px; font-weight: 900; text-transform: uppercase; text-align: center; cursor: pointer; transition: 0.2s; text-decoration: none; }
+        .btn-full:hover { background: var(--team-production); }
+        .btn-notion { padding: 22px; background: #F3F4F6; color: var(--carbon); border-radius: 18px; font-size: 11px; font-weight: 900; text-transform: uppercase; text-align: center; cursor: pointer; transition: 0.2s; text-decoration: none; }
+        .btn-notion:hover { background: #E5E7EB; }
+
+        #loading { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--team-production); letter-spacing: 0.2em; }
+    </style>
+</head>
+<body>
+
+<div id="loading">SYNCING SHOOTS...</div>
+
+<div class="widget-wrapper">
+    <div class="header-row">
+        <div class="header-title-lockup">
+            <div class="dots-grid"><span></span><span></span><span></span><span></span></div>
+            <h1 class="header-title">Shoots This Week</h1>
+        </div>
+        <div class="carousel-nav">
+            <button class="nav-btn" onclick="moveCarousel(-1)">←</button>
+            <button class="nav-btn" onclick="moveCarousel(1)">→</button>
+        </div>
+    </div>
+    <div class="carousel-outer"><div id="carouselInner" class="carousel-inner"></div></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <div class="modal-close" onclick="closeModal()">×</div>
+        <span class="m-badge" id="mFormat">Format</span>
+        <h2 class="m-title" id="mTitle">Title</h2>
+        <div class="m-grid">
+            <div class="info-item"><span class="info-label">Shoot Date</span><p class="info-val" id="mDate">-</p></div>
+            <div class="info-item"><span class="info-label">Call Time</span><p class="info-val" id="mTime">-</p></div>
+            <div class="info-item"><span class="info-label">Lead Producer</span><div id="mLeadMount"></div></div>
+            <div class="info-item"><span class="info-label">Confirmation Status</span><p id="mStatusDisplay" style="font-size:12px; font-weight:900; text-transform:uppercase; padding:8px 16px; border-radius:8px; width:fit-content;">-</p></div>
+        </div>
+        <div style="margin-bottom:30px;"><span class="info-label">Location</span><p class="info-val" id="mLocation">-</p></div>
+        <div style="margin-bottom:30px;"><span class="info-label">Production Crew</span><div id="mCrewMount" class="grid grid-cols-2 gap-3"></div></div>
+        <div class="info-item"><span class="info-label">Summary & Materials</span><p id="mNotes" style="font-weight:400; line-height:1.7; color:#666; white-space:pre-wrap; font-size:14px;">-</p></div>
+        <div class="sync-row">
+            <a href="#" id="syncGoogle" target="_blank" class="btn-sync">Add to Google Cal</a>
+            <a href="#" id="syncOutlook" target="_blank" class="btn-sync">Add to Outlook</a>
+            <button onclick="downloadICS()" class="btn-sync">Download .ICS</button>
+        </div>
+        <div class="footer-row"><a href="#" id="linkManage" class="btn-full">Manage Shoot</a><a href="#" id="linkNotion" target="_blank" class="btn-notion">Open Notion</a></div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const appId = "dmg-command-centre-native";
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
+    const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
+
+    let state = { events: [], staff: [], scrollX: 0, selected: null };
+    const TEAM_COLS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#06402B', Social: '#F2C316', Sales: '#21a0d8', People: '#21a0d8', Executive: '#000000', Operations: '#6B7280' };
+
+    function getInitials(n) { if(!n || typeof n!=='string') return '??'; const p=n.trim().split(/\s+/); return p.length===1 ? p[0][0].toUpperCase() : (p[0][0]+p[p.length-1][0]).toUpperCase(); }
+    function findStaff(n) { 
+        if (n?.toLowerCase()?.includes('harrington')) return { team: 'Production', role: 'Freelance Video Producer' };
+        return state.staff.find(s => `${s.firstName} ${s.lastName}`.toLowerCase() === n?.toLowerCase()?.trim()); 
+    }
+    
+    function getOwnerName(ev) { 
+        if(ev.ownerStaffId){ 
+            const s=state.staff.find(x=>x.id===ev.ownerStaffId); 
+            if(s && s.firstName === 'Monty' && s.lastName === 'Vann') return 'Daniel Harrington';
+            return s ? `${s.firstName} ${s.lastName}` : 'Daniel Harrington'; 
+        } 
+        return ev.freelanceOwnerName || 'Daniel Harrington'; 
+    }
+
+    function renderPersonTag(n, roleOverride) {
+        if(!n) return '';
+        const staff = findStaff(n);
+        const role = roleOverride || (n.includes('Monty') ? 'Videographer' : staff?.role || 'Crew');
+        const col = TEAM_COLS[staff?.team] || '#CCC';
+        return `<div class="person-tag"><div class="avatar-outline" style="background:${col}">${getInitials(n)}</div><div><div class="p-name">${n}</div><div class="p-role">${role}</div></div></div>`;
+    }
+
+    function render() {
+        const inner = document.getElementById('carouselInner');
+        inner.innerHTML = '';
+        const sorted = state.events.filter(e => new Date(e.startDateTime) >= new Date().setHours(0,0,0,0)).sort((a,b)=>a.startDateTime.localeCompare(b.startDateTime));
+        
+        if (sorted.length === 0) { inner.innerHTML = `<div style="padding:40px; color:#BBB; font-size:11px; text-transform:uppercase; font-weight:800;">No Shoots Scheduled</div>`; return; }
+
+        sorted.forEach(ev => {
+            const item = document.createElement('div'); item.className = 'carousel-item';
+            const date = new Date(ev.startDateTime);
+            const dayName = date.toLocaleDateString('en-GB', { weekday: 'long' });
+            const dayDate = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+            const time = ev.startDateTime.split('T')[1].substring(0,5);
+            
+            const crewList = [...(ev.crew || [])];
+            if (!crewList.find(c => c.name === 'Monty Vann')) crewList.push({ name: 'Monty Vann', role: 'Videographer' });
+            const lead = getOwnerName(ev);
+            const allCrew = [{name: lead}, ...crewList];
+            const uniqueCrew = Array.from(new Set(allCrew.map(a => a.name))).map(name => allCrew.find(a => a.name === name));
+
+            const avatars = uniqueCrew.map(c => {
+                const staff = findStaff(c.name);
+                const col = TEAM_COLS[staff?.team] || '#CCC';
+                return `<div class="mini-avatar" style="background:${col}; border:1.5px solid white; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:6px; font-weight:900; color:white; margin-left:-5px;">${getInitials(c.name)}</div>`;
+            }).join('');
+
+            item.innerHTML = `
+                <div class="event-card status-${ev.status||'tentative'}" onclick="window.openModal('${ev.id}')">
+                    <div class="card-date-header"><span class="card-day">${dayName}</span><span class="card-date-num">${dayDate}</span></div>
+                    <div class="card-title">${(ev.title || 'Untitled').replace('NULL', 'NULL')}</div>
+                    <div class="card-crew-row">${avatars}</div>
+                    <div class="card-meta"><span class="card-time-label">${time}</span></div>
+                </div>`;
+            inner.appendChild(item);
+        });
+    }
+
+    window.moveCarousel = (dir) => {
+        const inner = document.getElementById('carouselInner');
+        const scrollAmount = inner.clientWidth / 2; 
+        const maxScroll = inner.scrollWidth - inner.clientWidth;
+        state.scrollX += dir * scrollAmount;
+        if (state.scrollX < 0) state.scrollX = 0;
+        if (state.scrollX > maxScroll) state.scrollX = maxScroll;
+        inner.style.transform = `translateX(-${state.scrollX}px)`;
+    };
+
+    window.openModal = (id) => {
+        const ev = state.events.find(e => e.id === id);
+        const crewList = [...(ev.crew || [])];
+        if (!crewList.find(c => c.name === 'Monty Vann')) crewList.push({ name: 'Monty Vann', role: 'Videographer / Photographer' });
+
+        document.getElementById('mFormat').innerText = ev.format || 'Production';
+        document.getElementById('mTitle').innerText = (ev.title || '').replace('NULL', 'NULL');
+        document.getElementById('mDate').innerText = new Date(ev.startDateTime).toLocaleDateString('en-GB', { dateStyle: 'full' });
+        document.getElementById('mTime').innerText = ev.startDateTime.split('T')[1].substring(0,5);
+        document.getElementById('mLocation').innerText = ev.location || 'TBC';
+        document.getElementById('mNotes').innerText = (ev.notes||'').replace(/Tagged:.*(\r?\n|$)/gi, "").trim() || 'No additional production materials logged.';
+        
+        const sEl = document.getElementById('mStatusDisplay');
+        const status = (ev.status || 'tentative').toLowerCase();
+        sEl.innerText = status;
+        if (status === 'confirmed') { sEl.style.background = '#ECFDF5'; sEl.style.color = '#06402B'; } 
+        else if (status === 'cancelled') { sEl.style.background = '#FEF2F2'; sEl.style.color = '#EF4444'; } 
+        else { sEl.style.background = '#FFFBEB'; sEl.style.color = '#F59E0B'; }
+
+        document.getElementById('mLeadMount').innerHTML = renderPersonTag(getOwnerName(ev), 'Lead Producer');
+        document.getElementById('mCrewMount').innerHTML = crewList.map(c => renderPersonTag(c.name)).join('');
+        
+        const start = ev.startDateTime?.replace(/[-:]/g, "");
+        const end = ev.endDateTime?.replace(/[-:]/g, "");
+        document.getElementById('syncGoogle').href = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${start}/${end}&location=${encodeURIComponent(ev.location)}`;
+        document.getElementById('syncOutlook').href = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(ev.title)}&startdt=${ev.startDateTime}&enddt=${ev.endDateTime}&location=${encodeURIComponent(ev.location)}`;
+        document.getElementById('linkManage').href = `manage-shoot.html?id=${ev.id}`;
+        document.getElementById('linkNotion').href = ev.notionUrl || '#';
+        document.getElementById('modalOverlay').classList.add('active');
+    };
+
+    window.closeModal = () => document.getElementById('modalOverlay').classList.remove('active');
+    window.downloadICS = () => { /* ICS Logic */ };
+
+    signInAnonymously(auth);
+    onAuthStateChanged(auth, async (u) => {
+        if(!u) return;
+        const staff = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+        state.staff = staff.docs.map(d=>({id:d.id, ...d.data()}));
+        onSnapshot(collection(db, "artifacts", appId, "public", "data", "shoot_calendar_events"), s=>{
+            state.events = s.docs.map(d=>({id:d.id, ...d.data()}));
+            document.getElementById('loading').style.display = 'none';
+            render();
+        });
+    });
+</script>
+</body>
+</html>
