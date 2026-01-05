@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Calendar | DMG New Media</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --team-production: #06402B; /* Unified Green */
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-social: #F2C316;
+            --team-sales: #21a0d8;
+            --team-people: #21a0d8;
+            --team-exec: #000000;
+            
+            --carbon: #000000;
+            --surface: #FFFFFF;
+            --border: #E5E7EB;
+            --border-light: #F3F4F6;
+            --overlay: rgba(0, 0, 0, 0.75);
+            --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            
+            --status-confirmed: #06402B;
+            --status-tentative: #F59E0B;
+            --status-cancelled: #EF4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #FFFFFF; color: var(--carbon); overflow-x: hidden; }
+
+        .header { display: flex; align-items: center; justify-content: space-between; padding: 40px; border-bottom: 1.5px solid var(--border-light); background: #FFF; }
+        .header-title-lockup { display: flex; align-items: center; gap: 20px; }
+        .header-title { font-size: 2rem; font-weight: 900; letter-spacing: -0.05em; text-transform: uppercase; line-height: 0.9; margin: 0; transform: scaleY(0.9); transform-origin: left center; }
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 40px; height: 40px; }
+        .dots-grid span { background: var(--team-production); border-radius: 50%; opacity: 0.8; }
+
+        .controls-area { display: flex; flex-direction: column; gap: 20px; padding: 0 30px 25px; background: #FFF; }
+        .view-nav-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; }
+        .view-toggle { display: flex; background: #F3F4F6; padding: 4px; border-radius: 12px; gap: 2px; border: 1px solid var(--border); }
+        .toggle-btn { padding: 8px 18px; border-radius: 9px; font-size: 10px; font-weight: 800; text-transform: uppercase; cursor: pointer; border: none; color: #888; transition: 0.2s; }
+        .toggle-btn.active { background: #FFF; color: var(--team-production); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        .date-nav { display: flex; align-items: center; gap: 10px; background: white; border: 1.5px solid var(--border); padding: 4px; border-radius: 12px; }
+        .nav-btn { width: 32px; height: 32px; border-radius: 8px; font-size: 14px; font-weight: 800; border: none; cursor: pointer; background: transparent; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .nav-btn:hover { background: #F3F4F6; color: var(--team-production); }
+        .date-display { font-size: 13px; font-weight: 900; color: var(--carbon); text-transform: uppercase; padding: 0 15px; min-width: 160px; text-align: center; }
+
+        .filters-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+        .filter-select { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; appearance: none; cursor: pointer; background: #FFF url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") no-repeat right 12px center; background-size: 12px; transition: 0.2s; }
+        .filter-select:hover { border-color: var(--team-production); }
+
+        .grid-container { padding: 0 30px 40px; overflow-x: auto; }
+        .month-grid { display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); gap: 10px; min-width: 840px; }
+        .weekday-header { display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); gap: 10px; margin-bottom: 10px; min-width: 840px; }
+        .weekday { font-size: 10px; font-weight: 900; color: #BBB; text-transform: uppercase; padding-left: 10px; }
+
+        .day-cell { background: #FFF; border: 1.5px solid var(--border-light); border-radius: 18px; min-height: 140px; padding: 12px; display: flex; flex-direction: column; gap: 6px; transition: 0.2s; }
+        .day-cell.today { background: #F1F8F1; border-color: var(--team-production); }
+        .day-num { font-size: 12px; font-weight: 900; color: #BBB; }
+
+        /* Updated Card with Avatar Row */
+        .event-card { 
+            background: #FFF; border: 1px solid var(--border); border-radius: 12px; 
+            padding: 10px 12px; cursor: pointer; transition: 0.2s; position: relative; 
+            overflow: hidden; display: flex; flex-direction: column; gap: 6px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02); 
+        }
+        .event-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+        .event-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(6, 64, 43, 0.15); border-color: var(--team-production); }
+        .status-confirmed::before { background: var(--status-confirmed); }
+        .status-tentative::before { background: var(--status-tentative); }
+        .status-cancelled::before { background: var(--status-cancelled); }
+        
+        .card-title { font-size: 11px; font-weight: 800; color: var(--carbon); line-height: 1.25; }
+        .card-crew-row { display: flex; align-items: center; gap: -5px; }
+        .mini-avatar { 
+            width: 18px; height: 18px; border-radius: 50%; color: white; border: 1.5px solid white;
+            display: flex; align-items: center; justify-content: center; font-size: 6px; font-weight: 900;
+            margin-left: -5px; position: relative; z-index: 1;
+        }
+        .mini-avatar:first-child { margin-left: 0; }
+
+        .modal-overlay { position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(12px); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 36px; width: 100%; max-width: 680px; padding: 60px; position: relative; box-shadow: 0 30px 100px rgba(0,0,0,0.3); animation: popIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-height: 90vh; overflow-y: auto; }
+        @keyframes popIn { from { transform: scale(0.95) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .modal-close { position: absolute; top: 40px; right: 40px; cursor: pointer; font-size: 24px; color: #CCC; transition: 0.2s; }
+        .modal-close:hover { color: var(--team-production); transform: rotate(90deg); }
+
+        .m-badge { display: inline-block; padding: 6px 14px; background: #F0F9FF; border-radius: 8px; font-size: 10px; font-weight: 900; text-transform: uppercase; color: var(--team-production); margin-bottom: 12px; }
+        .m-title { font-size: 2.8rem; font-weight: 900; line-height: 0.95; color: var(--carbon); margin-bottom: 40px; text-transform: uppercase; transform: scaleY(0.9); transform-origin: left; letter-spacing: -0.04em; }
+        .m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+        .info-label { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #BBB; letter-spacing: 0.12em; margin-bottom: 8px; display: block; }
+        .info-val { font-size: 16px; font-weight: 800; color: var(--carbon); }
+
+        .person-tag { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: #FFFFFF; border: 1.5px solid var(--border); border-radius: 16px; margin-top: 5px; cursor: pointer; transition: 0.2s; }
+        .person-tag:hover { border-color: var(--team-production); background: #F0F9FF; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .avatar-outline { width: 32px; height: 32px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; border: 2px solid white; outline: 1.5px solid var(--border); flex-shrink: 0; }
+        .p-name { font-size: 13px; font-weight: 800; color: var(--carbon); line-height: 1.1; }
+        .p-role { font-size: 9px; font-weight: 900; color: #BBB; text-transform: uppercase; margin-top: 2px; }
+
+        .sync-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 50px; padding-top: 30px; border-top: 1.5px solid var(--border-light); }
+        .btn-sync { 
+            padding: 14px; background: #FFF; border: 1.5px solid var(--border); border-radius: 12px; 
+            font-size: 9px; font-weight: 900; text-transform: uppercase; color: var(--carbon); 
+            text-align: center; display: flex; align-items: center; justify-content: center; 
+            transition: 0.2s; text-decoration: none; 
+        }
+        .btn-sync:hover { border-color: var(--team-production); color: var(--team-production); background: #F2FDF5; }
+
+        .footer-row { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn-full { padding: 22px; background: var(--carbon); color: white; border-radius: 18px; font-size: 11px; font-weight: 900; text-transform: uppercase; text-align: center; text-decoration: none; transition: 0.3s; }
+        .btn-full:hover { background: var(--team-production); transform: translateY(-3px); }
+        .btn-notion { padding: 22px; background: #F3F4F6; color: var(--carbon); border-radius: 18px; font-size: 11px; font-weight: 900; text-transform: uppercase; text-align: center; text-decoration: none; transition: 0.3s; }
+        .btn-notion:hover { background: #E5E7EB; }
+
+        #loading { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--team-production); letter-spacing: 0.2em; }
+    </style>
+</head>
+<body>
+
+<div id="loading">SYNCING CALENDAR...</div>
+
+<header class="header">
+    <div class="header-title-lockup">
+        <div class="dots-grid"><span></span><span></span><span></span><span></span></div>
+        <h1 class="header-title">Production<br>Calendar</h1>
+    </div>
+    <a href="shoot-logging.html" class="btn-sync" style="background:var(--team-production); color:white; border:none; padding:10px 24px; font-size:11px;">+ Log Shoot</a>
+</header>
+
+<div class="controls-area">
+    <div class="view-nav-row">
+        <div class="view-toggle">
+            <button class="toggle-btn active" id="btnMonth" onclick="setView('month')">Month</button>
+            <button class="toggle-btn" id="btnWeek" onclick="setView('week')">Week</button>
+        </div>
+        <div class="date-nav">
+            <button class="nav-btn" onclick="shiftDate(-1)">←</button>
+            <div class="date-display" id="dateDisplay">-</div>
+            <button class="nav-btn" onclick="shiftDate(1)">→</button>
+        </div>
+    </div>
+    <div class="filters-grid">
+        <select id="filterProducer" class="filter-select" onchange="updateFilter('producer', this.value)"><option value="">Producers</option></select>
+        <select id="filterCreator" class="filter-select" onchange="updateFilter('creator', this.value)"><option value="">Creators</option></select>
+        <select id="filterFormat" class="filter-select" onchange="updateFilter('format', this.value)">
+            <option value="">Formats</option><option value="Editorial">Editorial</option><option value="Commercial">Commercial</option><option value="Street Talks">Street Talks</option>
+        </select>
+    </div>
+</div>
+
+<div class="grid-container">
+    <div id="monthView">
+        <div class="weekday-header">
+            <div class="weekday">Mon</div><div class="weekday">Tue</div><div class="weekday">Wed</div><div class="weekday">Thu</div><div class="weekday">Fri</div><div class="weekday">Sat</div><div class="weekday">Sun</div>
+        </div>
+        <div class="month-grid" id="monthGrid"></div>
+    </div>
+    <div id="weekView" class="hidden">
+        <div class="month-grid" id="weekGrid" style="grid-template-columns: repeat(7, 1fr); min-width: 1000px;"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <div class="modal-close" onclick="closeModal()">×</div>
+        <span class="m-badge" id="mFormat">Format</span>
+        <h2 class="m-title" id="mTitle">Shoot Title</h2>
+        
+        <div class="m-grid">
+            <div class="info-item"><span class="info-label">Date</span><p class="info-val" id="mDate">-</p></div>
+            <div class="info-item"><span class="info-label">Time</span><p class="info-val" id="mTime">-</p></div>
+            <div class="info-item"><span class="info-label">Lead Producer</span><div id="mLeadMount"></div></div>
+            <div class="info-item">
+                <span class="info-label">Status</span>
+                <p id="mStatusDisplay" style="font-size: 12px; font-weight: 900; text-transform: uppercase; padding: 8px 16px; border-radius: 8px; width: fit-content;">-</p>
+            </div>
+        </div>
+
+        <div class="info-item" style="margin-bottom:30px;"><span class="info-label">Location</span><p class="info-val" id="mLocation">-</p></div>
+
+        <div class="info-item" style="margin-bottom:30px;">
+            <span class="info-label">Production Crew</span>
+            <div id="mCrewMount" class="grid grid-cols-2 gap-3"></div>
+        </div>
+
+        <div class="info-item">
+            <span class="info-label">Production Summary</span>
+            <p id="mNotes" style="font-weight:400; line-height:1.7; color:#555; white-space:pre-wrap; font-size:14px;">-</p>
+        </div>
+
+        <div class="sync-row">
+            <a href="#" id="syncGoogle" target="_blank" class="btn-sync">Add to Google Cal</a>
+            <a href="#" id="syncOutlook" target="_blank" class="btn-sync">Add to Outlook</a>
+            <button onclick="downloadICS()" class="btn-sync">Download .ICS</button>
+        </div>
+
+        <div class="footer-row">
+            <a href="#" id="linkManage" class="btn-full">Manage Shoot</a>
+            <a href="#" id="linkNotion" target="_blank" class="btn-notion">Open Notion</a>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const appId = "dmg-command-centre-native";
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
+    const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
+
+    let state = { events: [], staff: [], viewMode: 'month', currentDate: new Date(), filters: { producer: '', creator: '', format: '' } };
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const TEAM_COLS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#06402B', Social: '#F2C316', Sales: '#21a0d8', People: '#21a0d8', Executive: '#000000', Operations: '#6B7280' };
+
+    function getInitials(n) { if(!n || typeof n!=='string') return '??'; const p = n.trim().split(/\s+/); return p.length===1 ? p[0][0].toUpperCase() : (p[0][0]+p[p.length-1][0]).toUpperCase(); }
+    function findStaff(n) { 
+        if (n?.toLowerCase()?.includes('harrington')) return { team: 'Production', role: 'Freelance Video Producer' };
+        return state.staff.find(s => `${s.firstName} ${s.lastName}`.toLowerCase() === n?.toLowerCase()?.trim()); 
+    }
+    
+    function getRoleForName(name, defaultRole = 'Crew') {
+        if (name.includes('Daniel Harrington')) return 'Lead Producer';
+        if (name.includes('Monty Vann')) return 'Videographer / Photographer';
+        const staff = findStaff(name);
+        return staff?.role || defaultRole;
+    }
+
+    function getOwnerName(ev) { 
+        if(ev.ownerStaffId){ 
+            const s=state.staff.find(x=>x.id===ev.ownerStaffId); 
+            if(s && s.firstName === 'Monty' && s.lastName === 'Vann') return 'Daniel Harrington';
+            return s ? `${s.firstName} ${s.lastName}` : 'Daniel Harrington'; 
+        } 
+        return ev.freelanceOwnerName || 'Daniel Harrington'; 
+    }
+
+    function renderPersonTag(n, roleOverride = null) {
+        if(!n) return '';
+        const role = roleOverride || getRoleForName(n);
+        const staff = findStaff(n);
+        const col = TEAM_COLS[staff?.team] || '#CCC';
+        return `
+            <div class="person-tag">
+                <div class="avatar-outline" style="background:${col}">${getInitials(n)}</div>
+                <div><div class="p-name">${n}</div><div class="p-role">${role}</div></div>
+            </div>`;
+    }
+
+    function render() {
+        const grid = state.viewMode==='month' ? document.getElementById('monthGrid') : document.getElementById('weekGrid');
+        grid.innerHTML = '';
+        const year = state.currentDate.getFullYear(); const month = state.currentDate.getMonth();
+        document.getElementById('dateDisplay').innerText = state.viewMode==='month' ? `${months[month]} ${year}` : `${state.currentDate.getDate()} ${months[month].substring(0,3)}`;
+        
+        if(state.viewMode==='month'){
+            const first = new Date(year, month, 1); let start = first.getDay()-1; if(start===-1) start=6;
+            const days = new Date(year, month+1, 0).getDate();
+            for(let i=0; i<start; i++) grid.innerHTML += `<div class="day-cell other-month"></div>`;
+            for(let d=1; d<=days; d++){
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const cell = document.createElement('div');
+                cell.className = `day-cell ${dateStr===new Date().toISOString().split('T')[0]?'today':''}`;
+                cell.innerHTML = `<div class="day-num">${d}</div>`;
+                state.events.filter(e => {
+                    const matchesDate = e.startDateTime?.startsWith(dateStr);
+                    const matchesFormat = !state.filters.format || e.format === state.filters.format;
+                    const matchesProducer = !state.filters.producer || e.ownerStaffId === state.filters.producer;
+                    return matchesDate && matchesFormat && matchesProducer;
+                }).forEach(ev => cell.appendChild(createCard(ev)));
+                grid.appendChild(cell);
+            }
+        }
+    }
+
+    function createCard(ev) {
+        const card = document.createElement('div'); card.className = `event-card status-${ev.status||'tentative'}`;
+        const displayTitle = (ev.title || 'Untitled Shoot').replace('NULL', 'NULL');
+        
+        // Crew Logic for Card
+        const crewList = [...(ev.crew || [])];
+        if (!crewList.find(c => c.name === 'Monty Vann')) crewList.push({ name: 'Monty Vann', role: 'Videographer' });
+        const lead = getOwnerName(ev);
+        const allCrew = [{name: lead}, ...crewList];
+        
+        // Dedupe
+        const uniqueCrew = Array.from(new Set(allCrew.map(a => a.name))).map(name => {
+            return allCrew.find(a => a.name === name);
+        });
+
+        const avatars = uniqueCrew.map(c => {
+            const staff = findStaff(c.name);
+            const col = TEAM_COLS[staff?.team] || '#CCC';
+            return `<div class="mini-avatar" style="background:${col}; border:1.5px solid white; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:6px; font-weight:900; color:white; margin-left:-5px;">${getInitials(c.name)}</div>`;
+        }).join('');
+
+        card.innerHTML = `<div class="card-title">${displayTitle}</div><div class="card-crew-row" style="display:flex; align-items:center; margin-top:4px;">${avatars}</div>`;
+        card.onclick = () => openModal(ev); 
+        return card;
+    }
+
+    function openModal(ev) {
+        const crewList = [...(ev.crew || [])];
+        if (!crewList.find(c => c.name === 'Monty Vann')) {
+             crewList.push({ name: 'Monty Vann', role: 'Videographer / Photographer' });
+        }
+
+        document.getElementById('mFormat').innerText = ev.format || 'Shoot';
+        document.getElementById('mTitle').innerText = (ev.title || '').replace('NULL', 'NULL');
+        document.getElementById('mDate').innerText = new Date(ev.startDateTime).toLocaleDateString('en-GB', { dateStyle: 'full' });
+        document.getElementById('mTime').innerText = ev.startDateTime?.split('T')[1].substring(0,5);
+        document.getElementById('mLocation').innerText = ev.location || 'TBC';
+        document.getElementById('mNotes').innerText = (ev.notes||'').replace(/Tagged:.*(\r?\n|$)/gi, "").trim() || 'No production notes available.';
+        
+        const sEl = document.getElementById('mStatusDisplay');
+        const status = (ev.status || 'tentative').toLowerCase();
+        sEl.innerText = status;
+        if (status === 'confirmed') { sEl.style.background = '#ECFDF5'; sEl.style.color = '#06402B'; } 
+        else if (status === 'cancelled') { sEl.style.background = '#FEF2F2'; sEl.style.color = '#EF4444'; } 
+        else { sEl.style.background = '#FFFBEB'; sEl.style.color = '#F59E0B'; }
+
+        document.getElementById('mLeadMount').innerHTML = renderPersonTag(getOwnerName(ev), 'Lead Producer');
+        document.getElementById('mCrewMount').innerHTML = crewList.map(c => renderPersonTag(c.name, c.role || getRoleForName(c.name))).join('');
+        
+        const start = ev.startDateTime?.replace(/[-:]/g, "");
+        const end = ev.endDateTime?.replace(/[-:]/g, "");
+        
+        document.getElementById('syncGoogle').href = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(ev.title)}&dates=${start}/${end}&location=${encodeURIComponent(ev.location)}`;
+        document.getElementById('syncOutlook').href = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(ev.title)}&startdt=${ev.startDateTime}&enddt=${ev.endDateTime}&location=${encodeURIComponent(ev.location)}`;
+        
+        document.getElementById('linkManage').href = `manage-shoot.html?id=${ev.id}`;
+        document.getElementById('linkNotion').href = ev.notionUrl || '#';
+        
+        document.getElementById('modalOverlay').classList.add('active');
+    }
+
+    window.closeModal = () => document.getElementById('modalOverlay').classList.remove('active');
+    window.setView = (v) => { state.viewMode=v; document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active')); document.getElementById('btn'+v[0].toUpperCase()+v.slice(1)).classList.add('active'); render(); };
+    window.shiftDate = (n) => { if(state.viewMode==='month') state.currentDate.setMonth(state.currentDate.getMonth()+n); else state.currentDate.setDate(state.currentDate.getDate()+n*7); render(); };
+    window.updateFilter = (k,v) => { state.filters[k] = v; render(); };
+
+    signInAnonymously(auth);
+    onAuthStateChanged(auth, async (u) => {
+        if(!u) return;
+        const staff = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+        state.staff = staff.docs.map(d=>({id:d.id, ...d.data()}));
+
+        const prodSelect = document.getElementById('filterProducer');
+        const prods = state.staff.filter(s => s.role?.toLowerCase().includes('producer'));
+        prods.forEach(p => { const opt = document.createElement('option'); opt.value = p.id; opt.innerText = `${p.firstName} ${p.lastName}`; prodSelect.appendChild(opt); });
+
+        const creatorSelect = document.getElementById('filterCreator');
+        state.staff.sort((a,b) => a.firstName.localeCompare(b.firstName)).forEach(s => {
+            const opt = document.createElement('option'); opt.value = `${s.firstName} ${s.lastName}`; opt.innerText = `${s.firstName} ${s.lastName}`; creatorSelect.appendChild(opt);
+        });
+
+        onSnapshot(collection(db, "artifacts", appId, "public", "data", "shoot_calendar_events"), s=>{
+            state.events = s.docs.map(d=>({id:d.id, ...d.data()}));
+            document.getElementById('loading').style.display = 'none';
+            render();
+        });
+    });
+</script>
+</body>
+</html>
