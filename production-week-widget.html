@@ -31,8 +31,13 @@
 
         .widget-wrapper { padding: 20px; background: #FFF; width: 100%; max-width: 1200px; margin: 0 auto; position: relative; }
         .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; padding: 0 10px; }
-        .header-title { font-size: 1.2rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; transform: scaleY(0.95); transform-origin: left; }
-        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 24px; height: 24px; }
+        
+        /* Fixed: Ensures dots and title are strictly inline */
+        .header-title-lockup { display: flex; flex-direction: row; align-items: center; gap: 12px; }
+        .header-title { font-size: 1.2rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; transform: scaleY(0.95); transform-origin: left; white-space: nowrap; }
+        
+        /* Signature 4-Dot Grid */
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 22px; height: 22px; flex-shrink: 0; }
         .dots-grid span { background: var(--team-production); border-radius: 50%; opacity: 0.8; }
 
         .carousel-nav { display: flex; gap: 8px; }
@@ -60,6 +65,7 @@
         .crew-dot:first-child { margin-left: 0; }
 
         .modal-overlay { position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(12px); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 20px; }
+        .modal-overlay.active { display: flex; }
         .modal { background: white; border-radius: 32px; width: 100%; max-width: 620px; padding: 50px; position: relative; box-shadow: 0 40px 100px rgba(0,0,0,0.2); animation: pop 0.4s cubic-bezier(0.16, 1, 0.3, 1); max-height: 90vh; overflow-y: auto; }
         @keyframes pop { from { transform: scale(0.95) translateY(10px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
         .modal-close { position: absolute; top: 40px; right: 40px; cursor: pointer; font-size: 24px; color: #CCC; transition: 0.2s; }
@@ -139,7 +145,7 @@
     const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
 
     let state = { events: [], staff: [], scrollX: 0, selected: null };
-    const TEAM_COLS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#06402B', Social: '#F2C316', Sales: '#21a0d8', People: '#21a0d8', Executive: '#000000', Operations: '#6B7280' };
+    const TEAM_COLS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#06402B', Social: '#F2C316', People: '#21a0d8', Executive: '#000000', Operations: '#6B7280' };
 
     function getInitials(n) { if(!n || typeof n!=='string') return '??'; const p=n.trim().split(/\s+/); return p.length===1 ? p[0][0].toUpperCase() : (p[0][0]+p[p.length-1][0]).toUpperCase(); }
     function findStaff(n) { 
@@ -187,7 +193,7 @@
             const avatars = uniqueCrew.map(c => {
                 const staff = findStaff(c.name);
                 const col = TEAM_COLS[staff?.team] || '#CCC';
-                return `<div class="mini-avatar" style="background:${col}; border:1.5px solid white; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:6px; font-weight:900; color:white; margin-left:-5px;">${getInitials(c.name)}</div>`;
+                return `<div class="crew-dot" style="background:${col}; border:1.5px solid white; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:6px; font-weight:900; color:white; margin-left:-5px;">${getInitials(c.name)}</div>`;
             }).join('');
 
             item.innerHTML = `
@@ -243,7 +249,6 @@
     };
 
     window.closeModal = () => document.getElementById('modalOverlay').classList.remove('active');
-    window.downloadICS = () => { /* ICS Logic */ };
 
     signInAnonymously(auth);
     onAuthStateChanged(auth, async (u) => {
