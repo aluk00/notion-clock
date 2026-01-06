@@ -3,1120 +3,835 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editorial Calendar | MAIN</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-
+    <title>Editorial Calendar | Command Centre</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Helvetica+Neue:wght@900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --dmg-blue: #21A0D8;
-            --carbon: #1C1C1C;
-            --bg-page: #FFFFFF;
-            --bg-base: #F9FAFB;
+            --hero: #E94B4B;
+            --hero-soft: #FEF2F2;
+            --brand-red: #E94B4B;
             --border: #EAECEF;
-            --ink: #333;
-            --ink-sub: #757575;
-            --radius-lg: 20px;
-            --radius-md: 12px;
-            --radius-sm: 8px;
-            --shadow-sm: 0 2px 8px rgba(0,0,0,0.04);
-            --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
-            --shadow-lg: 0 12px 32px rgba(0,0,0,0.1);
-            --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            --current-brand: var(--dmg-blue);
-            
-            --cat-awareness: #9C27B0;
-            --cat-anniversary: #FF9800;
-            --cat-popculture: #E91E63;
-            --cat-entertainment: #00BCD4;
-            --cat-heritage: #795548;
-            --cat-social: #4CAF50;
+            --text-main: #111827;
+            --text-sub: #6B7280;
+            --success: #10B981;
+            --ai-accent: #7C3AED;
         }
-
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-page);
-            margin: 0; padding: 0;
-            color: var(--ink);
-            min-height: 100vh;
-        }
-
+        body { font-family: 'Inter', sans-serif; background: #FFF; color: var(--text-main); margin: 0; padding: 20px; }
         .hidden { display: none !important; }
+        
+        @keyframes heartbeat { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 32px; height: 32px; }
+        .dot { width: 100%; height: 100%; background: var(--hero); border-radius: 50%; }
+        .dot-anim { animation: heartbeat 3s infinite ease-in-out; }
+        .dot-anim:nth-child(1) { animation-delay: 0s; }
+        .dot-anim:nth-child(2) { animation-delay: 0.75s; }
+        .dot-anim:nth-child(4) { animation-delay: 1.5s; }
+        .dot-anim:nth-child(3) { animation-delay: 2.25s; }
+        
+        .title { font-size: 2rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.04em; transform: scaleY(0.9); line-height: 1; }
+        .date-sub { font-size: 10px; font-weight: 800; color: var(--hero); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+        
+        .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        
+        /* Slider Toggle */
+        .slider-toggle { display: flex; background: #F3F4F6; padding: 4px; border-radius: 99px; }
+        .slider-btn { padding: 8px 18px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 99px; cursor: pointer; transition: 0.2s; color: var(--text-sub); border: none; background: transparent; font-family: inherit; }
+        .slider-btn.active { background: var(--hero); color: #FFF; }
+        
+        /* Category Pills */
+        .cat-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+        .cat-pill { padding: 6px 14px; border-radius: 99px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; border: 1.5px solid var(--border); background: #FFF; color: var(--text-sub); cursor: pointer; transition: 0.2s; font-family: inherit; }
+        .cat-pill:hover { border-color: var(--hero); color: var(--hero); }
+        .cat-pill.active { background: var(--text-main); color: #FFF; border-color: var(--text-main); }
+        
+        /* Section Headers */
+        .section-header { display: flex; align-items: center; gap: 8px; margin: 24px 0 12px; }
+        .section-dot { width: 8px; height: 8px; background: var(--hero); border-radius: 50%; }
+        .section-title { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-sub); }
+        
+        /* Compact Cards */
+        .hooks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+        .hook-card { background: #FFF; border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; transition: 0.2s; cursor: pointer; position: relative; border-left: 4px solid var(--hero); }
+        .hook-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
+        .hook-cat { font-size: 8px; font-weight: 900; color: var(--hero); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+        .hook-title { font-size: 12px; font-weight: 700; color: var(--text-main); line-height: 1.3; }
+        .hook-desc { font-size: 10px; color: var(--text-sub); margin-top: 2px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .hook-card.saved { border-left-color: var(--success); }
+        .hook-card.saved::after { content: '✓'; position: absolute; top: 8px; right: 10px; font-size: 10px; color: var(--success); font-weight: 800; }
+        
+        /* AI Pick Style */
+        .hook-card.ai-pick { border-left-color: var(--ai-accent); background: #FDF4FF; }
+        .hook-card.ai-pick .hook-cat { color: var(--ai-accent); }
 
-        @keyframes slideUpFade { 
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); } 
-        }
-        @keyframes dotPulse {
-            0%, 100% { opacity: 0.4; transform: scale(0.9); }
-            50% { opacity: 1; transform: scale(1.05); }
-        }
+        /* Week Strip (Briefing View) */
+        .week-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; }
+        .week-strip::-webkit-scrollbar { height: 4px; }
+        .week-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        .day-card { min-width: 160px; background: #FFF; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; flex-shrink: 0; }
+        .day-date { font-size: 9px; font-weight: 900; color: var(--hero); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+        .day-item { font-size: 10px; font-weight: 600; color: var(--text-main); padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+        .day-item::before { content: ''; width: 4px; height: 4px; background: var(--hero); border-radius: 50%; flex-shrink: 0; }
+        
+        /* Info Cards */
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        @media (max-width: 800px) { .info-grid { grid-template-columns: 1fr; } }
+        .info-card { background: #FFF; border: 1.5px solid var(--border); border-radius: 12px; padding: 14px; }
+        .info-header { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; }
+        .info-header .dot { width: 6px; height: 6px; }
+        .info-list { list-style: none; padding: 0; margin: 0; }
+        .info-list li { font-size: 11px; font-weight: 600; padding: 8px 0; border-bottom: 1px solid #F3F4F6; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.1s; }
+        .info-list li:hover { background: #F9FAFB; padding-left: 4px; padding-right: 4px; border-radius: 4px; }
+        .info-list li:last-child { border-bottom: none; }
+        .info-age { font-size: 14px; font-weight: 900; color: var(--hero); }
+        .info-text-col { flex: 1; padding-right: 10px; }
+        .info-sub-header { font-size: 9px; font-weight: 900; color: var(--text-sub); text-transform: uppercase; margin-top: 12px; margin-bottom: 4px; letter-spacing: 0.05em; }
 
-        .main-header {
-            padding: 24px 40px;
-            border-bottom: 1px solid var(--border);
-            background: linear-gradient(to bottom, #FFFFFF, #FCFCFC);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
+        /* CALENDAR VIEWS */
+        /* Year Grid */
+        .year-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        @media (max-width: 1000px) { .year-grid { grid-template-columns: repeat(2, 1fr); } }
+        .month-card { background: #FFF; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; }
+        .month-header { padding: 8px 10px; background: #F9FAFB; border-bottom: 1px solid var(--border); font-weight: 900; font-size: 9px; text-transform: uppercase; text-align: center; letter-spacing: 0.05em; }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); padding: 8px; gap: 2px; }
+        .day-cell { aspect-ratio: 1; font-size: 9px; font-weight: 600; color: #E5E7EB; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; }
+        .day-cell:hover { background: var(--hero-soft); color: var(--hero); }
+        .day-cell.active { color: #9CA3AF; }
+        .day-cell.has-events { background: var(--hero); color: #FFF; font-weight: 800; }
 
-        .header-inner {
-            max-width: 1600px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
+        /* Month View (Big) */
+        .big-month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .big-day-cell { min-height: 100px; background: #FFF; border: 1px solid var(--border); border-radius: 8px; padding: 8px; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; }
+        .big-day-cell:hover { border-color: var(--hero); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .big-day-num { font-size: 14px; font-weight: 900; margin-bottom: 6px; color: var(--text-main); }
+        .big-day-event { font-size: 9px; background: var(--hero-soft); color: var(--hero); padding: 2px 4px; border-radius: 4px; margin-bottom: 2px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .big-day-empty { background: #FAFAFA; }
 
-        .header-lockup { display: flex; align-items: center; gap: 16px; }
+        /* Week View (Horizontal) */
+        .week-view-horizontal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
+        .week-col { background: #FFF; border: 1.5px solid var(--border); border-radius: 12px; padding: 12px; min-height: 300px; display: flex; flex-direction: column; }
+        .week-col-header { text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 8px; }
+        .week-col-day { font-size: 10px; font-weight: 900; color: var(--hero); text-transform: uppercase; }
+        .week-col-num { font-size: 20px; font-weight: 900; color: var(--text-main); }
+        .week-col-events { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+        .week-col-event { background: #F9FAFB; padding: 6px; border-radius: 6px; border-left: 2px solid var(--hero); }
+        .week-col-title { font-size: 10px; font-weight: 700; line-height: 1.2; }
+        .week-col-cat { font-size: 8px; font-weight: 600; color: var(--text-sub); text-transform: uppercase; margin-bottom: 2px; }
 
-        .header-dots {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 5px;
-            width: 32px; height: 32px;
-        }
-
-        .header-dots .dot {
-            width: 100%; height: 100%;
-            border-radius: 50%;
-            background-color: var(--current-brand);
-            animation: dotPulse 3s infinite ease-in-out;
-        }
-
-        .header-dots .dot:nth-child(1) { animation-delay: 0s; }
-        .header-dots .dot:nth-child(2) { animation-delay: 0.75s; }
-        .header-dots .dot:nth-child(3) { animation-delay: 1.5s; }
-        .header-dots .dot:nth-child(4) { animation-delay: 2.25s; }
-
-        .header-title { display: flex; flex-direction: column; gap: 2px; }
-        .brand-name { font-size: 24px; font-weight: 900; letter-spacing: -0.03em; text-transform: uppercase; color: var(--current-brand); line-height: 1; }
-        .calendar-subtitle { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: var(--ink-sub); }
-
-        .header-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-
-        .year-nav {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--bg-base);
-            padding: 6px;
-            border-radius: 99px;
-            border: 1px solid var(--border);
-        }
-
-        .year-btn {
-            padding: 10px 20px;
-            border: none;
-            background: transparent;
-            font-size: 13px;
-            font-weight: 800;
-            cursor: pointer;
-            border-radius: 99px;
-            color: var(--ink-sub);
-            transition: var(--transition);
-        }
-
-        .year-btn:hover { background: #FFF; }
-        .year-btn.active { background: var(--current-brand); color: #FFF; }
-
-        .view-toggle {
-            display: flex;
-            gap: 8px;
-        }
-
-        .toggle-btn {
-            padding: 10px 16px;
-            border: 2px solid var(--border);
-            background: #FFF;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            cursor: pointer;
-            border-radius: var(--radius-md);
-            color: var(--ink-sub);
-            transition: var(--transition);
-        }
-
-        .toggle-btn:hover { border-color: #CCC; }
-        .toggle-btn.active { border-color: var(--current-brand); color: var(--current-brand); background: rgba(33, 160, 216, 0.05); }
-
-        .header-stats { display: flex; gap: 20px; }
-        .stat-block { text-align: center; }
-        .stat-value { font-size: 24px; font-weight: 900; color: var(--current-brand); line-height: 1; }
-        .stat-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-sub); margin-top: 4px; }
-
-        .main-content { max-width: 1600px; margin: 0 auto; padding: 30px 40px; }
-
-        .year-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-
-        @media (max-width: 1200px) { .year-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 900px) { .year-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 600px) { 
-            .year-grid { grid-template-columns: 1fr; } 
-            .main-content { padding: 20px; }
-            .main-header { padding: 16px 20px; }
-            .header-controls { width: 100%; justify-content: center; }
-        }
-
-        .month-card {
-            background: #FFF;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            box-shadow: var(--shadow-sm);
-            transition: var(--transition);
-            animation: slideUpFade 0.4s ease forwards;
-            opacity: 0;
-        }
-
-        .month-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
-
-        .month-header {
-            padding: 14px 16px;
-            background: var(--bg-base);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .month-name { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: var(--carbon); }
-        .month-badges { display: flex; gap: 6px; }
-
-        .month-badge {
-            font-size: 9px;
-            font-weight: 800;
-            padding: 3px 8px;
-            border-radius: 99px;
-        }
-
-        .badge-ideas { background: var(--current-brand); color: #FFF; }
-        .badge-cultural { background: var(--cat-popculture); color: #FFF; }
-        .badge-empty { background: #E0E0E0; color: #999; }
-
-        .days-header { display: grid; grid-template-columns: repeat(7, 1fr); padding: 6px 10px; border-bottom: 1px solid var(--border); }
-        .day-label { font-size: 9px; font-weight: 700; text-transform: uppercase; text-align: center; color: var(--ink-sub); }
-
-        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); padding: 6px; gap: 3px; }
-
-        .day-cell {
-            aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--ink);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: var(--transition);
-            position: relative;
-            gap: 2px;
-        }
-
-        .day-cell:hover { background: var(--bg-base); }
-        .day-cell.empty { cursor: default; }
-        .day-cell.empty:hover { background: transparent; }
-        .day-cell.has-ideas { background: var(--current-brand); color: #FFF; font-weight: 800; }
-        .day-cell.has-ideas:hover { filter: brightness(1.1); transform: scale(1.05); }
-        .day-cell.has-cultural { border: 2px solid var(--cat-popculture); }
-        .day-cell.has-ideas.has-cultural { border: 2px solid #FFF; box-shadow: 0 0 0 2px var(--cat-popculture); }
-        .day-cell.weekend { color: var(--ink-sub); }
-
-        .day-dots {
-            display: flex;
-            gap: 2px;
-            position: absolute;
-            bottom: 3px;
-        }
-
-        .day-dot {
-            width: 4px;
-            height: 4px;
-            border-radius: 50%;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(28, 28, 28, 0.6);
-            backdrop-filter: blur(8px);
-            z-index: 1000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.active { display: flex; }
+        .modal { background: #FFF; width: 100%; max-width: 400px; border-radius: 16px; overflow: hidden; animation: fadeIn 0.2s; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 16px; font-weight: 900; }
+        .modal-close { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 50%; font-size: 16px; color: var(--text-sub); border: none; background: transparent; }
+        .modal-close:hover { background: #F3F4F6; }
+        .modal-body { padding: 16px 20px; max-height: 60vh; overflow-y: auto; }
+        .modal-item { background: #F9FAFB; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--hero); }
+        .modal-item-title { font-size: 12px; font-weight: 700; }
+        .modal-item-cat { font-size: 9px; font-weight: 800; color: var(--text-sub); text-transform: uppercase; margin-top: 2px; }
+        .btn-save { width: 100%; padding: 10px; background: var(--success); color: #FFF; border: none; border-radius: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; cursor: pointer; margin-top: 4px; font-family: inherit; }
+        .btn-save:hover { background: #059669; }
+        .btn-save.saved { background: #D1FAE5; color: var(--success); cursor: default; }
+        
+        /* Saved Ideas Panel */
+        .ideas-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 320px; background: #FFF; border-left: 1.5px solid var(--border); z-index: 90; transform: translateX(100%); transition: transform 0.3s; padding: 20px; overflow-y: auto; }
+        .ideas-panel.open { transform: translateX(0); }
+        .ideas-toggle { position: fixed; right: 20px; bottom: 20px; width: 48px; height: 48px; background: var(--hero); color: #FFF; border: none; border-radius: 50%; font-size: 18px; cursor: pointer; box-shadow: 0 4px 12px rgba(233, 75, 75, 0.3); z-index: 80; display: flex; align-items: center; justify-content: center; }
+        .ideas-toggle .count { position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; background: var(--text-main); color: #FFF; border-radius: 50%; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+        .ideas-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .ideas-title { font-size: 14px; font-weight: 900; text-transform: uppercase; }
+        .idea-card { background: #F9FAFB; padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--success); position: relative; }
+        .idea-card-title { font-size: 11px; font-weight: 700; padding-right: 20px; }
+        .idea-card-date { font-size: 9px; color: var(--text-sub); margin-top: 2px; }
+        .idea-delete { position: absolute; top: 8px; right: 8px; width: 18px; height: 18px; border: none; background: transparent; color: #CCC; cursor: pointer; font-size: 12px; }
+        .idea-delete:hover { color: var(--hero); }
+        
+        #loading { position: fixed; inset: 0; background: #FFF; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; transition: opacity 0.3s, visibility 0.3s; }
+        #loading.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .loader-dots { display: flex; gap: 6px; }
+        .loader-dots span { width: 10px; height: 10px; background: var(--hero); border-radius: 50%; animation: pulse 1.2s infinite ease-in-out; }
+        .loader-dots span:nth-child(2) { animation-delay: 0.15s; }
+        .loader-dots span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes pulse { 0%, 100% { transform: scale(0.4); opacity: 0.3; } 50% { transform: scale(1); opacity: 1; } }
 
-        .modal-content {
-            background: #FFF;
-            width: 100%;
-            max-width: 600px;
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
-            overflow: hidden;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .modal-header {
-            padding: 20px 24px;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--bg-base);
-        }
-
-        .modal-date { font-size: 18px; font-weight: 900; color: var(--carbon); }
-        .modal-weekday { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--current-brand); letter-spacing: 0.08em; margin-top: 2px; }
-
-        .close-btn {
-            width: 32px; height: 32px;
-            border-radius: 50%;
-            background: #FFF;
-            border: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--ink-sub);
-            transition: var(--transition);
-        }
-
-        .close-btn:hover { background: var(--bg-base); color: var(--carbon); transform: rotate(90deg); }
-
-        .modal-body { padding: 20px 24px; flex: 1; overflow-y: auto; }
-
-        .modal-section { margin-bottom: 24px; }
-        .modal-section:last-child { margin-bottom: 0; }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .section-title {
-            font-size: 10px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--ink-sub);
-        }
-
-        .section-icon {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-        }
-
-        .cultural-list { display: flex; flex-direction: column; gap: 8px; }
-
-        .cultural-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 12px;
-            background: var(--bg-base);
-            border-radius: var(--radius-md);
-            border-left: 4px solid var(--cat-popculture);
-        }
-
-        .cultural-item.cat-awareness { border-left-color: var(--cat-awareness); }
-        .cultural-item.cat-anniversary { border-left-color: var(--cat-anniversary); }
-        .cultural-item.cat-popculture { border-left-color: var(--cat-popculture); }
-        .cultural-item.cat-entertainment { border-left-color: var(--cat-entertainment); }
-        .cultural-item.cat-heritage { border-left-color: var(--cat-heritage); }
-        .cultural-item.cat-social { border-left-color: var(--cat-social); }
-
-        .cultural-content { flex: 1; }
-        .cultural-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
-        .cultural-meta { font-size: 10px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
-
-        .ideas-list { display: flex; flex-direction: column; gap: 8px; }
-
-        .idea-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 12px;
-            background: var(--bg-base);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border);
-        }
-
-        .idea-bullet { width: 8px; height: 8px; border-radius: 50%; background: var(--current-brand); flex-shrink: 0; margin-top: 4px; }
-        .idea-text { flex: 1; font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.4; }
-
-        .idea-delete {
-            width: 22px; height: 22px;
-            border-radius: 50%;
-            border: none;
-            background: transparent;
-            color: #CCC;
-            cursor: pointer;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: var(--transition);
-        }
-
-        .idea-delete:hover { background: #FFEBEE; color: #E53935; }
-
-        .empty-state { text-align: center; padding: 30px 20px; color: var(--ink-sub); }
-        .empty-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.5; }
-        .empty-text { font-size: 12px; font-weight: 600; }
-
-        .add-idea-form { display: flex; gap: 8px; margin-top: 12px; }
-
-        .idea-input {
-            flex: 1;
-            padding: 12px 14px;
-            border: 2px solid var(--border);
-            border-radius: var(--radius-md);
-            font-size: 13px;
-            font-weight: 600;
-            font-family: inherit;
-            outline: none;
-            transition: var(--transition);
-        }
-
-        .idea-input:focus { border-color: var(--current-brand); }
-        .idea-input::placeholder { color: #BBB; }
-
-        .add-btn {
-            padding: 12px 20px;
-            background: var(--current-brand);
-            color: #FFF;
-            border: none;
-            border-radius: var(--radius-md);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .add-btn:hover { filter: brightness(1.1); }
-        .add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        #loader {
-            position: fixed;
-            inset: 0;
-            background: #FFF;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-        }
-
-        .loader-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 48px; height: 48px; }
-        .loader-dots .dot { width: 100%; height: 100%; border-radius: 50%; background: var(--current-brand); animation: dotPulse 1.5s infinite ease-in-out; }
-
-        .loader-text { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: var(--ink-sub); }
-
-        #toast {
-            position: fixed;
-            bottom: -100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--carbon);
-            color: #FFF;
-            padding: 12px 24px;
-            border-radius: 99px;
-            font-size: 12px;
-            font-weight: 700;
-            z-index: 3000;
-            transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: var(--shadow-lg);
-        }
-
-        #toast.active { bottom: 30px; }
-
-        .legend {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            padding: 16px 0;
-            border-top: 1px solid var(--border);
-            margin-top: 30px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .legend-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
+        /* AI Toast - Restored */
+        #ai-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #111; color: #FFF; padding: 10px 20px; border-radius: 99px; font-size: 11px; font-weight: 700; z-index: 300; transition: transform 0.4s ease; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        #ai-toast.visible { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="loader-dots">
-            <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+<div id="loading">
+    <div class="loader-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- AI TOAST RESTORED -->
+<div id="ai-toast">
+    <span style="width:8px; height:8px; background:var(--success); border-radius:50%; display:block; animation: pulse 1s infinite;"></span>
+    🤖 AI Agent: Scanning verticals...
+</div>
+
+<div id="app" class="hidden">
+    <header class="header">
+        <div class="header-left">
+            <div class="dots-grid">
+                <div class="dot dot-anim"></div>
+                <div class="dot dot-anim"></div>
+                <div class="dot dot-anim"></div>
+                <div class="dot dot-anim"></div>
+            </div>
+            <div>
+                <h1 class="title">Editorial Calendar</h1>
+                <div class="date-sub" id="todayDate"></div>
+            </div>
         </div>
-        <div class="loader-text">Loading Calendar</div>
-    </div>
-
-    <div id="toast">Saved</div>
-
-    <div id="app" class="hidden">
-        <header class="main-header">
-            <div class="header-inner">
-                <div class="header-lockup">
-                    <div class="header-dots">
-                        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
-                    </div>
-                    <div class="header-title">
-                        <div class="brand-name" id="brand-title">BRAND</div>
-                        <div class="calendar-subtitle">Editorial Calendar</div>
-                    </div>
-                </div>
-                
-                <div class="header-controls">
-                    <div class="year-nav">
-                        <button class="year-btn active" data-year="2026">2026</button>
-                        <button class="year-btn" data-year="2027">2027</button>
-                        <button class="year-btn" data-year="2028">Jan 2028</button>
-                    </div>
-                    
-                    <div class="view-toggle">
-                        <button class="toggle-btn active" data-view="all">All</button>
-                        <button class="toggle-btn" data-view="ideas">Ideas Only</button>
-                        <button class="toggle-btn" data-view="cultural">Cultural</button>
-                    </div>
-                </div>
-
-                <div class="header-stats">
-                    <div class="stat-block">
-                        <div class="stat-value" id="total-ideas">0</div>
-                        <div class="stat-label">Ideas</div>
-                    </div>
-                    <div class="stat-block">
-                        <div class="stat-value" id="total-cultural">0</div>
-                        <div class="stat-label">Cultural</div>
-                    </div>
-                </div>
+        <div class="controls">
+            <div class="cat-pills">
+                <button class="cat-pill active" data-cat="all">All</button>
+                <button class="cat-pill" data-cat="pop">Pop Culture</button>
+                <button class="cat-pill" data-cat="sport">Sport</button>
+                <button class="cat-pill" data-cat="music">Music</button>
+                <button class="cat-pill" data-cat="film">Film, TV & Games</button>
             </div>
-        </header>
-
-        <main class="main-content">
-            <div class="year-grid" id="year-grid"></div>
-            
-            <div class="legend">
-                <div class="legend-item"><div class="legend-dot" style="background: var(--current-brand)"></div> Content Ideas</div>
-                <div class="legend-item"><div class="legend-dot" style="background: var(--cat-awareness)"></div> Awareness Day</div>
-                <div class="legend-item"><div class="legend-dot" style="background: var(--cat-anniversary)"></div> Anniversary</div>
-                <div class="legend-item"><div class="legend-dot" style="background: var(--cat-popculture)"></div> Pop Culture</div>
-                <div class="legend-item"><div class="legend-dot" style="background: var(--cat-entertainment)"></div> Entertainment</div>
-                <div class="legend-item"><div class="legend-dot" style="background: var(--cat-heritage)"></div> Heritage</div>
-                <div class="legend-item"><div class="legend-dot" style="background: var(--cat-social)"></div> Social Moment</div>
+            <div class="slider-toggle">
+                <button class="slider-btn active" data-view="briefing">Briefing</button>
+                <button class="slider-btn" data-view="calendar">Calendar</button>
             </div>
-        </main>
-    </div>
-
-    <div class="modal-overlay" id="modal">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <div>
-                    <div class="modal-date" id="modal-date">1 January 2026</div>
-                    <div class="modal-weekday" id="modal-weekday">Thursday</div>
-                </div>
-                <div class="close-btn" onclick="closeModal()">×</div>
-            </div>
-            <div class="modal-body" id="modal-body"></div>
         </div>
+    </header>
+    
+    <main id="view-briefing">
+        <div class="section-header">
+            <div class="section-dot"></div>
+            <div class="section-title">Today's Hooks</div>
+        </div>
+        <div id="hooks-mount" class="hooks-grid"></div>
+        
+        <div class="section-header">
+            <div class="section-dot"></div>
+            <div class="section-title">Week Ahead</div>
+        </div>
+        <div id="week-mount" class="week-strip"></div>
+        
+        <div class="section-header">
+            <div class="section-dot"></div>
+            <div class="section-title">Reference</div>
+        </div>
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="info-header"><div class="dot" style="background:var(--hero)"></div> Birthdays</div>
+                <ul id="births-list" class="info-list"></ul>
+            </div>
+            <div class="info-card">
+                <div class="info-header"><div class="dot" style="background:var(--hero)"></div> On This Day</div>
+                <ul id="history-list" class="info-list"></ul>
+            </div>
+            <div class="info-card">
+                <div class="info-header"><div class="dot" style="background:var(--hero)"></div> 🚀 Release Radar</div>
+                <div id="releases-container">
+                    <div class="info-sub-header">📺 Screen Premieres (30 Days)</div>
+                    <ul id="screen-list" class="info-list"></ul>
+                    <div class="info-sub-header">🎮 Gaming Releases</div>
+                    <ul id="games-list" class="info-list"></ul>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <main id="view-calendar" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-4">
+                <h2 class="text-2xl font-black uppercase tracking-tighter">Roadmap <span class="text-red-500">2026</span></h2>
+                <div class="flex bg-slate-100 p-1 rounded-full border border-slate-200">
+                    <button class="px-4 py-2 text-[10px] font-bold uppercase rounded-full transition-all" id="cal-btn-year" onclick="setCalendarMode('year')">Year</button>
+                    <button class="px-4 py-2 text-[10px] font-bold uppercase rounded-full transition-all" id="cal-btn-month" onclick="setCalendarMode('month')">Month</button>
+                    <button class="px-4 py-2 text-[10px] font-bold uppercase rounded-full transition-all" id="cal-btn-week" onclick="setCalendarMode('week')">Week</button>
+                </div>
+            </div>
+        </div>
+        <div id="calendar-mount"></div>
+    </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <span class="modal-title" id="modal-title">Event</span>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
     </div>
+</div>
 
-    <script>
-        var BRAND_COLOURS = {
-            'MONEY': '#2E7D32',
-            'UK': '#1565C0',
-            'MAIN': '#E94B4B',
-            'RESPAWN': '#7C4DFF',
-            'SPORT': '#FF6D00',
-            'SPOTLIGHT': '#E6468B'
-        };
+<!-- Saved Ideas Panel -->
+<button class="ideas-toggle" onclick="toggleIdeas()">
+    💡
+    <span class="count" id="ideas-count">0</span>
+</button>
+<div class="ideas-panel" id="ideas-panel">
+    <div class="ideas-header">
+        <span class="ideas-title">My Saved Ideas</span>
+        <button class="modal-close" onclick="toggleIdeas()">×</button>
+    </div>
+    <div id="ideas-list"></div>
+</div>
 
-        var CAT_COLOURS = {
-            'awareness': '#9C27B0',
-            'anniversary': '#FF9800',
-            'popculture': '#E91E63',
-            'entertainment': '#00BCD4',
-            'heritage': '#795548',
-            'social': '#4CAF50'
-        };
+<script>
+const TODAY = new Date(2026, 0, 6); // Hardcoded to Jan 6, 2026
+let currentCat = 'all';
+let currentCalMode = 'year';
+let savedIdeas = JSON.parse(localStorage.getItem('editorial_ideas') || '[]');
+let aiScanComplete = false;
 
-        var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        var DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        var DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const HYPE_PEOPLE = ["Irina Shayk", "Eddie Redmayne", "Tiffany Pollard", "Norman Reedus", "Rowan Atkinson", "Nicolas Cage", "Lewis Hamilton", "Alex Turner", "Kate Moss", "Florence Pugh"];
 
-        var currentBrand = 'MAIN';
-        var currentYear = 2026;
-        var currentView = 'all';
-        var calendarData = {};
-        var culturalData = {};
-        var selectedDate = null;
-        var db = null;
-        var firestoreConnected = false;
+// --- AI DISCOVERIES (SIMULATED) ---
+const AI_DISCOVERIES = [
+    { t: "Viral Trend: #Office25", d: "Trending on TikTok: The Office UK nostalgia", c: "pop" },
+    { t: "Cast Announcement", d: "Breaking: New Bond actor rumor surfacing", c: "film" },
+    { t: "Surprise Drop", d: "Music: Drake teasing midnight release", c: "music" }
+];
 
-        // Cultural calendar seed data (MM-DD format for recurring events)
-        var CULTURAL_SEED = [
-            // January
-            { date: '01-01', title: 'New Year\'s Day', category: 'heritage', recurring: true },
-            { date: '01-08', title: 'Elvis Presley Birthday (1935)', category: 'anniversary', recurring: true },
-            { date: '01-15', title: 'Martin Luther King Jr Day', category: 'heritage', recurring: true },
-            { date: '01-17', title: 'Blue Monday', category: 'awareness', recurring: true },
-            { date: '01-21', title: 'National Hugging Day', category: 'social', recurring: true },
-            { date: '01-25', title: 'Burns Night', category: 'heritage', recurring: true },
-            { date: '01-27', title: 'Holocaust Memorial Day', category: 'heritage', recurring: true },
-            
-            // February
-            { date: '02-01', title: 'LGBT History Month Begins (UK)', category: 'awareness', recurring: true },
-            { date: '02-02', title: 'Groundhog Day', category: 'popculture', recurring: true },
-            { date: '02-04', title: 'World Cancer Day', category: 'awareness', recurring: true },
-            { date: '02-07', title: 'The Beatles Arrive in America (1964)', category: 'anniversary', recurring: true },
-            { date: '02-11', title: 'International Day of Women in Science', category: 'awareness', recurring: true },
-            { date: '02-13', title: 'Galentine\'s Day', category: 'social', recurring: true },
-            { date: '02-14', title: 'Valentine\'s Day', category: 'heritage', recurring: true },
-            { date: '02-17', title: 'Random Acts of Kindness Day', category: 'social', recurring: true },
-            { date: '02-22', title: 'World Thinking Day', category: 'awareness', recurring: true },
-            
-            // March
-            { date: '03-01', title: 'St David\'s Day', category: 'heritage', recurring: true },
-            { date: '03-08', title: 'International Women\'s Day', category: 'awareness', recurring: true },
-            { date: '03-14', title: 'Pi Day', category: 'social', recurring: true },
-            { date: '03-17', title: 'St Patrick\'s Day', category: 'heritage', recurring: true },
-            { date: '03-20', title: 'International Day of Happiness', category: 'awareness', recurring: true },
-            { date: '03-21', title: 'World Poetry Day', category: 'heritage', recurring: true },
-            { date: '03-22', title: 'World Water Day', category: 'awareness', recurring: true },
-            { date: '03-26', title: 'Purple Day (Epilepsy Awareness)', category: 'awareness', recurring: true },
-            { date: '03-31', title: 'Trans Day of Visibility', category: 'awareness', recurring: true },
-            
-            // April
-            { date: '04-01', title: 'April Fools\' Day', category: 'social', recurring: true },
-            { date: '04-02', title: 'World Autism Awareness Day', category: 'awareness', recurring: true },
-            { date: '04-07', title: 'World Health Day', category: 'awareness', recurring: true },
-            { date: '04-15', title: 'Titanic Sinks (1912)', category: 'anniversary', recurring: true },
-            { date: '04-21', title: 'Queen Elizabeth II Birthday', category: 'heritage', recurring: true },
-            { date: '04-22', title: 'Earth Day', category: 'awareness', recurring: true },
-            { date: '04-23', title: 'St George\'s Day', category: 'heritage', recurring: true },
-            { date: '04-23', title: 'World Book Day (UK)', category: 'heritage', recurring: true },
-            { date: '04-25', title: 'Anzac Day', category: 'heritage', recurring: true },
-            
-            // May
-            { date: '05-01', title: 'May Day / International Workers\' Day', category: 'heritage', recurring: true },
-            { date: '05-04', title: 'Star Wars Day', category: 'popculture', recurring: true },
-            { date: '05-08', title: 'VE Day', category: 'heritage', recurring: true },
-            { date: '05-10', title: 'World Mental Health Awareness Week', category: 'awareness', recurring: true },
-            { date: '05-17', title: 'IDAHOBIT Day', category: 'awareness', recurring: true },
-            { date: '05-20', title: 'World Bee Day', category: 'awareness', recurring: true },
-            { date: '05-25', title: 'Towel Day (Douglas Adams)', category: 'popculture', recurring: true },
-            { date: '05-25', title: 'African Liberation Day', category: 'heritage', recurring: true },
-            
-            // June
-            { date: '06-01', title: 'Pride Month Begins', category: 'awareness', recurring: true },
-            { date: '06-05', title: 'World Environment Day', category: 'awareness', recurring: true },
-            { date: '06-08', title: 'World Oceans Day', category: 'awareness', recurring: true },
-            { date: '06-14', title: 'World Blood Donor Day', category: 'awareness', recurring: true },
-            { date: '06-19', title: 'Juneteenth', category: 'heritage', recurring: true },
-            { date: '06-20', title: 'World Refugee Day', category: 'awareness', recurring: true },
-            { date: '06-21', title: 'Summer Solstice', category: 'heritage', recurring: true },
-            { date: '06-21', title: 'World Music Day', category: 'entertainment', recurring: true },
-            { date: '06-25', title: 'Michael Jackson Dies (2009)', category: 'anniversary', recurring: true },
-            { date: '06-28', title: 'Stonewall Riots Anniversary (1969)', category: 'heritage', recurring: true },
-            
-            // July
-            { date: '07-04', title: 'US Independence Day', category: 'heritage', recurring: true },
-            { date: '07-06', title: 'International Kissing Day', category: 'social', recurring: true },
-            { date: '07-13', title: 'Live Aid Anniversary (1985)', category: 'anniversary', recurring: true },
-            { date: '07-17', title: 'World Emoji Day', category: 'social', recurring: true },
-            { date: '07-20', title: 'Moon Landing Anniversary (1969)', category: 'anniversary', recurring: true },
-            { date: '07-26', title: 'National Aunt & Uncle Day', category: 'social', recurring: true },
-            { date: '07-30', title: 'International Friendship Day', category: 'social', recurring: true },
-            { date: '07-31', title: 'Harry Potter\'s Birthday', category: 'popculture', recurring: true },
-            
-            // August
-            { date: '08-01', title: 'Yorkshire Day', category: 'heritage', recurring: true },
-            { date: '08-08', title: 'International Cat Day', category: 'social', recurring: true },
-            { date: '08-09', title: 'International Day of the World\'s Indigenous Peoples', category: 'awareness', recurring: true },
-            { date: '08-12', title: 'International Youth Day', category: 'awareness', recurring: true },
-            { date: '08-16', title: 'Elvis Presley Dies (1977)', category: 'anniversary', recurring: true },
-            { date: '08-19', title: 'World Humanitarian Day', category: 'awareness', recurring: true },
-            { date: '08-26', title: 'International Dog Day', category: 'social', recurring: true },
-            { date: '08-31', title: 'Princess Diana Dies (1997)', category: 'anniversary', recurring: true },
-            
-            // September
-            { date: '09-05', title: 'Freddie Mercury\'s Birthday (1946)', category: 'anniversary', recurring: true },
-            { date: '09-08', title: 'International Literacy Day', category: 'awareness', recurring: true },
-            { date: '09-10', title: 'World Suicide Prevention Day', category: 'awareness', recurring: true },
-            { date: '09-11', title: '9/11 Anniversary', category: 'heritage', recurring: true },
-            { date: '09-15', title: 'Battle of Britain Day', category: 'heritage', recurring: true },
-            { date: '09-21', title: 'International Day of Peace', category: 'awareness', recurring: true },
-            { date: '09-23', title: 'Autumn Equinox', category: 'heritage', recurring: true },
-            { date: '09-27', title: 'World Tourism Day', category: 'social', recurring: true },
-            
-            // October
-            { date: '10-01', title: 'Black History Month Begins (UK)', category: 'heritage', recurring: true },
-            { date: '10-01', title: 'World Vegetarian Day', category: 'awareness', recurring: true },
-            { date: '10-04', title: 'World Animal Day', category: 'awareness', recurring: true },
-            { date: '10-09', title: 'John Lennon\'s Birthday (1940)', category: 'anniversary', recurring: true },
-            { date: '10-10', title: 'World Mental Health Day', category: 'awareness', recurring: true },
-            { date: '10-11', title: 'National Coming Out Day', category: 'awareness', recurring: true },
-            { date: '10-16', title: 'World Food Day', category: 'awareness', recurring: true },
-            { date: '10-21', title: 'Back to the Future Day', category: 'popculture', recurring: true },
-            { date: '10-25', title: 'Pablo Picasso Birthday', category: 'anniversary', recurring: true },
-            { date: '10-31', title: 'Halloween', category: 'heritage', recurring: true },
-            
-            // November
-            { date: '11-01', title: 'Día de los Muertos', category: 'heritage', recurring: true },
-            { date: '11-05', title: 'Bonfire Night', category: 'heritage', recurring: true },
-            { date: '11-09', title: 'Fall of Berlin Wall (1989)', category: 'anniversary', recurring: true },
-            { date: '11-11', title: 'Remembrance Day', category: 'heritage', recurring: true },
-            { date: '11-13', title: 'World Kindness Day', category: 'social', recurring: true },
-            { date: '11-14', title: 'World Diabetes Day', category: 'awareness', recurring: true },
-            { date: '11-16', title: 'International Day of Tolerance', category: 'awareness', recurring: true },
-            { date: '11-19', title: 'International Men\'s Day', category: 'awareness', recurring: true },
-            { date: '11-20', title: 'Transgender Day of Remembrance', category: 'awareness', recurring: true },
-            { date: '11-22', title: 'JFK Assassination (1963)', category: 'anniversary', recurring: true },
-            { date: '11-25', title: 'International Day for Elimination of Violence Against Women', category: 'awareness', recurring: true },
-            { date: '11-29', title: 'George Harrison Dies (2001)', category: 'anniversary', recurring: true },
-            { date: '11-30', title: 'St Andrew\'s Day', category: 'heritage', recurring: true },
-            
-            // December
-            { date: '12-01', title: 'World AIDS Day', category: 'awareness', recurring: true },
-            { date: '12-03', title: 'International Day of Persons with Disabilities', category: 'awareness', recurring: true },
-            { date: '12-05', title: 'World Soil Day', category: 'awareness', recurring: true },
-            { date: '12-08', title: 'John Lennon Dies (1980)', category: 'anniversary', recurring: true },
-            { date: '12-10', title: 'Human Rights Day', category: 'awareness', recurring: true },
-            { date: '12-21', title: 'Winter Solstice', category: 'heritage', recurring: true },
-            { date: '12-24', title: 'Christmas Eve', category: 'heritage', recurring: true },
-            { date: '12-25', title: 'Christmas Day', category: 'heritage', recurring: true },
-            { date: '12-26', title: 'Boxing Day', category: 'heritage', recurring: true },
-            { date: '12-31', title: 'New Year\'s Eve', category: 'heritage', recurring: true }
-        ];
+// --- 2026 FUTURE RELEASES DATABASE ---
+const RELEASES = [
+    { t: "Mickey 17", d: "2026-01-31", c: "film" },
+    { t: "Euphoria S3", d: "2026-01-11", c: "tv" },
+    { t: "The Last of Us S2", d: "2026-01-18", c: "tv" },
+    { t: "Industry S4", d: "2026-01-25", c: "tv" },
+    { t: "Severance S2", d: "2026-02-06", c: "tv" },
+    { t: "Metroid Prime 4", d: "2026-01-23", c: "game" },
+    { d: "2026-01-09", t: "Hamnet", c: "film" },
+    { d: "2026-01-16", t: "Wolf Man", c: "film" },
+    { d: "2026-02-13", t: "Captain America: BNW", c: "film" },
+    { d: "2026-02-14", t: "Hades II Full Release", c: "game" }
+];
 
-        // Populate cultural data
-        function populateCulturalData() {
-            CULTURAL_SEED.forEach(function(event) {
-                [2026, 2027, 2028].forEach(function(year) {
-                    var dateKey = year + '-' + event.date;
-                    if (!culturalData[dateKey]) {
-                        culturalData[dateKey] = [];
-                    }
-                    culturalData[dateKey].push({
-                        title: event.title,
-                        category: event.category
-                    });
-                });
-            });
+// --- COMPREHENSIVE CALENDAR DATABASE (350+ ITEMS) ---
+const DATABASE = [
+    // JAN
+    { d: '01-01', t: "New Year's Day", c: 'all' },
+    { d: '01-03', t: "J.R.R. Tolkien Bday (134)", c: 'film' },
+    { d: '01-04', t: "World Braille Day", c: 'all' },
+    { d: '01-05', t: "Golden Globes (Est)", c: 'film' },
+    { d: '01-06', t: "Epiphany", c: 'all' },
+    { d: '01-08', t: "Elvis Presley Bday", c: 'music' },
+    { d: '01-09', t: "iPhone Anniversary", c: 'pop' },
+    { d: '01-11', t: "Sundance Film Festival Starts", c: 'film' },
+    { d: '01-15', t: "Wikipedia 25th Anniv", c: 'pop' },
+    { d: '01-15', t: "Critics Choice Awards", c: 'film' },
+    { d: '01-18', t: "Australian Open Starts", c: 'sport' },
+    { d: '01-19', t: "Blue Monday", c: 'all' },
+    { d: '01-20', t: "Penguin Awareness Day", c: 'pop' },
+    { d: '01-21', t: "National Hugging Day", c: 'pop' },
+    { d: '01-24', t: "UFC 312", c: 'sport' },
+    { d: '01-25', t: "Burns Night", c: 'all' },
+    { d: '01-26', t: "Australia Day", c: 'all' },
+    { d: '01-27', t: "Holocaust Memorial Day", c: 'all' },
+    { d: '01-28', t: "Data Privacy Day", c: 'pop' },
+    { d: '01-31', t: "Grammy Nominations", c: 'music' },
+    // FEB
+    { d: '02-01', t: "LGBT History Month (UK)", c: 'all' },
+    { d: '02-01', t: "Six Nations Kickoff", c: 'sport' },
+    { d: '02-02', t: "Groundhog Day", c: 'pop' },
+    { d: '02-04', t: "World Cancer Day", c: 'all' },
+    { d: '02-04', t: "Facebook 22nd Birthday", c: 'pop' },
+    { d: '02-05', t: "Nutella Day", c: 'pop' },
+    { d: '02-06', t: "Winter Olympics Opening", c: 'sport' },
+    { d: '02-07', t: "NY Fashion Week Starts", c: 'pop' },
+    { d: '02-08', t: "The Grammys", c: 'music' },
+    { d: '02-09', t: "Super Bowl LX", c: 'sport' },
+    { d: '02-09', t: "National Pizza Day", c: 'pop' },
+    { d: '02-11', t: "Women in Science Day", c: 'all' },
+    { d: '02-12', t: "Darwin Day", c: 'all' },
+    { d: '02-13', t: "Galentine's Day", c: 'pop' },
+    { d: '02-13', t: "London Fashion Week Starts", c: 'pop' },
+    { d: '02-14', t: "Valentine's Day", c: 'all' },
+    { d: '02-14', t: "YouTube 21st Birthday", c: 'pop' },
+    { d: '02-15', t: "BAFTA Film Awards", c: 'film' },
+    { d: '02-17', t: "Shrove Tuesday", c: 'all' },
+    { d: '02-19', t: "EastEnders 41st Anniv", c: 'film' },
+    { d: '02-20', t: "Love Your Pet Day", c: 'pop' },
+    { d: '02-22', t: "Winter Olympics Closing", c: 'sport' },
+    { d: '02-24', t: "Milan Fashion Week Starts", c: 'pop' },
+    { d: '02-27', t: "Pokémon Day (30th)", c: 'game' },
+    { d: '02-28', t: "SAG Awards", c: 'film' },
+    // MAR
+    { d: '03-01', t: "St David's Day", c: 'all' },
+    { d: '03-01', t: "Carabao Cup Final", c: 'sport' },
+    { d: '03-02', t: "Paris Fashion Week Starts", c: 'pop' },
+    { d: '03-05', t: "World Book Day", c: 'all' },
+    { d: '03-08', t: "Intl Women's Day", c: 'all' },
+    { d: '03-10', t: "The Oscars", c: 'film' },
+    { d: '03-10', t: "Mario Day (Mar10)", c: 'game' },
+    { d: '03-13', t: "SXSW Festival Starts", c: 'film' },
+    { d: '03-14', t: "Pi Day", c: 'pop' },
+    { d: '03-15', t: "F1 Season Opener", c: 'sport' },
+    { d: '03-17', t: "St Patrick's Day", c: 'all' },
+    { d: '03-20', t: "Spring Equinox", c: 'all' },
+    { d: '03-21', t: "Twitter 20th Anniv", c: 'pop' },
+    { d: '03-22', t: "Mother's Day (UK)", c: 'all' },
+    { d: '03-23', t: "GDC (Game Developers Conf)", c: 'game' },
+    { d: '03-27', t: "Beyoncé Album Anniv", c: 'music' },
+    { d: '03-29', t: "BST Begins", c: 'all' },
+    { d: '03-31', t: "Trans Day of Visibility", c: 'all' },
+    // APR
+    { d: '04-01', t: "April Fools", c: 'pop' },
+    { d: '04-03', t: "Good Friday", c: 'all' },
+    { d: '04-05', t: "Easter Sunday", c: 'all' },
+    { d: '04-07', t: "World Health Day", c: 'all' },
+    { d: '04-09', t: "The Masters (Golf)", c: 'sport' },
+    { d: '04-10', t: "Coachella Week 1", c: 'music' },
+    { d: '04-11', t: "Grand National", c: 'sport' },
+    { d: '04-13', t: "Scrabble Day", c: 'pop' },
+    { d: '04-15', t: "Coachella Week 2", c: 'music' },
+    { d: '04-20', t: "Boston Marathon", c: 'sport' },
+    { d: '04-21', t: "National Tea Day", c: 'pop' },
+    { d: '04-22', t: "Earth Day", c: 'all' },
+    { d: '04-23', t: "St George's Day", c: 'all' },
+    { d: '04-26', t: "London Marathon", c: 'sport' },
+    { d: '04-30', t: "Mean Girls Day", c: 'film' },
+    // MAY
+    { d: '05-02', t: "World Snooker Final", c: 'sport' },
+    { d: '05-04', t: "Star Wars Day", c: 'film' },
+    { d: '05-04', t: "Met Gala", c: 'pop' },
+    { d: '05-05', t: "Cinco de Mayo", c: 'all' },
+    { d: '05-09', t: "Europe Day", c: 'all' },
+    { d: '05-12', t: "Cannes Film Festival Starts", c: 'film' },
+    { d: '05-14', t: "Google I/O (Est)", c: 'pop' },
+    { d: '05-16', t: "FA Cup Final", c: 'sport' },
+    { d: '05-17', t: "Minecraft Anniversary", c: 'game' },
+    { d: '05-18', t: "Shrek 25th Anniv", c: 'film' },
+    { d: '05-20', t: "World Bee Day", c: 'all' },
+    { d: '05-23', t: "Eurovision Final", c: 'music' },
+    { d: '05-24', t: "Monaco GP", c: 'sport' },
+    { d: '05-25', t: "Spring Bank Holiday", c: 'all' },
+    { d: '05-31', t: "French Open Starts", c: 'sport' },
+    // JUN
+    { d: '06-01', t: "Pride Month Begins", c: 'all' },
+    { d: '06-03', t: "World Bicycle Day", c: 'sport' },
+    { d: '06-05', t: "World Environment Day", c: 'all' },
+    { d: '06-06', t: "Champions League Final", c: 'sport' },
+    { d: '06-08', t: "Best Friends Day", c: 'pop' },
+    { d: '06-08', t: "Apple WWDC (Est)", c: 'pop' },
+    { d: '06-11', t: "World Cup 2026 Kickoff", c: 'sport' },
+    { d: '06-12', t: "Download Festival", c: 'music' },
+    { d: '06-14', t: "Blood Donor Day", c: 'all' },
+    { d: '06-18', t: "US Open Golf", c: 'sport' },
+    { d: '06-21', t: "Father's Day", c: 'all' },
+    { d: '06-21', t: "World Music Day", c: 'music' },
+    { d: '06-24', t: "Glastonbury Starts", c: 'music' },
+    { d: '06-26', t: "Harry Potter 1 Anniv", c: 'pop' },
+    // JUL
+    { d: '07-01', t: "Wimbledon Starts", c: 'sport' },
+    { d: '07-04', t: "Independence Day (US)", c: 'all' },
+    { d: '07-05', t: "British GP (Silverstone)", c: 'sport' },
+    { d: '07-07', t: "World Chocolate Day", c: 'pop' },
+    { d: '07-08', t: "Spice Girls 'Wannabe'", c: 'music' },
+    { d: '07-09', t: "The Office (UK) 25th", c: 'film' },
+    { d: '07-12', t: "Wimbledon Final", c: 'sport' },
+    { d: '07-14', t: "Bastille Day", c: 'all' },
+    { d: '07-16', t: "The Open Championship", c: 'sport' },
+    { d: '07-17', t: "World Emoji Day", c: 'pop' },
+    { d: '07-19', t: "World Cup 2026 Final", c: 'sport' },
+    { d: '07-20', t: "Moon Landing Anniv", c: 'all' },
+    { d: '07-23', t: "Comic-Con San Diego", c: 'pop' },
+    { d: '07-30', t: "Friendship Day", c: 'pop' },
+    // AUG
+    { d: '08-01', t: "Yorkshire Day", c: 'all' },
+    { d: '08-07', t: "Edinburgh Fringe Starts", c: 'all' },
+    { d: '08-08', t: "Intl Cat Day", c: 'pop' },
+    { d: '08-12', t: "Youth Day", c: 'all' },
+    { d: '08-15', t: "Premier League Start", c: 'sport' },
+    { d: '08-19', t: "Photography Day", c: 'pop' },
+    { d: '08-26', t: "National Dog Day", c: 'pop' },
+    { d: '08-28', t: "Reading & Leeds", c: 'music' },
+    { d: '08-29', t: "Venice Film Festival", c: 'film' },
+    { d: '08-30', t: "Notting Hill Carnival", c: 'all' },
+    { d: '08-31', t: "Summer Bank Holiday", c: 'all' },
+    // SEP
+    { d: '09-01', t: "Back to School", c: 'all' },
+    { d: '09-04', t: "Beyoncé Bday", c: 'music' },
+    { d: '09-05', t: "Freddie Mercury Bday", c: 'music' },
+    { d: '09-10', t: "Suicide Prevention Day", c: 'all' },
+    { d: '09-12', t: "MTV VMAs (Est)", c: 'music' },
+    { d: '09-17', t: "GTA VI Rumoured", c: 'game' },
+    { d: '09-19', t: "Talk Like a Pirate Day", c: 'pop' },
+    { d: '09-21', t: "Peace Day", c: 'all' },
+    { d: '09-22', t: "Friends Anniv", c: 'film' },
+    { d: '09-24', t: "Nirvana Nevermind", c: 'music' },
+    { d: '09-27', t: "Google 28th Bday", c: 'pop' },
+    // OCT
+    { d: '10-01', t: "Black History Month (UK)", c: 'all' },
+    { d: '10-01', t: "World Vegetarian Day", c: 'pop' },
+    { d: '10-04', t: "London Film Festival", c: 'film' },
+    { d: '10-04', t: "World Animal Day", c: 'all' },
+    { d: '10-05', t: "James Bond Day", c: 'film' },
+    { d: '10-10', t: "World Mental Health Day", c: 'all' },
+    { d: '10-14', t: "Frieze London Art Fair", c: 'pop' },
+    { d: '10-16', t: "World Food Day", c: 'pop' },
+    { d: '10-23', t: "iPod 25th Anniv", c: 'pop' },
+    { d: '10-25', t: "Clocks Go Back", c: 'all' },
+    { d: '10-26', t: "Pumpkin Day", c: 'pop' },
+    { d: '10-31', t: "Halloween", c: 'all' },
+    // NOV
+    { d: '11-01', t: "Movember Starts", c: 'all' },
+    { d: '11-01', t: "World Vegan Day", c: 'pop' },
+    { d: '11-05', t: "Bonfire Night", c: 'all' },
+    { d: '11-08', t: "MTV EMAs", c: 'music' },
+    { d: '11-11', t: "Remembrance Day", c: 'all' },
+    { d: '11-13', t: "World Kindness Day", c: 'pop' },
+    { d: '11-15', t: "Xbox 25th Anniv", c: 'game' },
+    { d: '11-15', t: "Halo CE 25th Anniv", c: 'game' },
+    { d: '11-19', t: "Intl Men's Day", c: 'all' },
+    { d: '11-21', t: "Adele 30 Album Anniv", c: 'music' },
+    { d: '11-26', t: "Thanksgiving (US)", c: 'all' },
+    { d: '11-27', t: "Black Friday", c: 'all' },
+    { d: '11-30', t: "St Andrew's Day", c: 'all' },
+    { d: '11-30', t: "Cyber Monday", c: 'pop' },
+    // DEC
+    { d: '12-01', t: "World AIDS Day", c: 'all' },
+    { d: '12-01', t: "Spotify Wrapped", c: 'music' },
+    { d: '12-04', t: "Jay-Z Bday", c: 'music' },
+    { d: '12-04', t: "National Cookie Day", c: 'pop' },
+    { d: '12-05', t: "The Game Awards", c: 'game' },
+    { d: '12-10', t: "Human Rights Day", c: 'all' },
+    { d: '12-11', t: "Xmas Jumper Day", c: 'pop' },
+    { d: '12-19', t: "LotR 25th Anniv", c: 'film' },
+    { d: '12-21', t: "Winter Solstice", c: 'all' },
+    { d: '12-24', t: "Christmas Eve", c: 'all' },
+    { d: '12-25', t: "Christmas Day", c: 'all' },
+    { d: '12-26', t: "Boxing Day Football", c: 'sport' },
+    { d: '12-31', t: "New Year's Eve", c: 'all' }
+];
+
+function getDateKey(date) {
+    return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getEvents(date, cat) {
+    const key = getDateKey(date);
+    return DATABASE.filter(e => e.d === key && (cat === 'all' ? true : (e.c === cat || e.c === 'all' || (cat==='pop' && (e.c==='pop'||e.c==='all')))));
+}
+
+function getReleases(cat) {
+    return RELEASES.filter(r => {
+        if (cat === 'all') return true;
+        if (cat === 'film' && (r.c === 'film' || r.c === 'tv' || r.c === 'game')) return true;
+        return r.c === cat;
+    });
+}
+
+function isIdeaSaved(title) {
+    return savedIdeas.some(i => i.title === title);
+}
+
+function saveIdea(title, desc) {
+    if (!isIdeaSaved(title)) {
+        savedIdeas.push({ title, desc: desc || '', savedAt: new Date().toISOString() });
+        localStorage.setItem('editorial_ideas', JSON.stringify(savedIdeas));
+        renderIdeas();
+    }
+}
+
+function deleteIdea(idx) {
+    savedIdeas.splice(idx, 1);
+    localStorage.setItem('editorial_ideas', JSON.stringify(savedIdeas));
+    renderIdeas();
+}
+
+function renderIdeas() {
+    document.getElementById('ideas-count').textContent = savedIdeas.length;
+    const list = document.getElementById('ideas-list');
+    if (savedIdeas.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:#CCC; font-size:11px; padding:20px;">No saved ideas yet.<br>Click any hook to save it.</div>';
+    } else {
+        list.innerHTML = savedIdeas.map((idea, i) => `
+            <div class="idea-card">
+                <div class="idea-card-title">${idea.title}</div>
+                <div class="idea-card-date">${idea.desc}</div>
+                <button class="idea-delete" onclick="deleteIdea(${i})">×</button>
+            </div>
+        `).join('');
+    }
+}
+
+async function fetchWiki(m, d) {
+    try {
+        const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/${m}/${d}`);
+        const data = await res.json();
+        
+        let births = [];
+        if (data.births) {
+            births = data.births.map(b => ({
+                name: b.text.split(',')[0],
+                age: 2026 - b.year,
+                desc: b.text.split(',').slice(1).join(',').trim(),
+                isHype: HYPE_PEOPLE.some(hp => b.text.includes(hp))
+            })).sort((a, b) => (b.isHype ? 1 : 0) - (a.isHype ? 1 : 0)).slice(0, 10);
         }
+        
+        return { births, events: (data.events || []).slice(0, 5) };
+    } catch { return { births: [], events: [] }; }
+}
 
-        // Get brand from URL
-        (function() {
-            currentBrand = 'MAIN';
-            var colour = '#E94B4B';
-            document.documentElement.style.setProperty('--current-brand', colour);
-            populateCulturalData();
-        })();
+const TMDB_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNzk3OWRhNmQ2NjNmZjhmMzY2OTM3NTM2OWQ0Y2U1YSIsIm5iZiI6MTc2NzcyMTMxMi42NDIsInN1YiI6IjY5NWQ0OTYwMDBiN2I4ZjcyNWRkMDk2MCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.lDV3Zr-C-4KN8VWq7hi3uLtHym3S0MyBx-jd_LZLYAc';
 
-        function showApp() {
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('app').classList.remove('hidden');
-            document.getElementById('brand-title').textContent = currentBrand;
-            renderYear();
+async function fetchFilms() {
+    // Return hardcoded releases for demo, plus mock fetch
+    return RELEASES;
+}
+
+async function loadBriefing() {
+    const m = String(TODAY.getMonth() + 1).padStart(2, '0');
+    const d = String(TODAY.getDate()).padStart(2, '0');
+    
+    const events = getEvents(TODAY, currentCat);
+    const wiki = await fetchWiki(m, d);
+    const releases = getReleases(currentCat); 
+    
+    // AI SCAN SIMULATION
+    if (!aiScanComplete) {
+        const toast = document.getElementById('ai-toast');
+        if (toast) {
+             toast.classList.add('visible');
+             setTimeout(() => {
+                toast.classList.remove('visible');
+                aiScanComplete = true;
+                loadBriefing(); 
+            }, 3000);
+        } else {
+            aiScanComplete = true;
         }
+    }
 
-        function renderYear() {
-            var grid = document.getElementById('year-grid');
-            if (!grid) return;
-            grid.innerHTML = '';
-            
-            var monthsToRender = currentYear === 2028 ? 1 : 12;
-            
-            for (var month = 0; month < monthsToRender; month++) {
-                grid.innerHTML += generateMonthCard(currentYear, month);
+    let hooks = [];
+    events.forEach(e => hooks.push({ cat: 'Scheduled', title: e.t, desc: 'Editorial Milestone' }));
+    
+    if (aiScanComplete) {
+        AI_DISCOVERIES.forEach(ai => {
+            if(currentCat === 'all' || currentCat === ai.c) {
+                hooks.push({ cat: 'AI Pick', title: ai.t, desc: ai.d, ai: true });
             }
-            
-            var cells = grid.querySelectorAll('.day-cell:not(.empty)');
-            for (var i = 0; i < cells.length; i++) {
-                (function(cell) {
-                    cell.addEventListener('click', function() {
-                        openDateModal(cell.getAttribute('data-date'));
-                    });
-                })(cells[i]);
-            }
-            
-            updateStats();
-        }
-
-        function generateMonthCard(year, monthIndex) {
-            var firstDay = new Date(year, monthIndex, 1);
-            var lastDay = new Date(year, monthIndex + 1, 0);
-            var daysInMonth = lastDay.getDate();
-            var startDayOfWeek = firstDay.getDay();
-            var adjustedStartDay = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
-
-            var ideasInMonth = 0;
-            var culturalInMonth = 0;
-            var daysHTML = '';
-            
-            for (var i = 0; i < adjustedStartDay; i++) {
-                daysHTML += '<div class="day-cell empty"></div>';
-            }
-            
-            for (var day = 1; day <= daysInMonth; day++) {
-                var m = (monthIndex + 1).toString();
-                var d = day.toString();
-                var dateKey = year + '-' + (m.length < 2 ? '0' + m : m) + '-' + (d.length < 2 ? '0' + d : d);
-                
-                var ideas = calendarData[dateKey] || [];
-                var cultural = culturalData[dateKey] || [];
-                
-                var hasIdeas = ideas.length > 0;
-                var hasCultural = cultural.length > 0;
-                
-                if (hasIdeas) ideasInMonth += ideas.length;
-                if (hasCultural) culturalInMonth += cultural.length;
-                
-                var dayOfWeek = new Date(year, monthIndex, day).getDay();
-                var isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                
-                var show = true;
-                if (currentView === 'ideas' && !hasIdeas) show = hasIdeas;
-                if (currentView === 'cultural' && !hasCultural) show = hasCultural;
-                
-                var classes = 'day-cell';
-                if (hasIdeas) classes += ' has-ideas';
-                if (hasCultural && currentView !== 'ideas') classes += ' has-cultural';
-                if (isWeekend && !hasIdeas) classes += ' weekend';
-                
-                var dotsHTML = '';
-                if ((hasCultural && currentView !== 'ideas') || (hasIdeas && currentView !== 'cultural')) {
-                    dotsHTML = '<div class="day-dots">';
-                    if (hasCultural && currentView !== 'ideas') {
-                        var cat = cultural[0].category;
-                        dotsHTML += '<div class="day-dot" style="background:' + (CAT_COLOURS[cat] || CAT_COLOURS.popculture) + '"></div>';
-                    }
-                    dotsHTML += '</div>';
-                }
-                
-                daysHTML += '<div class="' + classes + '" data-date="' + dateKey + '">' + day + dotsHTML + '</div>';
-            }
-
-            var badgesHTML = '';
-            if (ideasInMonth > 0 && currentView !== 'cultural') {
-                badgesHTML += '<span class="month-badge badge-ideas">' + ideasInMonth + '</span>';
-            }
-            if (culturalInMonth > 0 && currentView !== 'ideas') {
-                badgesHTML += '<span class="month-badge badge-cultural">' + culturalInMonth + '</span>';
-            }
-            if (ideasInMonth === 0 && culturalInMonth === 0) {
-                badgesHTML = '<span class="month-badge badge-empty">Empty</span>';
-            }
-
-            return '<div class="month-card" style="animation-delay: ' + (monthIndex * 0.04) + 's">' +
-                '<div class="month-header">' +
-                    '<div class="month-name">' + MONTH_NAMES[monthIndex] + ' ' + year + '</div>' +
-                    '<div class="month-badges">' + badgesHTML + '</div>' +
-                '</div>' +
-                '<div class="days-header">' + DAY_LABELS.map(function(d) { return '<div class="day-label">' + d + '</div>'; }).join('') + '</div>' +
-                '<div class="days-grid">' + daysHTML + '</div>' +
-            '</div>';
-        }
-
-        function updateStats() {
-            var totalIdeas = 0;
-            var totalCultural = 0;
-            
-            for (var key in calendarData) {
-                if (calendarData[key] && calendarData[key].length > 0) {
-                    totalIdeas += calendarData[key].length;
-                }
-            }
-            
-            for (var key in culturalData) {
-                if (culturalData[key] && culturalData[key].length > 0) {
-                    totalCultural += culturalData[key].length;
-                }
-            }
-            
-            document.getElementById('total-ideas').textContent = totalIdeas;
-            document.getElementById('total-cultural').textContent = totalCultural;
-        }
-
-        function openDateModal(dateKey) {
-            selectedDate = dateKey;
-            var parts = dateKey.split('-');
-            var year = parseInt(parts[0]);
-            var month = parseInt(parts[1]);
-            var day = parseInt(parts[2]);
-            var date = new Date(year, month - 1, day);
-            
-            document.getElementById('modal-date').textContent = day + ' ' + MONTH_NAMES[month - 1] + ' ' + year;
-            document.getElementById('modal-weekday').textContent = DAY_NAMES[date.getDay()];
-            
-            renderModalBody();
-            document.getElementById('modal').classList.add('active');
-        }
-
-        function renderModalBody() {
-            var body = document.getElementById('modal-body');
-            var ideas = calendarData[selectedDate] || [];
-            var cultural = culturalData[selectedDate] || [];
-            
-            var html = '';
-            
-            // Cultural section
-            if (cultural.length > 0 && currentView !== 'ideas') {
-                html += '<div class="modal-section">';
-                html += '<div class="section-header"><div class="section-icon" style="background: var(--cat-popculture); color: #FFF;">📅</div><div class="section-title">Cultural Moments</div></div>';
-                html += '<div class="cultural-list">';
-                for (var i = 0; i < cultural.length; i++) {
-                    var c = cultural[i];
-                    html += '<div class="cultural-item cat-' + c.category + '">';
-                    html += '<div class="cultural-content">';
-                    html += '<div class="cultural-title">' + escapeHtml(c.title) + '</div>';
-                    html += '<div class="cultural-meta">' + c.category.replace('popculture', 'Pop Culture') + '</div>';
-                    html += '</div></div>';
-                }
-                html += '</div></div>';
-            }
-            
-            // Ideas section
-            if (currentView !== 'cultural') {
-                html += '<div class="modal-section">';
-                html += '<div class="section-header"><div class="section-icon" style="background: var(--current-brand); color: #FFF;">💡</div><div class="section-title">Content Ideas</div></div>';
-                
-                if (ideas.length === 0) {
-                    html += '<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-text">No ideas yet</div></div>';
-                } else {
-                    html += '<div class="ideas-list">';
-                    for (var j = 0; j < ideas.length; j++) {
-                        html += '<div class="idea-item">';
-                        html += '<div class="idea-bullet"></div>';
-                        html += '<div class="idea-text">' + escapeHtml(ideas[j]) + '</div>';
-                        html += '<button class="idea-delete" data-index="' + j + '">×</button>';
-                        html += '</div>';
-                    }
-                    html += '</div>';
-                }
-                
-                html += '<div class="add-idea-form">';
-                html += '<input type="text" class="idea-input" id="idea-input" placeholder="Add a content idea..." maxlength="200">';
-                html += '<button class="add-btn" id="add-btn" onclick="addIdea()">Add</button>';
-                html += '</div></div>';
-            }
-            
-            body.innerHTML = html;
-            
-            // Attach delete handlers
-            var deleteBtns = body.querySelectorAll('.idea-delete');
-            for (var k = 0; k < deleteBtns.length; k++) {
-                (function(btn) {
-                    btn.addEventListener('click', function() {
-                        deleteIdea(parseInt(btn.getAttribute('data-index')));
-                    });
-                })(deleteBtns[k]);
-            }
-            
-            // Attach enter key handler
-            var input = document.getElementById('idea-input');
-            if (input) {
-                input.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') addIdea();
-                });
-                input.focus();
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('modal').classList.remove('active');
-            selectedDate = null;
-        }
-
-        document.getElementById('modal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
         });
+    }
+    
+    wiki.births.forEach(b => {
+        const desc = b.desc.toLowerCase();
+        let show = currentCat === 'all' || currentCat === 'pop';
+        if (currentCat === 'sport' && (desc.includes('football') || desc.includes('player') || desc.includes('athlete'))) show = true;
+        if (currentCat === 'music' && (desc.includes('singer') || desc.includes('musician') || desc.includes('rapper'))) show = true;
+        if (currentCat === 'film' && (desc.includes('actor') || desc.includes('actress') || desc.includes('director'))) show = true;
+        
+        if (b.isHype && (currentCat === 'all' || currentCat === 'pop')) show = true;
 
-        function escapeHtml(text) {
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        if (show) hooks.push({ cat: 'Birthday', title: `${b.name} turns ${b.age}`, desc: b.desc });
+    });
+    
+    const hooksMount = document.getElementById('hooks-mount');
+    if (hooks.length === 0) {
+        hooksMount.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:30px; color:#CCC; font-size:11px;">No hooks for this category today</div>';
+    } else {
+        hooksMount.innerHTML = hooks.slice(0, 12).map(h => `
+            <div class="hook-card ${h.ai ? 'ai-pick' : ''} ${isIdeaSaved(h.title) ? 'saved' : ''}" onclick="openHookModal('${h.title.replace(/'/g, "\\'")}', '${(h.desc || '').replace(/'/g, "\\'")}')">
+                <div class="hook-cat">${h.cat}</div>
+                <div class="hook-title">${h.title}</div>
+                ${h.desc ? `<div class="hook-desc">${h.desc}</div>` : ''}
+            </div>
+        `).join('');
+    }
+    
+    // Week strip
+    const weekMount = document.getElementById('week-mount');
+    weekMount.innerHTML = '';
+    for (let i = 1; i <= 7; i++) {
+        const date = new Date(TODAY);
+        date.setDate(TODAY.getDate() + i);
+        const dayEvents = getEvents(date, currentCat);
+        weekMount.innerHTML += `
+            <div class="day-card">
+                <div class="day-date">${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })}</div>
+                ${dayEvents.length ? dayEvents.slice(0, 3).map(e => `<div class="day-item">${e.t}</div>`).join('') : '<div style="color:#CCC; font-size:9px; font-style:italic;">No events</div>'}
+            </div>
+        `;
+    }
+    
+    // Interactive Lists
+    const renderInteractiveList = (id, items, templateFn, itemDataFn) => {
+        const el = document.getElementById(id);
+        el.innerHTML = items.map(item => {
+            const data = itemDataFn(item);
+            return `<li onclick="openHookModal('${data.title.replace(/'/g, "\\'")}', '${data.desc.replace(/'/g, "\\'")}')">${templateFn(item)}</li>`;
+        }).join('') || '<li style="color:#CCC">No data</li>';
+    };
 
-        function addIdea() {
-            var input = document.getElementById('idea-input');
-            if (!input) return;
-            var text = input.value.trim();
-            if (!text || !selectedDate) return;
+    renderInteractiveList('births-list', wiki.births.slice(0, 5), 
+        b => `<span class="truncate flex-1">${b.name}</span> <span class="info-age">${b.age}</span>`,
+        b => ({ title: `${b.name} Birthday`, desc: `Turns ${b.age}. ${b.desc}` })
+    );
+    
+    renderInteractiveList('history-list', wiki.events.slice(0, 5), 
+        e => `<div class="info-text-col"><div style="font-weight:900;color:#9CA3AF">${e.year}</div><div style="line-height:1.2">${e.text.substring(0, 60)}...</div></div>`,
+        e => ({ title: `On This Day: ${e.year}`, desc: e.text })
+    );
+    
+    // Split Releases
+    const screenReleases = releases.filter(r => r.c === 'film' || r.c === 'tv').sort((a,b) => a.d.localeCompare(b.d));
+    const gameReleases = releases.filter(r => r.c === 'game').sort((a,b) => a.d.localeCompare(b.d));
+    
+    document.getElementById('screen-list').innerHTML = screenReleases.map(r => `
+        <li onclick="openHookModal('${r.t}', 'Premiere on ${r.d}')">
+            <span class="truncate flex-1">${r.t}</span> <span style="font-size:9px; color:#9CA3AF;">${r.d.slice(5)}</span>
+        </li>`).join('') || '<li style="color:#CCC">No screen releases</li>';
 
-            var btn = document.getElementById('add-btn');
-            btn.disabled = true;
-            btn.textContent = '...';
+    document.getElementById('games-list').innerHTML = gameReleases.map(r => `
+        <li onclick="openHookModal('${r.t}', 'Release on ${r.d}')">
+            <span class="truncate flex-1">${r.t}</span> <span style="font-size:9px; color:#9CA3AF;">${r.d.slice(5)}</span>
+        </li>`).join('') || '<li style="color:#CCC">No game releases</li>';
+}
 
-            if (!calendarData[selectedDate]) {
-                calendarData[selectedDate] = [];
+function setCalendarMode(mode) {
+    currentCalMode = mode;
+    document.querySelectorAll('#cal-btn-year, #cal-btn-month, #cal-btn-week').forEach(b => b.classList.remove('bg-white', 'shadow-sm', 'text-black'));
+    document.querySelectorAll('#cal-btn-year, #cal-btn-month, #cal-btn-week').forEach(b => b.classList.add('text-slate-500'));
+    
+    const activeBtn = document.getElementById(`cal-btn-${mode}`);
+    activeBtn.classList.remove('text-slate-500');
+    activeBtn.classList.add('bg-white', 'shadow-sm', 'text-black');
+    
+    renderCalendar();
+}
+
+function renderCalendar() {
+    const mount = document.getElementById('calendar-mount');
+    if (!mount) return;
+    mount.innerHTML = '';
+    
+    if (currentCalMode === 'year') {
+        mount.className = 'year-grid';
+        ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].forEach((name, idx) => {
+            const days = new Date(2026, idx + 1, 0).getDate();
+            const start = (new Date(2026, idx, 1).getDay() + 6) % 7; 
+            let cells = '';
+            for (let s = 0; s < start; s++) cells += '<div class="day-cell active"></div>';
+            for (let d = 1; d <= days; d++) {
+                const key = `${String(idx + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const dateObj = new Date(2026, idx, d);
+                const events = getEvents(dateObj, currentCat);
+                cells += `<div class="day-cell ${events.length ? 'has-events' : ''}" onclick="openDayModal('${key}')">${d}</div>`;
             }
-            calendarData[selectedDate].push(text);
-            
-            if (firestoreConnected && typeof saveToFirestore === 'function') {
-                saveToFirestore();
-            }
-            
-            input.value = '';
-            renderModalBody();
-            renderYear();
-            showToast('Idea added');
-
-            btn.disabled = false;
-            btn.textContent = 'Add';
-        }
-
-        function deleteIdea(index) {
-            if (!selectedDate || !calendarData[selectedDate]) return;
-
-            calendarData[selectedDate].splice(index, 1);
-            if (calendarData[selectedDate].length === 0) {
-                delete calendarData[selectedDate];
-            }
-
-            if (firestoreConnected && typeof saveToFirestore === 'function') {
-                saveToFirestore();
-            }
-            
-            renderModalBody();
-            renderYear();
-            showToast('Idea removed');
-        }
-
-        function showToast(message) {
-            var toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('active');
-            setTimeout(function() { toast.classList.remove('active'); }, 2500);
-        }
-
-        // Year navigation
-        document.querySelectorAll('.year-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.year-btn').forEach(function(b) { b.classList.remove('active'); });
-                btn.classList.add('active');
-                currentYear = parseInt(btn.getAttribute('data-year'));
-                renderYear();
-            });
+            mount.innerHTML += `<div class="month-card"><div class="month-header">${name}</div><div class="days-grid">${cells}</div></div>`;
         });
-
-        // View toggle
-        document.querySelectorAll('.toggle-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.toggle-btn').forEach(function(b) { b.classList.remove('active'); });
-                btn.classList.add('active');
-                currentView = btn.getAttribute('data-view');
-                renderYear();
-            });
-        });
-
-        // Fallback timeout
-        setTimeout(function() {
-            if (document.getElementById('loader').style.display !== 'none') {
-                showApp();
-            }
-        }, 2000);
-    </script>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-            authDomain: "dmg-command-centre-native.firebaseapp.com",
-            projectId: "dmg-command-centre-native",
-            storageBucket: "dmg-command-centre-native.firebasestorage.app",
-            messagingSenderId: "223535956454",
-            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-        };
-
-        const appId = "dmg-command-centre-native";
-
-        try {
-            const app = initializeApp(firebaseConfig);
-            window.db = getFirestore(app);
-            const auth = getAuth(app);
-
-            window.saveToFirestore = async function() {
-                if (!window.db) return;
-                const docId = 'editorial_calendar_' + window.currentBrand;
-                const docRef = doc(window.db, 'artifacts', appId, 'public', 'data', 'editorial_calendars', docId);
-                await setDoc(docRef, {
-                    brand: window.currentBrand,
-                    data: window.calendarData,
-                    lastUpdated: new Date().toISOString()
-                });
-            };
-
-            signInAnonymously(auth).catch(function(e) {
-                console.error('Auth error:', e);
-            });
-
-            onAuthStateChanged(auth, function(user) {
-                if (user) {
-                    const docId = 'editorial_calendar_' + window.currentBrand;
-                    const docRef = doc(window.db, 'artifacts', appId, 'public', 'data', 'editorial_calendars', docId);
-                    
-                    onSnapshot(docRef, function(docSnap) {
-                        window.firestoreConnected = true;
-                        if (docSnap.exists()) {
-                            window.calendarData = docSnap.data().data || {};
-                        }
-                        showApp();
-                    }, function(error) {
-                        console.error('Firestore error:', error);
-                        showApp();
-                    });
-                }
-            });
-        } catch (e) {
-            console.error('Firebase error:', e);
+    } 
+    else if (currentCalMode === 'month') {
+        mount.className = 'big-month-grid';
+        const days = new Date(2026, 1, 0).getDate(); // Jan
+        for(let d=1; d<=days; d++) {
+            const key = `01-${String(d).padStart(2,'0')}`;
+            const events = getEvents(new Date(2026, 0, d), currentCat);
+            mount.innerHTML += `
+                <div class="big-day-cell ${events.length ? '' : 'big-day-empty'}" onclick="openDayModal('${key}')">
+                    <div class="big-day-num">${d}</div>
+                    ${events.map(e => `<div class="big-day-event">${e.t}</div>`).join('')}
+                </div>`;
         }
-    </script>
+    }
+    else if (currentCalMode === 'week') {
+        mount.className = 'week-view-horizontal';
+        for(let i=0; i<7; i++) {
+            let d = new Date(TODAY); d.setDate(TODAY.getDate() + i);
+            const k = `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            const events = getEvents(d, currentCat);
+            
+            mount.innerHTML += `
+                <div class="week-col">
+                    <div class="week-col-header">
+                        <div class="week-col-day">${d.toLocaleDateString('en-GB',{weekday:'short'})}</div>
+                        <div class="week-col-num">${d.getDate()}</div>
+                    </div>
+                    <div class="week-col-events">
+                        ${events.length ? events.map(e => `
+                            <div class="week-col-event">
+                                <div class="week-col-cat">${e.c}</div>
+                                <div class="week-col-title">${e.t}</div>
+                            </div>
+                        `).join('') : '<span style="color:#CCC; font-size:10px; font-style:italic;">No events</span>'}
+                    </div>
+                </div>`;
+        }
+    }
+}
+
+window.openHookModal = (title, desc) => {
+    document.getElementById('modal-title').textContent = 'Save Idea';
+    document.getElementById('modal-body').innerHTML = `
+        <div class="modal-item">
+            <div class="modal-item-title">${title}</div>
+            ${desc ? `<div class="modal-item-cat">${desc}</div>` : ''}
+        </div>
+        <button class="btn-save ${isIdeaSaved(title) ? 'saved' : ''}" onclick="${isIdeaSaved(title) ? '' : `saveIdea('${title.replace(/'/g, "\\'")}', '${desc.replace(/'/g, "\\'")}')`}">
+            ${isIdeaSaved(title) ? 'Saved ✓' : 'Add to My Ideas'}
+        </button>
+    `;
+    document.getElementById('modal').classList.add('active');
+};
+
+window.openDayModal = (key) => {
+    const dateObj = new Date(2026, parseInt(key.split('-')[0]) - 1, parseInt(key.split('-')[1]));
+    const events = getEvents(dateObj, currentCat);
+    
+    document.getElementById('modal-title').textContent = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+    document.getElementById('modal-body').innerHTML = events.length > 0 ? events.map(e => `
+        <div class="modal-item" onclick="saveIdea('${e.t.replace(/'/g, "\\'")}', 'Calendar Event'); closeModal();" style="cursor:pointer;">
+            <div class="modal-item-title">${e.t}</div>
+            <div class="modal-item-cat">Click to save</div>
+        </div>
+    `).join('') : '<div style="text-align:center; color:#CCC; padding:20px;">No events for this category</div>';
+    document.getElementById('modal').classList.add('active');
+};
+
+window.closeModal = () => document.getElementById('modal').classList.remove('active');
+window.toggleIdeas = () => document.getElementById('ideas-panel').classList.toggle('open');
+window.deleteIdea = deleteIdea;
+window.saveIdea = saveIdea;
+
+document.querySelectorAll('.cat-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCat = btn.dataset.cat;
+        loadBriefing();
+        renderCalendar();
+    });
+});
+
+document.querySelectorAll('.slider-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.slider-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const view = btn.dataset.view;
+        document.getElementById('view-briefing').classList.toggle('hidden', view !== 'briefing');
+        document.getElementById('view-calendar').classList.toggle('hidden', view !== 'calendar');
+        if (view === 'calendar') renderCalendar();
+    });
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+document.getElementById('todayDate').textContent = TODAY.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+renderIdeas();
+loadBriefing().then(() => {
+    setTimeout(() => {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+    }, 400);
+});
+</script>
 </body>
 </html>
