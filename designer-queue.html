@@ -1,12 +1,436 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Designer Queue</title>
+    <title>Designer Queue | Design Team</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --hero: #F2C316;
+            --hero-dark: #D4A90A;
+            --hero-soft: #FFFBEB;
+            --urgent: #EF4444;
+            --urgent-soft: #FEF2F2;
+            --progress: #F59E0B;
+            --done: #10B981;
+            --border: #EAECEF;
+            --text-main: #1C1C1C;
+            --text-sub: #6b7280;
+            --bg-grey: #f9fafb;
+        }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 20px; background: transparent; color: var(--text-main); }
+        
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 32px; height: 32px; }
+        .dot { width: 100%; height: 100%; border-radius: 50%; }
+        @keyframes yellowGreen { 0%, 100% { background: var(--hero); opacity: 0.3; } 50% { background: #06402B; opacity: 1; } }
+        .dot-anim { animation: yellowGreen 3s infinite ease-in-out; }
+        .dot-anim:nth-child(1) { animation-delay: 0s; }
+        .dot-anim:nth-child(2) { animation-delay: 0.75s; }
+        .dot-anim:nth-child(4) { animation-delay: 1.5s; }
+        .dot-anim:nth-child(3) { animation-delay: 2.25s; }
+        
+        .title-group h1 { font-size: 2rem; font-weight: 800; text-transform: uppercase; letter-spacing: -0.04em; line-height: 1; margin: 0; transform: scaleY(0.9); }
+        .title-sub { font-size: 9px; font-weight: 800; color: var(--hero-dark); text-transform: uppercase; letter-spacing: 0.15em; margin-top: 4px; }
+        
+        .stats-row { display: flex; gap: 8px; }
+        .stat-badge { padding: 8px 14px; border-radius: 10px; background: #FFF; border: 1.5px solid var(--border); display: flex; align-items: center; gap: 8px; }
+        .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .stat-dot.urgent { background: var(--urgent); }
+        .stat-dot.progress { background: var(--progress); }
+        .stat-dot.waiting { background: var(--border); }
+        .stat-num { font-size: 16px; font-weight: 900; color: var(--text-main); }
+        .stat-label { font-size: 9px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; min-height: 500px; }
+        @media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
+        
+        .column { background: var(--bg-grey); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; }
+        .column-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
+        .column-icon { font-size: 14px; }
+        .column-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .column-title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-main); }
+        .column-count { margin-left: auto; font-size: 10px; font-weight: 900; color: #FFF; background: var(--text-sub); padding: 2px 8px; border-radius: 99px; }
+        
+        .column.urgent .column-header { border-bottom-color: var(--urgent); }
+        .column.urgent .column-count { background: var(--urgent); }
+        .column.progress .column-header { border-bottom-color: var(--progress); }
+        .column.progress .column-count { background: var(--progress); }
+        .column.waiting .column-header { border-bottom-color: var(--border); }
+        
+        .cards-mount { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 100px; }
+        
+        .card { background: #FFF; border: 1.5px solid var(--border); border-radius: 12px; padding: 12px; transition: 0.2s; cursor: pointer; position: relative; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+        .card.urgent-border { border-left: 4px solid var(--urgent); }
+        
+        .card-top { display: flex; gap: 10px; margin-bottom: 8px; }
+        .card-thumb { width: 48px; height: 48px; border-radius: 6px; background: var(--bg-grey); overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .card-info { flex: 1; min-width: 0; }
+        .card-headline { font-size: 12px; font-weight: 700; color: var(--text-main); line-height: 1.3; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card-series { font-size: 8px; font-weight: 900; padding: 2px 6px; border-radius: 4px; display: inline-block; text-transform: uppercase; letter-spacing: 0.05em; }
+        .series-mail { background: #DBEAFE; color: #2563EB; }
+        .series-sport { background: #DCFCE7; color: #059669; }
+        .series-money { background: #CFFAFE; color: #0891B2; }
+        .series-uk { background: #FEE2E2; color: #DC2626; }
+        .series-respawn { background: #EDE9FE; color: #7C3AED; }
+        .series-spotlight { background: #FCE7F3; color: #DB2777; }
+        
+        .card-platforms { display: flex; gap: 4px; margin: 8px 0; }
+        .platform-icon { width: 18px; height: 18px; border-radius: 4px; background: var(--bg-grey); display: flex; align-items: center; justify-content: center; font-size: 10px; }
+        
+        .card-meta { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--bg-grey); }
+        .card-requester { display: flex; align-items: center; gap: 6px; }
+        .requester-avatar { width: 20px; height: 20px; border-radius: 50%; background: var(--hero); color: var(--text-main); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; }
+        .requester-avatar.auto { background: var(--bg-grey); border: 1.5px solid var(--border); color: var(--text-sub); }
+        .requester-name { font-size: 9px; font-weight: 600; color: var(--text-sub); display: flex; align-items: center; gap: 4px; }
+        .auto-badge { font-size: 7px; font-weight: 900; background: var(--bg-grey); color: var(--text-sub); padding: 1px 4px; border-radius: 3px; letter-spacing: 0.05em; }
+        .card-time { font-size: 9px; font-weight: 700; color: var(--text-sub); }
+        .card-time.urgent { color: var(--urgent); font-weight: 800; }
+        
+        .card-actions { display: flex; gap: 6px; margin-top: 10px; }
+        .btn-action { flex: 1; padding: 8px; border: none; border-radius: 8px; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; transition: 0.15s; font-family: inherit; }
+        .btn-claim { background: var(--hero); color: var(--text-main); }
+        .btn-claim:hover { background: var(--hero-dark); }
+        .btn-done { background: var(--done); color: #FFF; }
+        .btn-done:hover { background: #059669; }
+        .btn-view { background: var(--bg-grey); color: var(--text-sub); border: 1px solid var(--border); }
+        .btn-view:hover { background: #FFF; color: var(--text-main); }
+        
+        .empty-state { text-align: center; padding: 30px 20px; color: #CCC; }
+        .empty-dot { width: 24px; height: 24px; border-radius: 50%; margin: 0 auto 10px; opacity: 0.4; }
+        .empty-text { font-size: 10px; font-weight: 700; }
+        
+        #loading { position: fixed; inset: 0; background: #FFF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 9999; transition: opacity 0.3s, visibility 0.3s; }
+        #loading.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        .loader-dots { display: flex; gap: 6px; }
+        .loader-dots span { width: 10px; height: 10px; background: var(--hero); border-radius: 50%; animation: pulse 1.2s infinite ease-in-out; }
+        .loader-dots span:nth-child(2) { animation-delay: 0.15s; }
+        .loader-dots span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes pulse { 0%, 100% { transform: scale(0.4); opacity: 0.3; } 50% { transform: scale(1); opacity: 1; } }
+        .loader-text { font-size: 10px; font-weight: 900; color: var(--hero); text-transform: uppercase; letter-spacing: 0.15em; }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #FFF; width: 100%; max-width: 400px; border-radius: 16px; padding: 24px; }
+        .modal-title { font-size: 16px; font-weight: 900; margin-bottom: 16px; }
+        .modal-input { width: 100%; padding: 12px; border: 1.5px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 12px; margin-bottom: 12px; outline: none; }
+        .modal-input:focus { border-color: var(--hero); }
+        .modal-actions { display: flex; gap: 8px; }
+        .modal-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-weight: 800; font-size: 10px; text-transform: uppercase; cursor: pointer; font-family: inherit; }
+        .modal-btn.primary { background: var(--done); color: #FFF; }
+        .modal-btn.secondary { background: var(--bg-grey); color: var(--text-sub); }
+        
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--text-main); color: #FFF; padding: 12px 20px; border-radius: 12px; font-size: 11px; font-weight: 700; z-index: 200; transition: transform 0.3s; }
+        .toast.visible { transform: translateX(-50%) translateY(0); }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Designer Queue</h1>
-    <p>This page serves as a landing pad for designers.</p>
+
+<div id="loading">
+    <div class="loader-dots"><span></span><span></span><span></span></div>
+    <div class="loader-text">Loading Queue...</div>
+</div>
+
+<div class="header">
+    <div class="header-left">
+        <div class="dots-grid">
+            <div class="dot dot-anim"></div>
+            <div class="dot dot-anim"></div>
+            <div class="dot dot-anim"></div>
+            <div class="dot dot-anim"></div>
+        </div>
+        <div class="title-group">
+            <h1>Designer Queue</h1>
+            <div class="title-sub">Graphics Requests</div>
+        </div>
+    </div>
+    <div class="stats-row">
+        <div class="stat-badge">
+            <span class="stat-dot urgent"></span>
+            <span class="stat-num" id="stat-urgent">0</span>
+            <span class="stat-label">Urgent</span>
+        </div>
+        <div class="stat-badge">
+            <span class="stat-dot progress"></span>
+            <span class="stat-num" id="stat-progress">0</span>
+            <span class="stat-label">In Progress</span>
+        </div>
+        <div class="stat-badge">
+            <span class="stat-dot waiting"></span>
+            <span class="stat-num" id="stat-waiting">0</span>
+            <span class="stat-label">Waiting</span>
+        </div>
+    </div>
+</div>
+
+<div class="board">
+    <div class="column urgent">
+        <div class="column-header">
+            <span class="column-dot" style="background: var(--urgent);"></span>
+            <span class="column-title">Out Today</span>
+            <span class="column-count" id="count-urgent">0</span>
+        </div>
+        <div class="cards-mount" id="mount-urgent"></div>
+    </div>
+    
+    <div class="column progress">
+        <div class="column-header">
+            <span class="column-dot" style="background: var(--progress);"></span>
+            <span class="column-title">In Progress</span>
+            <span class="column-count" id="count-progress">0</span>
+        </div>
+        <div class="cards-mount" id="mount-progress"></div>
+    </div>
+    
+    <div class="column waiting">
+        <div class="column-header">
+            <span class="column-dot" style="background: var(--border);"></span>
+            <span class="column-title">Not Started</span>
+            <span class="column-count" id="count-waiting">0</span>
+        </div>
+        <div class="cards-mount" id="mount-waiting"></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">Mark as Done</div>
+        <input type="text" class="modal-input" id="final-link" placeholder="Paste final file link (Drive, Dropbox, etc.)" onkeypress="if(event.key==='Enter')submitDone()">
+        <div class="modal-actions">
+            <button class="modal-btn secondary" onclick="closeModal()">Cancel</button>
+            <button class="modal-btn primary" onclick="submitDone()">Complete</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast">Saved!</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
+    const appId = "dmg-command-centre-native";
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    
+    let requests = [];
+    let currentDoneId = null;
+    
+    const SERIES_CLASSES = {
+        'Mail Talks': 'series-mail',
+        'Sport': 'series-sport',
+        'Money': 'series-money',
+        'UK': 'series-uk',
+        'Respawn': 'series-respawn',
+        'Spotlight': 'series-spotlight'
+    };
+    
+    const PLATFORM_ICONS = {
+        'TikTok': '📱',
+        'Instagram Reels': '📷',
+        'Instagram Stories': '📖',
+        'YouTube Shorts': '▶️',
+        'Facebook': '👤',
+        'X/Twitter': '🐦',
+        'Snapchat': '👻'
+    };
+    
+    function timeAgo(date) {
+        if (!date) return 'Unknown';
+        const now = new Date();
+        const d = date.toDate ? date.toDate() : new Date(date);
+        const diff = Math.floor((now - d) / 1000 / 60);
+        if (diff < 60) return `${diff}m ago`;
+        if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+        return `${Math.floor(diff / 1440)}d ago`;
+    }
+    
+    function isToday(date) {
+        if (!date) return false;
+        const d = date.toDate ? date.toDate() : new Date(date);
+        const today = new Date();
+        return d.toDateString() === today.toDateString();
+    }
+    
+    function getInitials(name) {
+        if (!name) return '?';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    
+    function getSource(req) {
+        // If there's a requester name, show them
+        // If automated (no requester), show the vertical/series as source
+        if (req.requester && req.requester.trim()) {
+            return { name: req.requester, initials: getInitials(req.requester), isAuto: false };
+        }
+        // Automated - show vertical or source
+        const source = req.source || req.series || 'Auto';
+        return { name: source, initials: 'A', isAuto: true };
+    }
+    
+    function renderCard(req, showClaim = false, showDone = false) {
+        const seriesClass = SERIES_CLASSES[req.series] || 'series-mail';
+        const platforms = (req.platforms || []).slice(0, 4);
+        const isUrgent = isToday(req.dueDate);
+        const source = getSource(req);
+        
+        return `
+            <div class="card ${isUrgent ? 'urgent-border' : ''}" data-id="${req.id}">
+                <div class="card-top">
+                    <div class="card-thumb">
+                        ${req.imageRef ? `<img src="${req.imageRef}" alt="">` : '🎨'}
+                    </div>
+                    <div class="card-info">
+                        <div class="card-headline">${req.headline || 'Untitled Request'}</div>
+                        <span class="card-series ${seriesClass}">${req.series || 'General'}</span>
+                    </div>
+                </div>
+                <div class="card-platforms">
+                    ${platforms.map(p => `<div class="platform-icon" title="${p}">${PLATFORM_ICONS[p] || '📱'}</div>`).join('')}
+                </div>
+                <div class="card-meta">
+                    <div class="card-requester">
+                        <div class="requester-avatar ${source.isAuto ? 'auto' : ''}">${source.initials}</div>
+                        <span class="requester-name">${source.name}${source.isAuto ? ' <span class="auto-badge">AUTO</span>' : ''}</span>
+                    </div>
+                    <span class="card-time ${isUrgent ? 'urgent' : ''}">${isUrgent ? '⚡ TODAY' : timeAgo(req.createdAt)}</span>
+                </div>
+                <div class="card-actions">
+                    ${showClaim ? `<button class="btn-action btn-claim" onclick="claimRequest('${req.id}')">Claim</button>` : ''}
+                    ${showDone ? `<button class="btn-action btn-done" onclick="openDoneModal('${req.id}')">Done</button>` : ''}
+                    <button class="btn-action btn-view" onclick="viewRequest('${req.id}')">View</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    function render() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Filter out completed requests
+        const active = requests.filter(r => r.status !== 'completed');
+        
+        // Categorise
+        const urgent = active.filter(r => {
+            if (!r.dueDate) return false;
+            const due = r.dueDate.toDate ? r.dueDate.toDate() : new Date(r.dueDate);
+            due.setHours(0, 0, 0, 0);
+            return due <= today;
+        });
+        
+        const inProgress = active.filter(r => r.status === 'in_progress' && !urgent.includes(r));
+        const waiting = active.filter(r => r.status !== 'in_progress' && !urgent.includes(r));
+        
+        // Update stats
+        document.getElementById('stat-urgent').textContent = urgent.length;
+        document.getElementById('stat-progress').textContent = inProgress.length;
+        document.getElementById('stat-waiting').textContent = waiting.length;
+        
+        document.getElementById('count-urgent').textContent = urgent.length;
+        document.getElementById('count-progress').textContent = inProgress.length;
+        document.getElementById('count-waiting').textContent = waiting.length;
+        
+        // Render columns
+        const urgentMount = document.getElementById('mount-urgent');
+        const progressMount = document.getElementById('mount-progress');
+        const waitingMount = document.getElementById('mount-waiting');
+        
+        urgentMount.innerHTML = urgent.length > 0 
+            ? urgent.map(r => renderCard(r, r.status !== 'in_progress', r.status === 'in_progress')).join('')
+            : '<div class="empty-state"><div class="empty-dot" style="background: var(--done);"></div><div class="empty-text">Nothing urgent</div></div>';
+        
+        progressMount.innerHTML = inProgress.length > 0
+            ? inProgress.map(r => renderCard(r, false, true)).join('')
+            : '<div class="empty-state"><div class="empty-dot" style="background: var(--hero);"></div><div class="empty-text">No work in progress</div></div>';
+        
+        waitingMount.innerHTML = waiting.length > 0
+            ? waiting.map(r => renderCard(r, true, false)).join('')
+            : '<div class="empty-state"><div class="empty-dot" style="background: var(--border);"></div><div class="empty-text">Queue empty</div></div>';
+    }
+    
+    async function init() {
+        const forceHide = setTimeout(() => document.getElementById('loading').classList.add('hidden'), 4000);
+        
+        onSnapshot(collection(db, "artifacts", appId, "public", "data", "design_requests"), snap => {
+            requests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            render();
+            setTimeout(() => document.getElementById('loading').classList.add('hidden'), 300);
+            clearTimeout(forceHide);
+        }, () => {
+            render();
+            document.getElementById('loading').classList.add('hidden');
+        });
+    }
+    
+    window.claimRequest = async (id) => {
+        try {
+            await updateDoc(doc(db, "artifacts", appId, "public", "data", "design_requests", id), {
+                status: 'in_progress',
+                assignedAt: serverTimestamp()
+            });
+            showToast('Request claimed!');
+        } catch (err) {
+            console.error('Error claiming:', err);
+        }
+    };
+    
+    window.openDoneModal = (id) => {
+        currentDoneId = id;
+        document.getElementById('modal').classList.add('active');
+        document.getElementById('final-link').value = '';
+        document.getElementById('final-link').focus();
+    };
+    
+    window.closeModal = () => {
+        document.getElementById('modal').classList.remove('active');
+        currentDoneId = null;
+    };
+    
+    window.submitDone = async () => {
+        if (!currentDoneId) return;
+        const link = document.getElementById('final-link').value.trim();
+        
+        try {
+            await updateDoc(doc(db, "artifacts", appId, "public", "data", "design_requests", currentDoneId), {
+                status: 'completed',
+                finalFile: link || null,
+                completedAt: serverTimestamp()
+            });
+            showToast('Marked as done!');
+            closeModal();
+        } catch (err) {
+            console.error('Error completing:', err);
+        }
+    };
+    
+    window.viewRequest = (id) => {
+        const req = requests.find(r => r.id === id);
+        if (req) {
+            alert(`Request Details:\n\nHeadline: ${req.headline || 'N/A'}\nSeries: ${req.series || 'N/A'}\nPlatforms: ${(req.platforms || []).join(', ')}\nNotes: ${req.notes || 'None'}\nRequester: ${req.requester || 'Unknown'}`);
+        }
+    };
+    
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('visible');
+        setTimeout(() => toast.classList.remove('visible'), 2500);
+    }
+    
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    
+    signInAnonymously(auth).then(init);
+</script>
+
 </body>
 </html>
