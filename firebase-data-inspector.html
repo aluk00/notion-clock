@@ -3,505 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Command Centre | DMG Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <title>Firebase Data Inspector</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --dmg-blue: #21a0d8;
-            --dmg-gold: #F2C316;
-            --carbon: #0a0a0a;
-            --surface: #161616;
+            --bg: #0a0a0a;
+            --surface: #141414;
             --border: #222;
-            --success: #10B981;
-            --danger: #EF4444;
+            --text: #FFF;
+            --text-sub: #666;
+            --blue: #21a0d8;
+            --green: #10B981;
+            --yellow: #F2C316;
+            --red: #E94B4B;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: var(--carbon); color: #FFF; padding: 40px; min-height: 100vh; font-size: 13px; line-height: 1.5; }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; min-height: 100vh; }
         
-        h1 { font-size: 2rem; font-weight: 900; text-transform: uppercase; color: var(--dmg-blue); letter-spacing: -0.02em; }
-        .subtitle { color: #555; margin-bottom: 40px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; }
+        .header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 28px; height: 28px; }
+        .dot { width: 100%; height: 100%; background: var(--blue); border-radius: 50%; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .dot { animation: pulse 2s infinite ease-in-out; }
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.5s; }
+        .dot:nth-child(3) { animation-delay: 0.5s; }
+        .dot:nth-child(4) { animation-delay: 1s; }
         
-        .section { background: var(--surface); border-radius: 20px; padding: 30px; margin-bottom: 30px; border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
-        h2 { font-size: 1rem; font-weight: 800; margin-bottom: 25px; color: var(--dmg-gold); text-transform: uppercase; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+        h1 { font-size: 1.5rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; margin: 0; }
+        .subtitle { font-size: 10px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
         
-        .field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-bottom: 20px; }
-        .field-chip { background: #222; padding: 6px 12px; border-radius: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; border: 1px solid transparent; }
-        .field-chip.present { border-color: var(--success); color: var(--success); }
-        .field-chip.missing { border-color: var(--danger); color: var(--danger); opacity: 0.5; }
+        .stats { display: flex; gap: 12px; margin-bottom: 24px; }
+        .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+        .stat-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .stat-num { font-size: 20px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
+        .stat-label { font-size: 9px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.05em; }
         
-        .admin-table { width: 100%; border-collapse: collapse; }
-        .admin-table th { text-align: left; font-size: 9px; text-transform: uppercase; color: #444; padding: 12px; border-bottom: 2px solid var(--border); }
-        .admin-table td { padding: 8px 10px; border-bottom: 1px solid #1a1a1a; vertical-align: middle; }
+        .collections { display: grid; gap: 16px; }
         
-        input, select, textarea { 
-            background: #000; border: 1px solid #333; color: #FFF; 
-            padding: 6px 10px; border-radius: 6px; outline: none; font-size: 11px;
-            transition: 0.2s; width: 100%;
-        }
-        input:focus, select:focus { border-color: var(--dmg-blue); background: #050505; }
-        input[type="checkbox"] { width: auto; }
-        .readonly-field { background: #1a1a1a; color: #888; border: 1px dashed #333; }
+        .collection { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+        .collection-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+        .collection-header:hover { background: rgba(255,255,255,0.02); }
+        .collection-name { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px; }
+        .collection-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .collection-count { font-size: 11px; font-weight: 700; color: var(--text-sub); background: var(--bg); padding: 4px 10px; border-radius: 99px; }
+        .collection-toggle { font-size: 14px; color: var(--text-sub); transition: 0.2s; }
+        .collection.open .collection-toggle { transform: rotate(180deg); }
         
-        .btn { 
-            padding: 8px 16px; border-radius: 8px; font-size: 10px; font-weight: 800; 
-            text-transform: uppercase; cursor: pointer; transition: 0.2s; border: none;
-            display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
-        }
-        .btn-save { background: var(--success); color: #FFF; }
-        .btn-edit { background: var(--dmg-blue); color: #FFF; }
-        .btn-sync { background: var(--dmg-gold); color: #000; }
-        .btn:hover { opacity: 0.8; transform: translateY(-1px); }
+        .collection-body { display: none; max-height: 400px; overflow-y: auto; }
+        .collection.open .collection-body { display: block; }
         
-        .modal-overlay { 
-            position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px);
-            display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal { 
-            background: #111; width: 100%; max-width: 1050px; max-height: 95vh; 
-            overflow-y: auto; border-radius: 28px; padding: 45px; position: relative;
-            border: 1px solid #333;
-        }
-        .label-sm { font-size: 9px; font-weight: 800; color: #555; text-transform: uppercase; display: block; margin-bottom: 4px; }
-        .grid-config { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
-        
-        #loading-screen { position: fixed; inset: 0; background: var(--carbon); z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--dmg-blue); letter-spacing: 0.2em; }
-        .save-indicator { color: var(--success); font-size: 10px; font-weight: 800; margin-left: 5px; opacity: 0; transition: 0.3s; }
-        .save-indicator.active { opacity: 1; }
-    </style>
-</head>
-<body>
-<div id="loading-screen">DMG DATA ENGINE ACCESSING FIREBASE...</div>
-
-<header style="display: flex; justify-content: space-between; align-items: flex-start;">
-    <div>
-        <h1>Command Centre</h1>
-        <p class="subtitle">Diagnostic Health Checks & Organizational Manager</p>
-    </div>
-    <div style="display: flex; gap: 10px;">
-        <button class="btn btn-sync" onclick="syncMasterLedger()">Sync January Ledger (Clean & De-Dup)</button>
-    </div>
-</header>
-
-<section class="section">
-    <h2>📊 Database Schema Health</h2>
-    <div class="label-sm" style="margin-bottom: 15px;">Required Cohesion Properties (Notion ↔ Firebase)</div>
-    <div class="field-grid" id="schemaHealthGrid"></div>
-</section>
-
-<section class="section">
-    <h2>👥 Staff Hierarchy (Directory Management)</h2>
-    <div style="overflow-x: auto;">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th style="width: 100px;">First Name</th>
-                    <th style="width: 100px;">Last Name</th>
-                    <th style="width: 180px;">Email</th>
-                    <th style="width: 100px;">Vertical</th>
-                    <th style="width: 110px;">Seniority</th>
-                    <th style="width: 140px;">Functional Role</th>
-                    <th>Manager</th>
-                    <th style="width: 50px;">Mgr?</th>
-                    <th style="width: 80px;">Action</th>
-                </tr>
-            </thead>
-            <tbody id="staffTableBody"></tbody>
-        </table>
-    </div>
-</section>
-
-<section class="section">
-    <h2>🎬 Shoot Master Ledger (Grouping & Logistics)</h2>
-    <div style="overflow-x: auto;">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Date/Time</th>
-                    <th>Client</th>
-                    <th>AI Project Name</th>
-                    <th>Location</th>
-                    <th>Producer</th>
-                    <th>Videographer</th>
-                    <th>Creative</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="shootTableBody"></tbody>
-        </table>
-    </div>
-</section>
-
-<!-- Advanced Shoot Modal -->
-<div class="modal-overlay" id="editModal">
-    <div class="modal">
-        <h2 id="modalTitle">Edit Shoot Document</h2>
-        <form id="editForm">
-            <input type="hidden" id="editId">
-            
-            <div class="grid-config">
-                <div>
-                    <label class="label-sm">Client / Brand</label>
-                    <select id="field_client_select" onchange="toggleNewClient(this.value)"></select>
-                    <input type="text" id="field_client_new" class="hidden" style="margin-top:8px;" placeholder="Enter New Brand Name..." oninput="updateAIName()">
-                </div>
-                <div>
-                    <label class="label-sm">Asset / Project Title</label>
-                    <input type="text" id="field_title" placeholder="e.g. Budget Builder" oninput="updateAIName()">
-                </div>
-                <div>
-                    <label class="label-sm" style="color:var(--dmg-gold)">AI PROJECT NAME (Notion Key)</label>
-                    <input type="text" id="field_ai_name" class="readonly-field" readonly>
-                </div>
-            </div>
-
-            <!-- Interconnected People Slots -->
-            <div class="grid-config" style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                <div>
-                    <label class="label-sm" style="color:var(--dmg-gold)">Lead Producer</label>
-                    <select id="field_productionLeadId"></select>
-                </div>
-                <div>
-                    <label class="label-sm" style="color:var(--dmg-gold)">Videographer</label>
-                    <select id="field_videographerId"></select>
-                </div>
-                <div>
-                    <label class="label-sm" style="color:var(--dmg-gold)">Creative Lead</label>
-                    <select id="field_creativeLeadId"></select>
-                </div>
-            </div>
-
-            <div class="grid-config">
-                <div>
-                    <label class="label-sm">Location / Studio</label>
-                    <input type="text" id="field_location" placeholder="e.g. HQ Studio 1">
-                </div>
-                <div>
-                    <label class="label-sm">Production Format</label>
-                    <select id="field_format">
-                        <option value="Street Talks">Street Talks</option>
-                        <option value="Headlines">Headlines</option>
-                        <option value="Mail Investigates">Mail Investigates</option>
-                        <option value="Mail Talks">Mail Talks</option>
-                        <option value="Going Viral">Going Viral</option>
-                        <option value="Only in Britain">Only in Britain</option>
-                        <option value="Global Debate">Global Debate</option>
-                        <option value="The Verdict">The Verdict</option>
-                        <option value="Deep Dive">Deep Dive</option>
-                        <option value="Pop Off">Pop Off</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="label-sm">Effort Score (Points)</label>
-                    <input type="number" step="0.5" id="field_effort" placeholder="0.5 - 3.0">
-                </div>
-            </div>
-
-            <div class="grid-config">
-                <div>
-                    <label class="label-sm">Start Date/Time</label>
-                    <input type="datetime-local" id="field_start">
-                </div>
-                <div>
-                    <label class="label-sm">End Date/Time</label>
-                    <input type="datetime-local" id="field_end">
-                </div>
-                <div>
-                    <label class="label-sm">Status</label>
-                    <select id="field_status">
-                        <option value="confirmed">Confirmed</option>
-                        <option value="tentative">Tentative</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid-config">
-                <div>
-                    <label class="label-sm">Creative Status</label>
-                    <select id="field_creativeWorkflow">
-                        <option value="To Be Briefed">To Be Briefed</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Complete">Complete</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="label-sm">Production Status</label>
-                    <select id="field_productionWorkflow">
-                        <option value="Not Started">Not Started</option>
-                        <option value="In Production">In Production</option>
-                        <option value="Assets Approved">Assets Approved</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="label-sm">Social Status</label>
-                    <select id="field_socialWorkflow">
-                        <option value="Awaiting Asset(s)">Awaiting Asset(s)</option>
-                        <option value="Ready to Post">Ready to Post</option>
-                        <option value="Live">Live</option>
-                    </select>
-                </div>
-            </div>
-
-            <div style="display: flex; justify-content: flex-end; gap: 12px; padding-top: 25px; border-top: 1px solid rgba(255,255,255,0.1);">
-                <button type="button" class="btn" style="background:#333;" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-save" style="padding:15px 30px;">Commit to Firebase</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    const appId = "dmg-command-centre-native";
-    const firebaseConfig = { 
-        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", 
-        authDomain: "dmg-command-centre-native.firebaseapp.com", 
-        projectId: "dmg-command-centre-native", 
-        storageBucket: "dmg-command-centre-native.firebasestorage.app", 
-        messagingSenderId: "223535956454", 
-        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" 
-    };
-    
-    const app = initializeApp(firebaseConfig); 
-    const auth = getAuth(app); 
-    const db = getFirestore(app);
-
-    const TEAMS = ['Editorial', 'Production', 'Creative', 'Social', 'Operations', 'Executive', 'Sales', 'Design'];
-    const SENIORITY_LEVELS = ['Executive', 'Director', 'Head of', 'Lead', 'Senior', 'Midweight', 'Junior', 'Intern', 'Freelance'];
-    const FUNCTIONAL_ROLES = ['Designer', 'Producer', 'Video Editor', 'Channel Lead', 'Creative', 'Journalist', 'Reporter', 'Videographer', 'Editorial Assistant', 'Project Manager'];
-    const SCHEMA_FIELDS = ['aiProjectName', 'productionLeadId', 'videographerId', 'creativeLeadId', 'location', 'startDateTime', 'format', 'productionWorkflowStatus', 'effortScore', 'email', 'seniority'];
-
-    let state = { staff: [], shoots: [] };
-
-    async function loadData() {
-        onSnapshot(collection(db, "artifacts", appId, "public", "data", "staff_directory"), snap => {
-            state.staff = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderStaff();
-            populateSelectors();
-            renderSchemaHealth();
-            document.getElementById('loading-screen').style.display = 'none';
-        });
-        onSnapshot(collection(db, "artifacts", appId, "public", "data", "shoot_calendar_events"), snap => {
-            state.shoots = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            renderShoots();
-            renderSchemaHealth();
-        });
-    }
-
-    function renderSchemaHealth() {
-        const grid = document.getElementById('schemaHealthGrid');
-        const allDocs = [...state.staff, ...state.shoots];
-        const fieldPresence = SCHEMA_FIELDS.map(field => {
-            const isPresent = allDocs.some(d => d.hasOwnProperty(field) && d[field] !== null && d[field] !== '');
-            return `<div class="field-chip ${isPresent ? 'present' : 'missing'}">${isPresent ? '✓' : '✗'} ${field}</div>`;
-        });
-        grid.innerHTML = fieldPresence.join('');
-    }
-
-    function renderStaff() {
-        const tbody = document.getElementById('staffTableBody');
-        tbody.innerHTML = state.staff.sort((a,b) => (a.firstName || '').localeCompare(b.firstName)).map(s => {
-            const email = s.email || generateEmail(s.firstName, s.lastName);
-            return `
-                <tr>
-                    <td><input type="text" value="${s.firstName || ''}" id="fn-${s.id}"></td>
-                    <td><input type="text" value="${s.lastName || ''}" id="ln-${s.id}"></td>
-                    <td><input type="email" value="${email}" id="em-${s.id}"></td>
-                    <td><select id="team-${s.id}">${TEAMS.map(t => `<option value="${t}" ${s.team===t?'selected':''}>${t}</option>`).join('')}</select></td>
-                    <td><select id="sen-${s.id}">${SENIORITY_LEVELS.map(l => `<option value="${l}" ${s.seniority===l?'selected':''}>${l}</option>`).join('')}</select></td>
-                    <td><select id="role-${s.id}">${FUNCTIONAL_ROLES.map(r => `<option value="${r}" ${s.role===r?'selected':''}>${r}</option>`).join('')}</select></td>
-                    <td><select id="mgr-${s.id}"><option value="None">None</option>${state.staff.filter(x=>x.id!==s.id).map(m => `<option value="${m.firstName} ${m.lastName}" ${s.manager===(m.firstName+' '+m.lastName)?'selected':''}>${m.firstName} ${m.lastName}</option>`).join('')}</select></td>
-                    <td style="text-align:center;"><input type="checkbox" ${s.isManager?'checked':''} id="isMgr-${s.id}"></td>
-                    <td><button class="btn btn-save" onclick="saveStaff('${s.id}')">Save</button><span id="ind-${s.id}" class="save-indicator">✓</span></td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    function renderShoots() {
-        const tbody = document.getElementById('shootTableBody');
-        tbody.innerHTML = state.shoots.sort((a,b) => (a.startDateTime || '').localeCompare(b.startDateTime || '')).map(s => {
-            const p = state.staff.find(x => x.id === s.productionLeadId);
-            const v = state.staff.find(x => x.id === s.videographerId);
-            const c = state.staff.find(x => x.id === s.creativeLeadId);
-            return `
-                <tr>
-                    <td style="font-family:monospace; font-size:10px; opacity:0.4;">${(s.startDateTime || '').replace('T', ' ')}</td>
-                    <td style="font-weight:700; color:var(--dmg-gold);">${s.client || '-'}</td>
-                    <td style="font-size:10px; color:var(--dmg-blue); font-family:monospace;">${s.aiProjectName || '-'}</td>
-                    <td style="font-size:11px; opacity:0.7;">${s.location || '-'}</td>
-                    <td style="font-size:11px;">${p ? p.firstName : '-'}</td>
-                    <td style="font-size:11px;">${v ? v.firstName : '-'}</td>
-                    <td style="font-size:11px;">${c ? c.firstName : '-'}</td>
-                    <td><button class="btn btn-edit" onclick="editShoot('${s.id}')">Edit</button></td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    function populateSelectors() {
-        const staffOpts = '<option value="">-- Unassigned --</option>' + 
-            state.staff.sort((a,b) => (a.firstName || '').localeCompare(b.firstName || '')).map(s => `<option value="${s.id}">${s.firstName} ${s.lastName}</option>`).join('');
-        ['field_productionLeadId', 'field_videographerId', 'field_creativeLeadId'].forEach(id => {
-            const el = document.getElementById(id);
-            if(el) el.innerHTML = staffOpts;
-        });
-        const clients = [...new Set(state.shoots.map(s => s.client).filter(Boolean))];
-        document.getElementById('field_client_select').innerHTML = 
-            '<option value="">-- Select Existing Client --</option>' + 
-            clients.map(c => `<option value="${c}">${c}</option>`).join('') +
-            '<option value="NEW_CLIENT">+ ADD NEW BRAND...</option>';
-    }
-
-    window.toggleNewClient = (val) => {
-        document.getElementById('field_client_new').classList.toggle('hidden', val !== 'NEW_CLIENT');
-        updateAIName();
-    };
-
-    window.updateAIName = () => {
-        const select = document.getElementById('field_client_select');
-        const client = select.value === 'NEW_CLIENT' ? document.getElementById('field_client_new').value : select.value;
-        const title = document.getElementById('field_title').value;
-        document.getElementById('field_ai_name').value = client && title ? `${client} - ${title}` : '';
-    };
-
-    function generateEmail(firstName, lastName) {
-        if (!firstName || !lastName) return "";
-        const fn = firstName.trim(); 
-        const ln = lastName.trim();
-        const lowFn = fn.toLowerCase(); 
-        const lowLn = ln.toLowerCase();
-        let domain = "dailymail.co.uk"; 
-        let local = `${fn}.${ln}`;
-
-        if (lowFn === 'nev' || lowFn === 'neville') { domain = "dmgmedia.co.uk"; local = "Nev.Brook"; }
-        else if (lowFn === 'nathan' && lowLn.includes('aspell')) { domain = "dmgmedia.co.uk"; }
-        else if (lowFn === 'nick' && lowLn === 'moar') { local = "Nick.Moar"; }
-        else if (lowFn === 'hughie') { domain = "dmgmedia.co.uk"; local = "Hughie.Dezulueta"; }
-        else if (['isobel', 'zachary', 'hannah', 'bill'].includes(lowFn)) { domain = "mailmetromedia.co.uk"; }
-        else if (['sally', 'alex', 'williams', 'josh'].includes(lowFn)) { domain = "dmgmedia.co.uk"; }
-        
-        return `${local}@${domain}`;
-    }
-
-    window.saveStaff = async (id) => {
-        let firstName = document.getElementById(`fn-${id}`).value.trim();
-        let lastName = document.getElementById(`ln-${id}`).value.trim();
-        let email = document.getElementById(`em-${id}`).value.trim();
-        let team = document.getElementById(`team-${id}`).value;
-        let seniority = document.getElementById(`sen-${id}`).value;
-        let role = document.getElementById(`role-${id}`).value;
-        let manager = document.getElementById(`mgr-${id}`).value;
-        let isManager = document.getElementById(`isMgr-${id}`).checked;
-
-        if (!email) email = generateEmail(firstName, lastName);
-
-        const data = { firstName, lastName, email, team, seniority, role, manager, isManager, updatedAt: serverTimestamp() };
-        await updateDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", id), data);
-        
-        const ind = document.getElementById(`ind-${id}`);
-        ind.classList.add('active'); 
-        setTimeout(() => ind.classList.remove('active'), 2000);
-        document.getElementById(`em-${id}`).value = email;
-    };
-
-    window.editShoot = (id) => {
-        const s = state.shoots.find(x => x.id === id);
-        if (!s) return;
-        document.getElementById('editId').value = s.id;
-        document.getElementById('field_title').value = s.projectTitle || s.title || '';
-        document.getElementById('field_client_select').value = s.client || '';
-        document.getElementById('field_ai_name').value = s.aiProjectName || '';
-        document.getElementById('field_start').value = s.startDateTime ? s.startDateTime.substring(0, 16) : '';
-        document.getElementById('field_end').value = s.endDateTime ? s.endDateTime.substring(0, 16) : '';
-        document.getElementById('field_location').value = s.location || '';
-        document.getElementById('field_format').value = s.format || 'Street Talks';
-        document.getElementById('field_status').value = s.status || 'tentative';
-        document.getElementById('field_productionLeadId').value = s.productionLeadId || '';
-        document.getElementById('field_videographerId').value = s.videographerId || '';
-        document.getElementById('field_creativeLeadId').value = s.creativeLeadId || '';
-        document.getElementById('field_effort').value = s.effortScore || 0;
-        document.getElementById('field_productionWorkflow').value = s.productionWorkflowStatus || 'Not Started';
-        document.getElementById('field_creativeWorkflow').value = s.creativeWorkflowStatus || 'To Be Briefed';
-        document.getElementById('field_socialWorkflow').value = s.socialWorkflowStatus || 'Awaiting Asset(s)';
-        document.getElementById('editModal').classList.add('active');
-    };
-
-    window.closeModal = () => document.getElementById('editModal').classList.remove('active');
-
-    document.getElementById('editForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const clientSelect = document.getElementById('field_client_select').value;
-        const client = clientSelect === 'NEW_CLIENT' ? document.getElementById('field_client_new').value : clientSelect;
-        
-        const data = {
-            projectTitle: document.getElementById('field_title').value,
-            client: client,
-            aiProjectName: document.getElementById('field_ai_name').value,
-            startDateTime: document.getElementById('field_start').value,
-            endDateTime: document.getElementById('field_end').value,
-            location: document.getElementById('field_location').value,
-            format: document.getElementById('field_format').value,
-            status: document.getElementById('field_status').value,
-            productionWorkflowStatus: document.getElementById('field_productionWorkflow').value,
-            creativeWorkflowStatus: document.getElementById('field_creativeWorkflow').value,
-            socialWorkflowStatus: document.getElementById('field_socialWorkflow').value,
-            productionLeadId: document.getElementById('field_productionLeadId').value,
-            videographerId: document.getElementById('field_videographerId').value,
-            creativeLeadId: document.getElementById('field_creativeLeadId').value,
-            effortScore: parseFloat(document.getElementById('field_effort').value) || 0,
-            updatedAt: serverTimestamp()
-        };
-        await updateDoc(doc(db, "artifacts", appId, "public", "data", "shoot_calendar_events", document.getElementById('editId').value), data);
-        closeModal();
-    };
-
-    window.syncMasterLedger = async () => {
-        if(!confirm("Synchronize 11 Shoot records? This will skip existing records (no duplicates).")) return;
-        const ledger = [
-            { c: "Nationwide", t: "Ask the Nation", start: "2026-01-07T10:00" },
-            { c: "Subweb", t: "Photo studio", start: "2026-01-08T09:30" },
-            { c: "Internal", t: "TBC Production", start: "2026-01-14T10:00" },
-            { c: "Nationwide", t: "Ask the Nation", start: "2026-01-13T11:00" },
-            { c: "Alsoc", t: "Alsoc interview", start: "2026-01-09T09:00" },
-            { c: "Wuthering Heights", t: "Primrose Hill", start: "2026-01-10T14:00" },
-            { c: "Nationwide", t: "Budget Builder", start: "2026-01-02T10:00" },
-            { c: "Internal", t: "TBC Production", start: "2026-01-15T10:00" },
-            { c: "Wuthering Heights", t: "Main Shoot", start: "2026-01-17T10:00" },
-            { c: "Nationwide", t: "Side hustles", start: "2026-01-06T11:00" },
-            { c: "Nationwide", t: "Budget Builder", start: "2026-01-12T10:00" }
-        ];
-        const coll = collection(db, "artifacts", appId, "public", "data", "shoot_calendar_events");
-        let addedCount = 0;
-        for(const item of ledger) {
-            const aiName = `${item.c} - ${item.t}`;
-            const exists = state.shoots.some(s => s.aiProjectName === aiName && s.startDateTime === item.start);
-            
-            if(!exists) {
-                await addDoc(coll, {
-                    client: item.c, 
-                    projectTitle: item.t, 
-                    aiProjectName: aiName,
-                    startDateTime: item.start, 
-                    status: "confirmed",
-                    location: "HQ Studio", 
-                    format: "Street Talks",
-                    productionWorkflowStatus: "In Production", 
-                    createdAt: serverTimestamp()
-                });
-                addedCount++;
-            }
-        }
-        alert(`Sync Complete. Added ${addedCount} new shoots.`);
-    };
-
-    signInAnonymously(auth);
-    onAuthStateChanged(auth, (u) => { if (u) loadData(); });
-</script>
-</body>
-</html>
+        .doc { border-bottom: 1px solid var(--border); padding: 12px 18px; }
+        .doc:last-child { border-bottom: none; }
+        .doc-id { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--blue); margin-bottom: 8px; opacity: 0.7; }
+        .doc-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+        .field { background: var(--bg); padding: 8px 10px; border-radius: 6px; }
+        .field-key { font-size: 8px; font-weight: 800; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+   ...
