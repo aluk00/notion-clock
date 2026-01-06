@@ -1,12 +1,156 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pipeline Overview</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --blue: #21a0d8;
+            --green: #10B981;
+            --amber: #F59E0B;
+            --red: #EF4444;
+            --border: #E5E7EB;
+            --text-main: #1C1C1C;
+            --text-sub: #6B7280;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: transparent; padding: 20px; }
+        
+        .header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 28px; height: 28px; }
+        .dot { width: 100%; height: 100%; background: var(--blue); border-radius: 50%; }
+        @keyframes heartbeat { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .dot-anim { animation: heartbeat 3s infinite ease-in-out; }
+        .dot-anim:nth-child(1) { animation-delay: 0s; }
+        .dot-anim:nth-child(2) { animation-delay: 0.75s; }
+        .dot-anim:nth-child(4) { animation-delay: 1.5s; }
+        .dot-anim:nth-child(3) { animation-delay: 2.25s; }
+        .title { font-size: 1.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.03em; color: var(--text-main); }
+        
+        .stats-row { display: flex; gap: 16px; flex-wrap: wrap; }
+        
+        .stat-card { 
+            flex: 1;
+            min-width: 140px;
+            background: #FFF; 
+            border: 2.5px solid var(--blue);
+            border-radius: 16px; 
+            padding: 24px 20px;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(33, 160, 216, 0.15); }
+        .stat-card.green { border-color: var(--green); }
+        .stat-card.amber { border-color: var(--amber); }
+        .stat-card.red { border-color: var(--red); }
+        
+        .stat-value { 
+            font-size: 52px; 
+            font-weight: 900; 
+            color: var(--blue);
+            line-height: 1;
+            letter-spacing: -0.03em;
+        }
+        .stat-card.green .stat-value { color: var(--green); }
+        .stat-card.amber .stat-value { color: var(--amber); }
+        .stat-card.red .stat-value { color: var(--red); }
+        
+        .stat-value.money::before { content: '£'; font-size: 28px; vertical-align: top; }
+        
+        .stat-label { 
+            font-size: 11px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            letter-spacing: 0.1em; 
+            color: var(--text-sub);
+            margin-top: 10px;
+        }
+        
+        #loading { text-align: center; padding: 60px; font-size: 12px; color: var(--text-sub); font-weight: 700; }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Pipeline Overview</h1>
-    <p>Stay tuned for pipeline details and status updates.</p>
+
+<div class="header">
+    <div class="dots-grid">
+        <div class="dot dot-anim"></div>
+        <div class="dot dot-anim"></div>
+        <div class="dot dot-anim"></div>
+        <div class="dot dot-anim"></div>
+    </div>
+    <span class="title">Pipeline Overview</span>
+</div>
+
+<div class="stats-row" id="statsRow">
+    <div id="loading">Loading pipeline...</div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native" };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+    
+    function formatMoney(num) {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(0) + 'K';
+        return num.toString();
+    }
+    
+    async function loadStats() {
+        try {
+            const res = await fetch(API_URL + '/projects');
+            const data = await res.json();
+            const projects = data.projects || [];
+            
+            const won = projects.filter(p => p.stage === 'Deal Agreed' || p.stage === 'Complete').length;
+            const pending = projects.filter(p => p.stage === 'Pitch Sent' || p.stage === 'Sales Review').length;
+            const lost = projects.filter(p => p.stage === 'Lost').length;
+            const completed = projects.filter(p => p.stage === 'Complete').length;
+            
+            const avgDealValue = 15000;
+            const confirmedRevenue = won * avgDealValue;
+            const projectedRevenue = confirmedRevenue + (pending * avgDealValue * 0.4);
+            
+            document.getElementById('statsRow').innerHTML = `
+                <div class="stat-card green">
+                    <div class="stat-value">${won}</div>
+                    <div class="stat-label">Won</div>
+                </div>
+                <div class="stat-card amber">
+                    <div class="stat-value">${pending}</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-value">${lost}</div>
+                    <div class="stat-label">Lost</div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-value money">${formatMoney(confirmedRevenue)}</div>
+                    <div class="stat-label">Confirmed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value money">${formatMoney(projectedRevenue)}</div>
+                    <div class="stat-label">Projected</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${completed}</div>
+                    <div class="stat-label">Delivered</div>
+                </div>
+            `;
+        } catch (err) {
+            console.error('Error:', err);
+            document.getElementById('statsRow').innerHTML = '<div id="loading">Unable to load</div>';
+        }
+    }
+    
+    signInAnonymously(auth).then(loadStats);
+</script>
+
 </body>
 </html>
