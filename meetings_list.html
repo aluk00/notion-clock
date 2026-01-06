@@ -3,27 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meeting List</title>
+    <title>Team Meetings | DMG New Media</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Core Layout */
-        body {
+        html, body {
             margin: 0;
             padding: 0;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            width: 100%;
+            height: 100%;
             background-color: transparent; /* Blends with Notion */
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
             color: #000000;
         }
 
-        /* List Container */
+        body {
+            display: flex;
+            flex-direction: column;
+            padding: 10px 20px;
+        }
+
+        /* --- SIGNATURE HEADER --- */
+        .header-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            line-height: 1;
+            padding-left: 2px;
+            margin-bottom: 25px;
+        }
+
+        .title-text {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #000000;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            text-transform: uppercase;
+        }
+
+        .text-left { animation-delay: 0.1s; }
+        .text-right { animation-delay: 0.3s; }
+
+        .dots-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            width: 24px;
+            height: 24px;
+        }
+
+        .dot {
+            width: 100%;
+            height: 100%;
+            background-color: #21a0d8; /* DMG Blue */
+            border-radius: 50%;
+            transform: scale(0);
+            animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .dot:nth-child(1) { animation-delay: 0.2s; }
+        .dot:nth-child(2) { animation-delay: 0.3s; }
+        .dot:nth-child(3) { animation-delay: 0.3s; }
+        .dot:nth-child(4) { animation-delay: 0.4s; }
+
+        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { to { transform: scale(1); } }
+
+        /* --- LIST LAYOUT --- */
         .meeting-list {
             display: flex;
             flex-direction: column;
-            gap: 12px; /* Space between meetings */
-            padding: 10px 20px;
+            gap: 12px;
             max-width: 500px;
         }
 
-        /* Individual Meeting Card */
         .meeting-card {
             display: flex;
             align-items: center;
@@ -31,17 +89,17 @@
             padding: 16px;
             background-color: white;
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Subtle lift */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             border: 1px solid rgba(0,0,0,0.08);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: all 0.3s ease;
         }
 
-        .meeting-card:hover {
+        /* Hover only if active */
+        .meeting-card.active:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(33, 160, 216, 0.1);
         }
 
-        /* Left Side: Text Info */
         .meeting-info {
             display: flex;
             flex-direction: column;
@@ -56,7 +114,7 @@
         }
 
         .meeting-time {
-            font-size: 13px;
+            font-size: 12px;
             color: #666;
             font-weight: 500;
             display: flex;
@@ -64,82 +122,230 @@
             gap: 6px;
         }
 
-        /* Little dot separator for time */
         .time-dot {
-            width: 4px;
-            height: 4px;
+            width: 5px;
+            height: 5px;
             background-color: #21a0d8;
             border-radius: 50%;
             display: inline-block;
+            opacity: 0.2;
+        }
+        
+        .meeting-card.active .time-dot {
+            opacity: 1;
+            animation: pulse 2s infinite;
         }
 
-        /* Right Side: Join Button */
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.2); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* --- BUTTON STATES --- */
         .join-btn {
-            background-color: #21a0d8; /* Matches your Logo Blue */
-            color: white;
-            text-decoration: none;
-            padding: 10px 20px;
+            padding: 10px 18px;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.02em;
             text-transform: uppercase;
-            transition: background-color 0.2s ease;
+            text-decoration: none;
+            transition: all 0.3s ease;
             white-space: nowrap;
+            
+            /* Default: Inactive/Greyed state */
+            background-color: #F3F4F6;
+            color: #C5C5C5;
+            pointer-events: none;
+            cursor: default;
+            border: 1px solid transparent;
         }
 
-        .join-btn:hover {
+        /* Active: Within 15m window */
+        .meeting-card.active .join-btn {
+            background-color: #21a0d8;
+            color: white;
+            pointer-events: auto;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(33, 160, 216, 0.15);
+        }
+
+        .meeting-card.active .join-btn:hover {
             background-color: #1a8bbd;
+            transform: scale(1.05);
         }
 
-        /* Responsive adjustments */
-        @media (max-width: 400px) {
-            .meeting-card {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-            }
-            .join-btn {
-                width: 100%;
-                text-align: center;
-                box-sizing: border-box; /* Ensures padding is inside width */
-            }
+        /* --- ADD PROMPT --- */
+        .add-btn {
+            margin-top: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #CCC;
+            background: none;
+            border: 1px dashed #EEE;
+            padding: 12px;
+            width: 100%;
+            border-radius: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: 0.2s;
         }
+        body:hover .add-btn { opacity: 1; }
+        .add-btn:hover { border-color: #21a0d8; color: #21a0d8; background: #FFF; }
+
+        #loading { font-size: 11px; font-weight: 700; color: #CCC; margin-top: 20px; text-align: center; width: 100%; }
     </style>
 </head>
 <body>
 
-    <div class="meeting-list">
-        
-        <!-- Meeting 1: Video Daily -->
-        <div class="meeting-card">
-            <div class="meeting-info">
-                <span class="meeting-name">Video Daily</span>
-                <span class="meeting-time">
-                    Mon-Fri <span class="time-dot"></span> 09:00 - 09:30
-                </span>
-            </div>
-            <!-- Link from Screenshot 2 -->
-            <a href="https://dmgt.zoom.us/j/91362309149?from=addon" target="_blank" class="join-btn">
-                Join Meeting
-            </a>
+    <div class="header-container">
+        <div class="title-text text-left">TEAM</div>
+        <div class="dots-grid">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
         </div>
-
-        <!-- Meeting 2: Originals Catch-Up -->
-        <div class="meeting-card">
-            <div class="meeting-info">
-                <span class="meeting-name">Originals Catch-Up</span>
-                <span class="meeting-time">
-                    Mon-Fri <span class="time-dot"></span> 16:00 - 16:15
-                </span>
-            </div>
-            <!-- Link from your prompt -->
-            <a href="https://dmgt.zoom.us/j/91891373882?pwd=lQ8vNW93lVdI7LCceVmGDRwGokv8ht.1&from=addon#success" target="_blank" class="join-btn">
-                Join Meeting
-            </a>
-        </div>
-
+        <div class="title-text text-right">MEETINGS</div>
     </div>
 
+    <div id="loading">Syncing Cloud...</div>
+    <div id="listMount" class="meeting-list"></div>
+
+    <button class="add-btn" onclick="addMeetingPrompt()">+ Schedule One-Off Meeting</button>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
+    const appId = "dmg-command-centre-native";
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    // --- RECURRING MEETINGS (Hardcoded) ---
+    const RECURRING_MEETINGS = [
+        {
+            id: 'recurring-1',
+            title: 'Video Daily',
+            startTime: '09:00',
+            endTime: '09:30',
+            link: 'https://dmgt.zoom.us/j/91362309149?from=addon',
+            type: 'recurring'
+        },
+        {
+            id: 'recurring-2',
+            title: 'Originals Catch-Up',
+            startTime: '16:00',
+            endTime: '16:15',
+            link: 'https://dmgt.zoom.us/j/91891373882?pwd=lQ8vNW93lVdI7LCceVmGDRwGokv8ht.1&from=addon#success',
+            type: 'recurring'
+        }
+    ];
+
+    let dynamicMeetings = [];
+
+    // --- LOGIC: WINDOW CHECK (15m before -> 15m after) ---
+    function isMeetingActive(startStr, endStr) {
+        const now = new Date();
+        const [sH, sM] = startStr.split(':');
+        const [eH, eM] = endStr.split(':');
+        
+        const start = new Date(); start.setHours(parseInt(sH), parseInt(sM), 0);
+        const end = new Date(); end.setHours(parseInt(eH), parseInt(eM), 0);
+
+        const windowStart = new Date(start.getTime() - 15 * 60000);
+        const windowEnd = new Date(end.getTime() + 15 * 60000);
+
+        return now >= windowStart && now <= windowEnd;
+    }
+
+    function render() {
+        const mount = document.getElementById('listMount');
+        mount.innerHTML = '';
+        
+        // Combine recurring and dynamic
+        const isWeekend = [0, 6].includes(new Date().getDay());
+        let allMeetings = [];
+        
+        // Only show recurring on weekdays
+        if (!isWeekend) {
+            allMeetings = [...RECURRING_MEETINGS, ...dynamicMeetings];
+        } else {
+            allMeetings = [...dynamicMeetings];
+        }
+
+        // Sort by start time
+        const sorted = allMeetings.sort((a,b) => a.startTime.localeCompare(b.startTime));
+
+        if (sorted.length === 0) {
+            mount.innerHTML = '<div style="font-size:12px; color:#CCC; font-weight:700; text-align:center; padding: 20px;">No meetings scheduled today.</div>';
+            return;
+        }
+
+        sorted.forEach(m => {
+            const active = isMeetingActive(m.startTime, m.endTime);
+            const statusClass = active ? 'active' : '';
+            const btnText = active ? 'Join Now' : 'Join Meeting'; 
+            
+            const card = document.createElement('div');
+            card.className = `meeting-card ${statusClass}`;
+            card.innerHTML = `
+                <div class="meeting-info">
+                    <span class="meeting-name">${m.title}</span>
+                    <span class="meeting-time">
+                        <span class="time-dot"></span>${m.startTime} - ${m.endTime}
+                    </span>
+                </div>
+                <a href="${m.link}" target="_blank" class="join-btn">${btnText}</a>
+            `;
+            
+            // Interaction: Dynamic meetings can be deleted via double-click
+            if (m.type !== 'recurring') {
+                card.querySelector('.meeting-name').addEventListener('dblclick', () => deleteMeeting(m.id));
+            }
+            
+            mount.appendChild(card);
+        });
+    }
+
+    // Refresh every 30 seconds for real-time button activation
+    setInterval(render, 30000);
+
+    window.addMeetingPrompt = async () => {
+        const title = prompt("Meeting Name:");
+        if (!title) return;
+        const start = prompt("Start Time (24h HH:MM):", "10:00");
+        const end = prompt("End Time (24h HH:MM):", "10:30");
+        const link = prompt("Meeting Link:", "https://dmgt.zoom.us/j/...");
+        
+        if (title && start && end && link) {
+            await addDoc(collection(db, "artifacts", appId, "public", "data", "team_meetings"), {
+                title, startTime: start, endTime: end, link, 
+                dateKey: new Date().toISOString().split('T')[0],
+                createdAt: serverTimestamp()
+            });
+        }
+    };
+
+    window.deleteMeeting = async (id) => {
+        if(confirm("Remove this meeting from the cloud?")) {
+            await deleteDoc(doc(db, "artifacts", appId, "public", "data", "team_meetings", id));
+        }
+    };
+
+    async function init() {
+        const todayKey = new Date().toISOString().split('T')[0];
+        onSnapshot(collection(db, "artifacts", appId, "public", "data", "team_meetings"), snap => {
+            dynamicMeetings = snap.docs
+                .map(d => ({id: d.id, ...d.data()}))
+                .filter(m => !m.dateKey || m.dateKey === todayKey);
+            render();
+            document.getElementById('loading').classList.add('hidden');
+        });
+    }
+
+    signInAnonymously(auth).then(init);
+
+</script>
 </body>
 </html>
