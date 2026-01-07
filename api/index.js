@@ -7,14 +7,36 @@ app.use(cors({ origin: true }));
 app.use(express.json());
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
-const DB = process.env.NOTION_PROJECTS_DB;
+const DB_ID = process.env.NOTION_PROJECTS_DB;
 
-app.get("/", (req, res) => res.json({ status: "ok" }));
+let dataSourceId = null;
+
+async function getDataSourceId() {
+  if (dataSourceId) return dataSourceId;
+  try {
+    const db = await notion.databases.retrieve({ database_id: DB_ID });
+    if (db.data_sources && db.data_sources.length > 0) {
+      dataSourceId = db.data_sources[0].id;
+    } else {
+      dataSourceId = DB_ID;
+    }
+  } catch (e) {
+    dataSourceId = DB_ID;
+  }
+  return dataSourceId;
+}
+
+app.get("/", (req, res) => res.json({ status: "ok", version: "6.0.0" }));
 
 app.get("/projects", async (req, res) => {
   try {
-    const data = await notion.databases.query({ database_id: DB });
-    const projects = data.results.map(p => {
+    const dsId = await getDataSourceId();
+    const response = await notion.request({
+      path: `/v1/data_sources/${dsId}/query`,
+      method: "POST",
+      body: {}
+    });
+    const projects = response.results.map(p => {
       const title = p.properties["Project Name"];
       const client = p.properties["Client"];
       return {
@@ -26,6 +48,7 @@ app.get("/projects", async (req, res) => {
     });
     res.json({ success: true, projects: projects });
   } catch (e) {
+    console.error("GET /projects error:", e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -34,6 +57,7 @@ app.post("/projects", async (req, res) => {
   try {
     const b = req.body;
     if (!b.title) return res.status(400).json({ error: "Title required" });
+    const dsId = await getDataSourceId();
     const props = { "Project Name": { title: [{ text: { content: b.title } }] } };
     if (b.client) props["Client"] = { rich_text: [{ text: { content: b.client } }] };
     if (b.projectType) props["Project Type"] = { select: { name: b.projectType } };
@@ -42,9 +66,13 @@ app.post("/projects", async (req, res) => {
     if (b.dealStage) props["Deal Stage"] = { select: { name: b.dealStage } };
     if (b.dealValue) props["Deal Value"] = { number: b.dealValue };
     if (b.notes) props["Notes"] = { rich_text: [{ text: { content: b.notes } }] };
-    const result = await notion.pages.create({ parent: { database_id: DB }, properties: props });
+    const result = await notion.pages.create({
+      parent: { type: "data_source_id", data_source_id: dsId },
+      properties: props
+    });
     res.json({ success: true, id: result.id, url: result.url });
   } catch (e) {
+    console.error("POST /projects error:", e);
     res.status(500).json({ error: e.message });
   }
 });
