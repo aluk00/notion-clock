@@ -399,9 +399,10 @@ app.get('/capacity', async (req, res) => {
 
 // Health check
 app.get('/', (req, res) => {
+    const { version } = require('./package.json');
     res.json({ 
         status: 'ok', 
-        version: '5.0.0',
+        version,
         endpoints: [
             'GET /projects',
             'PATCH /projects/:id',
