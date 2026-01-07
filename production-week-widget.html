@@ -15,55 +15,83 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', sans-serif; background: #FFFFFF; color: var(--carbon); overflow-x: hidden; }
         
-        /* Scaled down container padding */
-        .widget-wrapper { padding: 15px; background: #FFF; width: 100%; margin: 0 auto; }
+        /* Ultra-compact container */
+        .widget-wrapper { padding: 10px; background: #FFF; width: 100%; max-width: 800px; margin: 0 auto; }
         
-        /* Scaled down header */
-        .header-row { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; }
-        .header-title { font-size: 0.9rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; }
+        /* Ultra-compact header */
+        .header-row { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+        .header-title { font-size: 0.75rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.01em; color: #666; }
         
-        /* Scaled down dots */
-        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 14px; height: 14px; }
-        .dots-grid span { background: var(--hero-blue); border-radius: 50%; }
+        /* Smaller dots */
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 12px; height: 12px; }
+        .dots-grid span { background: var(--hero-blue); border-radius: 50%; opacity: 0.6; }
         
-        /* Scaled down grid gap */
-        .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        @media (max-width: 1024px) { .grid-container { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 640px) { .grid-container { grid-template-columns: 1fr; } } 
+        /* Square Grid Configuration */
+        .grid-container { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 6px; 
+        }
         
-        /* Scaled down cards */
+        /* Aspect Ratio forced to Square */
         .event-card { 
             background: #FFF; 
             border: 1px solid var(--border); 
-            border-radius: 12px; 
-            padding: 12px; 
+            border-radius: 10px; 
+            padding: 10px; 
             cursor: pointer; 
             transition: 0.3s; 
             position: relative; 
             overflow: hidden; 
             display: flex; 
             flex-direction: column; 
-            min-height: 100px; 
+            aspect-ratio: 1 / 1; /* Makes the card square */
+            justify-content: space-between;
         }
         .event-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--hero-blue); }
-        .event-card:hover { transform: translateY(-3px); border-color: var(--hero-blue); box-shadow: 0 8px 20px rgba(33, 160, 216, 0.12); }
+        .event-card:hover { transform: translateY(-2px); border-color: var(--hero-blue); box-shadow: 0 4px 12px rgba(33, 160, 216, 0.1); }
         
-        /* Scaled down typography */
-        .card-date-num { font-size: 11px; font-weight: 800; color: var(--hero-blue); }
-        .card-title { font-size: 11px; font-weight: 800; color: var(--carbon); line-height: 1.25; flex-grow: 1; margin: 6px 0; }
-        .lead-pill { font-size: 7.5px; font-weight: 900; color: var(--hero-blue); background: #F0F9FF; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; display: inline-block; }
+        /* Ultra-compact typography */
+        .card-date-num { font-size: 9px; font-weight: 800; color: var(--hero-blue); text-transform: uppercase; }
+        .card-title { 
+            font-size: 9px; 
+            font-weight: 800; 
+            color: var(--carbon); 
+            line-height: 1.2; 
+            margin: 4px 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .lead-pill { 
+            font-size: 7px; 
+            font-weight: 900; 
+            color: var(--hero-blue); 
+            background: #F0F9FF; 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            text-transform: uppercase; 
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
         
-        #loading { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--hero-blue); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; }
+        @media (max-width: 480px) { .grid-container { grid-template-columns: repeat(2, 1fr); } }
+
+        #loading { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; font-weight: 900; color: var(--hero-blue); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-<div id="loading">SYNCING SHOOTS...</div>
+<div id="loading">SYNCING...</div>
 
 <div class="widget-wrapper">
     <div class="header-row">
         <div class="dots-grid"><span></span><span></span><span></span><span></span></div>
-        <h1 class="header-title">Shoots This Week</h1>
+        <h1 class="header-title">Weekly Shoots</h1>
     </div>
     <div id="gridInner" class="grid-container"></div>
 </div>
@@ -74,7 +102,7 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const appId = "dmg-command-centre-native";
-    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native" };
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
     const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
 
     let state = { events: [], staff: [] };
@@ -90,15 +118,16 @@
 
     function render() {
         const inner = document.getElementById('gridInner'); inner.innerHTML = '';
-        // Slice top 9 events for the compact grid
+        
+        // Show up to 9 square cards for a clean 3x3 layout
         state.events.slice(0, 9).forEach(ev => {
             const date = ev.startDateTime ? new Date(ev.startDateTime) : null;
             const lead = resolveLeadProducer(ev);
             const card = document.createElement('div');
             card.className = 'event-card';
             card.innerHTML = `
-                <div class="card-date-num">${date ? date.getDate() + ' ' + date.toLocaleDateString('en-GB', {month: 'short'}) : 'Date TBC'}</div>
-                <div class="card-title">${ev.projectTitle || ev.title || 'Untitled Shoot'}</div>
+                <div class="card-date-num">${date ? date.getDate() + ' ' + date.toLocaleDateString('en-GB', {month: 'short'}) : 'TBC'}</div>
+                <div class="card-title">${ev.projectTitle || ev.title || 'Untitled'}</div>
                 <div><span class="lead-pill">${lead}</span></div>
             `;
             inner.appendChild(card);
