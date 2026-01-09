@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Calendar | DMG</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --team-production: #43B049;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: transparent;
+            color: var(--ink);
+            padding: 16px;
+        }
+        
+        .calendar-card {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            max-width: 600px;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .calendar-card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        }
+        
+        /* Week Nav */
+        .week-nav {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
+        }
+        .dot-grid span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--team-production);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        .dot-grid span:nth-child(1) { animation-delay: 0s; }
+        .dot-grid span:nth-child(2) { animation-delay: 0.3s; }
+        .dot-grid span:nth-child(3) { animation-delay: 0.6s; }
+        .dot-grid span:nth-child(4) { animation-delay: 0.3s; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.85); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+        
+        .week-label {
+            flex: 1;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        
+        .nav-btn {
+            padding: 6px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            background: var(--bg-soft);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--ink-sub);
+            transition: all 0.2s ease;
+        }
+        .nav-btn:hover {
+            background: var(--team-production);
+            color: #FFF;
+        }
+        
+        /* Calendar Grid */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+        
+        .day-column {
+            border-right: 1px solid #F5F5F5;
+            min-height: 140px;
+        }
+        .day-column:last-child { border-right: none; }
+        
+        .day-header {
+            padding: 10px 8px;
+            text-align: center;
+            border-bottom: 1px solid #F5F5F5;
+            background: var(--bg-soft);
+        }
+        .day-header.today {
+            background: rgba(67,176,73,0.08);
+        }
+        .day-name {
+            font-size: 8px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--ink-sub);
+            letter-spacing: 0.06em;
+        }
+        .day-number {
+            font-size: 16px;
+            font-weight: 900;
+            color: var(--ink);
+            margin-top: 2px;
+        }
+        .day-header.today .day-number {
+            color: var(--team-production);
+        }
+        
+        .day-content {
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        /* Shoot Item */
+        .shoot-item {
+            padding: 6px 8px;
+            background: var(--bg-soft);
+            border-radius: 6px;
+            border-left: 3px solid var(--team-color, var(--team-production));
+            transition: all 0.2s ease;
+            cursor: default;
+        }
+        .shoot-item:hover {
+            background: #FFF;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        
+        .shoot-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .shoot-meta {
+            font-size: 8px;
+            color: var(--ink-sub);
+            margin-top: 2px;
+        }
+        .shoot-time {
+            font-weight: 700;
+            color: var(--team-production);
+        }
+        
+        /* Empty State */
+        .empty-day {
+            padding: 16px 8px;
+            text-align: center;
+        }
+        .empty-text {
+            font-size: 8px;
+            color: #CCC;
+        }
+        
+        /* Loading */
+        .loading {
+            padding: 60px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        // Notion API
+        const API_URL = 'https://dmg-notion-api-xxxxxxxxxx-ew.a.run.app';
+        
+        const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        
+        const teamColors = {
+            Editorial: '#E94B4B',
+            Creative: '#E6468B',
+            Production: '#43B049',
+            Social: '#F2C316',
+            Operations: '#21A0D8'
+        };
+        
+        const getWeekStart = (date) => {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        };
+        
+        const getWeekDates = (start) => {
+            return Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(start);
+                d.setDate(d.getDate() + i);
+                return d;
+            });
+        };
+        
+        const DotGrid = () => (
+            <div className="dot-grid">
+                {[...Array(4)].map((_, i) => <span key={i} />)}
+            </div>
+        );
+        
+        function ProductionCalendar() {
+            const [shoots, setShoots] = useState([]);
+            const [currentWeek, setCurrentWeek] = useState(getWeekStart(new Date()));
+            const [loading, setLoading] = useState(true);
+            
+            useEffect(() => {
+                auth.signInAnonymously();
+                fetchShoots();
+            }, []);
+            
+            const fetchShoots = async () => {
+                try {
+                    // Try Notion API for deliverables/shoots
+                    const res = await fetch(`${API_URL}/deliverables`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Filter for shoots or items with dates
+                        const items = (data.deliverables || []).filter(d => d.dueDate || d.shootDate);
+                        setShoots(items);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    // Fallback: try Firebase shoots collection
+                    try {
+                        const snap = await db.collection('artifacts/dmg-command-centre-native/public/data/shoots')
+                            .orderBy('date', 'asc')
+                            .get();
+                        setShoots(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    } catch (e) {
+                        console.error(e);
+                    }
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            const weekDates = getWeekDates(currentWeek);
+            
+            const isToday = (date) => {
+                const today = new Date();
+                return date.toDateString() === today.toDateString();
+            };
+            
+            const getShootsForDate = (date) => {
+                const dateStr = date.toISOString().split('T')[0];
+                return shoots.filter(s => {
+                    const shootDate = s.shootDate || s.dueDate;
+                    if (!shootDate) return false;
+                    return shootDate.split('T')[0] === dateStr;
+                });
+            };
+            
+            const formatWeekLabel = () => {
+                const start = weekDates[0];
+                const end = weekDates[6];
+                const startMonth = start.toLocaleDateString('en-GB', { month: 'short' });
+                const endMonth = end.toLocaleDateString('en-GB', { month: 'short' });
+                if (startMonth === endMonth) {
+                    return `${start.getDate()} - ${end.getDate()} ${startMonth}`;
+                }
+                return `${start.getDate()} ${startMonth} - ${end.getDate()} ${endMonth}`;
+            };
+            
+            const prevWeek = () => {
+                const d = new Date(currentWeek);
+                d.setDate(d.getDate() - 7);
+                setCurrentWeek(d);
+            };
+            
+            const nextWeek = () => {
+                const d = new Date(currentWeek);
+                d.setDate(d.getDate() + 7);
+                setCurrentWeek(d);
+            };
+            
+            const goToday = () => setCurrentWeek(getWeekStart(new Date()));
+            
+            return (
+                <div className="calendar-card">
+                    <div className="week-nav">
+                        <DotGrid />
+                        <span className="week-label">{formatWeekLabel()}</span>
+                        <button className="nav-btn" onClick={prevWeek}>←</button>
+                        <button className="nav-btn" onClick={goToday}>Today</button>
+                        <button className="nav-btn" onClick={nextWeek}>→</button>
+                    </div>
+                    
+                    {loading ? (
+                        <div className="loading"><DotGrid /></div>
+                    ) : (
+                        <div className="calendar-grid">
+                            {weekDates.map((date, i) => {
+                                const dayItems = getShootsForDate(date);
+                                return (
+                                    <div key={i} className="day-column">
+                                        <div className={`day-header ${isToday(date) ? 'today' : ''}`}>
+                                            <div className="day-name">{WEEKDAYS[i]}</div>
+                                            <div className="day-number">{date.getDate()}</div>
+                                        </div>
+                                        <div className="day-content">
+                                            {dayItems.length === 0 ? (
+                                                <div className="empty-day">
+                                                    <div className="empty-text">—</div>
+                                                </div>
+                                            ) : (
+                                                dayItems.map((item, j) => (
+                                                    <div 
+                                                        key={j} 
+                                                        className="shoot-item"
+                                                        style={{ '--team-color': teamColors[item.team] || '#43B049' }}
+                                                    >
+                                                        <div className="shoot-title">{item.title}</div>
+                                                        <div className="shoot-meta">
+                                                            {item.time && <span className="shoot-time">{item.time} • </span>}
+                                                            {item.format || item.team || ''}
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        ReactDOM.createRoot(document.getElementById('root')).render(<ProductionCalendar />);
+    </script>
+</body>
+</html>

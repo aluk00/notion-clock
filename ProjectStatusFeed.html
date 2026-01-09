@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Status Feed | DMG</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-operations: #21A0D8;
+            --team-executive: #1C1C1C;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: transparent;
+            color: var(--ink);
+            padding: 16px;
+        }
+        
+        .feed-card {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 320px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .feed-card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        }
+        
+        /* Header */
+        .feed-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
+        }
+        .dot-grid span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--team-operations);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        .dot-grid span:nth-child(1) { animation-delay: 0s; }
+        .dot-grid span:nth-child(2) { animation-delay: 0.3s; }
+        .dot-grid span:nth-child(3) { animation-delay: 0.6s; }
+        .dot-grid span:nth-child(4) { animation-delay: 0.3s; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.85); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+        
+        .feed-title {
+            font-size: 12px;
+            font-weight: 900;
+            color: var(--ink);
+            flex: 1;
+        }
+        
+        .ai-badge {
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 3px 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #FFF;
+            border-radius: 10px;
+        }
+        
+        /* Feed List */
+        .feed-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .feed-list::-webkit-scrollbar { width: 3px; }
+        .feed-list::-webkit-scrollbar-thumb { background: #EEE; border-radius: 3px; }
+        
+        /* Feed Item */
+        .feed-item {
+            padding: 14px 16px;
+            border-bottom: 1px solid #F5F5F5;
+            position: relative;
+            transition: background 0.2s ease;
+        }
+        .feed-item:last-child { border-bottom: none; }
+        .feed-item:hover { background: var(--bg-soft); }
+        
+        .feed-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--team-color, #DDD);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        .feed-item:hover::before { opacity: 1; }
+        
+        .feed-item-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: var(--team-color, #DDD);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 800;
+            color: #FFF;
+            flex-shrink: 0;
+        }
+        
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .user-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+        
+        .update-time {
+            font-size: 9px;
+            color: #BCBCBC;
+        }
+        
+        /* AI Summary */
+        .ai-summary {
+            font-size: 11px;
+            color: var(--ink-sub);
+            line-height: 1.5;
+            padding-left: 38px;
+        }
+        
+        .project-tag {
+            display: inline;
+            font-weight: 700;
+            color: var(--team-color, var(--team-operations));
+        }
+        
+        .action-text {
+            color: var(--ink);
+        }
+        
+        /* Status indicator */
+        .status-pill {
+            display: inline-block;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--status-bg, #F0F0F0);
+            color: var(--status-color, #666);
+            margin-left: 4px;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .empty-icon { font-size: 28px; margin-bottom: 8px; }
+        .empty-text { font-size: 11px; color: #999; }
+        
+        /* Loading */
+        .loading {
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        const teamColors = {
+            Editorial: '#E94B4B',
+            Creative: '#E6468B',
+            Production: '#43B049',
+            Social: '#F2C316',
+            Operations: '#21A0D8',
+            Executive: '#1C1C1C'
+        };
+        
+        const statusStyles = {
+            'Briefed': { bg: 'rgba(107,114,128,0.1)', color: '#6B7280' },
+            'In Progress': { bg: 'rgba(33,160,216,0.1)', color: '#21A0D8' },
+            'Review': { bg: 'rgba(245,158,11,0.1)', color: '#F59E0B' },
+            'Approved': { bg: 'rgba(67,176,73,0.1)', color: '#43B049' },
+            'Live': { bg: 'rgba(155,89,182,0.1)', color: '#9B59B6' }
+        };
+        
+        // Generate AI-style summary from activity
+        const generateSummary = (item) => {
+            const actions = {
+                'status': () => `moved <span class="project-tag">${item.title}</span> to ${item.newStatus}`,
+                'new': () => `created new project <span class="project-tag">${item.title}</span>`,
+                'assign': () => `assigned to <span class="project-tag">${item.title}</span>`,
+                'complete': () => `completed <span class="project-tag">${item.title}</span>`,
+                'comment': () => `commented on <span class="project-tag">${item.title}</span>`,
+                'update': () => `updated <span class="project-tag">${item.title}</span>`
+            };
+            return actions[item.type]?.() || `working on <span class="project-tag">${item.title}</span>`;
+        };
+        
+        const DotGrid = () => (
+            <div className="dot-grid">
+                {[...Array(4)].map((_, i) => <span key={i} />)}
+            </div>
+        );
+        
+        function ProjectStatusFeed() {
+            const [activities, setActivities] = useState([]);
+            const [loading, setLoading] = useState(true);
+            
+            useEffect(() => {
+                auth.signInAnonymously();
+                
+                const unsub = db.collection('artifacts/dmg-command-centre-native/public/data/activity_feed')
+                    .orderBy('timestamp', 'desc')
+                    .limit(10)
+                    .onSnapshot(snap => {
+                        setActivities(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        setLoading(false);
+                    });
+                
+                return () => unsub();
+            }, []);
+            
+            const timeAgo = (ts) => {
+                if (!ts) return '';
+                const date = ts.toDate ? ts.toDate() : new Date(ts);
+                const diff = Math.floor((Date.now() - date) / 1000);
+                if (diff < 60) return 'just now';
+                if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+                if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+                return `${Math.floor(diff/86400)}d ago`;
+            };
+            
+            const getInitials = (name) => {
+                if (!name) return '?';
+                return name.split(' ').map(n => n[0]).join('').toUpperCase();
+            };
+            
+            return (
+                <div className="feed-card">
+                    <div className="feed-header">
+                        <DotGrid />
+                        <span className="feed-title">Project Updates</span>
+                        <span className="ai-badge">AI Summary</span>
+                    </div>
+                    
+                    <div className="feed-list">
+                        {loading ? (
+                            <div className="loading">
+                                <DotGrid />
+                            </div>
+                        ) : activities.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="empty-icon">📡</div>
+                                <div className="empty-text">No recent updates</div>
+                            </div>
+                        ) : (
+                            activities.map(item => {
+                                const teamColor = teamColors[item.team] || '#6B7280';
+                                const statusStyle = statusStyles[item.newStatus] || {};
+                                
+                                return (
+                                    <div 
+                                        key={item.id} 
+                                        className="feed-item"
+                                        style={{ '--team-color': teamColor }}
+                                    >
+                                        <div className="feed-item-header">
+                                            <div 
+                                                className="user-avatar"
+                                                style={{ background: teamColor }}
+                                            >
+                                                {getInitials(item.user)}
+                                            </div>
+                                            <div className="user-info">
+                                                <span className="user-name">{item.user || 'Team Member'}</span>
+                                                <span className="update-time"> • {timeAgo(item.timestamp)}</span>
+                                            </div>
+                                        </div>
+                                        <div 
+                                            className="ai-summary"
+                                            style={{ '--team-color': teamColor }}
+                                            dangerouslySetInnerHTML={{ __html: generateSummary(item) }}
+                                        />
+                                        {item.newStatus && (
+                                            <div style={{ paddingLeft: 38, marginTop: 6 }}>
+                                                <span 
+                                                    className="status-pill"
+                                                    style={{ 
+                                                        '--status-bg': statusStyle.bg,
+                                                        '--status-color': statusStyle.color
+                                                    }}
+                                                >
+                                                    {item.newStatus}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            );
+        }
+        
+        ReactDOM.createRoot(document.getElementById('root')).render(<ProjectStatusFeed />);
+    </script>
+</body>
+</html>
