@@ -33,7 +33,6 @@
             min-height: 100vh;
         }
 
-        /* Loading State */
         .loading-screen {
             display: flex;
             flex-direction: column;
@@ -69,12 +68,8 @@
             letter-spacing: 0.05em;
         }
 
-        /* ============ KANBAN VIEW ============ */
-        .kanban-container {
-            padding: 12px;
-        }
+        .kanban-container { padding: 12px; }
 
-        /* Header */
         .header {
             display: flex;
             align-items: center;
@@ -109,7 +104,6 @@
             font-weight: 800;
         }
 
-        /* View Tabs */
         .view-tabs {
             display: flex;
             gap: 4px;
@@ -148,7 +142,6 @@
             background: white !important;
         }
 
-        /* Kanban Grid */
         .kanban {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -165,6 +158,11 @@
             display: flex;
             flex-direction: column;
             max-height: 380px;
+            transition: all 0.2s ease;
+        }
+        .column.drag-over {
+            background: rgba(33, 160, 216, 0.08);
+            box-shadow: inset 0 0 0 2px var(--dmg-blue);
         }
 
         .column-header {
@@ -197,33 +195,33 @@
             overflow-x: hidden;
             scrollbar-width: thin;
             scrollbar-color: var(--border) transparent;
+            min-height: 100px;
         }
-        .cards-container::-webkit-scrollbar {
-            width: 4px;
-        }
-        .cards-container::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .cards-container::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 2px;
-        }
+        .cards-container::-webkit-scrollbar { width: 4px; }
+        .cards-container::-webkit-scrollbar-track { background: transparent; }
+        .cards-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-        /* Project Card - Compact */
         .project-card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 6px;
             padding: 8px 10px;
             margin-bottom: 6px;
-            cursor: pointer;
+            cursor: grab;
             position: relative;
             transition: all 0.15s ease;
+            user-select: none;
         }
         .project-card:hover {
             border-color: #D1D5DB;
             transform: translateY(-1px);
             box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .project-card.dragging {
+            opacity: 0.5;
+            transform: rotate(2deg) scale(1.02);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            cursor: grabbing;
         }
         .project-card::before {
             content: '';
@@ -285,9 +283,33 @@
             color: var(--ink-muted);
             font-size: 9px;
             font-weight: 500;
+            border: 2px dashed var(--border);
+            border-radius: 6px;
+            margin: 4px 0;
         }
 
-        /* ============ PROJECT DETAIL VIEW ============ */
+        .updating-badge {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            background: var(--dmg-blue);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            display: none;
+            z-index: 100;
+        }
+        .updating-badge.visible {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Detail View */
         .detail-container {
             padding: 16px;
             max-width: 800px;
@@ -322,14 +344,9 @@
             background: var(--surface-alt);
             border-color: #D1D5DB;
         }
-        .back-btn svg {
-            width: 14px;
-            height: 14px;
-        }
+        .back-btn svg { width: 14px; height: 14px; }
 
-        .detail-title-section {
-            flex: 1;
-        }
+        .detail-title-section { flex: 1; }
         .detail-client {
             font-size: 10px;
             font-weight: 600;
@@ -354,7 +371,6 @@
             letter-spacing: 0.03em;
         }
 
-        /* Section Cards */
         .section {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -383,7 +399,6 @@
             border-radius: 50%;
         }
 
-        /* Field Grid */
         .field-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -392,9 +407,7 @@
         @media (max-width: 600px) {
             .field-grid { grid-template-columns: 1fr; }
         }
-        .field-grid.single {
-            grid-template-columns: 1fr;
-        }
+        .field-grid.single { grid-template-columns: 1fr; }
 
         .field {
             display: flex;
@@ -408,36 +421,8 @@
             text-transform: uppercase;
             letter-spacing: 0.03em;
         }
-        .field-value {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--ink);
-            min-height: 20px;
-        }
-        .field-value.empty {
-            color: var(--ink-muted);
-            font-style: italic;
-        }
 
-        /* Editable Fields */
-        .field-select {
-            font-size: 11px;
-            font-weight: 500;
-            padding: 8px 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background: var(--surface);
-            color: var(--ink);
-            cursor: pointer;
-            width: 100%;
-        }
-        .field-select:focus {
-            outline: none;
-            border-color: var(--dmg-blue);
-            box-shadow: 0 0 0 2px rgba(33, 160, 216, 0.1);
-        }
-
-        .field-input {
+        .field-select, .field-input {
             font-size: 11px;
             font-weight: 500;
             padding: 8px 10px;
@@ -448,11 +433,12 @@
             width: 100%;
             font-family: inherit;
         }
-        .field-input:focus {
+        .field-select:focus, .field-input:focus {
             outline: none;
             border-color: var(--dmg-blue);
             box-shadow: 0 0 0 2px rgba(33, 160, 216, 0.1);
         }
+        .field-select { cursor: pointer; }
 
         .field-textarea {
             font-size: 11px;
@@ -474,15 +460,12 @@
             box-shadow: 0 0 0 2px rgba(33, 160, 216, 0.1);
         }
 
-        /* Link Fields */
         .link-field {
             display: flex;
             gap: 8px;
             align-items: center;
         }
-        .link-field input {
-            flex: 1;
-        }
+        .link-field input { flex: 1; }
         .link-btn {
             padding: 8px 12px;
             border-radius: 6px;
@@ -496,6 +479,7 @@
             letter-spacing: 0.03em;
             white-space: nowrap;
             transition: all 0.15s ease;
+            text-decoration: none;
         }
         .link-btn:hover {
             background: var(--dmg-blue);
@@ -508,7 +492,6 @@
             border-color: var(--dmg-blue);
         }
 
-        /* Save Button */
         .save-bar {
             position: fixed;
             bottom: 0;
@@ -544,9 +527,7 @@
             background: var(--production);
             color: white;
         }
-        .save-btn.primary:hover {
-            background: #3a9d42;
-        }
+        .save-btn.primary:hover { background: #3a9d42; }
         .save-btn.secondary {
             background: var(--surface-alt);
             color: var(--ink-sub);
@@ -557,10 +538,9 @@
             cursor: not-allowed;
         }
 
-        /* Toast */
         .toast {
             position: fixed;
-            bottom: 70px;
+            bottom: 20px;
             right: 16px;
             padding: 12px 16px;
             border-radius: 8px;
@@ -570,64 +550,30 @@
             transform: translateX(120%);
             transition: transform 0.3s ease;
         }
-        .toast.visible {
-            transform: translateX(0);
-        }
-        .toast.success {
-            background: var(--production);
-            color: white;
-        }
-        .toast.error {
-            background: var(--editorial);
-            color: white;
-        }
-
-        /* Team Member Pills */
-        .team-pills {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .team-pill {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            background: var(--surface-alt);
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 500;
-            color: var(--ink);
-        }
-        .team-pill-avatar {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--dmg-blue);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 8px;
-            font-weight: 700;
-        }
+        .toast.visible { transform: translateX(0); }
+        .toast.success { background: var(--production); color: white; }
+        .toast.error { background: var(--editorial); color: white; }
     </style>
 </head>
 <body>
     <div id="app"></div>
+    <div class="updating-badge" id="updatingBadge">
+        <div class="dot-grid" style="transform: scale(0.7);"><span></span><span></span><span></span><span></span></div>
+        Updating...
+    </div>
+    <div class="toast" id="toast"></div>
 
     <script>
         const API_URL = 'https://us-central1-dmg-command-centre-native.cloudfunctions.net/api';
 
-        // State
         let allProjects = [];
         let currentView = 'all';
         let currentProject = null;
         let originalProject = null;
         let hasChanges = false;
         let loading = true;
+        let draggedCard = null;
 
-        // Column config
         const columns = {
             'Brief In': { stage: 'Brief Recieved', color: '#E6468B' },
             'Pitch Sent': { stage: 'Pitch Sent', color: '#21A0D8' },
@@ -640,7 +586,6 @@
         const priorityOptions = ['Low', 'Medium', 'High'];
         const teamOptions = ['Creative', 'Production', 'Editorial', 'Social', 'Sales'];
 
-        // Init
         document.addEventListener('DOMContentLoaded', init);
 
         async function init() {
@@ -652,13 +597,9 @@
         function handleRouting() {
             const params = new URLSearchParams(window.location.search);
             const projectId = params.get('project');
-            
             if (projectId && allProjects.length > 0) {
                 const project = allProjects.find(p => p.id === projectId);
-                if (project) {
-                    showProjectDetail(project);
-                    return;
-                }
+                if (project) { showProjectDetail(project); return; }
             }
             showKanban();
         }
@@ -683,14 +624,10 @@
         }
 
         function render() {
-            if (currentProject) {
-                renderProjectDetail();
-            } else {
-                renderKanban();
-            }
+            if (currentProject) renderProjectDetail();
+            else renderKanban();
         }
 
-        // ============ KANBAN VIEW ============
         function showKanban() {
             currentProject = null;
             originalProject = null;
@@ -699,10 +636,7 @@
         }
 
         function renderKanban() {
-            const filtered = currentView === 'all' 
-                ? allProjects 
-                : allProjects.filter(p => p.team === currentView || p.primaryTeam === currentView);
-
+            const filtered = currentView === 'all' ? allProjects : allProjects.filter(p => p.team === currentView || p.primaryTeam === currentView);
             const totalValue = filtered.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
             const valueStr = totalValue >= 1000 ? `£${Math.round(totalValue / 1000)}K` : `£${totalValue}`;
 
@@ -718,88 +652,119 @@
                             <span class="stat"><strong>${valueStr}</strong> Pipeline</span>
                         </div>
                     </div>
-
                     <div class="view-tabs">
                         <button class="view-tab ${currentView === 'all' ? 'active' : ''}" onclick="setView('all')">All</button>
-                        <button class="view-tab ${currentView === 'Creative' ? 'active' : ''}" onclick="setView('Creative')">
-                            <span class="dot" style="background: var(--creative)"></span>Creative
-                        </button>
-                        <button class="view-tab ${currentView === 'Production' ? 'active' : ''}" onclick="setView('Production')">
-                            <span class="dot" style="background: var(--production)"></span>Production
-                        </button>
-                        <button class="view-tab ${currentView === 'Sales' ? 'active' : ''}" onclick="setView('Sales')">
-                            <span class="dot" style="background: var(--sales)"></span>Sales
-                        </button>
-                        <button class="view-tab ${currentView === 'Social' ? 'active' : ''}" onclick="setView('Social')">
-                            <span class="dot" style="background: var(--social)"></span>Social
-                        </button>
+                        <button class="view-tab ${currentView === 'Creative' ? 'active' : ''}" onclick="setView('Creative')"><span class="dot" style="background: var(--creative)"></span>Creative</button>
+                        <button class="view-tab ${currentView === 'Production' ? 'active' : ''}" onclick="setView('Production')"><span class="dot" style="background: var(--production)"></span>Production</button>
+                        <button class="view-tab ${currentView === 'Sales' ? 'active' : ''}" onclick="setView('Sales')"><span class="dot" style="background: var(--sales)"></span>Sales</button>
+                        <button class="view-tab ${currentView === 'Social' ? 'active' : ''}" onclick="setView('Social')"><span class="dot" style="background: var(--social)"></span>Social</button>
                     </div>
-
-                    <div class="kanban">
-            `;
+                    <div class="kanban">`;
 
             Object.entries(columns).forEach(([title, config]) => {
                 const columnProjects = filtered.filter(p => p.dealStage === config.stage);
-                
                 html += `
-                    <div class="column">
+                    <div class="column" data-stage="${config.stage}" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                         <div class="column-header">
                             <span class="column-title" style="color: ${config.color}">${title}</span>
                             <span class="column-count">${columnProjects.length}</span>
                         </div>
-                        <div class="cards-container">
-                `;
+                        <div class="cards-container">`;
 
                 if (columnProjects.length === 0) {
-                    html += `<div class="empty-column">No projects</div>`;
+                    html += `<div class="empty-column">Drop here</div>`;
                 } else {
                     columnProjects.forEach(project => {
                         const value = parseFloat(project.dealValue) || 0;
                         const valueStr = value >= 1000 ? `£${Math.round(value / 1000)}K` : value > 0 ? `£${value}` : '';
                         const team = project.team || project.primaryTeam || 'Sales';
-
                         html += `
-                            <div class="project-card" data-team="${team}" onclick="openProject('${project.id}')">
+                            <div class="project-card" data-id="${project.id}" data-team="${team}" draggable="true" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" onclick="openProject('${project.id}')">
                                 <div class="card-client">${project.client || 'Internal'}</div>
                                 <div class="card-title">${project.title || 'Untitled'}</div>
                                 <div class="card-meta">
                                     <span class="card-tag">${team}</span>
                                     ${valueStr ? `<span class="card-value">${valueStr}</span>` : ''}
                                 </div>
-                            </div>
-                        `;
+                            </div>`;
                     });
                 }
-
                 html += `</div></div>`;
             });
 
             html += `</div></div>`;
-            
-            if (loading) {
-                html = `
-                    <div class="loading-screen">
-                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                        <span class="loading-text">Syncing with Notion...</span>
-                    </div>
-                `;
-            }
-
+            if (loading) html = `<div class="loading-screen"><div class="dot-grid"><span></span><span></span><span></span><span></span></div><span class="loading-text">Syncing with Notion...</span></div>`;
             document.getElementById('app').innerHTML = html;
         }
 
-        function setView(view) {
-            currentView = view;
+        function setView(view) { currentView = view; render(); }
+        function openProject(id) { navigate(`?project=${id}`); }
+
+        function handleDragStart(e) {
+            draggedCard = e.target;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', e.target.dataset.id);
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.column').forEach(c => c.classList.remove('drag-over'));
+            draggedCard = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const column = e.target.closest('.column');
+            if (column) column.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            const column = e.target.closest('.column');
+            if (column && !column.contains(e.relatedTarget)) column.classList.remove('drag-over');
+        }
+
+        async function handleDrop(e) {
+            e.preventDefault();
+            const column = e.target.closest('.column');
+            if (!column || !draggedCard) return;
+            column.classList.remove('drag-over');
+
+            const projectId = draggedCard.dataset.id;
+            const newStage = column.dataset.stage;
+            const project = allProjects.find(p => p.id === projectId);
+            if (!project || project.dealStage === newStage) return;
+
+            const oldStage = project.dealStage;
+            project.dealStage = newStage;
             render();
+            showUpdating(true);
+
+            try {
+                const res = await fetch(`${API_URL}/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dealStage: newStage })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Update failed');
+                showToast(`Moved to ${newStage}`, 'success');
+            } catch (err) {
+                console.error('Update failed:', err);
+                project.dealStage = oldStage;
+                render();
+                showToast('Failed to update', 'error');
+            }
+            showUpdating(false);
         }
 
-        function openProject(id) {
-            navigate(`?project=${id}`);
+        function showUpdating(visible) {
+            document.getElementById('updatingBadge').classList.toggle('visible', visible);
         }
 
-        // ============ PROJECT DETAIL VIEW ============
         function showProjectDetail(project) {
-            currentProject = JSON.parse(JSON.stringify(project)); // Deep copy
+            currentProject = JSON.parse(JSON.stringify(project));
             originalProject = JSON.parse(JSON.stringify(project));
             hasChanges = false;
             render();
@@ -808,214 +773,87 @@
         function renderProjectDetail() {
             const p = currentProject;
             const stageColor = getStageColor(p.dealStage);
-
             const html = `
                 <div class="detail-container">
                     <div class="detail-header">
                         <button class="back-btn" onclick="goBack()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 12H5M12 19l-7-7 7-7"/>
-                            </svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                             Back
                         </button>
                         <div class="detail-title-section">
                             <div class="detail-client">${p.client || 'Internal'}</div>
                             <div class="detail-title">${p.title || 'Untitled Project'}</div>
                         </div>
-                        <div class="detail-stage-badge" style="background: ${stageColor}20; color: ${stageColor}">
-                            ${p.dealStage || 'No Stage'}
-                        </div>
+                        <div class="detail-stage-badge" style="background: ${stageColor}20; color: ${stageColor}">${p.dealStage || 'No Stage'}</div>
                     </div>
 
-                    <!-- Commercial Section -->
                     <div class="section">
-                        <div class="section-header">
-                            <div class="section-dot" style="background: var(--production)"></div>
-                            <span class="section-title">Commercial</span>
-                        </div>
+                        <div class="section-header"><div class="section-dot" style="background: var(--production)"></div><span class="section-title">Commercial</span></div>
                         <div class="field-grid">
-                            <div class="field">
-                                <label class="field-label">Deal Stage</label>
-                                <select class="field-select" onchange="updateField('dealStage', this.value)">
-                                    <option value="">Select...</option>
-                                    ${dealStageOptions.map(opt => `<option value="${opt}" ${p.dealStage === opt ? 'selected' : ''}>${opt}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Deal Value (£)</label>
-                                <input type="number" class="field-input" value="${p.dealValue || ''}" placeholder="e.g. 25000" onchange="updateField('dealValue', this.value)">
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Priority</label>
-                                <select class="field-select" onchange="updateField('priority', this.value)">
-                                    <option value="">Select...</option>
-                                    ${priorityOptions.map(opt => `<option value="${opt}" ${p.priority === opt ? 'selected' : ''}>${opt}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Primary Team</label>
-                                <select class="field-select" onchange="updateField('primaryTeam', this.value)">
-                                    <option value="">Select...</option>
-                                    ${teamOptions.map(opt => `<option value="${opt}" ${(p.primaryTeam || p.team) === opt ? 'selected' : ''}>${opt}</option>`).join('')}
-                                </select>
-                            </div>
+                            <div class="field"><label class="field-label">Deal Stage</label><select class="field-select" onchange="updateField('dealStage', this.value)"><option value="">Select...</option>${dealStageOptions.map(opt => `<option value="${opt}" ${p.dealStage === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></div>
+                            <div class="field"><label class="field-label">Deal Value (£)</label><input type="number" class="field-input" value="${p.dealValue || ''}" placeholder="e.g. 25000" onchange="updateField('dealValue', this.value)"></div>
+                            <div class="field"><label class="field-label">Priority</label><select class="field-select" onchange="updateField('priority', this.value)"><option value="">Select...</option>${priorityOptions.map(opt => `<option value="${opt}" ${p.priority === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></div>
+                            <div class="field"><label class="field-label">Primary Team</label><select class="field-select" onchange="updateField('primaryTeam', this.value)"><option value="">Select...</option>${teamOptions.map(opt => `<option value="${opt}" ${(p.primaryTeam || p.team) === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></div>
                         </div>
                     </div>
 
-                    <!-- Workflow Section -->
                     <div class="section">
-                        <div class="section-header">
-                            <div class="section-dot" style="background: var(--dmg-blue)"></div>
-                            <span class="section-title">Workflow Status</span>
-                        </div>
+                        <div class="section-header"><div class="section-dot" style="background: var(--dmg-blue)"></div><span class="section-title">Workflow Status</span></div>
                         <div class="field-grid">
-                            <div class="field">
-                                <label class="field-label">Creative Workflow</label>
-                                <select class="field-select" onchange="updateField('creativeWorkflowStatus', this.value)">
-                                    <option value="">Select...</option>
-                                    ${workflowOptions.map(opt => `<option value="${opt}" ${p.creativeWorkflowStatus === opt ? 'selected' : ''}>${opt}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Production Workflow</label>
-                                <select class="field-select" onchange="updateField('productionWorkflowStatus', this.value)">
-                                    <option value="">Select...</option>
-                                    ${workflowOptions.map(opt => `<option value="${opt}" ${p.productionWorkflowStatus === opt ? 'selected' : ''}>${opt}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Social Workflow</label>
-                                <select class="field-select" onchange="updateField('socialWorkflowStatus', this.value)">
-                                    <option value="">Select...</option>
-                                    <option value="Awaiting Asset(s)" ${p.socialWorkflowStatus === 'Awaiting Asset(s)' ? 'selected' : ''}>Awaiting Asset(s)</option>
-                                    <option value="Scheduled" ${p.socialWorkflowStatus === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
-                                    <option value="Live" ${p.socialWorkflowStatus === 'Live' ? 'selected' : ''}>Live</option>
-                                </select>
-                            </div>
+                            <div class="field"><label class="field-label">Creative Workflow</label><select class="field-select" onchange="updateField('creativeWorkflowStatus', this.value)"><option value="">Select...</option>${workflowOptions.map(opt => `<option value="${opt}" ${p.creativeWorkflowStatus === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></div>
+                            <div class="field"><label class="field-label">Production Workflow</label><select class="field-select" onchange="updateField('productionWorkflowStatus', this.value)"><option value="">Select...</option>${workflowOptions.map(opt => `<option value="${opt}" ${p.productionWorkflowStatus === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select></div>
+                            <div class="field"><label class="field-label">Social Workflow</label><select class="field-select" onchange="updateField('socialWorkflowStatus', this.value)"><option value="">Select...</option><option value="Awaiting Asset(s)" ${p.socialWorkflowStatus === 'Awaiting Asset(s)' ? 'selected' : ''}>Awaiting Asset(s)</option><option value="Scheduled" ${p.socialWorkflowStatus === 'Scheduled' ? 'selected' : ''}>Scheduled</option><option value="Live" ${p.socialWorkflowStatus === 'Live' ? 'selected' : ''}>Live</option></select></div>
                         </div>
                     </div>
 
-                    <!-- Dates Section -->
                     <div class="section">
-                        <div class="section-header">
-                            <div class="section-dot" style="background: var(--creative)"></div>
-                            <span class="section-title">Key Dates</span>
-                        </div>
+                        <div class="section-header"><div class="section-dot" style="background: var(--creative)"></div><span class="section-title">Key Dates</span></div>
                         <div class="field-grid">
-                            <div class="field">
-                                <label class="field-label">Client Due Date</label>
-                                <input type="date" class="field-input" value="${p.dueDate || ''}" onchange="updateField('dueDate', this.value)">
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Internal Due Date</label>
-                                <input type="date" class="field-input" value="${p.internalDueDate || ''}" onchange="updateField('internalDueDate', this.value)">
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Live Date</label>
-                                <input type="date" class="field-input" value="${p.liveDate || ''}" onchange="updateField('liveDate', this.value)">
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Shoot Date</label>
-                                <input type="date" class="field-input" value="${p.shootDate || ''}" onchange="updateField('shootDate', this.value)">
-                            </div>
+                            <div class="field"><label class="field-label">Client Due Date</label><input type="date" class="field-input" value="${p.dueDate || ''}" onchange="updateField('dueDate', this.value)"></div>
+                            <div class="field"><label class="field-label">Internal Due Date</label><input type="date" class="field-input" value="${p.internalDueDate || ''}" onchange="updateField('internalDueDate', this.value)"></div>
+                            <div class="field"><label class="field-label">Live Date</label><input type="date" class="field-input" value="${p.liveDate || ''}" onchange="updateField('liveDate', this.value)"></div>
+                            <div class="field"><label class="field-label">Shoot Date</label><input type="date" class="field-input" value="${p.shootDate || ''}" onchange="updateField('shootDate', this.value)"></div>
                         </div>
                     </div>
 
-                    <!-- Links Section -->
                     <div class="section">
-                        <div class="section-header">
-                            <div class="section-dot" style="background: var(--social)"></div>
-                            <span class="section-title">Links & Assets</span>
-                        </div>
+                        <div class="section-header"><div class="section-dot" style="background: var(--social)"></div><span class="section-title">Links & Assets</span></div>
                         <div class="field-grid">
-                            <div class="field">
-                                <label class="field-label">Creative Response</label>
-                                <div class="link-field">
-                                    <input type="url" class="field-input" value="${p.creativeResponseLink || ''}" placeholder="Paste link..." onchange="updateField('creativeResponseLink', this.value)">
-                                    ${p.creativeResponseLink ? `<a href="${p.creativeResponseLink}" target="_blank" class="link-btn has-link">Open</a>` : ''}
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Frame.io</label>
-                                <div class="link-field">
-                                    <input type="url" class="field-input" value="${p.frameIoLink || ''}" placeholder="Paste link..." onchange="updateField('frameIoLink', this.value)">
-                                    ${p.frameIoLink ? `<a href="${p.frameIoLink}" target="_blank" class="link-btn has-link">Open</a>` : ''}
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Brief</label>
-                                <div class="link-field">
-                                    <input type="url" class="field-input" value="${p.briefLink || ''}" placeholder="Paste link..." onchange="updateField('briefLink', this.value)">
-                                    ${p.briefLink ? `<a href="${p.briefLink}" target="_blank" class="link-btn has-link">Open</a>` : ''}
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Drive Folder</label>
-                                <div class="link-field">
-                                    <input type="url" class="field-input" value="${p.driveFolder || ''}" placeholder="Paste link..." onchange="updateField('driveFolder', this.value)">
-                                    ${p.driveFolder ? `<a href="${p.driveFolder}" target="_blank" class="link-btn has-link">Open</a>` : ''}
-                                </div>
-                            </div>
+                            <div class="field"><label class="field-label">Creative Response</label><div class="link-field"><input type="url" class="field-input" value="${p.creativeResponseLink || ''}" placeholder="Paste link..." onchange="updateField('creativeResponseLink', this.value)">${p.creativeResponseLink ? `<a href="${p.creativeResponseLink}" target="_blank" class="link-btn has-link">Open</a>` : ''}</div></div>
+                            <div class="field"><label class="field-label">Frame.io</label><div class="link-field"><input type="url" class="field-input" value="${p.frameIoLink || ''}" placeholder="Paste link..." onchange="updateField('frameIoLink', this.value)">${p.frameIoLink ? `<a href="${p.frameIoLink}" target="_blank" class="link-btn has-link">Open</a>` : ''}</div></div>
+                            <div class="field"><label class="field-label">Brief</label><div class="link-field"><input type="url" class="field-input" value="${p.briefLink || ''}" placeholder="Paste link..." onchange="updateField('briefLink', this.value)">${p.briefLink ? `<a href="${p.briefLink}" target="_blank" class="link-btn has-link">Open</a>` : ''}</div></div>
+                            <div class="field"><label class="field-label">Drive Folder</label><div class="link-field"><input type="url" class="field-input" value="${p.driveFolder || ''}" placeholder="Paste link..." onchange="updateField('driveFolder', this.value)">${p.driveFolder ? `<a href="${p.driveFolder}" target="_blank" class="link-btn has-link">Open</a>` : ''}</div></div>
                         </div>
                     </div>
 
-                    <!-- Notes Section -->
                     <div class="section">
-                        <div class="section-header">
-                            <div class="section-dot" style="background: var(--ink)"></div>
-                            <span class="section-title">Notes</span>
-                        </div>
+                        <div class="section-header"><div class="section-dot" style="background: var(--ink)"></div><span class="section-title">Notes</span></div>
                         <div class="field-grid single">
-                            <div class="field">
-                                <label class="field-label">Project Notes</label>
-                                <textarea class="field-textarea" placeholder="Add notes..." onchange="updateField('notes', this.value)">${p.notes || ''}</textarea>
-                            </div>
-                            <div class="field">
-                                <label class="field-label">Internal Notes</label>
-                                <textarea class="field-textarea" placeholder="Internal team notes..." onchange="updateField('internalNotes', this.value)">${p.internalNotes || ''}</textarea>
-                            </div>
+                            <div class="field"><label class="field-label">Project Notes</label><textarea class="field-textarea" placeholder="Add notes..." onchange="updateField('notes', this.value)">${p.notes || ''}</textarea></div>
+                            <div class="field"><label class="field-label">Internal Notes</label><textarea class="field-textarea" placeholder="Internal team notes..." onchange="updateField('internalNotes', this.value)">${p.internalNotes || ''}</textarea></div>
                         </div>
                     </div>
 
-                    <!-- Quick Actions -->
                     <div class="section">
-                        <div class="section-header">
-                            <div class="section-dot" style="background: var(--amber)"></div>
-                            <span class="section-title">Quick Actions</span>
-                        </div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <a href="${p.url}" target="_blank" class="link-btn">Open in Notion</a>
-                        </div>
+                        <div class="section-header"><div class="section-dot" style="background: var(--amber)"></div><span class="section-title">Quick Actions</span></div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;"><a href="${p.url}" target="_blank" class="link-btn">Open in Notion</a></div>
                     </div>
-
                     <div style="height: 80px;"></div>
                 </div>
-
                 <div class="save-bar ${hasChanges ? 'visible' : ''}" id="saveBar">
                     <button class="save-btn secondary" onclick="discardChanges()">Discard</button>
                     <button class="save-btn primary" onclick="saveChanges()" id="saveBtn">Save Changes</button>
-                </div>
-
-                <div class="toast" id="toast"></div>
-            `;
-
+                </div>`;
             document.getElementById('app').innerHTML = html;
         }
 
         function getStageColor(stage) {
-            const colors = {
-                'Brief Recieved': '#E6468B',
-                'Pitch Sent': '#21A0D8',
-                'Deal Agreed': '#43B049',
-                'Campaign Complete': '#F2C316'
-            };
+            const colors = { 'Brief Recieved': '#E6468B', 'Pitch Sent': '#21A0D8', 'Deal Agreed': '#43B049', 'Campaign Complete': '#F2C316' };
             return colors[stage] || '#9CA3AF';
         }
 
         function updateField(field, value) {
-            if (field === 'dealValue') {
-                value = value ? parseFloat(value) : null;
-            }
+            if (field === 'dealValue') value = value ? parseFloat(value) : null;
             currentProject[field] = value;
             checkForChanges();
         }
@@ -1023,9 +861,7 @@
         function checkForChanges() {
             hasChanges = JSON.stringify(currentProject) !== JSON.stringify(originalProject);
             const saveBar = document.getElementById('saveBar');
-            if (saveBar) {
-                saveBar.classList.toggle('visible', hasChanges);
-            }
+            if (saveBar) saveBar.classList.toggle('visible', hasChanges);
         }
 
         function discardChanges() {
@@ -1039,12 +875,9 @@
             saveBtn.disabled = true;
             saveBtn.textContent = 'Saving...';
 
-            // Find changed fields
             const changes = {};
             for (const key in currentProject) {
-                if (JSON.stringify(currentProject[key]) !== JSON.stringify(originalProject[key])) {
-                    changes[key] = currentProject[key];
-                }
+                if (JSON.stringify(currentProject[key]) !== JSON.stringify(originalProject[key])) changes[key] = currentProject[key];
             }
 
             try {
@@ -1053,26 +886,18 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(changes)
                 });
-
                 const data = await res.json();
-
                 if (data.success) {
-                    // Update local data
                     const idx = allProjects.findIndex(p => p.id === currentProject.id);
-                    if (idx !== -1) {
-                        allProjects[idx] = { ...allProjects[idx], ...changes };
-                    }
+                    if (idx !== -1) allProjects[idx] = { ...allProjects[idx], ...changes };
                     originalProject = JSON.parse(JSON.stringify(currentProject));
                     hasChanges = false;
                     showToast('Changes saved!', 'success');
-                } else {
-                    throw new Error(data.error || 'Save failed');
-                }
+                } else throw new Error(data.error || 'Save failed');
             } catch (e) {
                 console.error('Save error:', e);
                 showToast('Failed to save: ' + e.message, 'error');
             }
-
             saveBtn.disabled = false;
             saveBtn.textContent = 'Save Changes';
             checkForChanges();
@@ -1082,26 +907,15 @@
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = `toast ${type} visible`;
-            setTimeout(() => {
-                toast.classList.remove('visible');
-            }, 3000);
+            setTimeout(() => toast.classList.remove('visible'), 3000);
         }
 
         function goBack() {
-            if (hasChanges) {
-                if (!confirm('You have unsaved changes. Discard them?')) {
-                    return;
-                }
-            }
+            if (hasChanges && !confirm('You have unsaved changes. Discard them?')) return;
             navigate(window.location.pathname);
         }
 
-        // Auto-refresh kanban every 60s (only when viewing kanban)
-        setInterval(() => {
-            if (!currentProject) {
-                loadProjects();
-            }
-        }, 60000);
+        setInterval(() => { if (!currentProject) loadProjects(); }, 60000);
     </script>
 </body>
 </html>
