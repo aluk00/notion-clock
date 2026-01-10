@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Hub Overview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { margin: 0; padding: 0; background: #FAFAFA; font-family: 'Inter', system-ui, sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const API_URL = 'https://us-central1-dmg-command-centre-native.cloudfunctions.net/api';
+
+    const STATUS_STYLES = {
+      'not started': { bg: 'rgba(107,114,128,0.1)', color: '#6B7280' },
+      'to be briefed': { bg: 'rgba(107,114,128,0.1)', color: '#6B7280' },
+      'in progress': { bg: 'rgba(33,160,216,0.1)', color: '#21A0D8' },
+      'sales review': { bg: 'rgba(245,158,11,0.1)', color: '#F59E0B' },
+      'complete': { bg: 'rgba(67,176,73,0.1)', color: '#43B049' },
+      'campaign complete': { bg: 'rgba(67,176,73,0.1)', color: '#43B049' },
+      'deal agreed': { bg: 'rgba(67,176,73,0.1)', color: '#43B049' },
+      'live': { bg: 'rgba(155,89,182,0.1)', color: '#9B59B6' },
+      'pitch sent': { bg: 'rgba(33,160,216,0.1)', color: '#21A0D8' },
+      'brief received': { bg: 'rgba(230,70,139,0.1)', color: '#E6468B' },
+      'brief recieved': { bg: 'rgba(230,70,139,0.1)', color: '#E6468B' }
+    };
+
+    const DotGrid = ({ color = "#DDD", pulseIndex = 0 }) => (
+      <div className="grid grid-cols-2 gap-[2px] w-[12px] h-[12px]">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="w-[5px] h-[5px] rounded-full transition-opacity duration-700"
+            style={{ backgroundColor: color, opacity: i === pulseIndex ? 1 : 0.25 }} />
+        ))}
+      </div>
+    );
+
+    const Card = ({ children, accentColor, title, badge, span = 1, rowSpan = 1 }) => (
+      <div className={`bg-white border border-[#EAECEF] rounded-[16px] p-[14px] relative transition-all duration-300 hover:-translate-y-[1px] hover:shadow-lg group flex flex-col ${span === 2 ? 'col-span-2' : 'col-span-1'} ${rowSpan === 2 ? 'row-span-2' : 'row-span-1'}`}>
+        <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-[16px] opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ backgroundColor: accentColor }} />
+        <div className="flex items-center gap-2 mb-[10px]">
+          <DotGrid color={accentColor} />
+          <span className="text-[9px] font-bold text-[#757575] uppercase tracking-wider">{title}</span>
+          {badge && <span className="ml-auto text-[8px] font-bold text-[#9CA3AF] uppercase">{badge}</span>}
+        </div>
+        {children}
+      </div>
+    );
+
+    function App() {
+      const [projects, setProjects] = React.useState([]);
+      const [loading, setLoading] = React.useState(true);
+      const [pulse, setPulse] = React.useState(0);
+      const [partnersExpanded, setPartnersExpanded] = React.useState(false);
+      const [error, setError] = React.useState(null);
+
+      React.useEffect(() => {
+        const interval = setInterval(() => setPulse(p => (p + 1) % 4), 2000);
+        return () => clearInterval(interval);
+      }, []);
+
+      const loadData = async () => {
+        try {
+          const res = await fetch(`${API_URL}/projects`);
+          const data = await res.json();
+          if (!data.success) throw new Error(data.error || 'Failed to fetch');
+          setProjects(data.projects || []);
+          setError(null);
+          setLoading(false);
+        } catch (e) {
+          setError(e.message);
+          setLoading(false);
+        }
+      };
+
+      React.useEffect(() => {
+        loadData();
+        const interval = setInterval(loadData, 60000);
+        return () => clearInterval(interval);
+      }, []);
+
+      const normalize = (s) => (s || '').toLowerCase().trim();
+
+      const stats = React.useMemo(() => {
+        const won = projects.filter(p => {
+          const stage = normalize(p.dealStage);
+          return stage === 'deal agreed' || stage === 'campaign complete';
+        });
+        const revenue = won.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
+
+        const active = projects.filter(p => {
+          const stage = normalize(p.dealStage);
+          const status = normalize(p.status);
+          return stage !== '' && stage !== 'campaign complete' && status !== 'complete';
+        });
+
+        const activeWorkflow = projects.filter(p => {
+          const creative = normalize(p.creativeWorkflowStatus);
+          return creative && creative !== 'to be briefed' && creative !== 'complete';
+        }).length;
+
+        const now = new Date();
+        const weekEnd = new Date(); weekEnd.setDate(now.getDate() + 7);
+        const due = projects.filter(p => {
+          const dateStr = p.dueDate || p.internalDueDate;
+          if (!dateStr) return false;
+          const date = new Date(dateStr);
+          return date >= now && date <= weekEnd;
+        }).sort((a, b) => new Date(a.dueDate || a.internalDueDate) - new Date(b.dueDate || b.internalDueDate));
+
+        const activity = projects.filter(p => p.title).slice(0, 6);
+
+        const partnerCounts = {};
+        projects.forEach(p => {
+          const name = p.client;
+          if (name && name.toLowerCase() !== 'internal' && name !== '') {
+            partnerCounts[name] = (partnerCounts[name] || 0) + 1;
+          }
+        });
+        const partners = Object.entries(partnerCounts).sort((a, b) => b[1] - a[1]);
+
+        const review = projects.filter(p => {
+          const creative = normalize(p.creativeWorkflowStatus);
+          return creative === 'sales review' || creative.includes('review');
+        });
+
+        return { won: { count: won.length, revenue }, active: { count: active.length, workflow: activeWorkflow }, due, activity, partners, review };
+      }, [projects]);
+
+      const formatCurrency = (val) => {
+        if (val >= 1000000) return `£${(val / 1000000).toFixed(1)}M`;
+        if (val >= 1000) return `£${Math.round(val / 1000)}K`;
+        return `£${Math.round(val)}`;
+      };
+
+      const formatDate = (dateStr) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        const day = date.getDate();
+        const suffix = ['th', 'st', 'nd', 'rd'][(day % 10 > 3 || Math.floor(day % 100 / 10) === 1) ? 0 : day % 10];
+        return `${day}${suffix}`;
+      };
+
+      if (loading) return (
+        <div className="flex items-center justify-center p-20 gap-3 text-[10px] text-[#9CA3AF] font-bold uppercase tracking-widest">
+          <DotGrid color="#21A0D8" pulseIndex={pulse} /> Syncing Notion Data...
+        </div>
+      );
+
+      if (error) return (
+        <div className="flex flex-col items-center justify-center p-20 gap-3 text-center">
+          <DotGrid color="#E94B4B" />
+          <span className="text-[10px] text-[#E94B4B] font-bold uppercase">Sync Error</span>
+          <span className="text-[9px] text-[#9CA3AF]">{error}</span>
+        </div>
+      );
+
+      return (
+        <div className="grid grid-cols-2 gap-3 max-w-[440px] mx-auto p-4 antialiased">
+          <Card title="Commercial Status (Q1)" accentColor="#43B049">
+            <div className="flex items-baseline gap-1.5 mt-[-4px]">
+              <span className="text-[32px] font-black leading-none text-[#43B049] font-mono tabular-nums">{stats.won.count.toString().padStart(2, '0')}</span>
+              <span className="text-[9px] font-bold text-[#9CA3AF] uppercase">Wins</span>
+            </div>
+            <div className="mt-auto pt-2 border-t border-[#F9FAFB] flex justify-between items-center">
+              <span className="text-[8px] font-bold text-[#9CA3AF] uppercase">Total Revenue Won</span>
+              <span className="text-[10px] font-extrabold text-[#1C1C1C] font-mono">{formatCurrency(stats.won.revenue)}</span>
+            </div>
+          </Card>
+
+          <Card title="Production Velocity" accentColor="#21A0D8">
+            <div className="flex items-baseline gap-1.5 mt-[-4px]">
+              <span className="text-[32px] font-black leading-none text-[#21A0D8] font-mono tabular-nums">{stats.active.count.toString().padStart(2, '0')}</span>
+              <span className="text-[9px] font-bold text-[#9CA3AF] uppercase">Active</span>
+            </div>
+            <div className="mt-auto pt-2 border-t border-[#F9FAFB] flex justify-between items-center">
+              <span className="text-[8px] font-bold text-[#9CA3AF] uppercase">In Workflow</span>
+              <span className="text-[10px] font-extrabold text-[#1C1C1C] font-mono">{stats.active.workflow.toString().padStart(2, '0')}</span>
+            </div>
+          </Card>
+
+          <Card title="Deadlines (7D)" accentColor="#E6468B">
+            <div className="flex flex-col gap-1.5 mt-1">
+              {stats.due.length > 0 ? stats.due.slice(0, 3).map((d, i) => (
+                <div key={i} className="flex justify-between items-center text-[9px] font-semibold border-b border-[#F9FAFB] pb-1 last:border-0">
+                  <span className="truncate text-[#1C1C1C] max-w-[130px] uppercase tracking-tight">{d.title || 'Untitled'}</span>
+                  <span className="bg-[#F9FAFB] text-[#9CA3AF] px-1.5 py-0.5 rounded-[4px] font-mono">{formatDate(d.dueDate || d.internalDueDate)}</span>
+                </div>
+              )) : <div className="text-[9px] text-[#9CA3AF] italic py-2">No immediate deadlines</div>}
+            </div>
+            <div className="mt-auto pt-2 border-t border-[#F9FAFB]">
+              <span className="text-[8px] font-black text-[#E6468B] uppercase">{stats.due.length} Due This Week</span>
+            </div>
+          </Card>
+
+          <Card title="Partners" accentColor="#F2C316">
+            <div className="flex flex-wrap gap-1.5 mt-1 h-[42px] overflow-hidden">
+              {(partnersExpanded ? stats.partners : stats.partners.slice(0, 5)).map(([name, count]) => (
+                <div key={name} className="text-[8px] font-bold px-2 py-1 bg-[#F9FAFB] rounded-full text-[#757575]">{name.substring(0, 10)} <span className="opacity-50">({count})</span></div>
+              ))}
+              {stats.partners.length > 5 && (
+                <button onClick={() => setPartnersExpanded(!partnersExpanded)} className="text-[8px] font-black text-[#9CA3AF] uppercase self-center px-1">
+                  {partnersExpanded ? 'Less' : `+${stats.partners.length - 5} More`}
+                </button>
+              )}
+            </div>
+          </Card>
+
+          <Card title="Latest Activity" accentColor="#1C1C1C" span={2} rowSpan={2} badge="Live Pulse">
+            <div className="flex flex-col gap-2 mt-1">
+              {stats.activity.map((item) => {
+                const statusKey = normalize(item.dealStage || item.status || '');
+                const style = STATUS_STYLES[statusKey] || STATUS_STYLES['not started'];
+                return (
+                  <div key={item.id} className="flex items-center gap-3 p-2 bg-[#F9FAFB] rounded-[10px] hover:bg-white hover:shadow-sm transition-all duration-200">
+                    <div className="w-[3px] h-6 rounded-full shrink-0" style={{ backgroundColor: style.color }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-bold text-[#1C1C1C] truncate uppercase tracking-tight">{item.title || 'Untitled Project'}</div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[8px] font-bold text-[#9CA3AF] uppercase">{item.client || 'Internal'}</span>
+                        {item.dealStage && <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded-[3px]" style={{ backgroundColor: style.bg, color: style.color }}>{item.dealStage}</span>}
+                      </div>
+                    </div>
+                    {item.dealValue && <span className="text-[8px] font-bold text-[#43B049] font-mono whitespace-nowrap">£{(item.dealValue / 1000).toFixed(0)}K</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <Card title="Sales Review Queue" accentColor="#F59E0B" span={2}>
+            <div className="flex flex-col gap-2 mt-1">
+              {stats.review.length > 0 ? stats.review.slice(0, 2).map((p) => (
+                <div key={p.id} className="flex items-center gap-2 p-2 bg-[rgba(245,158,11,0.05)] border border-[rgba(245,158,11,0.1)] rounded-[8px]">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] animate-pulse" />
+                  <span className="text-[9px] font-bold text-[#1C1C1C] truncate uppercase">{p.title}</span>
+                  <span className="ml-auto text-[7px] font-black text-[#F59E0B] uppercase tracking-tighter">{p.creativeWorkflowStatus}</span>
+                </div>
+              )) : <div className="text-[9px] text-[#9CA3AF] italic py-2">Queue is clear</div>}
+            </div>
+            <div className="mt-3 pt-2 border-t border-[#F9FAFB]">
+              <span className="text-[8px] font-bold text-[#9CA3AF] uppercase">Pending Review · </span>
+              <span className="text-[8px] font-black text-[#F59E0B] uppercase">{stats.review.length} Items</span>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
