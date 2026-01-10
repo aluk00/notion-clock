@@ -6,7 +6,7 @@
     <title>Projects Kanban | DMG Command Centre</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --ink: #1C1C1C;
@@ -21,6 +21,7 @@
             --editorial: #E94B4B;
             --social: #F2C316;
             --sales: #21A0D8;
+            --amber: #F59E0B;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,22 +30,17 @@
             font-family: 'Inter', -apple-system, sans-serif;
             background: var(--surface);
             color: var(--ink);
-            padding: 16px;
+            min-height: 100vh;
         }
 
-        /* Header */
-        .header {
+        /* Loading State */
+        .loading-screen {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-        }
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            justify-content: center;
+            height: 300px;
+            gap: 12px;
         }
         .dot-grid {
             display: grid;
@@ -65,6 +61,33 @@
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; }
         }
+        .loading-text {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* ============ KANBAN VIEW ============ */
+        .kanban-container {
+            padding: 12px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         .header-label {
             font-size: 10px;
             font-weight: 700;
@@ -74,10 +97,10 @@
         }
         .header-stats {
             display: flex;
-            gap: 12px;
+            gap: 10px;
         }
         .stat {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 600;
             color: var(--ink-muted);
         }
@@ -89,21 +112,21 @@
         /* View Tabs */
         .view-tabs {
             display: flex;
-            gap: 6px;
-            margin-bottom: 12px;
+            gap: 4px;
+            margin-bottom: 10px;
             flex-wrap: wrap;
         }
         .view-tab {
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 10px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 9px;
             font-weight: 600;
             border: 1px solid var(--border);
             background: var(--surface);
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
             transition: all 0.15s ease;
             color: var(--ink-sub);
         }
@@ -117,85 +140,90 @@
             border-color: var(--ink);
         }
         .view-tab .dot {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
         }
         .view-tab.active .dot {
             background: white !important;
         }
 
-        /* Kanban */
+        /* Kanban Grid */
         .kanban {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
-            min-height: 400px;
+            gap: 10px;
         }
-        @media (max-width: 1000px) {
+        @media (max-width: 800px) {
             .kanban { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 600px) {
-            .kanban { grid-template-columns: 1fr; }
         }
 
         .column {
             background: var(--surface-alt);
             border-radius: 10px;
-            padding: 12px;
-            min-height: 350px;
-            transition: background 0.2s ease;
-        }
-        .column.drag-over {
-            background: rgba(33, 160, 216, 0.08);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            max-height: 380px;
         }
 
         .column-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 12px;
-            padding-bottom: 10px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
             border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
         }
         .column-title {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
         .column-count {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
             color: var(--ink-muted);
             background: var(--surface);
-            padding: 3px 8px;
-            border-radius: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
         }
 
         .cards-container {
-            min-height: 250px;
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
+        .cards-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .cards-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .cards-container::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
         }
 
-        /* Project Card */
+        /* Project Card - Compact */
         .project-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px 14px;
-            margin-bottom: 8px;
-            cursor: grab;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            cursor: pointer;
             position: relative;
             transition: all 0.15s ease;
         }
         .project-card:hover {
             border-color: #D1D5DB;
             transform: translateY(-1px);
-            box-shadow: 0 3px 8px rgba(0,0,0,0.06);
-        }
-        .project-card.dragging {
-            opacity: 0.5;
-            transform: rotate(2deg);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
         .project-card::before {
             content: '';
@@ -204,7 +232,7 @@
             top: 0;
             bottom: 0;
             width: 3px;
-            border-radius: 8px 0 0 8px;
+            border-radius: 6px 0 0 6px;
         }
         .project-card[data-team="Creative"]::before { background: var(--creative); }
         .project-card[data-team="Editorial"]::before { background: var(--editorial); }
@@ -213,44 +241,39 @@
         .project-card[data-team="Sales"]::before { background: var(--sales); }
 
         .card-client {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 600;
             color: var(--ink-muted);
             text-transform: uppercase;
             letter-spacing: 0.03em;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         .card-title {
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 600;
             color: var(--ink);
-            margin-bottom: 8px;
-            line-height: 1.35;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
         .card-meta {
             display: flex;
             align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
         }
         .card-tag {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 600;
-            padding: 3px 7px;
-            border-radius: 4px;
+            padding: 2px 5px;
+            border-radius: 3px;
             background: var(--surface-alt);
             color: var(--ink-sub);
         }
-        .card-tag.priority-high {
-            background: rgba(233, 75, 75, 0.1);
-            color: var(--editorial);
-        }
-        .card-tag.priority-medium {
-            background: rgba(245, 158, 11, 0.1);
-            color: #F59E0B;
-        }
         .card-value {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
             color: var(--production);
             margin-left: auto;
@@ -258,261 +281,827 @@
 
         .empty-column {
             text-align: center;
-            padding: 30px 10px;
+            padding: 20px 8px;
             color: var(--ink-muted);
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 500;
         }
 
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
+        /* ============ PROJECT DETAIL VIEW ============ */
+        .detail-container {
+            padding: 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .detail-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            color: var(--ink-sub);
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+        .back-btn:hover {
+            background: var(--surface-alt);
+            border-color: #D1D5DB;
+        }
+        .back-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .detail-title-section {
+            flex: 1;
+        }
+        .detail-client {
+            font-size: 10px;
+            font-weight: 600;
             color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 4px;
+        }
+        .detail-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+            line-height: 1.2;
+        }
+
+        .detail-stage-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* Section Cards */
+        .section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--surface-alt);
+        }
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .section-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* Field Grid */
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        @media (max-width: 600px) {
+            .field-grid { grid-template-columns: 1fr; }
+        }
+        .field-grid.single {
+            grid-template-columns: 1fr;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .field-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .field-value {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--ink);
+            min-height: 20px;
+        }
+        .field-value.empty {
+            color: var(--ink-muted);
+            font-style: italic;
+        }
+
+        /* Editable Fields */
+        .field-select {
             font-size: 11px;
+            font-weight: 500;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--ink);
+            cursor: pointer;
+            width: 100%;
+        }
+        .field-select:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 2px rgba(33, 160, 216, 0.1);
+        }
+
+        .field-input {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--ink);
+            width: 100%;
+            font-family: inherit;
+        }
+        .field-input:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 2px rgba(33, 160, 216, 0.1);
+        }
+
+        .field-textarea {
+            font-size: 11px;
+            font-weight: 500;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--ink);
+            width: 100%;
+            min-height: 80px;
+            resize: vertical;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+        .field-textarea:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 2px rgba(33, 160, 216, 0.1);
+        }
+
+        /* Link Fields */
+        .link-field {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .link-field input {
+            flex: 1;
+        }
+        .link-btn {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 700;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+        .link-btn:hover {
+            background: var(--dmg-blue);
+            color: white;
+            border-color: var(--dmg-blue);
+        }
+        .link-btn.has-link {
+            background: var(--dmg-blue);
+            color: white;
+            border-color: var(--dmg-blue);
+        }
+
+        /* Save Button */
+        .save-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(100%);
+            transition: all 0.2s ease;
+        }
+        .save-bar.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .save-btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            transition: all 0.15s ease;
+        }
+        .save-btn.primary {
+            background: var(--production);
+            color: white;
+        }
+        .save-btn.primary:hover {
+            background: #3a9d42;
+        }
+        .save-btn.secondary {
+            background: var(--surface-alt);
+            color: var(--ink-sub);
+            border: 1px solid var(--border);
+        }
+        .save-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 70px;
+            right: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 200;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+        .toast.visible {
+            transform: translateX(0);
+        }
+        .toast.success {
+            background: var(--production);
+            color: white;
+        }
+        .toast.error {
+            background: var(--editorial);
+            color: white;
+        }
+
+        /* Team Member Pills */
+        .team-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .team-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: var(--surface-alt);
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--ink);
+        }
+        .team-pill-avatar {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: 700;
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <div class="header">
-        <div class="header-left">
-            <div class="dot-grid">
-                <span></span><span></span><span></span><span></span>
-            </div>
-            <span class="header-label">Projects Kanban</span>
-        </div>
-        <div class="header-stats" id="stats">
-            <span class="stat"><strong id="totalCount">0</strong> Projects</span>
-            <span class="stat"><strong id="totalValue">£0</strong> Pipeline</span>
-        </div>
-    </div>
-
-    <!-- View Tabs -->
-    <div class="view-tabs" id="viewTabs">
-        <button class="view-tab active" data-view="all" onclick="setView('all')">All Projects</button>
-        <button class="view-tab" data-view="Creative" onclick="setView('Creative')">
-            <span class="dot" style="background: var(--creative)"></span>Creative
-        </button>
-        <button class="view-tab" data-view="Production" onclick="setView('Production')">
-            <span class="dot" style="background: var(--production)"></span>Production
-        </button>
-        <button class="view-tab" data-view="Sales" onclick="setView('Sales')">
-            <span class="dot" style="background: var(--sales)"></span>Sales
-        </button>
-        <button class="view-tab" data-view="Social" onclick="setView('Social')">
-            <span class="dot" style="background: var(--social)"></span>Social
-        </button>
-        <button class="view-tab" data-view="Editorial" onclick="setView('Editorial')">
-            <span class="dot" style="background: var(--editorial)"></span>Editorial
-        </button>
-    </div>
-
-    <!-- Kanban Board -->
-    <div class="kanban" id="kanban">
-        <div class="loading">
-            <div class="dot-grid" style="margin: 0 auto 12px;">
-                <span></span><span></span><span></span><span></span>
-            </div>
-            Syncing with Notion...
-        </div>
-    </div>
+    <div id="app"></div>
 
     <script>
-        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app/projects';
+        const API_URL = 'https://us-central1-dmg-command-centre-native.cloudfunctions.net/api';
 
+        // State
         let allProjects = [];
         let currentView = 'all';
-        let draggedCard = null;
+        let currentProject = null;
+        let originalProject = null;
+        let hasChanges = false;
+        let loading = true;
 
         // Column config
         const columns = {
-            'Brief In': { stage: 'Brief Recieved', color: '#21A0D8' },
-            'Pitch Sent': { stage: 'Pitch Sent', color: '#E6468B' },
+            'Brief In': { stage: 'Brief Recieved', color: '#E6468B' },
+            'Pitch Sent': { stage: 'Pitch Sent', color: '#21A0D8' },
             'Agreed': { stage: 'Deal Agreed', color: '#43B049' },
             'Complete': { stage: 'Campaign Complete', color: '#F2C316' }
         };
 
+        const dealStageOptions = ['Brief Recieved', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete'];
+        const workflowOptions = ['To Be Briefed', 'In Progress', 'Sales Review', 'Complete'];
+        const priorityOptions = ['Low', 'Medium', 'High'];
+        const teamOptions = ['Creative', 'Production', 'Editorial', 'Social', 'Sales'];
+
         // Init
-        document.addEventListener('DOMContentLoaded', loadProjects);
+        document.addEventListener('DOMContentLoaded', init);
+
+        async function init() {
+            await loadProjects();
+            handleRouting();
+            window.addEventListener('popstate', handleRouting);
+        }
+
+        function handleRouting() {
+            const params = new URLSearchParams(window.location.search);
+            const projectId = params.get('project');
+            
+            if (projectId && allProjects.length > 0) {
+                const project = allProjects.find(p => p.id === projectId);
+                if (project) {
+                    showProjectDetail(project);
+                    return;
+                }
+            }
+            showKanban();
+        }
+
+        function navigate(path) {
+            window.history.pushState({}, '', path);
+            handleRouting();
+        }
 
         async function loadProjects() {
             try {
-                const res = await fetch(API_URL);
+                const res = await fetch(`${API_URL}/projects`);
                 const data = await res.json();
                 allProjects = data?.projects || [];
-                renderKanban();
-                updateStats();
+                loading = false;
+                render();
             } catch (e) {
                 console.error('Load failed:', e);
-                document.getElementById('kanban').innerHTML = '<div class="loading">Failed to load projects</div>';
+                loading = false;
+                render();
             }
         }
 
-        function setView(view) {
-            currentView = view;
-            document.querySelectorAll('.view-tab').forEach(t => {
-                t.classList.toggle('active', t.dataset.view === view);
-            });
-            renderKanban();
-            updateStats();
+        function render() {
+            if (currentProject) {
+                renderProjectDetail();
+            } else {
+                renderKanban();
+            }
         }
 
-        function updateStats() {
-            const filtered = currentView === 'all' 
-                ? allProjects 
-                : allProjects.filter(p => p.team === currentView);
-            
-            document.getElementById('totalCount').textContent = filtered.length;
-            
-            const totalValue = filtered.reduce((sum, p) => {
-                const val = parseFloat(String(p.budget || p.dealValue || '0').replace(/[^0-9.]/g, '')) || 0;
-                return sum + val;
-            }, 0);
-            
-            document.getElementById('totalValue').textContent = totalValue >= 1000 
-                ? `£${Math.round(totalValue / 1000)}K` 
-                : `£${totalValue}`;
+        // ============ KANBAN VIEW ============
+        function showKanban() {
+            currentProject = null;
+            originalProject = null;
+            hasChanges = false;
+            render();
         }
 
         function renderKanban() {
             const filtered = currentView === 'all' 
                 ? allProjects 
-                : allProjects.filter(p => p.team === currentView);
+                : allProjects.filter(p => p.team === currentView || p.primaryTeam === currentView);
 
-            const kanban = document.getElementById('kanban');
-            kanban.innerHTML = '';
+            const totalValue = filtered.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
+            const valueStr = totalValue >= 1000 ? `£${Math.round(totalValue / 1000)}K` : `£${totalValue}`;
+
+            let html = `
+                <div class="kanban-container">
+                    <div class="header">
+                        <div class="header-left">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <span class="header-label">Projects Kanban</span>
+                        </div>
+                        <div class="header-stats">
+                            <span class="stat"><strong>${filtered.length}</strong> Projects</span>
+                            <span class="stat"><strong>${valueStr}</strong> Pipeline</span>
+                        </div>
+                    </div>
+
+                    <div class="view-tabs">
+                        <button class="view-tab ${currentView === 'all' ? 'active' : ''}" onclick="setView('all')">All</button>
+                        <button class="view-tab ${currentView === 'Creative' ? 'active' : ''}" onclick="setView('Creative')">
+                            <span class="dot" style="background: var(--creative)"></span>Creative
+                        </button>
+                        <button class="view-tab ${currentView === 'Production' ? 'active' : ''}" onclick="setView('Production')">
+                            <span class="dot" style="background: var(--production)"></span>Production
+                        </button>
+                        <button class="view-tab ${currentView === 'Sales' ? 'active' : ''}" onclick="setView('Sales')">
+                            <span class="dot" style="background: var(--sales)"></span>Sales
+                        </button>
+                        <button class="view-tab ${currentView === 'Social' ? 'active' : ''}" onclick="setView('Social')">
+                            <span class="dot" style="background: var(--social)"></span>Social
+                        </button>
+                    </div>
+
+                    <div class="kanban">
+            `;
 
             Object.entries(columns).forEach(([title, config]) => {
                 const columnProjects = filtered.filter(p => p.dealStage === config.stage);
-
-                const column = document.createElement('div');
-                column.className = 'column';
-                column.dataset.stage = config.stage;
-                column.ondragover = handleDragOver;
-                column.ondragleave = handleDragLeave;
-                column.ondrop = handleDrop;
-
-                column.innerHTML = `
-                    <div class="column-header">
-                        <span class="column-title" style="color: ${config.color}">${title}</span>
-                        <span class="column-count">${columnProjects.length}</span>
-                    </div>
-                    <div class="cards-container"></div>
+                
+                html += `
+                    <div class="column">
+                        <div class="column-header">
+                            <span class="column-title" style="color: ${config.color}">${title}</span>
+                            <span class="column-count">${columnProjects.length}</span>
+                        </div>
+                        <div class="cards-container">
                 `;
 
-                const container = column.querySelector('.cards-container');
-
                 if (columnProjects.length === 0) {
-                    container.innerHTML = '<div class="empty-column">Drop projects here</div>';
+                    html += `<div class="empty-column">No projects</div>`;
                 } else {
                     columnProjects.forEach(project => {
-                        container.appendChild(createCard(project));
+                        const value = parseFloat(project.dealValue) || 0;
+                        const valueStr = value >= 1000 ? `£${Math.round(value / 1000)}K` : value > 0 ? `£${value}` : '';
+                        const team = project.team || project.primaryTeam || 'Sales';
+
+                        html += `
+                            <div class="project-card" data-team="${team}" onclick="openProject('${project.id}')">
+                                <div class="card-client">${project.client || 'Internal'}</div>
+                                <div class="card-title">${project.title || 'Untitled'}</div>
+                                <div class="card-meta">
+                                    <span class="card-tag">${team}</span>
+                                    ${valueStr ? `<span class="card-value">${valueStr}</span>` : ''}
+                                </div>
+                            </div>
+                        `;
                     });
                 }
 
-                kanban.appendChild(column);
+                html += `</div></div>`;
             });
+
+            html += `</div></div>`;
+            
+            if (loading) {
+                html = `
+                    <div class="loading-screen">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <span class="loading-text">Syncing with Notion...</span>
+                    </div>
+                `;
+            }
+
+            document.getElementById('app').innerHTML = html;
         }
 
-        function createCard(project) {
-            const card = document.createElement('div');
-            card.className = 'project-card';
-            card.dataset.id = project.id;
-            card.dataset.team = project.team || 'Sales';
-            card.draggable = true;
+        function setView(view) {
+            currentView = view;
+            render();
+        }
 
-            // Drag events
-            card.ondragstart = handleDragStart;
-            card.ondragend = handleDragEnd;
-            card.onclick = () => project.url && window.open(project.url, '_top');
+        function openProject(id) {
+            navigate(`?project=${id}`);
+        }
 
-            // Priority styling
-            let priorityClass = '';
-            const priority = (project.priority || '').toLowerCase();
-            if (priority === 'high') priorityClass = 'priority-high';
-            else if (priority === 'medium') priorityClass = 'priority-medium';
+        // ============ PROJECT DETAIL VIEW ============
+        function showProjectDetail(project) {
+            currentProject = JSON.parse(JSON.stringify(project)); // Deep copy
+            originalProject = JSON.parse(JSON.stringify(project));
+            hasChanges = false;
+            render();
+        }
 
-            // Value
-            const value = parseFloat(String(project.budget || project.dealValue || '0').replace(/[^0-9.]/g, '')) || 0;
-            const valueStr = value >= 1000 ? `£${Math.round(value / 1000)}K` : value > 0 ? `£${value}` : '';
+        function renderProjectDetail() {
+            const p = currentProject;
+            const stageColor = getStageColor(p.dealStage);
 
-            card.innerHTML = `
-                <div class="card-client">${project.client || 'Internal'}</div>
-                <div class="card-title">${project.title || 'Untitled'}</div>
-                <div class="card-meta">
-                    <span class="card-tag">${project.team || 'Ops'}</span>
-                    ${project.priority ? `<span class="card-tag ${priorityClass}">${project.priority}</span>` : ''}
-                    ${valueStr ? `<span class="card-value">${valueStr}</span>` : ''}
+            const html = `
+                <div class="detail-container">
+                    <div class="detail-header">
+                        <button class="back-btn" onclick="goBack()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                            Back
+                        </button>
+                        <div class="detail-title-section">
+                            <div class="detail-client">${p.client || 'Internal'}</div>
+                            <div class="detail-title">${p.title || 'Untitled Project'}</div>
+                        </div>
+                        <div class="detail-stage-badge" style="background: ${stageColor}20; color: ${stageColor}">
+                            ${p.dealStage || 'No Stage'}
+                        </div>
+                    </div>
+
+                    <!-- Commercial Section -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--production)"></div>
+                            <span class="section-title">Commercial</span>
+                        </div>
+                        <div class="field-grid">
+                            <div class="field">
+                                <label class="field-label">Deal Stage</label>
+                                <select class="field-select" onchange="updateField('dealStage', this.value)">
+                                    <option value="">Select...</option>
+                                    ${dealStageOptions.map(opt => `<option value="${opt}" ${p.dealStage === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Deal Value (£)</label>
+                                <input type="number" class="field-input" value="${p.dealValue || ''}" placeholder="e.g. 25000" onchange="updateField('dealValue', this.value)">
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Priority</label>
+                                <select class="field-select" onchange="updateField('priority', this.value)">
+                                    <option value="">Select...</option>
+                                    ${priorityOptions.map(opt => `<option value="${opt}" ${p.priority === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Primary Team</label>
+                                <select class="field-select" onchange="updateField('primaryTeam', this.value)">
+                                    <option value="">Select...</option>
+                                    ${teamOptions.map(opt => `<option value="${opt}" ${(p.primaryTeam || p.team) === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Workflow Section -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--dmg-blue)"></div>
+                            <span class="section-title">Workflow Status</span>
+                        </div>
+                        <div class="field-grid">
+                            <div class="field">
+                                <label class="field-label">Creative Workflow</label>
+                                <select class="field-select" onchange="updateField('creativeWorkflowStatus', this.value)">
+                                    <option value="">Select...</option>
+                                    ${workflowOptions.map(opt => `<option value="${opt}" ${p.creativeWorkflowStatus === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Production Workflow</label>
+                                <select class="field-select" onchange="updateField('productionWorkflowStatus', this.value)">
+                                    <option value="">Select...</option>
+                                    ${workflowOptions.map(opt => `<option value="${opt}" ${p.productionWorkflowStatus === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Social Workflow</label>
+                                <select class="field-select" onchange="updateField('socialWorkflowStatus', this.value)">
+                                    <option value="">Select...</option>
+                                    <option value="Awaiting Asset(s)" ${p.socialWorkflowStatus === 'Awaiting Asset(s)' ? 'selected' : ''}>Awaiting Asset(s)</option>
+                                    <option value="Scheduled" ${p.socialWorkflowStatus === 'Scheduled' ? 'selected' : ''}>Scheduled</option>
+                                    <option value="Live" ${p.socialWorkflowStatus === 'Live' ? 'selected' : ''}>Live</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dates Section -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--creative)"></div>
+                            <span class="section-title">Key Dates</span>
+                        </div>
+                        <div class="field-grid">
+                            <div class="field">
+                                <label class="field-label">Client Due Date</label>
+                                <input type="date" class="field-input" value="${p.dueDate || ''}" onchange="updateField('dueDate', this.value)">
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Internal Due Date</label>
+                                <input type="date" class="field-input" value="${p.internalDueDate || ''}" onchange="updateField('internalDueDate', this.value)">
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Live Date</label>
+                                <input type="date" class="field-input" value="${p.liveDate || ''}" onchange="updateField('liveDate', this.value)">
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Shoot Date</label>
+                                <input type="date" class="field-input" value="${p.shootDate || ''}" onchange="updateField('shootDate', this.value)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Links Section -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--social)"></div>
+                            <span class="section-title">Links & Assets</span>
+                        </div>
+                        <div class="field-grid">
+                            <div class="field">
+                                <label class="field-label">Creative Response</label>
+                                <div class="link-field">
+                                    <input type="url" class="field-input" value="${p.creativeResponseLink || ''}" placeholder="Paste link..." onchange="updateField('creativeResponseLink', this.value)">
+                                    ${p.creativeResponseLink ? `<a href="${p.creativeResponseLink}" target="_blank" class="link-btn has-link">Open</a>` : ''}
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Frame.io</label>
+                                <div class="link-field">
+                                    <input type="url" class="field-input" value="${p.frameIoLink || ''}" placeholder="Paste link..." onchange="updateField('frameIoLink', this.value)">
+                                    ${p.frameIoLink ? `<a href="${p.frameIoLink}" target="_blank" class="link-btn has-link">Open</a>` : ''}
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Brief</label>
+                                <div class="link-field">
+                                    <input type="url" class="field-input" value="${p.briefLink || ''}" placeholder="Paste link..." onchange="updateField('briefLink', this.value)">
+                                    ${p.briefLink ? `<a href="${p.briefLink}" target="_blank" class="link-btn has-link">Open</a>` : ''}
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Drive Folder</label>
+                                <div class="link-field">
+                                    <input type="url" class="field-input" value="${p.driveFolder || ''}" placeholder="Paste link..." onchange="updateField('driveFolder', this.value)">
+                                    ${p.driveFolder ? `<a href="${p.driveFolder}" target="_blank" class="link-btn has-link">Open</a>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes Section -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--ink)"></div>
+                            <span class="section-title">Notes</span>
+                        </div>
+                        <div class="field-grid single">
+                            <div class="field">
+                                <label class="field-label">Project Notes</label>
+                                <textarea class="field-textarea" placeholder="Add notes..." onchange="updateField('notes', this.value)">${p.notes || ''}</textarea>
+                            </div>
+                            <div class="field">
+                                <label class="field-label">Internal Notes</label>
+                                <textarea class="field-textarea" placeholder="Internal team notes..." onchange="updateField('internalNotes', this.value)">${p.internalNotes || ''}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--amber)"></div>
+                            <span class="section-title">Quick Actions</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <a href="${p.url}" target="_blank" class="link-btn">Open in Notion</a>
+                        </div>
+                    </div>
+
+                    <div style="height: 80px;"></div>
                 </div>
+
+                <div class="save-bar ${hasChanges ? 'visible' : ''}" id="saveBar">
+                    <button class="save-btn secondary" onclick="discardChanges()">Discard</button>
+                    <button class="save-btn primary" onclick="saveChanges()" id="saveBtn">Save Changes</button>
+                </div>
+
+                <div class="toast" id="toast"></div>
             `;
 
-            return card;
+            document.getElementById('app').innerHTML = html;
         }
 
-        // Drag & Drop Handlers
-        function handleDragStart(e) {
-            draggedCard = this;
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', this.dataset.id);
+        function getStageColor(stage) {
+            const colors = {
+                'Brief Recieved': '#E6468B',
+                'Pitch Sent': '#21A0D8',
+                'Deal Agreed': '#43B049',
+                'Campaign Complete': '#F2C316'
+            };
+            return colors[stage] || '#9CA3AF';
         }
 
-        function handleDragEnd(e) {
-            this.classList.remove('dragging');
-            document.querySelectorAll('.column').forEach(c => c.classList.remove('drag-over'));
-            draggedCard = null;
+        function updateField(field, value) {
+            if (field === 'dealValue') {
+                value = value ? parseFloat(value) : null;
+            }
+            currentProject[field] = value;
+            checkForChanges();
         }
 
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            this.classList.add('drag-over');
+        function checkForChanges() {
+            hasChanges = JSON.stringify(currentProject) !== JSON.stringify(originalProject);
+            const saveBar = document.getElementById('saveBar');
+            if (saveBar) {
+                saveBar.classList.toggle('visible', hasChanges);
+            }
         }
 
-        function handleDragLeave(e) {
-            this.classList.remove('drag-over');
+        function discardChanges() {
+            currentProject = JSON.parse(JSON.stringify(originalProject));
+            hasChanges = false;
+            render();
         }
 
-        function handleDrop(e) {
-            e.preventDefault();
-            this.classList.remove('drag-over');
+        async function saveChanges() {
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
 
-            if (!draggedCard) return;
-
-            const projectId = draggedCard.dataset.id;
-            const newStage = this.dataset.stage;
-
-            // Update local data
-            const project = allProjects.find(p => p.id === projectId);
-            if (project) {
-                project.dealStage = newStage;
+            // Find changed fields
+            const changes = {};
+            for (const key in currentProject) {
+                if (JSON.stringify(currentProject[key]) !== JSON.stringify(originalProject[key])) {
+                    changes[key] = currentProject[key];
+                }
             }
 
-            // Re-render
-            renderKanban();
-            updateStats();
-
-            // Optional: API call to update Notion
-            // updateProjectStage(projectId, newStage);
-        }
-
-        // Uncomment to enable API updates on drag
-        /*
-        async function updateProjectStage(projectId, newStage) {
             try {
-                await fetch(`${API_URL}/${projectId}`, {
+                const res = await fetch(`${API_URL}/projects/${currentProject.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dealStage: newStage })
+                    body: JSON.stringify(changes)
                 });
-            } catch (e) {
-                console.error('Update failed:', e);
-            }
-        }
-        */
 
-        // Auto-refresh every 60s
-        setInterval(loadProjects, 60000);
+                const data = await res.json();
+
+                if (data.success) {
+                    // Update local data
+                    const idx = allProjects.findIndex(p => p.id === currentProject.id);
+                    if (idx !== -1) {
+                        allProjects[idx] = { ...allProjects[idx], ...changes };
+                    }
+                    originalProject = JSON.parse(JSON.stringify(currentProject));
+                    hasChanges = false;
+                    showToast('Changes saved!', 'success');
+                } else {
+                    throw new Error(data.error || 'Save failed');
+                }
+            } catch (e) {
+                console.error('Save error:', e);
+                showToast('Failed to save: ' + e.message, 'error');
+            }
+
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Changes';
+            checkForChanges();
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} visible`;
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+
+        function goBack() {
+            if (hasChanges) {
+                if (!confirm('You have unsaved changes. Discard them?')) {
+                    return;
+                }
+            }
+            navigate(window.location.pathname);
+        }
+
+        // Auto-refresh kanban every 60s (only when viewing kanban)
+        setInterval(() => {
+            if (!currentProject) {
+                loadProjects();
+            }
+        }, 60000);
     </script>
 </body>
 </html>
