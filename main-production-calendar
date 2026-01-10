@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Command | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --production: #43B049;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --border: #E5E7EB;
+            --bg-soft: #F9FAFB;
+            --surface: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            color: var(--ink);
+            padding: 10px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- CONTAINER --- */
+        .command-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            min-height: 700px;
+        }
+
+        /* --- HEADER --- */
+        .top-bar {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
+        }
+
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 5px; height: 5px; border-radius: 50%;
+            background: var(--production);
+            animation: pulse 2s infinite ease-in-out;
+        }
+        .dot-grid span:nth-child(2) { animation-delay: 0.3s; }
+        .dot-grid span:nth-child(3) { animation-delay: 0.6s; }
+        .dot-grid span:nth-child(4) { animation-delay: 0.9s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1); } }
+
+        /* --- NAV TABS --- */
+        .nav-tabs {
+            display: flex;
+            background: var(--bg-soft);
+            padding: 6px;
+            gap: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .tab-btn:hover { color: var(--ink); background: rgba(255,255,255,0.5); }
+        .tab-btn.active {
+            background: white;
+            color: var(--ink);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid rgba(0,0,0,0.02);
+        }
+
+        /* --- CALENDAR --- */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--border); gap: 1px; }
+        .day-cell { background: white; min-height: 100px; padding: 10px; transition: background 0.2s; position: relative; }
+        .day-cell:hover { background: var(--bg-soft); }
+        .day-cell.today { background: rgba(67, 176, 73, 0.03); }
+        .day-num { font-size: 10px; font-weight: 800; color: #CCC; margin-bottom: 6px; }
+        .today .day-num { color: var(--production); }
+
+        .shoot-pill {
+            font-size: 8px; font-weight: 700; padding: 4px 6px;
+            background: white; border: 1px solid var(--border);
+            border-left: 3px solid var(--production);
+            border-radius: 6px; margin-bottom: 3px;
+            cursor: pointer; transition: all 0.2s;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .shoot-pill:hover { transform: translateX(2px); border-color: var(--production); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+
+        /* --- DESK AREA & BENTO --- */
+        .desk-area { 
+            display: grid; 
+            grid-template-columns: 1.1fr 0.9fr; 
+            gap: 16px; 
+            padding: 20px; 
+            background: var(--bg-soft); 
+            flex: 1; 
+            overflow-y: auto;
+        }
+        .section-block { 
+            background: white; 
+            border: 1px solid var(--border); 
+            border-radius: 16px; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            transition: box-shadow 0.2s;
+        }
+        .section-block:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+
+        .block-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+        }
+        .block-label { 
+            font-size: 10px; font-weight: 900; text-transform: uppercase; 
+            letter-spacing: 0.1em; color: var(--ink-sub);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .block-icon {
+            width: 20px; height: 20px; background: var(--bg-soft); color: var(--ink);
+            border-radius: 6px; display: flex; align-items: center; justify-content: center;
+        }
+        .block-icon svg { width: 12px; height: 12px; }
+
+        /* --- CUSTOM INPUTS --- */
+        .dmg-input {
+            width: 100%; padding: 10px 12px; background: var(--bg-soft);
+            border: 1px solid var(--border); border-radius: 8px;
+            font-size: 11px; font-weight: 600; outline: none; transition: 0.2s;
+            color: var(--ink);
+        }
+        .dmg-input:focus { border-color: var(--dmg-blue); background: white; }
+        
+        /* Custom Select Styling */
+        .select-wrapper { position: relative; width: 100%; }
+        .select-wrapper::after {
+            content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent;
+            border-top: 4px solid var(--ink-sub); pointer-events: none;
+        }
+        select.dmg-input { appearance: none; padding-right: 30px; cursor: pointer; }
+
+        /* File Upload */
+        .file-upload-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px 12px; background: var(--bg-soft); border: 1px dashed var(--border);
+            border-radius: 8px; font-size: 10px; font-weight: 600; color: var(--ink-sub);
+            cursor: pointer; transition: 0.2s; width: 100%; justify-content: center;
+        }
+        .file-upload-btn:hover { border-color: var(--dmg-blue); color: var(--dmg-blue); background: #F0F9FF; }
+
+        .btn-action {
+            background: var(--ink); color: white; font-size: 10px; font-weight: 800;
+            text-transform: uppercase; padding: 10px 16px; border-radius: 8px; transition: all 0.2s;
+            letter-spacing: 0.05em; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-secondary { background: white; border: 1px solid var(--border); color: var(--ink); }
+        .btn-secondary:hover { border-color: var(--ink); background: var(--bg-soft); }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .hidden { display: none !important; }
+        .fade-in { animation: fadeIn 0.4s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="command-card">
+        <!-- HEADER -->
+        <header class="top-bar">
+            <div class="flex items-center gap-4">
+                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                <h1 class="text-[13px] font-[900] uppercase tracking-tighter text-[#1C1C1C]">Production <span class="text-[#21a0d8]">Command</span></h1>
+            </div>
+            <button class="btn-action btn-secondary" onclick="openModal('init')">
+                <span>+ Initialise Project</span>
+            </button>
+        </header>
+
+        <!-- NAVIGATION -->
+        <nav class="nav-tabs">
+            <button id="tab-month" class="tab-btn active" onclick="setView('month')">Calendar (Month)</button>
+            <button id="tab-week" class="tab-btn" onclick="setView('week')">Week View</button>
+            <button id="tab-project" class="tab-btn" onclick="setView('project')">Project Desk</button>
+        </nav>
+
+        <!-- VIEW: MONTH -->
+        <div id="view-month" class="fade-in">
+            <div class="flex items-center justify-between p-4 bg-white border-b border-gray-100">
+                <button class="text-[10px] font-bold text-gray-400 hover:text-black" onclick="navDate(-1, 'month')">← PREV</button>
+                <h2 id="monthLabel" class="text-[11px] font-black uppercase tracking-[0.2em] text-gray-900">---</h2>
+                <button class="text-[10px] font-bold text-gray-400 hover:text-black" onclick="navDate(1, 'month')">NEXT →</button>
+            </div>
+            <div class="grid grid-cols-7 border-b border-gray-100" id="monthHeaders"></div>
+            <div id="monthGrid" class="calendar-grid"></div>
+        </div>
+
+        <!-- VIEW: WEEK -->
+        <div id="view-week" class="hidden fade-in bg-gray-50 p-5 h-full overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <button class="btn-action btn-secondary !py-2 !px-3" onclick="navDate(-7, 'day')">‹</button>
+                <h2 id="weekLabel" class="text-[10px] font-black uppercase tracking-widest">---</h2>
+                <button class="btn-action btn-secondary !py-2 !px-3" onclick="navDate(7, 'day')">›</button>
+            </div>
+            <div id="weekGrid" class="space-y-2"></div>
+        </div>
+
+        <!-- VIEW: PROJECT DESK -->
+        <div id="view-project" class="hidden flex flex-col flex-1 fade-in h-full overflow-hidden">
+            <!-- Project Context Bar -->
+            <div class="p-5 bg-white border-b border-gray-100 flex items-center justify-between shrink-0">
+                <div class="w-1/2">
+                    <div class="text-[9px] font-bold uppercase text-gray-400 mb-1">Active Project Ledger</div>
+                    <div class="select-wrapper">
+                        <select id="projectSelector" class="dmg-input" onchange="loadProject(this.value)">
+                            <option value="">Select Initialised Project...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div id="projClient" class="text-[9px] font-black text-[#21a0d8] uppercase tracking-widest mb-1">-</div>
+                    <div id="projTitle" class="text-xl font-black uppercase tracking-tighter leading-none text-gray-900">Select Project</div>
+                </div>
+            </div>
+
+            <div class="desk-area custom-scroll">
+                
+                <!-- Left Column -->
+                <div class="flex flex-col gap-4">
+                    <!-- Finance -->
+                    <div class="section-block">
+                        <div class="block-header">
+                            <div class="block-label">
+                                <div class="block-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div>
+                                Finance Dashboard
+                            </div>
+                            <div class="text-[9px] font-black text-green-600 bg-green-50 px-2 py-1 rounded">LIVE</div>
+                        </div>
+                        
+                        <div class="flex items-baseline gap-2 mb-2">
+                            <span class="text-3xl font-black mono text-gray-900" id="dispBudget">£0.00</span>
+                            <span class="text-[9px] font-bold text-gray-400 uppercase">Budget</span>
+                        </div>
+                        <div class="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden mb-5">
+                            <div id="budgetFill" class="h-full bg-green-500 transition-all duration-1000" style="width: 0%"></div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3 mb-5">
+                            <div class="p-2 bg-gray-50 rounded-lg">
+                                <div class="text-[8px] font-black text-red-500 uppercase mb-1">Total Spent</div>
+                                <div class="text-sm font-black mono" id="dispSpent">£0.00</div>
+                            </div>
+                            <div class="p-2 bg-gray-50 rounded-lg">
+                                <div class="text-[8px] font-black text-gray-400 uppercase mb-1">Remaining</div>
+                                <div class="text-sm font-black mono" id="dispRemain">£0.00</div>
+                            </div>
+                        </div>
+
+                        <div class="block-label !text-[9px] !mb-2">Log Receipt</div>
+                        <div class="flex gap-2 mb-2">
+                            <input id="recTitle" placeholder="Item Name" class="dmg-input">
+                            <input id="recAmt" type="number" placeholder="£" class="dmg-input w-20">
+                        </div>
+                        
+                        <label class="file-upload-btn mb-2">
+                            <input type="file" id="recFile" class="hidden" accept="image/*,.pdf" onchange="handleFileSelect(this)">
+                            <span id="fileName">📎 Upload Receipt (PDF/IMG)</span>
+                        </label>
+                        
+                        <button class="btn-action w-full" onclick="addReceipt()">Log Expense</button>
+
+                        <div id="receiptLog" class="mt-4 space-y-1 max-h-[100px] overflow-y-auto custom-scroll border-t border-gray-100 pt-2"></div>
+                    </div>
+
+                    <!-- Notion Assets -->
+                    <div class="section-block">
+                         <div class="block-header">
+                            <div class="block-label">
+                                <div class="block-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg></div>
+                                Notion Deliverables
+                            </div>
+                            <div class="text-[9px] font-black text-blue-500">SYNCED</div>
+                        </div>
+                        <div id="notionAssets" class="space-y-2 mb-4 min-h-[40px]">
+                            <div class="text-[10px] text-gray-300 italic">Syncing assets...</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <input id="assetLink" placeholder="Manual Link (Frame.io)" class="dmg-input">
+                            <button class="btn-action !py-2" onclick="addAsset()">Add</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="flex flex-col gap-4">
+                    
+                    <!-- Shoot Scheduler (CALENDAR SYNC) -->
+                    <div class="section-block bg-blue-50/50 border-blue-100">
+                        <div class="block-header">
+                            <div class="block-label text-[#21a0d8]">
+                                <div class="block-icon bg-white text-[#21a0d8]"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>
+                                Shoot Scheduler
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="date" id="shootDate" class="dmg-input bg-white">
+                                <input type="time" id="shootTime" class="dmg-input bg-white">
+                            </div>
+                            <div class="select-wrapper">
+                                <select id="shootFormat" class="dmg-input bg-white">
+                                    <option value="Shoot">Standard Shoot</option>
+                                    <option value="Recce">Recce / Scout</option>
+                                    <option value="Travel">Travel Day</option>
+                                    <option value="Live">Live Stream</option>
+                                </select>
+                            </div>
+                            <button class="btn-action w-full bg-[#21a0d8]" onclick="scheduleShoot()">Add to Calendar</button>
+                        </div>
+                        <div id="shootList" class="mt-3 space-y-1"></div>
+                    </div>
+
+                    <!-- Crew -->
+                    <div class="section-block flex-1">
+                        <div class="block-header">
+                            <div class="block-label">
+                                <div class="block-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg></div>
+                                Assigned Crew
+                            </div>
+                        </div>
+
+                        <div id="crewList" class="space-y-2 mb-6 custom-scroll flex-1 max-h-[150px] overflow-y-auto"></div>
+
+                        <div class="pt-4 border-t border-gray-100 space-y-3">
+                            <!-- Toggle Freelancer -->
+                            <div class="flex items-center gap-2 mb-1">
+                                <input type="checkbox" id="freelanceToggle" class="accent-[#21a0d8]" onchange="toggleFreelancer(this)">
+                                <label for="freelanceToggle" class="text-[9px] font-bold uppercase text-gray-500 cursor-pointer">External / Freelancer</label>
+                            </div>
+
+                            <div id="staffInputContainer" class="select-wrapper">
+                                <select id="staffSelect" class="dmg-input"></select>
+                            </div>
+                            <input id="freelanceName" class="dmg-input hidden" placeholder="Freelancer Name">
+
+                            <div class="select-wrapper">
+                                <select id="roleSelect" class="dmg-input">
+                                    <optgroup label="Production">
+                                        <option value="Producer">Lead Producer</option>
+                                        <option value="Director">Director</option>
+                                        <option value="Camera">Camera / DP</option>
+                                        <option value="Sound">Audio Op</option>
+                                    </optgroup>
+                                    <optgroup label="Post-Production">
+                                        <option value="Editor">Video Editor</option>
+                                        <option value="Graphics">Graphic Design</option>
+                                        <option value="Creative">Creative Lead</option>
+                                    </optgroup>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <button class="btn-action w-full" onclick="assignCrew()">Assign Role</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: INITIALIZE -->
+    <div id="modal-init" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden flex items-center justify-center z-[100]">
+        <div class="bg-white rounded-[24px] p-8 w-full max-w-sm shadow-2xl scale-in">
+            <h3 class="text-lg font-black uppercase mb-2">Initialise Production</h3>
+            <p class="text-[10px] text-gray-400 font-bold mb-6 uppercase tracking-widest">Connect Ledger to Finance Module</p>
+            <div class="space-y-4">
+                <div class="select-wrapper">
+                    <select id="modalProjectSelect" class="dmg-input"></select>
+                </div>
+                <input id="modalBudget" type="number" class="dmg-input" placeholder="Budget (£)">
+                <div class="flex gap-2 pt-2">
+                    <button class="btn-action btn-secondary flex-1" onclick="document.getElementById('modal-init').classList.add('hidden')">Cancel</button>
+                    <button class="btn-action flex-1" onclick="initProduction()">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const appId = "dmg-command-centre-native";
+    const firebaseConfig = { 
+        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", 
+        authDomain: "dmg-command-centre-native.firebaseapp.com", 
+        projectId: "dmg-command-centre-native", 
+        storageBucket: "dmg-command-centre-native.firebasestorage.app", 
+        messagingSenderId: "223535956454", 
+        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" 
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let state = { view: 'month', date: new Date(), projects: [], shoots: [], staff: [], currentId: null, record: null, user: null, currentFile: null };
+
+    // --- INIT ---
+    async function init() {
+        await signInAnonymously(auth);
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+            state.user = user;
+            setupListeners();
+            await loadData();
+        });
+
+        // Setup Calendar Headers
+        document.getElementById('monthHeaders').innerHTML = ['M','T','W','T','F','S','S'].map(d => 
+            `<div class="py-2 text-center text-[9px] font-black text-gray-400 uppercase">${d}</div>`
+        ).join('');
+    }
+
+    function setupListeners() {
+        // Live Calendar Events
+        onSnapshot(collection(db, "artifacts", appId, "public", "data", "shoot_calendar_events"), snap => {
+            state.shoots = snap.docs.map(d => ({id: d.id, ...d.data()}));
+            render();
+        });
+    }
+
+    async function loadData() {
+        try {
+            // Projects from Notion Wrapper
+            const res = await fetch('https://createnotionproject-223535956454.us-central1.run.app/projects');
+            const data = await res.json();
+            state.projects = data.projects || [];
+            
+            // Staff
+            const staffSnap = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+            state.staff = staffSnap.docs.map(d => ({id: d.id, ...d.data()}));
+            state.staff.sort((a,b) => a.firstName.localeCompare(b.firstName));
+
+            updateDropdowns();
+            render();
+        } catch(e) { console.error(e); }
+    }
+
+    // --- RENDERERS ---
+    window.setView = (v) => {
+        state.view = v;
+        ['month', 'week', 'project'].forEach(t => {
+            document.getElementById(`view-${t}`).classList.toggle('hidden', t !== v);
+            document.getElementById(`tab-${t}`).classList.toggle('active', t === v);
+        });
+        render();
+    };
+
+    window.navDate = (delta, type) => {
+        if(type === 'month') state.date.setMonth(state.date.getMonth() + delta);
+        else state.date.setDate(state.date.getDate() + delta);
+        render();
+    };
+
+    function render() {
+        if(state.view === 'month') renderMonth();
+        else if(state.view === 'week') renderWeek();
+    }
+
+    function renderMonth() {
+        const grid = document.getElementById('monthGrid'); grid.innerHTML = '';
+        const year = state.date.getFullYear(); const month = state.date.getMonth();
+        document.getElementById('monthLabel').textContent = state.date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        let startOffset = (firstDay.getDay() + 6) % 7;
+
+        for(let i=0; i<startOffset; i++) grid.innerHTML += '<div class="day-cell bg-gray-50/20"></div>';
+
+        const today = new Date().toDateString();
+        for(let d=1; d<=lastDay.getDate(); d++) {
+            const curr = new Date(year, month, d);
+            const dateKey = curr.toISOString().split('T')[0];
+            const dayShoots = state.shoots.filter(s => (s.date === dateKey) || (s.startDateTime && s.startDateTime.startsWith(dateKey)));
+
+            const cell = document.createElement('div');
+            cell.className = `day-cell ${curr.toDateString() === today ? 'today' : ''}`;
+            cell.innerHTML = `<div class="day-num">${d}</div>`;
+            dayShoots.forEach(s => {
+                const pill = document.createElement('div');
+                pill.className = 'shoot-pill';
+                pill.textContent = s.projectTitle || s.title || 'Shoot';
+                pill.onclick = (e) => { e.stopPropagation(); loadProject(s.linkedProjectId || s.projectId); };
+                cell.appendChild(pill);
+            });
+            grid.appendChild(cell);
+        }
+    }
+
+    function renderWeek() {
+        const grid = document.getElementById('weekGrid'); grid.innerHTML = '';
+        const start = new Date(state.date); const day = start.getDay();
+        const diff = start.getDate() - day + (day == 0 ? -6 : 1);
+        start.setDate(diff);
+
+        document.getElementById('weekLabel').textContent = `W/C ${start.toLocaleDateString('en-GB', {day:'numeric', month:'short'})}`;
+
+        for(let i=0; i<7; i++) {
+            const curr = new Date(start); curr.setDate(start.getDate() + i);
+            const dateKey = curr.toISOString().split('T')[0];
+            const dayShoots = state.shoots.filter(s => (s.date === dateKey) || (s.startDateTime && s.startDateTime.startsWith(dateKey)));
+
+            const row = document.createElement('div');
+            row.className = "flex gap-4 p-4 bg-white rounded-xl border border-gray-100 items-start hover:shadow-sm transition-all";
+            row.innerHTML = `
+                <div class="w-10 text-center pt-1">
+                    <div class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">${curr.toLocaleDateString('en-GB', {weekday:'short'})}</div>
+                    <div class="text-xl font-black text-gray-900">${curr.getDate()}</div>
+                </div>
+                <div class="flex-1 space-y-1">
+                    ${dayShoots.length ? dayShoots.map(s => `
+                        <div class="p-2 bg-gray-50 rounded-lg border-l-2 border-l-[#43B049] cursor-pointer" onclick="loadProject('${s.linkedProjectId || s.projectId}')">
+                            <div class="font-bold text-[10px]">${s.projectTitle || s.title}</div>
+                            <div class="text-[8px] text-gray-400 font-bold uppercase">${s.format || 'Shoot'} • ${s.time || 'TBC'}</div>
+                        </div>
+                    `).join('') : '<div class="text-[9px] text-gray-300 font-black uppercase tracking-widest pt-2">Clear</div>'}
+                </div>
+            `;
+            grid.appendChild(row);
+        }
+    }
+
+    // --- PROJECT LOGIC ---
+    window.updateDropdowns = () => {
+        const projOpts = '<option value="">Select Initialised Project...</option>' + 
+            state.projects.map(p => `<option value="${p.id}">${p.client || 'DMG'} - ${p.title}</option>`).join('');
+        document.getElementById('projectSelector').innerHTML = projOpts;
+        document.getElementById('modalProjectSelect').innerHTML = projOpts;
+
+        document.getElementById('staffSelect').innerHTML = state.staff.map(s => 
+            `<option value="${s.id}">${s.firstName} ${s.lastName}</option>`
+        ).join('');
+    };
+
+    window.initProduction = async () => {
+        const id = document.getElementById('modalProjectSelect').value;
+        const budget = parseFloat(document.getElementById('modalBudget').value);
+        if(!id) return;
+        
+        await setDoc(doc(db, "artifacts", appId, "public", "data", "production_records", id), {
+            totalBudget: budget || 0, totalSpent: 0, receipts: [], links: [], crew: []
+        });
+        document.getElementById('modal-init').classList.add('hidden');
+        loadProject(id);
+    };
+
+    window.loadProject = async (id) => {
+        if(!id) return;
+        state.currentId = id;
+        const p = state.projects.find(x => x.id === id);
+        if(p) {
+            document.getElementById('projTitle').textContent = p.title;
+            document.getElementById('projClient').textContent = p.client || 'DMG';
+            document.getElementById('projectSelector').value = id;
+            
+            // Fetch Notion Deliverables for this project
+            fetchDeliverables(id);
+        }
+        window.setView('project');
+        
+        onSnapshot(doc(db, "artifacts", appId, "public", "data", "production_records", id), (snap) => {
+            if(snap.exists()) { state.record = snap.data(); renderProjectView(); }
+        });
+    };
+
+    async function fetchDeliverables(projId) {
+        const container = document.getElementById('notionAssets');
+        container.innerHTML = '<div class="text-[10px] text-gray-300 italic">Checking Notion...</div>';
+        try {
+            const res = await fetch('https://createnotionproject-223535956454.us-central1.run.app/deliverables');
+            const data = await res.json();
+            const deliverables = (data.deliverables || []).filter(d => d.projectId === projId || (state.record && state.record.links && state.record.links.find(l => l.url === d.url)));
+            
+            if(deliverables.length === 0) {
+                container.innerHTML = '<div class="text-[10px] text-gray-300 italic">No Notion deliverables found.</div>';
+                return;
+            }
+
+            container.innerHTML = deliverables.map(d => `
+                <div class="p-2 bg-gray-50 rounded border border-gray-100 flex justify-between items-center">
+                    <span class="text-[10px] font-bold text-gray-700">${d.name || 'Untitled Asset'}</span>
+                    <span class="text-[8px] font-black text-blue-500 uppercase">${d.status || 'Active'}</span>
+                </div>
+            `).join('');
+
+        } catch(e) {
+            console.warn("Deliverable fetch failed", e);
+            container.innerHTML = '<div class="text-[10px] text-red-300 italic">Sync Error</div>';
+        }
+    }
+
+    function renderProjectView() {
+        const r = state.record;
+        
+        // Finance
+        document.getElementById('dispBudget').textContent = `£${r.totalBudget.toLocaleString()}`;
+        document.getElementById('dispSpent').textContent = `£${r.totalSpent.toLocaleString()}`;
+        document.getElementById('dispRemain').textContent = `£${(r.totalBudget - r.totalSpent).toLocaleString()}`;
+        document.getElementById('budgetFill').style.width = `${Math.min((r.totalSpent/r.totalBudget)*100, 100)}%`;
+
+        document.getElementById('receiptLog').innerHTML = r.receipts?.length ? r.receipts.map(i => `
+            <div class="flex justify-between items-center text-[10px] py-2 border-b border-gray-50 last:border-0">
+                <div class="flex items-center gap-2">
+                    <span class="font-semibold text-gray-700">${i.title}</span>
+                    ${i.file ? '<span class="text-[8px] text-blue-500">📎</span>' : ''}
+                </div>
+                <span class="mono font-bold text-gray-900">£${i.amt.toFixed(2)}</span>
+            </div>
+        `).join('') : '<div class="text-[9px] text-gray-300 italic pt-2">No expenses logged</div>';
+
+        // Crew
+        document.getElementById('crewList').innerHTML = r.crew?.length ? r.crew.map(c => `
+            <div class="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-black text-blue-500">${c.name[0]}</div>
+                <div>
+                    <div class="text-[11px] font-black text-gray-900 leading-tight">${c.name}</div>
+                    <div class="text-[8px] font-black text-gray-400 uppercase mt-0.5">${c.role}</div>
+                </div>
+            </div>
+        `).join('') : '<div class="text-[10px] text-gray-300 font-black uppercase tracking-widest pt-2">Crew Unassigned</div>';
+
+        // Scheduled Shoots (Local render based on calendar data for this project)
+        const projShoots = state.shoots.filter(s => s.linkedProjectId === state.currentId);
+        document.getElementById('shootList').innerHTML = projShoots.map(s => `
+             <div class="flex justify-between text-[9px] font-bold text-blue-800 bg-white p-2 rounded border border-blue-50">
+                <span>${new Date(s.date).toLocaleDateString('en-GB')}</span>
+                <span>${s.format}</span>
+             </div>
+        `).join('');
+    }
+
+    // --- ACTIONS ---
+    window.handleFileSelect = (input) => {
+        if(input.files.length > 0) {
+            state.currentFile = input.files[0];
+            document.getElementById('fileName').textContent = `📄 ${input.files[0].name.substring(0, 15)}...`;
+            document.getElementById('fileName').classList.add('text-blue-600');
+        }
+    };
+
+    window.addReceipt = async () => {
+        const title = document.getElementById('recTitle').value;
+        const amt = parseFloat(document.getElementById('recAmt').value);
+        if(!state.currentId || !title || isNaN(amt)) return;
+        
+        const newReceipt = { 
+            title, 
+            amt, 
+            file: state.currentFile ? state.currentFile.name : null,
+            date: new Date().toISOString()
+        };
+
+        const newRecs = [...(state.record?.receipts || []), newReceipt];
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "production_records", state.currentId), {
+            receipts: newRecs, 
+            totalSpent: newRecs.reduce((a,b) => a + b.amt, 0)
+        });
+        
+        document.getElementById('recTitle').value = ''; 
+        document.getElementById('recAmt').value = '';
+        document.getElementById('fileName').textContent = '📎 Upload Receipt (PDF/IMG)';
+        state.currentFile = null;
+    };
+
+    window.addAsset = async () => {
+        const url = document.getElementById('assetLink').value;
+        if(!state.currentId || !url) return;
+        const newLinks = [...(state.record?.links || []), { url }];
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "production_records", state.currentId), { links: newLinks });
+        document.getElementById('assetLink').value = '';
+    };
+
+    window.toggleFreelancer = (checkbox) => {
+        document.getElementById('staffInputContainer').classList.toggle('hidden', checkbox.checked);
+        document.getElementById('freelanceName').classList.toggle('hidden', !checkbox.checked);
+    };
+
+    window.assignCrew = async () => {
+        if(!state.currentId) return;
+        const isFreelance = document.getElementById('freelanceToggle').checked;
+        const role = document.getElementById('roleSelect').value;
+        let name;
+
+        if (isFreelance) {
+            name = document.getElementById('freelanceName').value;
+        } else {
+            const staffId = document.getElementById('staffSelect').value;
+            const staff = state.staff.find(s => s.id === staffId);
+            if (staff) name = `${staff.firstName} ${staff.lastName}`;
+        }
+
+        if(!name) return;
+        
+        const newCrew = [...(state.record?.crew || []), { name, role, isFreelance }];
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "production_records", state.currentId), { crew: newCrew });
+        
+        document.getElementById('freelanceName').value = '';
+    };
+
+    window.scheduleShoot = async () => {
+        if (!state.currentId) return;
+        const date = document.getElementById('shootDate').value;
+        const time = document.getElementById('shootTime').value;
+        const format = document.getElementById('shootFormat').value;
+        
+        if(!date) return;
+
+        const p = state.projects.find(x => x.id === state.currentId);
+
+        await addDoc(collection(db, "artifacts", appId, "public", "data", "shoot_calendar_events"), {
+            date,
+            time,
+            format,
+            projectTitle: p ? p.title : 'Shoot',
+            linkedProjectId: state.currentId,
+            createdAt: new Date().toISOString()
+        });
+        
+        // Refresh local view list
+        document.getElementById('shootDate').value = '';
+    };
+
+    window.openModal = (id) => document.getElementById(`modal-${id}`).classList.remove('hidden');
+
+    init();
+</script>
+</body>
+</html>
