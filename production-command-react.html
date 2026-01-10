@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Command | DMG</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --brand: #43B049; --ink: #1C1C1C; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: #F3F4F6; padding: 16px; -webkit-font-smoothing: antialiased; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: -0.04em; }
+        .drag-over { background: #DCFCE7 !important; border-color: #43B049 !important; }
+        .shoot-pill { cursor: grab; }
+        .shoot-pill:active { cursor: grabbing; }
+        .shoot-pill.dragging { opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const APP_ID = "dmg-command-centre-native";
+        const NOTION_API = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // Utils
+        const toDateKey = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
+        const formatCurrency = (n) => `£${(n||0).toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+
+        // Dot Grid Component
+        const DotGrid = () => (
+            <div className="grid grid-cols-2 gap-1" style={{width: 14, height: 14}}>
+                {[0,1,2,3].map(i => (
+                    <span key={i} className="rounded-full" style={{
+                        width: 6, height: 6, backgroundColor: '#43B049',
+                        animation: `pulse 2.5s infinite ease-in-out ${i * 0.3}s`
+                    }}/>
+                ))}
+            </div>
+        );
+
+        // Spinner
+        const Spinner = ({ text = 'SYNCING...' }) => (
+            <div className="flex flex-col items-center justify-center py-20">
+                <div className="w-8 h-8 border-4 border-gray-200 rounded-full mb-4" 
+                     style={{ borderTopColor: '#43B049', animation: 'spin 1s linear infinite' }}/>
+                <span className="text-xs font-black text-gray-300 uppercase tracking-widest">{text}</span>
+            </div>
+        );
+
+        // Tab Button
+        const TabButton = ({ active, onClick, children }) => (
+            <button onClick={onClick}
+                className={`flex-1 py-3 px-4 text-xs font-black uppercase tracking-wide rounded-xl transition-all ${
+                    active ? 'bg-white text-gray-900 shadow-sm' : 'bg-transparent text-gray-400 hover:text-gray-600'
+                }`}>
+                {children}
+            </button>
+        );
+
+        // Day Cell
+        const DayCell = ({ date, isToday, isOtherMonth, shoots, onDrop, onShootClick, onDragStart }) => {
+            const [isDragOver, setIsDragOver] = useState(false);
+
+            return (
+                <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setIsDragOver(false); onDrop(e, date); }}
+                    className={`min-h-28 p-3 bg-white border-b border-r border-gray-100 transition-colors
+                        ${isToday ? 'bg-green-50' : ''} ${isOtherMonth ? 'bg-gray-50' : ''} ${isDragOver ? 'drag-over' : ''}`}>
+                    <div className={`text-xs font-black mb-2 ${isToday ? 'text-green-600' : isOtherMonth ? 'text-gray-300' : 'text-gray-400'}`}>
+                        {date.getDate()}
+                    </div>
+                    <div className="space-y-1">
+                        {shoots.map(shoot => (
+                            <div key={shoot.id} draggable
+                                onDragStart={(e) => onDragStart(e, shoot)}
+                                onClick={(e) => { e.stopPropagation(); onShootClick(shoot.linkedProjectId); }}
+                                className="shoot-pill text-xs font-bold px-2 py-1 bg-white border border-gray-200 rounded-md hover:border-green-500 hover:shadow-md transition-all"
+                                style={{ borderLeftWidth: 3, borderLeftColor: '#43B049' }}>
+                                {shoot.projectTitle || 'Production'}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // Week Row
+        const WeekRow = ({ date, isToday, shoots, onDrop, onShootClick, onDragStart }) => {
+            const [isDragOver, setIsDragOver] = useState(false);
+
+            return (
+                <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setIsDragOver(false); onDrop(e, date); }}
+                    className={`flex gap-6 p-6 bg-white rounded-3xl border transition-all mb-3
+                        ${isToday ? 'border-green-500 bg-green-50/30' : 'border-gray-100'} ${isDragOver ? 'drag-over' : ''}`}>
+                    <div className="w-16 text-center shrink-0">
+                        <div className={`text-xs font-black uppercase tracking-widest ${isToday ? 'text-green-600' : 'text-gray-400'}`}>
+                            {date.toLocaleDateString('en-GB', { weekday: 'short' })}
+                        </div>
+                        <div className={`text-3xl font-black ${isToday ? 'text-green-600' : 'text-gray-900'}`}>
+                            {date.getDate()}
+                        </div>
+                    </div>
+                    <div className="flex-1 space-y-2">
+                        {shoots.length > 0 ? shoots.map(shoot => (
+                            <div key={shoot.id} draggable
+                                onDragStart={(e) => onDragStart(e, shoot)}
+                                onClick={() => onShootClick(shoot.linkedProjectId)}
+                                className="p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-white border-l-4 border-l-green-500 transition-all">
+                                <div className="font-black text-lg uppercase tracking-tight">{shoot.projectTitle || 'Production'}</div>
+                                <div className="text-xs text-gray-400 font-bold uppercase mt-1 tracking-widest">{shoot.format || 'Shoot'}</div>
+                            </div>
+                        )) : (
+                            <div className="text-xs text-gray-300 font-black uppercase tracking-widest py-4">No Activity Logged</div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App
+        const ProductionCommand = () => {
+            const [view, setView] = useState('month');
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [loading, setLoading] = useState(true);
+            const [user, setUser] = useState(null);
+
+            const [projects, setProjects] = useState([]);
+            const [shoots, setShoots] = useState([]);
+            const [staff, setStaff] = useState([]);
+            const [deliverables, setDeliverables] = useState([]);
+
+            const [selectedProjectId, setSelectedProjectId] = useState(null);
+            const [productionRecord, setProductionRecord] = useState(null);
+            const [draggedShoot, setDraggedShoot] = useState(null);
+
+            const [showInitModal, setShowInitModal] = useState(false);
+            const [editingBudget, setEditingBudget] = useState(false);
+            const [newBudget, setNewBudget] = useState('');
+            const [fileData, setFileData] = useState(null);
+            const [fileName, setFileName] = useState('');
+
+            const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
+            const projectShoots = useMemo(() => shoots.filter(s => s.linkedProjectId === selectedProjectId), [shoots, selectedProjectId]);
+            const projectDeliverables = useMemo(() => deliverables.filter(d => d.projectId === selectedProjectId), [deliverables, selectedProjectId]);
+
+            // Auth & Data Loading
+            useEffect(() => {
+                auth.signInAnonymously();
+                const unsubAuth = auth.onAuthStateChanged(async (u) => {
+                    if (!u) return;
+                    setUser(u);
+                    try {
+                        const [projRes, delRes] = await Promise.all([
+                            fetch(`${NOTION_API}/projects`).then(r => r.json()),
+                            fetch(`${NOTION_API}/deliverables`).then(r => r.json())
+                        ]);
+                        setProjects(projRes?.projects || []);
+                        setDeliverables(delRes?.deliverables || []);
+
+                        const staffSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("staff_directory").get();
+                        const staffList = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                        staffList.sort((a, b) => (a.firstName || '').localeCompare(b.firstName || ''));
+                        setStaff(staffList);
+                        setLoading(false);
+                    } catch (err) {
+                        console.error('Error loading data:', err);
+                        setLoading(false);
+                    }
+                });
+                return () => unsubAuth();
+            }, []);
+
+            // Listen to shoots
+            useEffect(() => {
+                if (!user) return;
+                const unsub = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events")
+                    .onSnapshot(snap => setShoots(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                return () => unsub();
+            }, [user]);
+
+            // Listen to production record
+            useEffect(() => {
+                if (!selectedProjectId || !user) return;
+                const unsub = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .onSnapshot(snap => {
+                        setProductionRecord(snap.exists ? snap.data() : { totalBudget: 0, totalSpent: 0, receipts: [], crew: [] });
+                    });
+                return () => unsub();
+            }, [selectedProjectId, user]);
+
+            // Handlers
+            const handleDragStart = (e, shoot) => { setDraggedShoot(shoot); e.dataTransfer.effectAllowed = 'move'; };
+
+            const handleDrop = async (e, newDate) => {
+                if (!draggedShoot) return;
+                const newDateKey = toDateKey(newDate);
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events").doc(draggedShoot.id)
+                    .update({ date: newDateKey, startDateTime: newDateKey });
+                setDraggedShoot(null);
+            };
+
+            const handleShootClick = (projectId) => {
+                if (projectId) { setSelectedProjectId(projectId); setView('project'); }
+            };
+
+            const handleScheduleShoot = async () => {
+                const date = document.getElementById('shootDate')?.value;
+                const format = document.getElementById('shootFormat')?.value || 'Standard Shoot';
+                if (!selectedProjectId || !date) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events").add({
+                    date, startDateTime: date, format,
+                    projectTitle: selectedProject?.title || 'Production',
+                    linkedProjectId: selectedProjectId,
+                    createdAt: new Date().toISOString()
+                });
+                document.getElementById('shootDate').value = '';
+            };
+
+            const handleUpdateBudget = async () => {
+                if (!selectedProjectId) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .set({ ...productionRecord, totalBudget: parseFloat(newBudget) || 0 }, { merge: true });
+                setEditingBudget(false);
+            };
+
+            const handleAddReceipt = async () => {
+                const title = document.getElementById('recTitle')?.value;
+                const amt = parseFloat(document.getElementById('recAmt')?.value);
+                if (!selectedProjectId || !title || isNaN(amt)) return;
+                const newReceipts = [...(productionRecord?.receipts || []), { title, amt, data: fileData, date: new Date().toISOString() }];
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .set({ ...productionRecord, receipts: newReceipts, totalSpent: newReceipts.reduce((s, r) => s + r.amt, 0) }, { merge: true });
+                document.getElementById('recTitle').value = '';
+                document.getElementById('recAmt').value = '';
+                setFileData(null); setFileName('');
+            };
+
+            const handleAssignCrew = async () => {
+                const isFreelance = document.getElementById('freelanceToggle')?.checked;
+                const role = document.getElementById('roleSelect')?.value;
+                let name;
+                if (isFreelance) { name = document.getElementById('freelanceName')?.value; }
+                else {
+                    const staffId = document.getElementById('staffSelect')?.value;
+                    const s = staff.find(x => x.id === staffId);
+                    if (s) name = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+                }
+                if (!selectedProjectId || !name) return;
+                const newCrew = [...(productionRecord?.crew || []), { name, role, isFreelance }];
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .set({ ...productionRecord, crew: newCrew }, { merge: true });
+                if (document.getElementById('freelanceName')) document.getElementById('freelanceName').value = '';
+            };
+
+            const handleInitProduction = async () => {
+                const id = document.getElementById('modalProjectSelect')?.value;
+                const budget = parseFloat(document.getElementById('modalBudget')?.value) || 0;
+                if (!id) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(id)
+                    .set({ totalBudget: budget, totalSpent: 0, receipts: [], crew: [] });
+                setSelectedProjectId(id);
+                setView('project');
+                setShowInitModal(false);
+            };
+
+            const handleFileChange = (e) => {
+                const f = e.target.files[0];
+                if (!f) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => { setFileData(ev.target.result); setFileName(f.name); };
+                reader.readAsDataURL(f);
+            };
+
+            // Calendar generation
+            const calendarDays = useMemo(() => {
+                const year = currentDate.getFullYear(), month = currentDate.getMonth();
+                const firstDay = new Date(year, month, 1), lastDay = new Date(year, month + 1, 0);
+                const startOffset = (firstDay.getDay() + 6) % 7;
+                const days = [], today = toDateKey(new Date());
+                const prevMonth = new Date(year, month, 0);
+                for (let i = startOffset - 1; i >= 0; i--) {
+                    const d = new Date(year, month - 1, prevMonth.getDate() - i);
+                    days.push({ date: d, isOtherMonth: true, isToday: false });
+                }
+                for (let d = 1; d <= lastDay.getDate(); d++) {
+                    const date = new Date(year, month, d);
+                    days.push({ date, isOtherMonth: false, isToday: toDateKey(date) === today });
+                }
+                const remaining = (7 - (days.length % 7)) % 7;
+                for (let i = 1; i <= remaining; i++) {
+                    const d = new Date(year, month + 1, i);
+                    days.push({ date: d, isOtherMonth: true, isToday: false });
+                }
+                return days;
+            }, [currentDate]);
+
+            const weekDays = useMemo(() => {
+                const start = new Date(currentDate), day = start.getDay();
+                start.setDate(start.getDate() - day + (day === 0 ? -6 : 1));
+                const today = toDateKey(new Date()), days = [];
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(start); date.setDate(start.getDate() + i);
+                    days.push({ date, isToday: toDateKey(date) === today });
+                }
+                return days;
+            }, [currentDate]);
+
+            const getShootsForDate = useCallback((date) => {
+                const dateKey = toDateKey(date);
+                return shoots.filter(s => toDateKey(s.date || s.startDateTime) === dateKey);
+            }, [shoots]);
+
+            const navMonth = (delta) => { const d = new Date(currentDate); d.setMonth(d.getMonth() + delta); setCurrentDate(d); };
+            const navWeek = (delta) => { const d = new Date(currentDate); d.setDate(d.getDate() + delta); setCurrentDate(d); };
+
+            if (loading) {
+                return (
+                    <div className="bg-white rounded-3xl border border-gray-200 shadow-lg min-h-[600px] flex items-center justify-center">
+                        <Spinner text="SYNCING WITH NOTION..." />
+                    </div>
+                );
+            }
+
+            const budget = productionRecord?.totalBudget || 0;
+            const spent = productionRecord?.totalSpent || 0;
+
+            return (
+                <div className="bg-white rounded-3xl border border-gray-200 shadow-lg overflow-hidden max-w-6xl mx-auto">
+                    {/* Header */}
+                    <header className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
+                        <DotGrid />
+                        <button onClick={() => setShowInitModal(true)}
+                            className="px-5 py-3 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase tracking-wide hover:bg-gray-50 transition-colors">
+                            + Initialise Project
+                        </button>
+                    </header>
+
+                    {/* Tabs */}
+                    <nav className="flex gap-2 p-2 bg-gray-50 border-b border-gray-100">
+                        <TabButton active={view === 'month'} onClick={() => setView('month')}>Calendar View</TabButton>
+                        <TabButton active={view === 'week'} onClick={() => setView('week')}>Weekly Workflow</TabButton>
+                        <TabButton active={view === 'project'} onClick={() => setView('project')}>Project Desk</TabButton>
+                    </nav>
+
+                    {/* Month View */}
+                    {view === 'month' && (
+                        <div>
+                            <div className="flex items-center justify-between px-6 py-4 bg-white">
+                                <button onClick={() => navMonth(-1)} className="text-xs font-black text-gray-300 hover:text-gray-900 transition-colors">← PREVIOUS</button>
+                                <h2 className="text-sm font-black uppercase tracking-widest text-green-600">
+                                    {currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                                </h2>
+                                <button onClick={() => navMonth(1)} className="text-xs font-black text-gray-300 hover:text-gray-900 transition-colors">NEXT →</button>
+                            </div>
+                            <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
+                                {['MON','TUE','WED','THU','FRI','SAT','SUN'].map(d => (
+                                    <div key={d} className="py-3 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">{d}</div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-7">
+                                {calendarDays.map((day, i) => (
+                                    <DayCell key={i} date={day.date} isToday={day.isToday} isOtherMonth={day.isOtherMonth}
+                                        shoots={getShootsForDate(day.date)} onDrop={handleDrop} onShootClick={handleShootClick} onDragStart={handleDragStart} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Week View */}
+                    {view === 'week' && (
+                        <div className="p-8 bg-gray-50 min-h-[500px]">
+                            <div className="flex items-center justify-between mb-6 max-w-4xl mx-auto">
+                                <button onClick={() => navWeek(-7)} className="px-5 py-3 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase">← Prev Week</button>
+                                <h2 className="text-xs font-black uppercase tracking-widest">
+                                    Week Commencing {weekDays[0]?.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                </h2>
+                                <button onClick={() => navWeek(7)} className="px-5 py-3 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase">Next Week →</button>
+                            </div>
+                            <div className="max-w-4xl mx-auto">
+                                {weekDays.map((day, i) => (
+                                    <WeekRow key={i} date={day.date} isToday={day.isToday} shoots={getShootsForDate(day.date)}
+                                        onDrop={handleDrop} onShootClick={handleShootClick} onDragStart={handleDragStart} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Project View */}
+                    {view === 'project' && (
+                        <div className="flex flex-col" style={{ height: 700 }}>
+                            <div className="px-8 py-6 bg-white border-b border-gray-100 flex items-end justify-between shrink-0">
+                                <div className="w-96">
+                                    <div className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Active Project Environment</div>
+                                    <select value={selectedProjectId || ''} onChange={(e) => setSelectedProjectId(e.target.value || null)}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold">
+                                        <option value="">Select Project Entry...</option>
+                                        {projects.map(p => <option key={p.id} value={p.id}>{p.client || 'DMG'} – {p.title || 'Untitled'}</option>)}
+                                    </select>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-xs font-black text-green-600 uppercase tracking-widest mb-1">{selectedProject?.client || '-'}</div>
+                                    <div className="text-3xl font-black uppercase tracking-tight">{selectedProject?.title || 'Select Project'}</div>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                                {selectedProjectId ? (
+                                    <div className="grid grid-cols-2 gap-6">
+                                        {/* Left Column */}
+                                        <div className="space-y-6">
+                                            {/* Budget */}
+                                            <div className="bg-white border border-gray-200 rounded-3xl p-6">
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-6 h-6 bg-green-500 text-white rounded-md flex items-center justify-center text-xs font-black">1</span>
+                                                        <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Finance Dashboard</span>
+                                                    </div>
+                                                    <button onClick={() => { setEditingBudget(!editingBudget); setNewBudget(budget); }}
+                                                        className="text-xs font-black text-green-600 uppercase hover:underline">
+                                                        {editingBudget ? 'Cancel' : 'Modify Budget'}
+                                                    </button>
+                                                </div>
+                                                {editingBudget ? (
+                                                    <div className="flex gap-3 mb-6">
+                                                        <input type="number" value={newBudget} onChange={(e) => setNewBudget(e.target.value)}
+                                                            className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold" placeholder="Enter budget..."/>
+                                                        <button onClick={handleUpdateBudget} className="px-6 py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase">Save</button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-baseline gap-3 mb-4">
+                                                        <span className="text-5xl font-black mono">{formatCurrency(budget)}</span>
+                                                        <span className="text-xs font-black text-gray-300 uppercase tracking-widest">Allocated</span>
+                                                    </div>
+                                                )}
+                                                <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden mb-8">
+                                                    <div className="h-full bg-green-500 transition-all duration-700" style={{ width: `${budget > 0 ? Math.min((spent/budget)*100, 100) : 0}%` }}/>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                                    <div className="p-5 bg-gray-50 rounded-2xl">
+                                                        <div className="text-xs font-black text-red-500 uppercase mb-1 tracking-widest">Spent</div>
+                                                        <div className="text-2xl font-black mono">{formatCurrency(spent)}</div>
+                                                    </div>
+                                                    <div className="p-5 bg-gray-50 rounded-2xl">
+                                                        <div className="text-xs font-black text-gray-400 uppercase mb-1 tracking-widest">Balance</div>
+                                                        <div className="text-2xl font-black mono">{formatCurrency(budget - spent)}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Expenditure Records</div>
+                                                <div className="space-y-2 max-h-40 overflow-y-auto mb-4">
+                                                    {productionRecord?.receipts?.length > 0 ? productionRecord.receipts.map((r, i) => (
+                                                        <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                                            <span className="text-xs font-black uppercase flex items-center gap-2">
+                                                                {r.title} {r.data && <span className="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded">FILE</span>}
+                                                            </span>
+                                                            <span className="text-sm font-black mono">{formatCurrency(r.amt)}</span>
+                                                        </div>
+                                                    )) : <div className="text-xs text-gray-300 font-bold italic text-center py-4">No expenses logged</div>}
+                                                </div>
+                                                <div className="p-4 bg-gray-50 rounded-2xl space-y-3">
+                                                    <div className="flex gap-3">
+                                                        <input id="recTitle" placeholder="Item Name" className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold"/>
+                                                        <input id="recAmt" type="number" placeholder="£" className="w-24 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold"/>
+                                                    </div>
+                                                    <div className="flex gap-3 items-center">
+                                                        <label className="flex-1 cursor-pointer">
+                                                            <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleFileChange}/>
+                                                            <div className={`text-xs font-black uppercase tracking-widest pb-1 border-b border-dashed ${fileName ? 'text-green-600 border-green-300' : 'text-gray-400 border-gray-300'}`}>
+                                                                {fileName ? `📄 ${fileName}` : '📎 Attach File'}
+                                                            </div>
+                                                        </label>
+                                                        <button onClick={handleAddReceipt} className="px-5 py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase">Log Entry</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Deliverables */}
+                                            <div className="bg-white border border-gray-200 rounded-3xl p-6">
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <span className="w-6 h-6 bg-green-500 text-white rounded-md flex items-center justify-center text-xs font-black">2</span>
+                                                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Asset Deliverables</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {projectDeliverables.length > 0 ? projectDeliverables.map((d, i) => (
+                                                        <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                                            <span className="text-sm font-black uppercase tracking-tight">{d.name || d.title || 'Untitled'}</span>
+                                                            <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">{d.status || 'Active'}</span>
+                                                        </div>
+                                                    )) : <div className="text-xs text-gray-300 font-bold italic text-center py-4">No linked assets in Notion.</div>}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Right Column */}
+                                        <div className="space-y-6">
+                                            {/* Schedule */}
+                                            <div className="bg-green-50/50 border border-green-200 rounded-3xl p-6">
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <span className="w-6 h-6 bg-green-500 text-white rounded-md flex items-center justify-center text-xs font-black">3</span>
+                                                    <span className="text-xs font-black text-green-600 uppercase tracking-widest">Production Schedule</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                                    <input type="date" id="shootDate" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold"/>
+                                                    <select id="shootFormat" className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold">
+                                                        <option>Standard Shoot</option>
+                                                        <option>Recce / Scout</option>
+                                                        <option>Travel Day</option>
+                                                        <option>Live Stream</option>
+                                                    </select>
+                                                </div>
+                                                <button onClick={handleScheduleShoot} className="w-full py-3 bg-green-500 text-white rounded-xl text-xs font-black uppercase">Add to Programme</button>
+                                                <div className="mt-4 space-y-2">
+                                                    {projectShoots.map(s => (
+                                                        <div key={s.id} className="flex justify-between text-xs font-black text-green-600 bg-white p-3 rounded-xl border border-green-100">
+                                                            <span>{new Date(s.date || s.startDateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                                                            <span className="uppercase tracking-widest">{s.format || 'Shoot'}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Crew */}
+                                            <div className="bg-white border border-gray-200 rounded-3xl p-6">
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <span className="w-6 h-6 bg-green-500 text-white rounded-md flex items-center justify-center text-xs font-black">4</span>
+                                                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Assigned Crew</span>
+                                                </div>
+                                                <div className="space-y-2 max-h-48 overflow-y-auto mb-4">
+                                                    {productionRecord?.crew?.length > 0 ? productionRecord.crew.map((c, i) => (
+                                                        <div key={i} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100">
+                                                            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-sm font-black text-green-600">{(c.name||'?')[0]}</div>
+                                                            <div>
+                                                                <div className="text-sm font-black uppercase tracking-tight">{c.name}</div>
+                                                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{c.role}</div>
+                                                            </div>
+                                                        </div>
+                                                    )) : <div className="text-xs text-gray-300 font-black uppercase tracking-widest text-center py-4">No Crew Assigned</div>}
+                                                </div>
+                                                <div className="pt-4 border-t border-gray-100 space-y-3">
+                                                    <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer">
+                                                        <input type="checkbox" id="freelanceToggle" className="w-4 h-4 accent-green-500"/>
+                                                        <span className="text-xs font-black text-gray-500 uppercase tracking-widest">External Freelancer</span>
+                                                    </label>
+                                                    <select id="staffSelect" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold">
+                                                        {staff.map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}
+                                                    </select>
+                                                    <input id="freelanceName" className="hidden w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold" placeholder="Enter Full Name..."/>
+                                                    <select id="roleSelect" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold">
+                                                        <option>Lead Producer</option>
+                                                        <option>Director</option>
+                                                        <option>Camera Op / DP</option>
+                                                        <option>Video Editor</option>
+                                                        <option>Graphic Design</option>
+                                                        <option>Audio Op</option>
+                                                        <option>Creative Lead</option>
+                                                    </select>
+                                                    <button onClick={handleAssignCrew} className="w-full py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase">Assign Role</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-center h-full">
+                                        <div className="text-center">
+                                            <div className="text-6xl mb-4">📋</div>
+                                            <div className="text-sm font-black text-gray-400 uppercase tracking-widest">Select a project to view details</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Init Modal */}
+                    {showInitModal && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+                            <div className="bg-white rounded-3xl p-10 w-full max-w-md shadow-2xl">
+                                <h3 className="text-2xl font-black uppercase mb-2 tracking-tight">Initialise Production</h3>
+                                <p className="text-xs text-gray-400 font-bold mb-8 uppercase tracking-widest">Connect Notion Ledger to Environment</p>
+                                <div className="space-y-4">
+                                    <select id="modalProjectSelect" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold">
+                                        <option value="">Choose Ledger Entry...</option>
+                                        {projects.map(p => <option key={p.id} value={p.id}>{p.client || 'DMG'} – {p.title || 'Untitled'}</option>)}
+                                    </select>
+                                    <input id="modalBudget" type="number" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold" placeholder="Programme Budget (£)"/>
+                                    <div className="flex gap-3 pt-4">
+                                        <button onClick={() => setShowInitModal(false)} className="flex-1 py-3 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase">Cancel</button>
+                                        <button onClick={handleInitProduction} className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase">Confirm</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Render
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ProductionCommand />);
+    </script>
+</body>
+</html>
