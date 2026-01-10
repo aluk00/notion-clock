@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects Kanban | DMG Command Centre</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --ink-muted: #9CA3AF;
+            --border: #EAECEF;
+            --surface: #FFFFFF;
+            --surface-alt: #F9FAFB;
+            --dmg-blue: #21A0D8;
+            --creative: #E6468B;
+            --production: #43B049;
+            --editorial: #E94B4B;
+            --social: #F2C316;
+            --sales: #21A0D8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--surface);
+            color: var(--ink);
+            padding: 16px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+        }
+        .dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
+        .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        .header-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .header-stats {
+            display: flex;
+            gap: 12px;
+        }
+        .stat {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink-muted);
+        }
+        .stat strong {
+            color: var(--ink);
+            font-weight: 800;
+        }
+
+        /* View Tabs */
+        .view-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .view-tab {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s ease;
+            color: var(--ink-sub);
+        }
+        .view-tab:hover {
+            border-color: #D1D5DB;
+            background: var(--surface-alt);
+        }
+        .view-tab.active {
+            background: var(--ink);
+            color: white;
+            border-color: var(--ink);
+        }
+        .view-tab .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+        .view-tab.active .dot {
+            background: white !important;
+        }
+
+        /* Kanban */
+        .kanban {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            min-height: 400px;
+        }
+        @media (max-width: 1000px) {
+            .kanban { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .kanban { grid-template-columns: 1fr; }
+        }
+
+        .column {
+            background: var(--surface-alt);
+            border-radius: 10px;
+            padding: 12px;
+            min-height: 350px;
+            transition: background 0.2s ease;
+        }
+        .column.drag-over {
+            background: rgba(33, 160, 216, 0.08);
+        }
+
+        .column-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .column-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .column-count {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            background: var(--surface);
+            padding: 3px 8px;
+            border-radius: 10px;
+        }
+
+        .cards-container {
+            min-height: 250px;
+        }
+
+        /* Project Card */
+        .project-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+            cursor: grab;
+            position: relative;
+            transition: all 0.15s ease;
+        }
+        .project-card:hover {
+            border-color: #D1D5DB;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+        }
+        .project-card.dragging {
+            opacity: 0.5;
+            transform: rotate(2deg);
+        }
+        .project-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            border-radius: 8px 0 0 8px;
+        }
+        .project-card[data-team="Creative"]::before { background: var(--creative); }
+        .project-card[data-team="Editorial"]::before { background: var(--editorial); }
+        .project-card[data-team="Production"]::before { background: var(--production); }
+        .project-card[data-team="Social"]::before { background: var(--social); }
+        .project-card[data-team="Sales"]::before { background: var(--sales); }
+
+        .card-client {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 4px;
+        }
+        .card-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 8px;
+            line-height: 1.35;
+        }
+        .card-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .card-tag {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 3px 7px;
+            border-radius: 4px;
+            background: var(--surface-alt);
+            color: var(--ink-sub);
+        }
+        .card-tag.priority-high {
+            background: rgba(233, 75, 75, 0.1);
+            color: var(--editorial);
+        }
+        .card-tag.priority-medium {
+            background: rgba(245, 158, 11, 0.1);
+            color: #F59E0B;
+        }
+        .card-value {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--production);
+            margin-left: auto;
+        }
+
+        .empty-column {
+            text-align: center;
+            padding: 30px 10px;
+            color: var(--ink-muted);
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--ink-muted);
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="dot-grid">
+                <span></span><span></span><span></span><span></span>
+            </div>
+            <span class="header-label">Projects Kanban</span>
+        </div>
+        <div class="header-stats" id="stats">
+            <span class="stat"><strong id="totalCount">0</strong> Projects</span>
+            <span class="stat"><strong id="totalValue">£0</strong> Pipeline</span>
+        </div>
+    </div>
+
+    <!-- View Tabs -->
+    <div class="view-tabs" id="viewTabs">
+        <button class="view-tab active" data-view="all" onclick="setView('all')">All Projects</button>
+        <button class="view-tab" data-view="Creative" onclick="setView('Creative')">
+            <span class="dot" style="background: var(--creative)"></span>Creative
+        </button>
+        <button class="view-tab" data-view="Production" onclick="setView('Production')">
+            <span class="dot" style="background: var(--production)"></span>Production
+        </button>
+        <button class="view-tab" data-view="Sales" onclick="setView('Sales')">
+            <span class="dot" style="background: var(--sales)"></span>Sales
+        </button>
+        <button class="view-tab" data-view="Social" onclick="setView('Social')">
+            <span class="dot" style="background: var(--social)"></span>Social
+        </button>
+        <button class="view-tab" data-view="Editorial" onclick="setView('Editorial')">
+            <span class="dot" style="background: var(--editorial)"></span>Editorial
+        </button>
+    </div>
+
+    <!-- Kanban Board -->
+    <div class="kanban" id="kanban">
+        <div class="loading">
+            <div class="dot-grid" style="margin: 0 auto 12px;">
+                <span></span><span></span><span></span><span></span>
+            </div>
+            Syncing with Notion...
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app/projects';
+
+        let allProjects = [];
+        let currentView = 'all';
+        let draggedCard = null;
+
+        // Column config
+        const columns = {
+            'Brief In': { stage: 'Brief Recieved', color: '#21A0D8' },
+            'Pitch Sent': { stage: 'Pitch Sent', color: '#E6468B' },
+            'Agreed': { stage: 'Deal Agreed', color: '#43B049' },
+            'Complete': { stage: 'Campaign Complete', color: '#F2C316' }
+        };
+
+        // Init
+        document.addEventListener('DOMContentLoaded', loadProjects);
+
+        async function loadProjects() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                allProjects = data?.projects || [];
+                renderKanban();
+                updateStats();
+            } catch (e) {
+                console.error('Load failed:', e);
+                document.getElementById('kanban').innerHTML = '<div class="loading">Failed to load projects</div>';
+            }
+        }
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.view === view);
+            });
+            renderKanban();
+            updateStats();
+        }
+
+        function updateStats() {
+            const filtered = currentView === 'all' 
+                ? allProjects 
+                : allProjects.filter(p => p.team === currentView);
+            
+            document.getElementById('totalCount').textContent = filtered.length;
+            
+            const totalValue = filtered.reduce((sum, p) => {
+                const val = parseFloat(String(p.budget || p.dealValue || '0').replace(/[^0-9.]/g, '')) || 0;
+                return sum + val;
+            }, 0);
+            
+            document.getElementById('totalValue').textContent = totalValue >= 1000 
+                ? `£${Math.round(totalValue / 1000)}K` 
+                : `£${totalValue}`;
+        }
+
+        function renderKanban() {
+            const filtered = currentView === 'all' 
+                ? allProjects 
+                : allProjects.filter(p => p.team === currentView);
+
+            const kanban = document.getElementById('kanban');
+            kanban.innerHTML = '';
+
+            Object.entries(columns).forEach(([title, config]) => {
+                const columnProjects = filtered.filter(p => p.dealStage === config.stage);
+
+                const column = document.createElement('div');
+                column.className = 'column';
+                column.dataset.stage = config.stage;
+                column.ondragover = handleDragOver;
+                column.ondragleave = handleDragLeave;
+                column.ondrop = handleDrop;
+
+                column.innerHTML = `
+                    <div class="column-header">
+                        <span class="column-title" style="color: ${config.color}">${title}</span>
+                        <span class="column-count">${columnProjects.length}</span>
+                    </div>
+                    <div class="cards-container"></div>
+                `;
+
+                const container = column.querySelector('.cards-container');
+
+                if (columnProjects.length === 0) {
+                    container.innerHTML = '<div class="empty-column">Drop projects here</div>';
+                } else {
+                    columnProjects.forEach(project => {
+                        container.appendChild(createCard(project));
+                    });
+                }
+
+                kanban.appendChild(column);
+            });
+        }
+
+        function createCard(project) {
+            const card = document.createElement('div');
+            card.className = 'project-card';
+            card.dataset.id = project.id;
+            card.dataset.team = project.team || 'Sales';
+            card.draggable = true;
+
+            // Drag events
+            card.ondragstart = handleDragStart;
+            card.ondragend = handleDragEnd;
+            card.onclick = () => project.url && window.open(project.url, '_top');
+
+            // Priority styling
+            let priorityClass = '';
+            const priority = (project.priority || '').toLowerCase();
+            if (priority === 'high') priorityClass = 'priority-high';
+            else if (priority === 'medium') priorityClass = 'priority-medium';
+
+            // Value
+            const value = parseFloat(String(project.budget || project.dealValue || '0').replace(/[^0-9.]/g, '')) || 0;
+            const valueStr = value >= 1000 ? `£${Math.round(value / 1000)}K` : value > 0 ? `£${value}` : '';
+
+            card.innerHTML = `
+                <div class="card-client">${project.client || 'Internal'}</div>
+                <div class="card-title">${project.title || 'Untitled'}</div>
+                <div class="card-meta">
+                    <span class="card-tag">${project.team || 'Ops'}</span>
+                    ${project.priority ? `<span class="card-tag ${priorityClass}">${project.priority}</span>` : ''}
+                    ${valueStr ? `<span class="card-value">${valueStr}</span>` : ''}
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Drag & Drop Handlers
+        function handleDragStart(e) {
+            draggedCard = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', this.dataset.id);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.column').forEach(c => c.classList.remove('drag-over'));
+            draggedCard = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+
+            if (!draggedCard) return;
+
+            const projectId = draggedCard.dataset.id;
+            const newStage = this.dataset.stage;
+
+            // Update local data
+            const project = allProjects.find(p => p.id === projectId);
+            if (project) {
+                project.dealStage = newStage;
+            }
+
+            // Re-render
+            renderKanban();
+            updateStats();
+
+            // Optional: API call to update Notion
+            // updateProjectStage(projectId, newStage);
+        }
+
+        // Uncomment to enable API updates on drag
+        /*
+        async function updateProjectStage(projectId, newStage) {
+            try {
+                await fetch(`${API_URL}/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dealStage: newStage })
+                });
+            } catch (e) {
+                console.error('Update failed:', e);
+            }
+        }
+        */
+
+        // Auto-refresh every 60s
+        setInterval(loadProjects, 60000);
+    </script>
+</body>
+</html>
