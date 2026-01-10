@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Command | DMG</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --brand: #43B049; --ink: #1C1C1C; --border: #EAECEF; --ink-sub: #757575; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { background: #FFFFFF; }
+        body { font-family: 'Inter', sans-serif; background: #FFFFFF; padding: 12px; -webkit-font-smoothing: antialiased; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: -0.04em; }
+        .drag-over { background: #F0FDF4 !important; border-color: #43B049 !important; }
+        .shoot-pill { cursor: pointer; transition: all 0.2s ease; }
+        .shoot-pill:hover { transform: translateY(-2px); border-color: #43B049; box-shadow: 0 4px 12px rgba(67,176,73,0.15); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const APP_ID = "dmg-command-centre-native";
+        const NOTION_API = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        const toDateKey = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
+        const formatCurrency = (n) => `£${(n||0).toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+
+        // Dot Grid
+        const DotGrid = () => (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, 6px)', gap:3, width:14, height:14}}>
+                {[0,1,2,3].map(i => (
+                    <span key={i} style={{
+                        width:6, height:6, borderRadius:'50%', backgroundColor:'#43B049',
+                        animation: `pulse 2.5s infinite ease-in-out ${i * 0.3}s`
+                    }}/>
+                ))}
+            </div>
+        );
+
+        // Spinner
+        const Spinner = ({ text = 'SYNCING...' }) => (
+            <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'80px 20px'}}>
+                <div style={{ width:32, height:32, border:'4px solid #E5E7EB', borderTopColor:'#43B049', borderRadius:'50%', animation:'spin 1s linear infinite', marginBottom:16 }}/>
+                <span style={{fontSize:11, fontWeight:900, color:'#CCC', textTransform:'uppercase', letterSpacing:'0.1em'}}>{text}</span>
+            </div>
+        );
+
+        // Tab Button
+        const TabButton = ({ active, onClick, children }) => (
+            <button onClick={onClick} style={{
+                flex:1, padding:'12px 16px', fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'0.08em',
+                borderRadius:12, border:'none', cursor:'pointer', transition:'all 0.2s',
+                background: active ? 'white' : 'transparent',
+                color: active ? '#1C1C1C' : '#757575',
+                boxShadow: active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
+            }}>
+                {children}
+            </button>
+        );
+
+        // Shoot Item for Calendar
+        const ShootItem = ({ shoot, project, onClick, onDragStart, small }) => {
+            const title = project?.title || shoot.projectTitle || 'Untitled';
+            const client = project?.client || '';
+            const displayTitle = client ? `${client} - ${title}` : title;
+            
+            return (
+                <div
+                    className="shoot-pill"
+                    draggable
+                    onDragStart={(e) => onDragStart(e, shoot)}
+                    onClick={(e) => { e.stopPropagation(); onClick(shoot.linkedProjectId); }}
+                    style={{
+                        padding: small ? '6px 8px' : '8px 10px',
+                        background: 'white',
+                        border: '1px solid #EAECEF',
+                        borderLeft: '4px solid #43B049',
+                        borderRadius: 10,
+                        marginBottom: small ? 4 : 6
+                    }}
+                >
+                    <div style={{fontSize: small ? 9 : 10, fontWeight:900, color:'#1C1C1C', textTransform:'uppercase', lineHeight:1.2, marginBottom:2}}>
+                        {displayTitle}
+                    </div>
+                    <div style={{fontSize: small ? 7 : 8, fontWeight:700, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.02em'}}>
+                        {shoot.format || 'PRODUCTION'}
+                    </div>
+                </div>
+            );
+        };
+
+        // Day Cell for Month View
+        const DayCell = ({ date, isToday, isOtherMonth, shoots, projects, onDrop, onShootClick, onDragStart }) => {
+            const [isDragOver, setIsDragOver] = useState(false);
+            const getProject = (projectId) => projects.find(p => p.id === projectId);
+
+            return (
+                <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setIsDragOver(false); onDrop(e, date); }}
+                    style={{
+                        minHeight: 120, padding: 10, background: isToday ? '#F0FDF4' : (isDragOver ? '#F0FDF4' : 'white'),
+                        borderBottom: '1px solid #EAECEF', borderRight: '1px solid #EAECEF',
+                        opacity: isOtherMonth ? 0.4 : 1, transition: 'background 0.2s'
+                    }}
+                >
+                    <div style={{fontSize:11, fontWeight:900, color: isToday ? '#43B049' : '#CCC', marginBottom:6}}>
+                        {date.getDate()}
+                    </div>
+                    <div>
+                        {shoots.map(shoot => (
+                            <ShootItem key={shoot.id} shoot={shoot} project={getProject(shoot.linkedProjectId)} 
+                                onClick={onShootClick} onDragStart={onDragStart} small />
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // Week Row
+        const WeekRow = ({ date, isToday, shoots, projects, onDrop, onShootClick, onDragStart }) => {
+            const [isDragOver, setIsDragOver] = useState(false);
+            const getProject = (projectId) => projects.find(p => p.id === projectId);
+
+            return (
+                <div
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setIsDragOver(false); onDrop(e, date); }}
+                    style={{
+                        display:'flex', gap:24, padding:20, background: isDragOver ? '#F0FDF4' : 'white',
+                        borderRadius:20, border: `1px solid ${isToday ? '#43B049' : '#EAECEF'}`,
+                        marginBottom:10, transition:'all 0.2s'
+                    }}
+                >
+                    <div style={{width:60, textAlign:'center', flexShrink:0}}>
+                        <div style={{fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', color: isToday ? '#43B049' : '#757575'}}>
+                            {date.toLocaleDateString('en-GB', { weekday: 'short' })}
+                        </div>
+                        <div style={{fontSize:28, fontWeight:900, color: isToday ? '#43B049' : '#1C1C1C'}}>
+                            {date.getDate()}
+                        </div>
+                    </div>
+                    <div style={{flex:1}}>
+                        {shoots.length > 0 ? shoots.map(shoot => (
+                            <div key={shoot.id} className="shoot-pill" draggable
+                                onDragStart={(e) => onDragStart(e, shoot)}
+                                onClick={() => onShootClick(shoot.linkedProjectId)}
+                                style={{
+                                    padding:16, background:'#F9FAFB', borderRadius:16, marginBottom:8,
+                                    borderLeft:'4px solid #43B049', cursor:'pointer'
+                                }}>
+                                <div style={{fontWeight:900, fontSize:14, textTransform:'uppercase', letterSpacing:'-0.02em', color:'#1C1C1C'}}>
+                                    {getProject(shoot.linkedProjectId)?.client ? `${getProject(shoot.linkedProjectId).client} - ` : ''}
+                                    {getProject(shoot.linkedProjectId)?.title || shoot.projectTitle || 'Untitled'}
+                                </div>
+                                <div style={{fontSize:10, fontWeight:700, color:'#43B049', textTransform:'uppercase', marginTop:4, letterSpacing:'0.05em'}}>
+                                    {shoot.format || 'PRODUCTION'}
+                                </div>
+                            </div>
+                        )) : (
+                            <div style={{fontSize:11, fontWeight:800, color:'#DDD', textTransform:'uppercase', letterSpacing:'0.1em', padding:'16px 0'}}>
+                                No Activity Logged
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App
+        const ProductionCommand = () => {
+            const [view, setView] = useState('month');
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [loading, setLoading] = useState(true);
+            const [user, setUser] = useState(null);
+
+            const [projects, setProjects] = useState([]);
+            const [shoots, setShoots] = useState([]);
+            const [staff, setStaff] = useState([]);
+            const [deliverables, setDeliverables] = useState([]);
+
+            const [selectedProjectId, setSelectedProjectId] = useState(null);
+            const [productionRecord, setProductionRecord] = useState(null);
+            const [draggedShoot, setDraggedShoot] = useState(null);
+
+            const [showInitModal, setShowInitModal] = useState(false);
+            const [editingBudget, setEditingBudget] = useState(false);
+            const [newBudget, setNewBudget] = useState('');
+            const [fileData, setFileData] = useState(null);
+            const [fileName, setFileName] = useState('');
+
+            const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
+            const projectShoots = useMemo(() => shoots.filter(s => s.linkedProjectId === selectedProjectId), [shoots, selectedProjectId]);
+            const projectDeliverables = useMemo(() => deliverables.filter(d => d.projectId === selectedProjectId), [deliverables, selectedProjectId]);
+
+            // Auth & Data
+            useEffect(() => {
+                auth.signInAnonymously();
+                const unsubAuth = auth.onAuthStateChanged(async (u) => {
+                    if (!u) return;
+                    setUser(u);
+                    try {
+                        const [projRes, delRes] = await Promise.all([
+                            fetch(`${NOTION_API}/projects`).then(r => r.json()),
+                            fetch(`${NOTION_API}/deliverables`).then(r => r.json())
+                        ]);
+                        setProjects(projRes?.projects || []);
+                        setDeliverables(delRes?.deliverables || []);
+
+                        const staffSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("staff_directory").get();
+                        setStaff(staffSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.firstName || '').localeCompare(b.firstName || '')));
+                        setLoading(false);
+                    } catch (err) {
+                        console.error(err);
+                        setLoading(false);
+                    }
+                });
+                return () => unsubAuth();
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                const unsub = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events")
+                    .onSnapshot(snap => setShoots(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                return () => unsub();
+            }, [user]);
+
+            useEffect(() => {
+                if (!selectedProjectId || !user) return;
+                const unsub = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .onSnapshot(snap => setProductionRecord(snap.exists ? snap.data() : { totalBudget: 0, totalSpent: 0, receipts: [], crew: [] }));
+                return () => unsub();
+            }, [selectedProjectId, user]);
+
+            // Handlers
+            const handleDragStart = (e, shoot) => { setDraggedShoot(shoot); e.dataTransfer.effectAllowed = 'move'; };
+
+            const handleDrop = async (e, newDate) => {
+                if (!draggedShoot) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events").doc(draggedShoot.id)
+                    .update({ date: toDateKey(newDate), startDateTime: toDateKey(newDate) });
+                setDraggedShoot(null);
+            };
+
+            const handleShootClick = (projectId) => {
+                if (projectId) {
+                    setSelectedProjectId(projectId);
+                    setView('project');
+                }
+            };
+
+            const handleScheduleShoot = async () => {
+                const date = document.getElementById('shootDate')?.value;
+                const format = document.getElementById('shootFormat')?.value || 'Standard Shoot';
+                if (!selectedProjectId || !date) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events").add({
+                    date, startDateTime: date, format,
+                    projectTitle: selectedProject?.title || 'Production',
+                    linkedProjectId: selectedProjectId,
+                    createdAt: new Date().toISOString()
+                });
+                document.getElementById('shootDate').value = '';
+            };
+
+            const handleUpdateBudget = async () => {
+                if (!selectedProjectId) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .set({ ...productionRecord, totalBudget: parseFloat(newBudget) || 0 }, { merge: true });
+                setEditingBudget(false);
+            };
+
+            const handleAddReceipt = async () => {
+                const title = document.getElementById('recTitle')?.value;
+                const amt = parseFloat(document.getElementById('recAmt')?.value);
+                if (!selectedProjectId || !title || isNaN(amt)) return;
+                const newReceipts = [...(productionRecord?.receipts || []), { title, amt, data: fileData, date: new Date().toISOString() }];
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .set({ ...productionRecord, receipts: newReceipts, totalSpent: newReceipts.reduce((s, r) => s + r.amt, 0) }, { merge: true });
+                document.getElementById('recTitle').value = '';
+                document.getElementById('recAmt').value = '';
+                setFileData(null); setFileName('');
+            };
+
+            const handleAssignCrew = async () => {
+                const isFreelance = document.getElementById('freelanceToggle')?.checked;
+                const role = document.getElementById('roleSelect')?.value;
+                let name;
+                if (isFreelance) name = document.getElementById('freelanceName')?.value;
+                else {
+                    const s = staff.find(x => x.id === document.getElementById('staffSelect')?.value);
+                    if (s) name = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+                }
+                if (!selectedProjectId || !name) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .set({ ...productionRecord, crew: [...(productionRecord?.crew || []), { name, role, isFreelance }] }, { merge: true });
+                if (document.getElementById('freelanceName')) document.getElementById('freelanceName').value = '';
+            };
+
+            const handleInitProduction = async () => {
+                const id = document.getElementById('modalProjectSelect')?.value;
+                const budget = parseFloat(document.getElementById('modalBudget')?.value) || 0;
+                if (!id) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(id)
+                    .set({ totalBudget: budget, totalSpent: 0, receipts: [], crew: [] });
+                setSelectedProjectId(id);
+                setView('project');
+                setShowInitModal(false);
+            };
+
+            const handleFileChange = (e) => {
+                const f = e.target.files[0];
+                if (!f) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => { setFileData(ev.target.result); setFileName(f.name); };
+                reader.readAsDataURL(f);
+            };
+
+            // Calendar
+            const calendarDays = useMemo(() => {
+                const year = currentDate.getFullYear(), month = currentDate.getMonth();
+                const firstDay = new Date(year, month, 1), lastDay = new Date(year, month + 1, 0);
+                const startOffset = (firstDay.getDay() + 6) % 7;
+                const days = [], today = toDateKey(new Date());
+                const prevMonth = new Date(year, month, 0);
+                for (let i = startOffset - 1; i >= 0; i--) {
+                    const d = new Date(year, month - 1, prevMonth.getDate() - i);
+                    days.push({ date: d, isOtherMonth: true, isToday: false });
+                }
+                for (let d = 1; d <= lastDay.getDate(); d++) {
+                    const date = new Date(year, month, d);
+                    days.push({ date, isOtherMonth: false, isToday: toDateKey(date) === today });
+                }
+                const remaining = (7 - (days.length % 7)) % 7;
+                for (let i = 1; i <= remaining; i++) {
+                    const d = new Date(year, month + 1, i);
+                    days.push({ date: d, isOtherMonth: true, isToday: false });
+                }
+                return days;
+            }, [currentDate]);
+
+            const weekDays = useMemo(() => {
+                const start = new Date(currentDate), day = start.getDay();
+                start.setDate(start.getDate() - day + (day === 0 ? -6 : 1));
+                const today = toDateKey(new Date()), days = [];
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(start); date.setDate(start.getDate() + i);
+                    days.push({ date, isToday: toDateKey(date) === today });
+                }
+                return days;
+            }, [currentDate]);
+
+            const getShootsForDate = useCallback((date) => {
+                const dateKey = toDateKey(date);
+                return shoots.filter(s => toDateKey(s.date || s.startDateTime) === dateKey);
+            }, [shoots]);
+
+            const navMonth = (delta) => { const d = new Date(currentDate); d.setMonth(d.getMonth() + delta); setCurrentDate(d); };
+            const navWeek = (delta) => { const d = new Date(currentDate); d.setDate(d.getDate() + delta); setCurrentDate(d); };
+
+            if (loading) return (
+                <div style={{background:'white', borderRadius:20, border:'1px solid #EAECEF', minHeight:500}}>
+                    <Spinner text="SYNCING WITH NOTION..." />
+                </div>
+            );
+
+            const budget = productionRecord?.totalBudget || 0;
+            const spent = productionRecord?.totalSpent || 0;
+
+            return (
+                <div style={{background:'white', borderRadius:20, border:'1px solid #EAECEF', overflow:'hidden', maxWidth:1200, margin:'0 auto'}}>
+                    {/* Header */}
+                    <header style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 24px', borderBottom:'1px solid #EAECEF', background:'white'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:12}}>
+                            <DotGrid />
+                            <span style={{fontSize:11, fontWeight:900, letterSpacing:'0.1em', textTransform:'uppercase', color:'#1C1C1C'}}>PRODUCTION COMMAND</span>
+                        </div>
+                        <button onClick={() => setShowInitModal(true)} style={{
+                            padding:'10px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:10,
+                            fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', cursor:'pointer'
+                        }}>
+                            + Initialise Project
+                        </button>
+                    </header>
+
+                    {/* Tabs */}
+                    <nav style={{display:'flex', gap:8, padding:8, background:'#F9FAFB', borderBottom:'1px solid #EAECEF'}}>
+                        <TabButton active={view === 'month'} onClick={() => setView('month')}>Calendar View</TabButton>
+                        <TabButton active={view === 'week'} onClick={() => setView('week')}>Weekly Workflow</TabButton>
+                        <TabButton active={view === 'project'} onClick={() => setView('project')}>Project Desk</TabButton>
+                    </nav>
+
+                    {/* Month View */}
+                    {view === 'month' && (
+                        <div style={{background:'white'}}>
+                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 24px'}}>
+                                <button onClick={() => navMonth(-1)} style={{background:'none', border:'none', fontSize:11, fontWeight:800, color:'#CCC', cursor:'pointer'}}>← PREVIOUS</button>
+                                <h2 style={{fontSize:13, fontWeight:900, textTransform:'uppercase', letterSpacing:'0.08em', color:'#43B049'}}>
+                                    {currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                                </h2>
+                                <button onClick={() => navMonth(1)} style={{background:'none', border:'none', fontSize:11, fontWeight:800, color:'#CCC', cursor:'pointer'}}>NEXT →</button>
+                            </div>
+                            <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', borderBottom:'1px solid #EAECEF', background:'#F9FAFB'}}>
+                                {['MON','TUE','WED','THU','FRI','SAT','SUN'].map(d => (
+                                    <div key={d} style={{padding:'10px 0', textAlign:'center', fontSize:9, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em'}}>{d}</div>
+                                ))}
+                            </div>
+                            <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)'}}>
+                                {calendarDays.map((day, i) => (
+                                    <DayCell key={i} date={day.date} isToday={day.isToday} isOtherMonth={day.isOtherMonth}
+                                        shoots={getShootsForDate(day.date)} projects={projects}
+                                        onDrop={handleDrop} onShootClick={handleShootClick} onDragStart={handleDragStart} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Week View */}
+                    {view === 'week' && (
+                        <div style={{padding:24, background:'white', minHeight:450}}>
+                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, maxWidth:900, margin:'0 auto 20px'}}>
+                                <button onClick={() => navWeek(-7)} style={{padding:'10px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>← Prev Week</button>
+                                <h2 style={{fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'0.08em'}}>
+                                    Week Commencing {weekDays[0]?.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                </h2>
+                                <button onClick={() => navWeek(7)} style={{padding:'10px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Next Week →</button>
+                            </div>
+                            <div style={{maxWidth:900, margin:'0 auto'}}>
+                                {weekDays.map((day, i) => (
+                                    <WeekRow key={i} date={day.date} isToday={day.isToday} shoots={getShootsForDate(day.date)} projects={projects}
+                                        onDrop={handleDrop} onShootClick={handleShootClick} onDragStart={handleDragStart} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Project View */}
+                    {view === 'project' && (
+                        <div style={{display:'flex', flexDirection:'column', height:650, background:'white'}}>
+                            <div style={{padding:'20px 24px', borderBottom:'1px solid #EAECEF', display:'flex', alignItems:'flex-end', justifyContent:'space-between'}}>
+                                <div style={{width:350}}>
+                                    <div style={{fontSize:9, fontWeight:800, textTransform:'uppercase', color:'#757575', marginBottom:6, letterSpacing:'0.1em'}}>Active Project</div>
+                                    <select value={selectedProjectId || ''} onChange={(e) => setSelectedProjectId(e.target.value || null)}
+                                        style={{width:'100%', padding:'10px 14px', background:'#F9FAFB', border:'1px solid #EAECEF', borderRadius:10, fontSize:12, fontWeight:700}}>
+                                        <option value="">Select Project...</option>
+                                        {projects.map(p => <option key={p.id} value={p.id}>{p.client || 'DMG'} – {p.title || 'Untitled'}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{textAlign:'right'}}>
+                                    <div style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.08em'}}>{selectedProject?.client || '-'}</div>
+                                    <div style={{fontSize:22, fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.02em'}}>{selectedProject?.title || 'Select Project'}</div>
+                                </div>
+                            </div>
+
+                            <div style={{flex:1, overflow:'auto', padding:20, background:'#F9FAFB'}}>
+                                {selectedProjectId ? (
+                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
+                                        {/* Left */}
+                                        <div>
+                                            {/* Budget */}
+                                            <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20, marginBottom:16}}>
+                                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
+                                                    <div style={{display:'flex', alignItems:'center', gap:8}}>
+                                                        <span style={{width:20, height:20, background:'#43B049', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>1</span>
+                                                        <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.08em'}}>Finance</span>
+                                                    </div>
+                                                    <button onClick={() => { setEditingBudget(!editingBudget); setNewBudget(budget); }}
+                                                        style={{background:'none', border:'none', fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', cursor:'pointer'}}>
+                                                        {editingBudget ? 'Cancel' : 'Edit'}
+                                                    </button>
+                                                </div>
+                                                {editingBudget ? (
+                                                    <div style={{display:'flex', gap:8, marginBottom:16}}>
+                                                        <input type="number" value={newBudget} onChange={(e) => setNewBudget(e.target.value)}
+                                                            style={{flex:1, padding:'10px 12px', background:'#F9FAFB', border:'1px solid #EAECEF', borderRadius:8, fontWeight:700}} placeholder="Budget..."/>
+                                                        <button onClick={handleUpdateBudget} style={{padding:'10px 16px', background:'#1C1C1C', color:'white', border:'none', borderRadius:8, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Save</button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{marginBottom:12}}>
+                                                        <span className="mono" style={{fontSize:36, fontWeight:900}}>{formatCurrency(budget)}</span>
+                                                        <span style={{fontSize:10, fontWeight:800, color:'#CCC', marginLeft:8, textTransform:'uppercase'}}>Allocated</span>
+                                                    </div>
+                                                )}
+                                                <div style={{height:8, background:'#F3F4F6', borderRadius:4, overflow:'hidden', marginBottom:16}}>
+                                                    <div style={{height:'100%', background:'#43B049', width:`${budget > 0 ? Math.min((spent/budget)*100, 100) : 0}%`, transition:'width 0.5s'}}/>
+                                                </div>
+                                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                                                    <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                                        <div style={{fontSize:9, fontWeight:800, color:'#EF4444', textTransform:'uppercase', marginBottom:4}}>Spent</div>
+                                                        <div className="mono" style={{fontSize:18, fontWeight:900}}>{formatCurrency(spent)}</div>
+                                                    </div>
+                                                    <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                                        <div style={{fontSize:9, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Balance</div>
+                                                        <div className="mono" style={{fontSize:18, fontWeight:900}}>{formatCurrency(budget - spent)}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {/* Receipts */}
+                                            <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20}}>
+                                                <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12}}>Expenditure</div>
+                                                <div style={{maxHeight:140, overflow:'auto', marginBottom:12}}>
+                                                    {productionRecord?.receipts?.length > 0 ? productionRecord.receipts.map((r, i) => (
+                                                        <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'8px 10px', background:'#F9FAFB', borderRadius:8, marginBottom:6}}>
+                                                            <span style={{fontSize:10, fontWeight:800, textTransform:'uppercase'}}>{r.title}</span>
+                                                            <span className="mono" style={{fontSize:11, fontWeight:700}}>{formatCurrency(r.amt)}</span>
+                                                        </div>
+                                                    )) : <div style={{fontSize:10, color:'#CCC', fontStyle:'italic', textAlign:'center', padding:16}}>No expenses</div>}
+                                                </div>
+                                                <div style={{display:'flex', gap:8, marginBottom:8}}>
+                                                    <input id="recTitle" placeholder="Item" style={{flex:1, padding:'8px 10px', background:'#F9FAFB', border:'1px solid #EAECEF', borderRadius:8, fontSize:11, fontWeight:600}}/>
+                                                    <input id="recAmt" type="number" placeholder="£" style={{width:70, padding:'8px 10px', background:'#F9FAFB', border:'1px solid #EAECEF', borderRadius:8, fontSize:11, fontWeight:600}}/>
+                                                </div>
+                                                <button onClick={handleAddReceipt} style={{width:'100%', padding:'10px', background:'#1C1C1C', color:'white', border:'none', borderRadius:8, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Add</button>
+                                            </div>
+                                        </div>
+                                        {/* Right */}
+                                        <div>
+                                            {/* Schedule */}
+                                            <div style={{background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:20, padding:20, marginBottom:16}}>
+                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:12}}>
+                                                    <span style={{width:20, height:20, background:'#43B049', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>2</span>
+                                                    <span style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.08em'}}>Schedule</span>
+                                                </div>
+                                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10}}>
+                                                    <input type="date" id="shootDate" style={{padding:'8px 10px', background:'white', border:'1px solid #EAECEF', borderRadius:8, fontSize:11, fontWeight:600}}/>
+                                                    <select id="shootFormat" style={{padding:'8px 10px', background:'white', border:'1px solid #EAECEF', borderRadius:8, fontSize:11, fontWeight:600}}>
+                                                        <option>Standard Shoot</option><option>Recce</option><option>Travel</option><option>Live</option>
+                                                    </select>
+                                                </div>
+                                                <button onClick={handleScheduleShoot} style={{width:'100%', padding:'10px', background:'#43B049', color:'white', border:'none', borderRadius:8, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Add Shoot</button>
+                                                <div style={{marginTop:12}}>
+                                                    {projectShoots.map(s => (
+                                                        <div key={s.id} style={{display:'flex', justifyContent:'space-between', fontSize:10, fontWeight:700, color:'#43B049', background:'white', padding:'8px 10px', borderRadius:8, marginTop:6}}>
+                                                            <span>{new Date(s.date || s.startDateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+                                                            <span style={{textTransform:'uppercase'}}>{s.format || 'Shoot'}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            {/* Crew */}
+                                            <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20}}>
+                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:12}}>
+                                                    <span style={{width:20, height:20, background:'#43B049', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>3</span>
+                                                    <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.08em'}}>Crew</span>
+                                                </div>
+                                                <div style={{maxHeight:120, overflow:'auto', marginBottom:12}}>
+                                                    {productionRecord?.crew?.length > 0 ? productionRecord.crew.map((c, i) => (
+                                                        <div key={i} style={{display:'flex', alignItems:'center', gap:10, padding:'8px 10px', background:'#F9FAFB', borderRadius:10, marginBottom:6}}>
+                                                            <div style={{width:32, height:32, borderRadius:8, background:'#F0FDF4', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:900, color:'#43B049'}}>{(c.name||'?')[0]}</div>
+                                                            <div>
+                                                                <div style={{fontSize:11, fontWeight:800, textTransform:'uppercase'}}>{c.name}</div>
+                                                                <div style={{fontSize:9, fontWeight:600, color:'#757575', textTransform:'uppercase'}}>{c.role}</div>
+                                                            </div>
+                                                        </div>
+                                                    )) : <div style={{fontSize:10, color:'#CCC', fontStyle:'italic', textAlign:'center', padding:16}}>No crew</div>}
+                                                </div>
+                                                <select id="staffSelect" style={{width:'100%', padding:'8px 10px', background:'#F9FAFB', border:'1px solid #EAECEF', borderRadius:8, fontSize:11, fontWeight:600, marginBottom:8}}>
+                                                    {staff.map(s => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}
+                                                </select>
+                                                <select id="roleSelect" style={{width:'100%', padding:'8px 10px', background:'#F9FAFB', border:'1px solid #EAECEF', borderRadius:8, fontSize:11, fontWeight:600, marginBottom:8}}>
+                                                    <option>Lead Producer</option><option>Director</option><option>Camera Op</option><option>Editor</option><option>Designer</option>
+                                                </select>
+                                                <button onClick={handleAssignCrew} style={{width:'100%', padding:'10px', background:'#1C1C1C', color:'white', border:'none', borderRadius:8, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Assign</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{display:'flex', alignItems:'center', justifyContent:'center', height:'100%'}}>
+                                        <div style={{textAlign:'center'}}>
+                                            <div style={{fontSize:48, marginBottom:12}}>📋</div>
+                                            <div style={{fontSize:11, fontWeight:800, color:'#CCC', textTransform:'uppercase', letterSpacing:'0.1em'}}>Select a project</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Init Modal */}
+                    {showInitModal && (
+                        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100}}>
+                            <div style={{background:'white', borderRadius:20, padding:32, width:'100%', maxWidth:380}}>
+                                <h3 style={{fontSize:18, fontWeight:900, textTransform:'uppercase', marginBottom:4}}>Initialise Production</h3>
+                                <p style={{fontSize:10, color:'#757575', fontWeight:600, marginBottom:20, textTransform:'uppercase', letterSpacing:'0.08em'}}>Connect project to environment</p>
+                                <select id="modalProjectSelect" style={{width:'100%', padding:'10px 12px', background:'#F9FAFB', border:'1px solid #EAECEF', borderRadius:10, fontSize:12, fontWeight:600, marginBottom:12}}>
+                                    <option value="">Select Project...</option>
+                                    {projects.map(p => <option key={p.id} value={p.id}>{p.client || 'DMG'} – {p.title || 'Untitled'}</option>)}
+                                </select>
+                                <input id="modalBudget" type="number" style={{width:'100%', padding:'10px 12px', background:'#F9FAFB', border:'1px solid #EAECEF', borderRadius:10, fontSize:12, fontWeight:600, marginBottom:16}} placeholder="Budget (£)"/>
+                                <div style={{display:'flex', gap:10}}>
+                                    <button onClick={() => setShowInitModal(false)} style={{flex:1, padding:'12px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Cancel</button>
+                                    <button onClick={handleInitProduction} style={{flex:1, padding:'12px', background:'#1C1C1C', color:'white', border:'none', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Confirm</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ProductionCommand />);
+    </script>
+</body>
+</html>
