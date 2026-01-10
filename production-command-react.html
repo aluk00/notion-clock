@@ -84,18 +84,17 @@
             </button>
         );
 
-        // Shoot Item for Calendar
-        const ShootItem = ({ shoot, project, onClick, onDragStart, small }) => {
-            const title = project?.title || shoot.projectTitle || 'Untitled';
-            const client = project?.client || '';
-            const displayTitle = client ? `${client} - ${title}` : title;
+        // Shoot Item - uses projectTitle/title directly from shoot document
+        const ShootItem = ({ shoot, onClick, onDragStart, small }) => {
+            // Use fields directly from shoot document (same as working calendar)
+            const displayTitle = shoot.projectTitle || shoot.title || 'Untitled Shoot';
             
             return (
                 <div
                     className="shoot-pill"
                     draggable
-                    onDragStart={(e) => onDragStart(e, shoot)}
-                    onClick={(e) => { e.stopPropagation(); onClick(shoot.linkedProjectId); }}
+                    onDragStart={(e) => onDragStart && onDragStart(e, shoot)}
+                    onClick={(e) => { e.stopPropagation(); onClick && onClick(shoot.linkedProjectId); }}
                     style={{
                         padding: small ? '6px 8px' : '8px 10px',
                         background: 'white',
@@ -116,9 +115,8 @@
         };
 
         // Day Cell for Month View
-        const DayCell = ({ date, isToday, isOtherMonth, shoots, projects, onDrop, onShootClick, onDragStart }) => {
+        const DayCell = ({ date, isToday, isOtherMonth, shoots, onDrop, onShootClick, onDragStart }) => {
             const [isDragOver, setIsDragOver] = useState(false);
-            const getProject = (projectId) => projects.find(p => p.id === projectId);
 
             return (
                 <div
@@ -136,8 +134,7 @@
                     </div>
                     <div>
                         {shoots.map(shoot => (
-                            <ShootItem key={shoot.id} shoot={shoot} project={getProject(shoot.linkedProjectId)} 
-                                onClick={onShootClick} onDragStart={onDragStart} small />
+                            <ShootItem key={shoot.id} shoot={shoot} onClick={onShootClick} onDragStart={onDragStart} small />
                         ))}
                     </div>
                 </div>
@@ -145,9 +142,8 @@
         };
 
         // Week Row
-        const WeekRow = ({ date, isToday, shoots, projects, onDrop, onShootClick, onDragStart }) => {
+        const WeekRow = ({ date, isToday, shoots, onDrop, onShootClick, onDragStart }) => {
             const [isDragOver, setIsDragOver] = useState(false);
-            const getProject = (projectId) => projects.find(p => p.id === projectId);
 
             return (
                 <div
@@ -171,15 +167,14 @@
                     <div style={{flex:1}}>
                         {shoots.length > 0 ? shoots.map(shoot => (
                             <div key={shoot.id} className="shoot-pill" draggable
-                                onDragStart={(e) => onDragStart(e, shoot)}
-                                onClick={() => onShootClick(shoot.linkedProjectId)}
+                                onDragStart={(e) => onDragStart && onDragStart(e, shoot)}
+                                onClick={() => onShootClick && onShootClick(shoot.linkedProjectId)}
                                 style={{
                                     padding:16, background:'#F9FAFB', borderRadius:16, marginBottom:8,
                                     borderLeft:'4px solid #43B049', cursor:'pointer'
                                 }}>
                                 <div style={{fontWeight:900, fontSize:14, textTransform:'uppercase', letterSpacing:'-0.02em', color:'#1C1C1C'}}>
-                                    {getProject(shoot.linkedProjectId)?.client ? `${getProject(shoot.linkedProjectId).client} - ` : ''}
-                                    {getProject(shoot.linkedProjectId)?.title || shoot.projectTitle || 'Untitled'}
+                                    {shoot.projectTitle || shoot.title || 'Untitled Shoot'}
                                 </div>
                                 <div style={{fontSize:10, fontWeight:700, color:'#43B049', textTransform:'uppercase', marginTop:4, letterSpacing:'0.05em'}}>
                                     {shoot.format || 'PRODUCTION'}
@@ -249,7 +244,11 @@
             useEffect(() => {
                 if (!user) return;
                 const unsub = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events")
-                    .onSnapshot(snap => setShoots(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                    .onSnapshot(snap => {
+                        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                        console.log('Shoots loaded:', items); // Debug log
+                        setShoots(items);
+                    });
                 return () => unsub();
             }, [user]);
 
@@ -281,9 +280,12 @@
                 const date = document.getElementById('shootDate')?.value;
                 const format = document.getElementById('shootFormat')?.value || 'Standard Shoot';
                 if (!selectedProjectId || !date) return;
+                // Store projectTitle on the shoot document so it displays correctly
                 await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events").add({
                     date, startDateTime: date, format,
-                    projectTitle: selectedProject?.title || 'Production',
+                    projectTitle: selectedProject?.title ? 
+                        (selectedProject?.client ? `${selectedProject.client} - ${selectedProject.title}` : selectedProject.title) 
+                        : 'Production',
                     linkedProjectId: selectedProjectId,
                     createdAt: new Date().toISOString()
                 });
@@ -343,7 +345,15 @@
                 reader.readAsDataURL(f);
             };
 
-            // Calendar
+            // Calendar - same date matching logic as working calendar
+            const getShootsForDate = useCallback((date) => {
+                const dateStr = date.toISOString().split('T')[0];
+                return shoots.filter(s => {
+                    const targetDate = s.date || s.shootDate || s.dueDate || (s.startDateTime ? s.startDateTime.split('T')[0] : null);
+                    return targetDate === dateStr;
+                });
+            }, [shoots]);
+
             const calendarDays = useMemo(() => {
                 const year = currentDate.getFullYear(), month = currentDate.getMonth();
                 const firstDay = new Date(year, month, 1), lastDay = new Date(year, month + 1, 0);
@@ -376,11 +386,6 @@
                 }
                 return days;
             }, [currentDate]);
-
-            const getShootsForDate = useCallback((date) => {
-                const dateKey = toDateKey(date);
-                return shoots.filter(s => toDateKey(s.date || s.startDateTime) === dateKey);
-            }, [shoots]);
 
             const navMonth = (delta) => { const d = new Date(currentDate); d.setMonth(d.getMonth() + delta); setCurrentDate(d); };
             const navWeek = (delta) => { const d = new Date(currentDate); d.setDate(d.getDate() + delta); setCurrentDate(d); };
@@ -435,7 +440,7 @@
                             <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)'}}>
                                 {calendarDays.map((day, i) => (
                                     <DayCell key={i} date={day.date} isToday={day.isToday} isOtherMonth={day.isOtherMonth}
-                                        shoots={getShootsForDate(day.date)} projects={projects}
+                                        shoots={getShootsForDate(day.date)}
                                         onDrop={handleDrop} onShootClick={handleShootClick} onDragStart={handleDragStart} />
                                 ))}
                             </div>
@@ -454,7 +459,7 @@
                             </div>
                             <div style={{maxWidth:900, margin:'0 auto'}}>
                                 {weekDays.map((day, i) => (
-                                    <WeekRow key={i} date={day.date} isToday={day.isToday} shoots={getShootsForDate(day.date)} projects={projects}
+                                    <WeekRow key={i} date={day.date} isToday={day.isToday} shoots={getShootsForDate(day.date)}
                                         onDrop={handleDrop} onShootClick={handleShootClick} onDragStart={handleDragStart} />
                                 ))}
                             </div>
@@ -479,7 +484,7 @@
                                 </div>
                             </div>
 
-                            <div style={{flex:1, overflow:'auto', padding:20, background:'#F9FAFB'}}>
+                            <div style={{flex:1, overflow:'auto', padding:20, background:'white'}}>
                                 {selectedProjectId ? (
                                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
                                         {/* Left */}
