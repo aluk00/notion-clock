@@ -1,1029 +1,907 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, onSnapshot, doc, setDoc, updateDoc, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-
-// Firebase Config
-const firebaseConfig = {
-  apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-  authDomain: "dmg-command-centre-native.firebaseapp.com",
-  projectId: "dmg-command-centre-native",
-  storageBucket: "dmg-command-centre-native.firebasestorage.app",
-  messagingSenderId: "223535956454",
-  appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-};
-
-const APP_ID = "dmg-command-centre-native";
-const NOTION_API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-// ============================================
-// STYLES (Tailwind-like inline for portability)
-// ============================================
-const colors = {
-  primary: '#43B049',
-  ink: '#1C1C1C',
-  inkSub: '#757575',
-  border: '#E5E7EB',
-  bgSoft: '#F9FAFB',
-  surface: '#FFFFFF',
-};
-
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-const toDateKey = (date) => {
-  if (!date) return null;
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return null;
-  return d.toISOString().split('T')[0];
-};
-
-const formatCurrency = (amount) => {
-  return `£${(amount || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-};
-
-// ============================================
-// COMPONENTS
-// ============================================
-
-// Animated Dot Grid
-const DotGrid = () => (
-  <div className="grid grid-cols-2 gap-1" style={{ width: 14, height: 14 }}>
-    {[0, 1, 2, 3].map(i => (
-      <span
-        key={i}
-        className="rounded-full"
-        style={{
-          width: 6,
-          height: 6,
-          backgroundColor: colors.primary,
-          animation: `pulse 2.5s infinite ease-in-out ${i * 0.3}s`,
-        }}
-      />
-    ))}
-  </div>
-);
-
-// Loading Spinner
-const Spinner = ({ text = 'SYNCING...' }) => (
-  <div className="flex flex-col items-center justify-center py-20">
-    <div
-      className="w-8 h-8 border-4 border-gray-200 rounded-full mb-4"
-      style={{ borderTopColor: colors.primary, animation: 'spin 1s linear infinite' }}
-    />
-    <span className="text-xs font-black text-gray-300 uppercase tracking-widest">{text}</span>
-  </div>
-);
-
-// Tab Button
-const TabButton = ({ active, onClick, children }) => (
-  <button
-    onClick={onClick}
-    className={`flex-1 py-3 px-4 text-xs font-black uppercase tracking-wide rounded-xl transition-all ${
-      active
-        ? 'bg-white text-gray-900 shadow-sm'
-        : 'bg-transparent text-gray-400 hover:text-gray-600'
-    }`}
-  >
-    {children}
-  </button>
-);
-
-// Shoot Pill (Draggable)
-const ShootPill = ({ shoot, onDragStart, onClick }) => (
-  <div
-    draggable
-    onDragStart={(e) => onDragStart(e, shoot)}
-    onClick={() => onClick(shoot.linkedProjectId)}
-    className="text-xs font-bold px-3 py-2 bg-white border border-gray-200 rounded-lg mb-1 cursor-grab active:cursor-grabbing hover:border-green-500 hover:shadow-md transition-all"
-    style={{ borderLeftWidth: 3, borderLeftColor: colors.primary }}
-  >
-    {shoot.projectTitle || 'Production'}
-  </div>
-);
-
-// Calendar Day Cell
-const DayCell = ({ date, isToday, isOtherMonth, shoots, onDrop, onDragOver, onShootClick, onDragStart }) => {
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setIsDragOver(true);
-        onDragOver(e);
-      }}
-      onDragLeave={() => setIsDragOver(false)}
-      onDrop={(e) => {
-        setIsDragOver(false);
-        onDrop(e, date);
-      }}
-      className={`min-h-28 p-3 bg-white border-b border-r border-gray-100 transition-colors ${
-        isToday ? 'bg-green-50' : ''
-      } ${isOtherMonth ? 'bg-gray-50' : ''} ${isDragOver ? 'bg-green-100' : ''}`}
-    >
-      <div className={`text-xs font-black mb-2 ${isToday ? 'text-green-600' : isOtherMonth ? 'text-gray-300' : 'text-gray-400'}`}>
-        {date.getDate()}
-      </div>
-      <div className="space-y-1">
-        {shoots.map(shoot => (
-          <ShootPill
-            key={shoot.id}
-            shoot={shoot}
-            onDragStart={onDragStart}
-            onClick={onShootClick}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Week Day Row
-const WeekDayRow = ({ date, isToday, shoots, onDrop, onDragOver, onShootClick, onDragStart }) => {
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setIsDragOver(true);
-        onDragOver(e);
-      }}
-      onDragLeave={() => setIsDragOver(false)}
-      onDrop={(e) => {
-        setIsDragOver(false);
-        onDrop(e, date);
-      }}
-      className={`flex gap-6 p-6 bg-white rounded-3xl border transition-all ${
-        isToday ? 'border-green-500 bg-green-50/30' : 'border-gray-100'
-      } ${isDragOver ? 'border-green-500 bg-green-100' : ''}`}
-    >
-      <div className="w-16 text-center shrink-0">
-        <div className={`text-xs font-black uppercase tracking-widest ${isToday ? 'text-green-600' : 'text-gray-400'}`}>
-          {date.toLocaleDateString('en-GB', { weekday: 'short' })}
-        </div>
-        <div className={`text-3xl font-black ${isToday ? 'text-green-600' : 'text-gray-900'}`}>
-          {date.getDate()}
-        </div>
-      </div>
-      <div className="flex-1 space-y-2">
-        {shoots.length > 0 ? (
-          shoots.map(shoot => (
-            <div
-              key={shoot.id}
-              draggable
-              onDragStart={(e) => onDragStart(e, shoot)}
-              onClick={() => onShootClick(shoot.linkedProjectId)}
-              className="p-5 bg-gray-50 rounded-2xl cursor-pointer hover:bg-white border-l-4 border-l-green-500 transition-all"
-            >
-              <div className="font-black text-lg uppercase tracking-tight">{shoot.projectTitle || 'Production'}</div>
-              <div className="text-xs text-gray-400 font-bold uppercase mt-1 tracking-widest">{shoot.format || 'Shoot'}</div>
-            </div>
-          ))
-        ) : (
-          <div className="text-xs text-gray-300 font-black uppercase tracking-widest py-4">No Activity Logged</div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// Budget Card
-const BudgetCard = ({ budget, spent, onUpdateBudget }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [newBudget, setNewBudget] = useState(budget);
-  const remaining = budget - spent;
-  const percentage = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
-
-  const handleSave = () => {
-    onUpdateBudget(parseFloat(newBudget) || 0);
-    setIsEditing(false);
-  };
-
-  return (
-    <div className="bg-white border border-gray-200 rounded-3xl p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <span className="w-6 h-6 bg-green-500 text-white rounded-md flex items-center justify-center text-xs font-black">1</span>
-          <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Finance Dashboard</span>
-        </div>
-        <button
-          onClick={() => setIsEditing(!isEditing)}
-          className="text-xs font-black text-green-600 uppercase hover:underline"
-        >
-          {isEditing ? 'Cancel' : 'Modify Budget'}
-        </button>
-      </div>
-
-      {isEditing ? (
-        <div className="flex gap-3 mb-6">
-          <input
-            type="number"
-            value={newBudget}
-            onChange={(e) => setNewBudget(e.target.value)}
-            className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold"
-            placeholder="Enter budget..."
-          />
-          <button
-            onClick={handleSave}
-            className="px-6 py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase"
-          >
-            Save
-          </button>
-        </div>
-      ) : (
-        <div className="flex items-baseline gap-3 mb-4">
-          <span className="text-5xl font-black font-mono">{formatCurrency(budget)}</span>
-          <span className="text-xs font-black text-gray-300 uppercase tracking-widest">Allocated</span>
-        </div>
-      )}
-
-      <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden mb-8">
-        <div
-          className="h-full bg-green-500 transition-all duration-700"
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="p-5 bg-gray-50 rounded-2xl">
-          <div className="text-xs font-black text-red-500 uppercase mb-1 tracking-widest">Spent</div>
-          <div className="text-2xl font-black font-mono">{formatCurrency(spent)}</div>
-        </div>
-        <div className="p-5 bg-gray-50 rounded-2xl">
-          <div className="text-xs font-black text-gray-400 uppercase mb-1 tracking-widest">Balance</div>
-          <div className="text-2xl font-black font-mono">{formatCurrency(remaining)}</div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Receipt Form
-const ReceiptForm = ({ onAddReceipt }) => {
-  const [title, setTitle] = useState('');
-  const [amount, setAmount] = useState('');
-  const [file, setFile] = useState(null);
-  const [fileName, setFileName] = useState('');
-
-  const handleFileChange = (e) => {
-    const f = e.target.files[0];
-    if (f) {
-      setFileName(f.name);
-      const reader = new FileReader();
-      reader.onload = (ev) => setFile(ev.target.result);
-      reader.readAsDataURL(f);
-    }
-  };
-
-  const handleSubmit = () => {
-    if (!title || !amount) return;
-    onAddReceipt({
-      title,
-      amt: parseFloat(amount),
-      data: file,
-      date: new Date().toISOString(),
-    });
-    setTitle('');
-    setAmount('');
-    setFile(null);
-    setFileName('');
-  };
-
-  return (
-    <div className="p-5 bg-gray-50 rounded-2xl space-y-3">
-      <div className="flex gap-3">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Item Name"
-          className="flex-1 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold"
-        />
-        <input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="£"
-          className="w-28 px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold"
-        />
-      </div>
-      <div className="flex gap-3 items-center">
-        <label className="flex-1 cursor-pointer">
-          <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleFileChange} />
-          <div className={`text-xs font-black uppercase tracking-widest pb-1 border-b border-dashed ${fileName ? 'text-green-600 border-green-300' : 'text-gray-400 border-gray-300'}`}>
-            {fileName ? `📄 ${fileName}` : '📎 Attach PDF / IMAGE'}
-          </div>
-        </label>
-        <button
-          onClick={handleSubmit}
-          className="px-5 py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase"
-        >
-          Log Entry
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Receipt List
-const ReceiptList = ({ receipts }) => (
-  <div className="space-y-2 max-h-52 overflow-y-auto">
-    {receipts?.length > 0 ? (
-      receipts.map((r, i) => (
-        <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl border border-gray-100">
-          <span className="text-xs font-black uppercase flex items-center gap-2">
-            {r.title}
-            {r.data && <span className="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded">ATTACHMENT</span>}
-          </span>
-          <span className="text-sm font-black font-mono">{formatCurrency(r.amt)}</span>
-        </div>
-      ))
-    ) : (
-      <div className="text-center py-4 text-xs text-gray-300 font-bold italic">No expenses logged</div>
-    )}
-  </div>
-);
-
-// Crew List
-const CrewList = ({ crew }) => (
-  <div className="space-y-3 max-h-80 overflow-y-auto">
-    {crew?.length > 0 ? (
-      crew.map((c, i) => (
-        <div key={i} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100">
-          <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center text-sm font-black text-green-600">
-            {(c.name || '?')[0]}
-          </div>
-          <div>
-            <div className="text-sm font-black uppercase tracking-tight">{c.name}</div>
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{c.role}</div>
-          </div>
-        </div>
-      ))
-    ) : (
-      <div className="text-center py-6 text-xs text-gray-300 font-black uppercase tracking-widest">No Crew Assigned</div>
-    )}
-  </div>
-);
-
-// Crew Assignment Form
-const CrewForm = ({ staff, onAssign }) => {
-  const [isFreelance, setIsFreelance] = useState(false);
-  const [selectedStaff, setSelectedStaff] = useState('');
-  const [freelanceName, setFreelanceName] = useState('');
-  const [role, setRole] = useState('Lead Producer');
-
-  const roles = ['Lead Producer', 'Director', 'Camera Op / DP', 'Video Editor', 'Graphic Design', 'Audio Op', 'Creative Lead'];
-
-  const handleAssign = () => {
-    const name = isFreelance ? freelanceName : staff.find(s => s.id === selectedStaff)?.firstName + ' ' + staff.find(s => s.id === selectedStaff)?.lastName;
-    if (!name?.trim()) return;
-    onAssign({ name: name.trim(), role, isFreelance });
-    setFreelanceName('');
-  };
-
-  return (
-    <div className="space-y-3 pt-5 border-t border-gray-100">
-      <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer">
-        <input
-          type="checkbox"
-          checked={isFreelance}
-          onChange={(e) => setIsFreelance(e.target.checked)}
-          className="w-4 h-4 accent-green-500"
-        />
-        <span className="text-xs font-black text-gray-500 uppercase tracking-widest">External Freelancer</span>
-      </label>
-
-      {isFreelance ? (
-        <input
-          type="text"
-          value={freelanceName}
-          onChange={(e) => setFreelanceName(e.target.value)}
-          placeholder="Enter Full Name..."
-          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold"
-        />
-      ) : (
-        <select
-          value={selectedStaff}
-          onChange={(e) => setSelectedStaff(e.target.value)}
-          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold appearance-none"
-        >
-          <option value="">Select Staff...</option>
-          {staff.map(s => (
-            <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>
-          ))}
-        </select>
-      )}
-
-      <select
-        value={role}
-        onChange={(e) => setRole(e.target.value)}
-        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold appearance-none"
-      >
-        {roles.map(r => <option key={r} value={r}>{r}</option>)}
-      </select>
-
-      <button
-        onClick={handleAssign}
-        className="w-full py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase"
-      >
-        Assign Role
-      </button>
-    </div>
-  );
-};
-
-// Schedule Shoot Form
-const ScheduleForm = ({ onSchedule }) => {
-  const [date, setDate] = useState('');
-  const [format, setFormat] = useState('Standard Shoot');
-
-  const formats = ['Standard Shoot', 'Recce / Scout', 'Travel Day', 'Live Stream'];
-
-  const handleSubmit = () => {
-    if (!date) return;
-    onSchedule({ date, format });
-    setDate('');
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold"
-        />
-        <select
-          value={format}
-          onChange={(e) => setFormat(e.target.value)}
-          className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold appearance-none"
-        >
-          {formats.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
-      </div>
-      <button
-        onClick={handleSubmit}
-        className="w-full py-3 bg-green-500 text-white rounded-xl text-xs font-black uppercase"
-      >
-        Add to Programme
-      </button>
-    </div>
-  );
-};
-
-// ============================================
-// MAIN COMPONENT
-// ============================================
-export default function ProductionCommand() {
-  // State
-  const [view, setView] = useState('month');
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  
-  // Data
-  const [projects, setProjects] = useState([]);
-  const [shoots, setShoots] = useState([]);
-  const [staff, setStaff] = useState([]);
-  const [deliverables, setDeliverables] = useState([]);
-  
-  // Selected project
-  const [selectedProjectId, setSelectedProjectId] = useState(null);
-  const [productionRecord, setProductionRecord] = useState(null);
-  
-  // Drag state
-  const [draggedShoot, setDraggedShoot] = useState(null);
-  
-  // Modal
-  const [showInitModal, setShowInitModal] = useState(false);
-
-  // Selected project data
-  const selectedProject = useMemo(() => 
-    projects.find(p => p.id === selectedProjectId),
-    [projects, selectedProjectId]
-  );
-
-  const projectShoots = useMemo(() =>
-    shoots.filter(s => s.linkedProjectId === selectedProjectId),
-    [shoots, selectedProjectId]
-  );
-
-  const projectDeliverables = useMemo(() =>
-    deliverables.filter(d => d.projectId === selectedProjectId),
-    [deliverables, selectedProjectId]
-  );
-
-  // Auth & Data Loading
-  useEffect(() => {
-    signInAnonymously(auth);
-    
-    const unsubAuth = onAuthStateChanged(auth, async (u) => {
-      if (!u) return;
-      setUser(u);
-      
-      try {
-        // Load projects from Notion API
-        const projRes = await fetch(`${NOTION_API_URL}/projects`);
-        const projData = await projRes.json();
-        setProjects(projData?.projects || []);
-        
-        // Load deliverables
-        const delRes = await fetch(`${NOTION_API_URL}/deliverables`);
-        const delData = await delRes.json();
-        setDeliverables(delData?.deliverables || []);
-        
-        // Load staff from Firebase
-        const staffSnap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "staff_directory"));
-        const staffList = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        staffList.sort((a, b) => (a.firstName || '').localeCompare(b.firstName || ''));
-        setStaff(staffList);
-        
-        setLoading(false);
-      } catch (err) {
-        console.error('Error loading data:', err);
-        setLoading(false);
-      }
-    });
-
-    return () => unsubAuth();
-  }, []);
-
-  // Listen to shoots
-  useEffect(() => {
-    if (!user) return;
-    
-    const unsubShoots = onSnapshot(
-      collection(db, "artifacts", APP_ID, "public", "data", "shoot_calendar_events"),
-      (snap) => {
-        setShoots(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      }
-    );
-
-    return () => unsubShoots();
-  }, [user]);
-
-  // Listen to production record when project selected
-  useEffect(() => {
-    if (!selectedProjectId || !user) return;
-    
-    const unsubRecord = onSnapshot(
-      doc(db, "artifacts", APP_ID, "public", "data", "production_records", selectedProjectId),
-      (snap) => {
-        if (snap.exists()) {
-          setProductionRecord(snap.data());
-        } else {
-          setProductionRecord({ totalBudget: 0, totalSpent: 0, receipts: [], crew: [] });
-        }
-      }
-    );
-
-    return () => unsubRecord();
-  }, [selectedProjectId, user]);
-
-  // Handlers
-  const handleDragStart = (e, shoot) => {
-    setDraggedShoot(shoot);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDrop = async (e, newDate) => {
-    e.preventDefault();
-    if (!draggedShoot) return;
-    
-    const newDateKey = toDateKey(newDate);
-    
-    // Update in Firebase
-    await updateDoc(doc(db, "artifacts", APP_ID, "public", "data", "shoot_calendar_events", draggedShoot.id), {
-      date: newDateKey,
-      startDateTime: newDateKey,
-    });
-    
-    setDraggedShoot(null);
-  };
-
-  const handleShootClick = (projectId) => {
-    if (projectId) {
-      setSelectedProjectId(projectId);
-      setView('project');
-    }
-  };
-
-  const handleScheduleShoot = async ({ date, format }) => {
-    if (!selectedProjectId) return;
-    
-    await addDoc(collection(db, "artifacts", APP_ID, "public", "data", "shoot_calendar_events"), {
-      date,
-      startDateTime: date,
-      format,
-      projectTitle: selectedProject?.title || 'Production',
-      linkedProjectId: selectedProjectId,
-      createdAt: new Date().toISOString(),
-    });
-  };
-
-  const handleUpdateBudget = async (newBudget) => {
-    if (!selectedProjectId) return;
-    await updateDoc(doc(db, "artifacts", APP_ID, "public", "data", "production_records", selectedProjectId), {
-      totalBudget: newBudget,
-    });
-  };
-
-  const handleAddReceipt = async (receipt) => {
-    if (!selectedProjectId) return;
-    const newReceipts = [...(productionRecord?.receipts || []), receipt];
-    await updateDoc(doc(db, "artifacts", APP_ID, "public", "data", "production_records", selectedProjectId), {
-      receipts: newReceipts,
-      totalSpent: newReceipts.reduce((sum, r) => sum + r.amt, 0),
-    });
-  };
-
-  const handleAssignCrew = async (crewMember) => {
-    if (!selectedProjectId) return;
-    const newCrew = [...(productionRecord?.crew || []), crewMember];
-    await updateDoc(doc(db, "artifacts", APP_ID, "public", "data", "production_records", selectedProjectId), {
-      crew: newCrew,
-    });
-  };
-
-  const handleInitProduction = async (projectId, budget) => {
-    await setDoc(doc(db, "artifacts", APP_ID, "public", "data", "production_records", projectId), {
-      totalBudget: budget,
-      totalSpent: 0,
-      receipts: [],
-      crew: [],
-    });
-    setSelectedProjectId(projectId);
-    setView('project');
-    setShowInitModal(false);
-  };
-
-  // Calendar generation
-  const calendarDays = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startOffset = (firstDay.getDay() + 6) % 7;
-    
-    const days = [];
-    const today = toDateKey(new Date());
-    
-    // Previous month days
-    const prevMonth = new Date(year, month, 0);
-    for (let i = startOffset - 1; i >= 0; i--) {
-      const d = new Date(year, month - 1, prevMonth.getDate() - i);
-      days.push({ date: d, isOtherMonth: true, isToday: false });
-    }
-    
-    // Current month days
-    for (let d = 1; d <= lastDay.getDate(); d++) {
-      const date = new Date(year, month, d);
-      days.push({
-        date,
-        isOtherMonth: false,
-        isToday: toDateKey(date) === today,
-      });
-    }
-    
-    // Next month days
-    const remaining = (7 - (days.length % 7)) % 7;
-    for (let i = 1; i <= remaining; i++) {
-      const d = new Date(year, month + 1, i);
-      days.push({ date: d, isOtherMonth: true, isToday: false });
-    }
-    
-    return days;
-  }, [currentDate]);
-
-  const weekDays = useMemo(() => {
-    const start = new Date(currentDate);
-    const day = start.getDay();
-    const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-    start.setDate(diff);
-    
-    const today = toDateKey(new Date());
-    const days = [];
-    
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(start);
-      date.setDate(start.getDate() + i);
-      days.push({
-        date,
-        isToday: toDateKey(date) === today,
-      });
-    }
-    
-    return days;
-  }, [currentDate]);
-
-  const getShootsForDate = useCallback((date) => {
-    const dateKey = toDateKey(date);
-    return shoots.filter(s => {
-      const shootDate = s.date || s.startDateTime;
-      return toDateKey(shootDate) === dateKey;
-    });
-  }, [shoots]);
-
-  // Navigation
-  const navMonth = (delta) => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + delta);
-    setCurrentDate(newDate);
-  };
-
-  const navWeek = (delta) => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + delta);
-    setCurrentDate(newDate);
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-lg min-h-[600px] flex items-center justify-center">
-        <Spinner text="SYNCING WITH NOTION..." />
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-3xl border border-gray-200 shadow-lg overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Header */}
-      <header className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
-        <DotGrid />
-        <button
-          onClick={() => setShowInitModal(true)}
-          className="px-5 py-3 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase tracking-wide hover:bg-gray-50 transition-colors"
-        >
-          + Initialise Project
-        </button>
-      </header>
-
-      {/* Navigation Tabs */}
-      <nav className="flex gap-2 p-2 bg-gray-50 border-b border-gray-100">
-        <TabButton active={view === 'month'} onClick={() => setView('month')}>Calendar View</TabButton>
-        <TabButton active={view === 'week'} onClick={() => setView('week')}>Weekly Workflow</TabButton>
-        <TabButton active={view === 'project'} onClick={() => setView('project')}>Project Desk</TabButton>
-      </nav>
-
-      {/* Month View */}
-      {view === 'month' && (
-        <div>
-          <div className="flex items-center justify-between px-6 py-4 bg-white">
-            <button onClick={() => navMonth(-1)} className="text-xs font-black text-gray-300 hover:text-gray-900 transition-colors">
-              ← PREVIOUS
-            </button>
-            <h2 className="text-sm font-black uppercase tracking-widest text-green-600">
-              {currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
-            </h2>
-            <button onClick={() => navMonth(1)} className="text-xs font-black text-gray-300 hover:text-gray-900 transition-colors">
-              NEXT →
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
-            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(d => (
-              <div key={d} className="py-3 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                {d}
-              </div>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-7">
-            {calendarDays.map((day, i) => (
-              <DayCell
-                key={i}
-                date={day.date}
-                isToday={day.isToday}
-                isOtherMonth={day.isOtherMonth}
-                shoots={getShootsForDate(day.date)}
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-                onShootClick={handleShootClick}
-                onDragStart={handleDragStart}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Week View */}
-      {view === 'week' && (
-        <div className="p-8 bg-gray-50 min-h-[500px]">
-          <div className="flex items-center justify-between mb-6 max-w-4xl mx-auto">
-            <button onClick={() => navWeek(-7)} className="px-5 py-3 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase">
-              ← Prev Week
-            </button>
-            <h2 className="text-xs font-black uppercase tracking-widest">
-              Week Commencing {weekDays[0]?.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-            </h2>
-            <button onClick={() => navWeek(7)} className="px-5 py-3 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase">
-              Next Week →
-            </button>
-          </div>
-          
-          <div className="space-y-4 max-w-4xl mx-auto">
-            {weekDays.map((day, i) => (
-              <WeekDayRow
-                key={i}
-                date={day.date}
-                isToday={day.isToday}
-                shoots={getShootsForDate(day.date)}
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-                onShootClick={handleShootClick}
-                onDragStart={handleDragStart}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Project Desk View */}
-      {view === 'project' && (
-        <div className="flex flex-col h-[700px]">
-          {/* Project Header */}
-          <div className="px-8 py-6 bg-white border-b border-gray-100 flex items-end justify-between shrink-0">
-            <div className="w-96">
-              <div className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Active Project Environment</div>
-              <select
-                value={selectedProjectId || ''}
-                onChange={(e) => setSelectedProjectId(e.target.value || null)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold appearance-none"
-              >
-                <option value="">Select Project Entry...</option>
-                {projects.map(p => (
-                  <option key={p.id} value={p.id}>{p.client || 'DMG'} – {p.title || 'Untitled'}</option>
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Command | DMG</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --brand: #43B049; --ink: #1C1C1C; --border: #EAECEF; --ink-sub: #757575; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { background: #FFFFFF; }
+        body { font-family: 'Inter', sans-serif; background: #FFFFFF; padding: 12px; -webkit-font-smoothing: antialiased; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: -0.04em; }
+        .shoot-pill { cursor: pointer; transition: all 0.2s ease; }
+        .shoot-pill:hover { transform: translateY(-2px); border-color: #43B049 !important; box-shadow: 0 4px 12px rgba(67,176,73,0.15); }
+        .modal-overlay { animation: fadeIn 0.2s ease; }
+        .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .status-green { background: #DCFCE7; color: #166534; }
+        .status-yellow { background: #FEF9C3; color: #854D0E; }
+        .status-blue { background: #DBEAFE; color: #1E40AF; }
+        .status-red { background: #FEE2E2; color: #991B1B; }
+        .status-gray { background: #F3F4F6; color: #374151; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const APP_ID = "dmg-command-centre-native";
+        const NOTION_API = 'https://us-central1-dmg-command-centre-native.cloudfunctions.net/api';
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        const toDateKey = (d) => d ? new Date(d).toISOString().split('T')[0] : null;
+        const formatCurrency = (n) => `£${(n||0).toLocaleString('en-GB', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
+
+        const getStatusColor = (status) => {
+            if (!status) return 'gray';
+            const s = status.toLowerCase();
+            if (s.includes('complete') || s.includes('done') || s.includes('live') || s.includes('won')) return 'green';
+            if (s.includes('progress') || s.includes('active') || s.includes('review')) return 'blue';
+            if (s.includes('pending') || s.includes('wait') || s.includes('hold')) return 'yellow';
+            if (s.includes('cancel') || s.includes('lost') || s.includes('block')) return 'red';
+            return 'gray';
+        };
+
+        const DotGrid = () => (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, 6px)', gap:3, width:14, height:14}}>
+                {[0,1,2,3].map(i => (
+                    <span key={i} style={{
+                        width:6, height:6, borderRadius:'50%', backgroundColor:'#43B049',
+                        animation: `pulse 2.5s infinite ease-in-out ${i * 0.3}s`
+                    }}/>
                 ))}
-              </select>
             </div>
-            <div className="text-right">
-              <div className="text-xs font-black text-green-600 uppercase tracking-widest mb-1">
-                {selectedProject?.client || '-'}
-              </div>
-              <div className="text-3xl font-black uppercase tracking-tight">
-                {selectedProject?.title || 'Select Project'}
-              </div>
+        );
+
+        const Spinner = ({ text = 'SYNCING...' }) => (
+            <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'80px 20px'}}>
+                <div style={{ width:32, height:32, border:'4px solid #E5E7EB', borderTopColor:'#43B049', borderRadius:'50%', animation:'spin 1s linear infinite', marginBottom:16 }}/>
+                <span style={{fontSize:11, fontWeight:900, color:'#CCC', textTransform:'uppercase', letterSpacing:'0.1em'}}>{text}</span>
             </div>
-          </div>
+        );
 
-          {/* Project Content */}
-          <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-            {selectedProjectId ? (
-              <div className="grid grid-cols-2 gap-6">
-                {/* Left Column */}
-                <div className="space-y-6">
-                  <BudgetCard
-                    budget={productionRecord?.totalBudget || 0}
-                    spent={productionRecord?.totalSpent || 0}
-                    onUpdateBudget={handleUpdateBudget}
-                  />
-                  
-                  <div className="bg-white border border-gray-200 rounded-3xl p-6">
-                    <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Expenditure Records</div>
-                    <ReceiptList receipts={productionRecord?.receipts} />
-                    <div className="mt-4">
-                      <ReceiptForm onAddReceipt={handleAddReceipt} />
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-gray-200 rounded-3xl p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="w-6 h-6 bg-green-500 text-white rounded-md flex items-center justify-center text-xs font-black">2</span>
-                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Asset Deliverables</span>
-                    </div>
-                    <div className="space-y-2">
-                      {projectDeliverables.length > 0 ? (
-                        projectDeliverables.map((d, i) => (
-                          <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                            <span className="text-sm font-black uppercase tracking-tight">{d.name || d.title || 'Untitled'}</span>
-                            <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">{d.status || 'Active'}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-xs text-gray-300 font-bold italic text-center py-4">No linked assets in Notion.</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-6">
-                  <div className="bg-green-50/50 border border-green-200 rounded-3xl p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="w-6 h-6 bg-green-500 text-white rounded-md flex items-center justify-center text-xs font-black">3</span>
-                      <span className="text-xs font-black text-green-600 uppercase tracking-widest">Production Schedule</span>
-                    </div>
-                    <ScheduleForm onSchedule={handleScheduleShoot} />
-                    <div className="mt-4 space-y-2">
-                      {projectShoots.map(s => (
-                        <div key={s.id} className="flex justify-between text-xs font-black text-green-600 bg-white p-3 rounded-xl border border-green-100">
-                          <span>{new Date(s.date || s.startDateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
-                          <span className="uppercase tracking-widest">{s.format || 'Shoot'}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-gray-200 rounded-3xl p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="w-6 h-6 bg-green-500 text-white rounded-md flex items-center justify-center text-xs font-black">4</span>
-                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Assigned Crew</span>
-                    </div>
-                    <CrewList crew={productionRecord?.crew} />
-                    <CrewForm staff={staff} onAssign={handleAssignCrew} />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="text-6xl mb-4">📋</div>
-                  <div className="text-sm font-black text-gray-400 uppercase tracking-widest">Select a project to view details</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Init Modal */}
-      {showInitModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl p-10 w-full max-w-md shadow-2xl">
-            <h3 className="text-2xl font-black uppercase mb-2 tracking-tight">Initialise Production</h3>
-            <p className="text-xs text-gray-400 font-bold mb-8 uppercase tracking-widest">Connect Notion Ledger to Environment</p>
+        const CustomDropdown = ({ value, onChange, options, placeholder, label }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const ref = useRef(null);
             
-            <InitForm
-              projects={projects}
-              onSubmit={handleInitProduction}
-              onCancel={() => setShowInitModal(false)}
-            />
-          </div>
-        </div>
-      )}
+            useEffect(() => {
+                const handleClickOutside = (e) => {
+                    if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => document.removeEventListener('mousedown', handleClickOutside);
+            }, []);
 
-      {/* CSS Animations */}
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.3; transform: scale(0.9); }
-          50% { opacity: 1; transform: scale(1.1); }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
-  );
-}
+            const selectedOption = options.find(o => o.value === value);
 
-// Init Form Component
-function InitForm({ projects, onSubmit, onCancel }) {
-  const [projectId, setProjectId] = useState('');
-  const [budget, setBudget] = useState('');
+            return (
+                <div ref={ref} style={{position:'relative', width:'100%'}}>
+                    {label && <div style={{fontSize:9, fontWeight:800, textTransform:'uppercase', color:'#757575', marginBottom:6, letterSpacing:'0.1em'}}>{label}</div>}
+                    <div 
+                        onClick={() => setIsOpen(!isOpen)}
+                        style={{
+                            padding:'12px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:12,
+                            cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center',
+                            transition:'all 0.2s', borderColor: isOpen ? '#43B049' : '#EAECEF'
+                        }}
+                    >
+                        <span style={{fontSize:12, fontWeight:700, color: selectedOption ? '#1C1C1C' : '#9CA3AF'}}>
+                            {selectedOption?.label || placeholder || 'Select...'}
+                        </span>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition:'transform 0.2s'}}>
+                            <path d="M3 4.5L6 7.5L9 4.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    {isOpen && (
+                        <div style={{
+                            position:'absolute', top:'100%', left:0, right:0, marginTop:4, background:'white',
+                            border:'1px solid #EAECEF', borderRadius:12, boxShadow:'0 10px 40px rgba(0,0,0,0.1)',
+                            zIndex:100, maxHeight:240, overflowY:'auto'
+                        }}>
+                            {options.map((opt, i) => (
+                                <div key={i}
+                                    onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                                    style={{
+                                        padding:'12px 16px', cursor:'pointer', fontSize:12, fontWeight:600,
+                                        background: opt.value === value ? '#F0FDF4' : 'transparent',
+                                        color: opt.value === value ? '#43B049' : '#1C1C1C',
+                                        borderBottom: i < options.length - 1 ? '1px solid #F3F4F6' : 'none'
+                                    }}
+                                >
+                                    {opt.label}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        };
 
-  return (
-    <div className="space-y-4">
-      <select
-        value={projectId}
-        onChange={(e) => setProjectId(e.target.value)}
-        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold appearance-none"
-      >
-        <option value="">Choose Ledger Entry...</option>
-        {projects.map(p => (
-          <option key={p.id} value={p.id}>{p.client || 'DMG'} – {p.title || 'Untitled'}</option>
-        ))}
-      </select>
-      
-      <input
-        type="number"
-        value={budget}
-        onChange={(e) => setBudget(e.target.value)}
-        placeholder="Programme Budget (£)"
-        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold"
-      />
-      
-      <div className="flex gap-3 pt-4">
-        <button
-          onClick={onCancel}
-          className="flex-1 py-3 bg-white border border-gray-200 rounded-xl text-xs font-black uppercase"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={() => projectId && onSubmit(projectId, parseFloat(budget) || 0)}
-          className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-xs font-black uppercase"
-        >
-          Confirm
-        </button>
-      </div>
-    </div>
-  );
-}
+        const TabButton = ({ active, onClick, children }) => (
+            <button onClick={onClick} style={{
+                flex:1, padding:'12px 16px', fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'0.08em',
+                borderRadius:12, border:'none', cursor:'pointer', transition:'all 0.2s',
+                background: active ? 'white' : 'transparent',
+                color: active ? '#1C1C1C' : '#757575',
+                boxShadow: active ? '0 2px 8px rgba(0,0,0,0.06)' : 'none'
+            }}>
+                {children}
+            </button>
+        );
+
+        // Shoot Detail Modal - works with just shoot data OR full project data
+        const ShootDetailModal = ({ shoot, project, allShoots, onClose, onOpenDesk }) => {
+            if (!shoot) return null;
+
+            // Use project data if available, otherwise fall back to shoot data
+            const title = project?.title || shoot.projectTitle || shoot.title || 'Untitled';
+            const client = project?.client || '';
+            const projectShoots = project ? allShoots.filter(s => s.linkedProjectId === project.id) : [shoot];
+
+            return (
+                <div className="modal-overlay" onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200}}>
+                    <div onClick={e => e.stopPropagation()} style={{background:'white', borderRadius:24, width:'100%', maxWidth:600, maxHeight:'90vh', overflow:'hidden', boxShadow:'0 25px 50px rgba(0,0,0,0.25)'}}>
+                        {/* Header */}
+                        <div style={{padding:'24px 28px', borderBottom:'1px solid #EAECEF', display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+                            <div>
+                                <div style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4}}>{client || 'DMG'}</div>
+                                <h2 style={{fontSize:20, fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.02em'}}>{title}</h2>
+                            </div>
+                            <button onClick={onClose} style={{background:'#F3F4F6', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"/></svg>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div style={{padding:'24px 28px', maxHeight:'60vh', overflowY:'auto'}}>
+                            {/* Status Row */}
+                            <div style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:24}}>
+                                {project?.status && <span className={`status-badge status-${getStatusColor(project.status)}`}>{project.status}</span>}
+                                {project?.dealStage && <span className={`status-badge status-${getStatusColor(project.dealStage)}`}>{project.dealStage}</span>}
+                                {project?.priority && <span className="status-badge status-yellow">{project.priority}</span>}
+                                {!project && <span className="status-badge status-green">{shoot.format || 'SHOOT'}</span>}
+                            </div>
+
+                            {/* Shoot Info */}
+                            <div style={{marginBottom:24, padding:16, background:'#F0FDF4', borderRadius:16, borderLeft:'4px solid #43B049'}}>
+                                <div style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8}}>Scheduled Shoot</div>
+                                <div style={{fontSize:16, fontWeight:900}}>
+                                    {new Date(shoot.date || shoot.startDateTime).toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}
+                                </div>
+                                <div style={{fontSize:11, fontWeight:700, color:'#757575', marginTop:4}}>{shoot.format || 'Production Day'}</div>
+                            </div>
+
+                            {/* Workflow Statuses - only if we have project data */}
+                            {project && (project.creativeWorkflowStatus || project.productionWorkflowStatus || project.socialWorkflowStatus) && (
+                                <div style={{marginBottom:24}}>
+                                    <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12}}>Workflow Status</div>
+                                    <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:12}}>
+                                        <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                            <div style={{fontSize:8, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Creative</div>
+                                            <div style={{fontSize:11, fontWeight:800, color: project.creativeWorkflowStatus ? '#1C1C1C' : '#CCC'}}>{project.creativeWorkflowStatus || '—'}</div>
+                                        </div>
+                                        <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                            <div style={{fontSize:8, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Production</div>
+                                            <div style={{fontSize:11, fontWeight:800, color: project.productionWorkflowStatus ? '#1C1C1C' : '#CCC'}}>{project.productionWorkflowStatus || '—'}</div>
+                                        </div>
+                                        <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                            <div style={{fontSize:8, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Social</div>
+                                            <div style={{fontSize:11, fontWeight:800, color: project.socialWorkflowStatus ? '#1C1C1C' : '#CCC'}}>{project.socialWorkflowStatus || '—'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Team - only if we have project data with leads */}
+                            {project && (project.creativeLead || project.productionLead || project.salesLead) && (
+                                <div style={{marginBottom:24}}>
+                                    <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12}}>Team</div>
+                                    <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12}}>
+                                        {project.creativeLead && (
+                                            <div style={{display:'flex', alignItems:'center', gap:10, padding:12, background:'#F9FAFB', borderRadius:12}}>
+                                                <div style={{width:36, height:36, borderRadius:10, background:'#E6468B', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:900}}>{project.creativeLead[0]}</div>
+                                                <div>
+                                                    <div style={{fontSize:11, fontWeight:800}}>{project.creativeLead}</div>
+                                                    <div style={{fontSize:9, fontWeight:600, color:'#757575', textTransform:'uppercase'}}>Creative Lead</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {project.productionLead && (
+                                            <div style={{display:'flex', alignItems:'center', gap:10, padding:12, background:'#F9FAFB', borderRadius:12}}>
+                                                <div style={{width:36, height:36, borderRadius:10, background:'#43B049', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:900}}>{project.productionLead[0]}</div>
+                                                <div>
+                                                    <div style={{fontSize:11, fontWeight:800}}>{project.productionLead}</div>
+                                                    <div style={{fontSize:9, fontWeight:600, color:'#757575', textTransform:'uppercase'}}>Production Lead</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {project.salesLead && (
+                                            <div style={{display:'flex', alignItems:'center', gap:10, padding:12, background:'#F9FAFB', borderRadius:12}}>
+                                                <div style={{width:36, height:36, borderRadius:10, background:'#F2C316', display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:12, fontWeight:900}}>{project.salesLead[0]}</div>
+                                                <div>
+                                                    <div style={{fontSize:11, fontWeight:800}}>{project.salesLead}</div>
+                                                    <div style={{fontSize:9, fontWeight:600, color:'#757575', textTransform:'uppercase'}}>Sales Lead</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Links */}
+                            {project && (project.creativeResponseUrl || project.responseDeck || project.liveLink) && (
+                                <div style={{marginBottom:24}}>
+                                    <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12}}>Links</div>
+                                    <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                                        {project.creativeResponseUrl && (
+                                            <a href={project.creativeResponseUrl} target="_blank" rel="noopener noreferrer" style={{
+                                                padding:'8px 14px', background:'#F3F4F6', borderRadius:8, textDecoration:'none',
+                                                fontSize:10, fontWeight:800, color:'#1C1C1C', textTransform:'uppercase', display:'inline-flex', alignItems:'center', gap:6
+                                            }}>
+                                                📄 Creative Response
+                                            </a>
+                                        )}
+                                        {project.responseDeck && (
+                                            <a href={project.responseDeck} target="_blank" rel="noopener noreferrer" style={{
+                                                padding:'8px 14px', background:'#F3F4F6', borderRadius:8, textDecoration:'none',
+                                                fontSize:10, fontWeight:800, color:'#1C1C1C', textTransform:'uppercase', display:'inline-flex', alignItems:'center', gap:6
+                                            }}>
+                                                📊 Response Deck
+                                            </a>
+                                        )}
+                                        {project.liveLink && (
+                                            <a href={project.liveLink} target="_blank" rel="noopener noreferrer" style={{
+                                                padding:'8px 14px', background:'#DCFCE7', borderRadius:8, textDecoration:'none',
+                                                fontSize:10, fontWeight:800, color:'#166534', textTransform:'uppercase', display:'inline-flex', alignItems:'center', gap:6
+                                            }}>
+                                                🔗 Live Link
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Dates */}
+                            {project && (project.dueDate || project.internalDueDate) && (
+                                <div style={{marginBottom:24}}>
+                                    <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12}}>Dates</div>
+                                    <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12}}>
+                                        <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                            <div style={{fontSize:8, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Client Due</div>
+                                            <div style={{fontSize:12, fontWeight:800}}>{project.dueDate ? new Date(project.dueDate).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '—'}</div>
+                                        </div>
+                                        <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                            <div style={{fontSize:8, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Internal Due</div>
+                                            <div style={{fontSize:12, fontWeight:800}}>{project.internalDueDate ? new Date(project.internalDueDate).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '—'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Other Scheduled Shoots */}
+                            {projectShoots.length > 1 && (
+                                <div>
+                                    <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12}}>All Shoots for this Project</div>
+                                    <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                                        {projectShoots.map(s => (
+                                            <div key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:12, background: s.id === shoot.id ? '#F0FDF4' : '#F9FAFB', borderRadius:10, borderLeft: s.id === shoot.id ? '4px solid #43B049' : '4px solid transparent'}}>
+                                                <span style={{fontSize:11, fontWeight:800}}>{new Date(s.date || s.startDateTime).toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'})}</span>
+                                                <span style={{fontSize:10, fontWeight:700, color:'#43B049', textTransform:'uppercase'}}>{s.format || 'Shoot'}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{padding:'16px 28px', borderTop:'1px solid #EAECEF', display:'flex', gap:12}}>
+                            {project?.url && (
+                                <a href={project.url} target="_blank" rel="noopener noreferrer" style={{
+                                    flex:1, padding:'12px', background:'#F3F4F6', borderRadius:10, textDecoration:'none',
+                                    fontSize:10, fontWeight:800, color:'#1C1C1C', textTransform:'uppercase', textAlign:'center'
+                                }}>
+                                    Open in Notion
+                                </a>
+                            )}
+                            {project && (
+                                <button onClick={() => { onClose(); onOpenDesk(project.id); }} style={{
+                                    flex:1, padding:'12px', background:'#1C1C1C', borderRadius:10, border:'none',
+                                    fontSize:10, fontWeight:800, color:'white', textTransform:'uppercase', cursor:'pointer'
+                                }}>
+                                    Open Project Desk
+                                </button>
+                            )}
+                            {!project && (
+                                <button onClick={onClose} style={{
+                                    flex:1, padding:'12px', background:'#1C1C1C', borderRadius:10, border:'none',
+                                    fontSize:10, fontWeight:800, color:'white', textTransform:'uppercase', cursor:'pointer'
+                                }}>
+                                    Close
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Shoot Item
+        const ShootItem = ({ shoot, onClick, small }) => {
+            const displayTitle = shoot.projectTitle || shoot.title || 'Untitled Shoot';
+            
+            return (
+                <div className="shoot-pill" 
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        console.log('ShootItem clicked:', shoot); 
+                        onClick(shoot); 
+                    }}
+                    style={{
+                        padding: small ? '6px 8px' : '8px 10px',
+                        background: 'white', border: '1px solid #EAECEF',
+                        borderLeft: '4px solid #43B049', borderRadius: 10, marginBottom: small ? 4 : 6
+                    }}
+                >
+                    <div style={{fontSize: small ? 9 : 10, fontWeight:900, color:'#1C1C1C', textTransform:'uppercase', lineHeight:1.2, marginBottom:2}}>
+                        {displayTitle}
+                    </div>
+                    <div style={{fontSize: small ? 7 : 8, fontWeight:700, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.02em'}}>
+                        {shoot.format || 'PRODUCTION'}
+                    </div>
+                </div>
+            );
+        };
+
+        // Day Cell
+        const DayCell = ({ date, isToday, isOtherMonth, shoots, onShootClick }) => (
+            <div style={{
+                minHeight: 120, padding: 10, background: isToday ? '#F0FDF4' : 'white',
+                borderBottom: '1px solid #EAECEF', borderRight: '1px solid #EAECEF',
+                opacity: isOtherMonth ? 0.4 : 1
+            }}>
+                <div style={{fontSize:11, fontWeight:900, color: isToday ? '#43B049' : '#CCC', marginBottom:6}}>
+                    {date.getDate()}
+                </div>
+                <div>
+                    {shoots.map(shoot => (
+                        <ShootItem key={shoot.id} shoot={shoot} onClick={onShootClick} small />
+                    ))}
+                </div>
+            </div>
+        );
+
+        // Week Row
+        const WeekRow = ({ date, isToday, shoots, onShootClick }) => (
+            <div style={{
+                display:'flex', gap:24, padding:20, background:'white',
+                borderRadius:20, border: `1px solid ${isToday ? '#43B049' : '#EAECEF'}`, marginBottom:10
+            }}>
+                <div style={{width:60, textAlign:'center', flexShrink:0}}>
+                    <div style={{fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', color: isToday ? '#43B049' : '#757575'}}>
+                        {date.toLocaleDateString('en-GB', { weekday: 'short' })}
+                    </div>
+                    <div style={{fontSize:28, fontWeight:900, color: isToday ? '#43B049' : '#1C1C1C'}}>
+                        {date.getDate()}
+                    </div>
+                </div>
+                <div style={{flex:1}}>
+                    {shoots.length > 0 ? shoots.map(shoot => (
+                        <div key={shoot.id} className="shoot-pill" 
+                            onClick={() => { console.log('Week shoot clicked:', shoot); onShootClick(shoot); }}
+                            style={{ padding:16, background:'#F9FAFB', borderRadius:16, marginBottom:8, borderLeft:'4px solid #43B049', cursor:'pointer' }}>
+                            <div style={{fontWeight:900, fontSize:14, textTransform:'uppercase', letterSpacing:'-0.02em', color:'#1C1C1C'}}>
+                                {shoot.projectTitle || shoot.title || 'Untitled Shoot'}
+                            </div>
+                            <div style={{fontSize:10, fontWeight:700, color:'#43B049', textTransform:'uppercase', marginTop:4, letterSpacing:'0.05em'}}>
+                                {shoot.format || 'PRODUCTION'}
+                            </div>
+                        </div>
+                    )) : (
+                        <div style={{fontSize:11, fontWeight:800, color:'#DDD', textTransform:'uppercase', letterSpacing:'0.1em', padding:'16px 0'}}>
+                            No Activity Logged
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+
+        // Main App
+        const ProductionCommand = () => {
+            const [view, setView] = useState('month');
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [loading, setLoading] = useState(true);
+            const [user, setUser] = useState(null);
+
+            const [projects, setProjects] = useState([]);
+            const [shoots, setShoots] = useState([]);
+            const [staff, setStaff] = useState([]);
+            const [deliverables, setDeliverables] = useState([]);
+
+            const [selectedProjectId, setSelectedProjectId] = useState(null);
+            const [productionRecord, setProductionRecord] = useState(null);
+            
+            // For the detail modal
+            const [selectedShoot, setSelectedShoot] = useState(null);
+
+            const [showInitModal, setShowInitModal] = useState(false);
+            const [editingBudget, setEditingBudget] = useState(false);
+            const [newBudget, setNewBudget] = useState('');
+
+            const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
+            const projectShoots = useMemo(() => shoots.filter(s => s.linkedProjectId === selectedProjectId), [shoots, selectedProjectId]);
+
+            // Get project for the selected shoot
+            const shootProject = useMemo(() => {
+                if (!selectedShoot) return null;
+                return projects.find(p => p.id === selectedShoot.linkedProjectId);
+            }, [selectedShoot, projects]);
+
+            // Auth & Data
+            useEffect(() => {
+                auth.signInAnonymously();
+                const unsubAuth = auth.onAuthStateChanged(async (u) => {
+                    if (!u) return;
+                    setUser(u);
+                    try {
+                        console.log('Fetching from Notion API...');
+                        const [projRes, delRes] = await Promise.all([
+                            fetch(`${NOTION_API}/projects`).then(r => r.json()),
+                            fetch(`${NOTION_API}/deliverables`).then(r => r.json())
+                        ]);
+                        console.log('Projects loaded:', projRes);
+                        console.log('Deliverables loaded:', delRes);
+                        setProjects(projRes?.projects || []);
+                        setDeliverables(delRes?.deliverables || []);
+
+                        const staffSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("staff_directory").get();
+                        setStaff(staffSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.firstName || '').localeCompare(b.firstName || '')));
+                        setLoading(false);
+                    } catch (err) {
+                        console.error('API Error:', err);
+                        setLoading(false);
+                    }
+                });
+                return () => unsubAuth();
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                const unsub = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events")
+                    .onSnapshot(snap => {
+                        const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                        console.log('Shoots from Firebase:', items);
+                        setShoots(items);
+                    });
+                return () => unsub();
+            }, [user]);
+
+            useEffect(() => {
+                if (!selectedProjectId || !user) return;
+                const unsub = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .onSnapshot(snap => setProductionRecord(snap.exists ? snap.data() : { totalBudget: 0, totalSpent: 0, receipts: [], crew: [] }));
+                return () => unsub();
+            }, [selectedProjectId, user]);
+
+            // Handle shoot click - ALWAYS opens modal with shoot data
+            const handleShootClick = useCallback((shoot) => {
+                console.log('handleShootClick called with:', shoot);
+                setSelectedShoot(shoot);
+            }, []);
+
+            const handleOpenDesk = (projectId) => {
+                setSelectedProjectId(projectId);
+                setView('project');
+            };
+
+            const handleScheduleShoot = async () => {
+                const date = document.getElementById('shootDate')?.value;
+                const format = document.getElementById('shootFormat')?.value || 'Standard Shoot';
+                if (!selectedProjectId || !date) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events").add({
+                    date, startDateTime: date, format,
+                    projectTitle: selectedProject?.client ? `${selectedProject.client} - ${selectedProject.title}` : (selectedProject?.title || 'Production'),
+                    linkedProjectId: selectedProjectId,
+                    createdAt: new Date().toISOString()
+                });
+                document.getElementById('shootDate').value = '';
+            };
+
+            const handleUpdateBudget = async () => {
+                if (!selectedProjectId) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .set({ ...productionRecord, totalBudget: parseFloat(newBudget) || 0 }, { merge: true });
+                setEditingBudget(false);
+            };
+
+            const handleAddReceipt = async () => {
+                const title = document.getElementById('recTitle')?.value;
+                const amt = parseFloat(document.getElementById('recAmt')?.value);
+                if (!selectedProjectId || !title || isNaN(amt)) return;
+                const newReceipts = [...(productionRecord?.receipts || []), { title, amt, date: new Date().toISOString() }];
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .set({ ...productionRecord, receipts: newReceipts, totalSpent: newReceipts.reduce((s, r) => s + r.amt, 0) }, { merge: true });
+                document.getElementById('recTitle').value = '';
+                document.getElementById('recAmt').value = '';
+            };
+
+            const handleAssignCrew = async () => {
+                const role = document.getElementById('roleSelect')?.value;
+                const staffId = document.getElementById('staffSelect')?.value;
+                const s = staff.find(x => x.id === staffId);
+                if (!selectedProjectId || !s) return;
+                const name = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(selectedProjectId)
+                    .set({ ...productionRecord, crew: [...(productionRecord?.crew || []), { name, role, staffId }] }, { merge: true });
+            };
+
+            const handleInitProduction = async () => {
+                const id = document.getElementById('modalProjectSelect')?.value;
+                const budget = parseFloat(document.getElementById('modalBudget')?.value) || 0;
+                if (!id) return;
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("production_records").doc(id)
+                    .set({ totalBudget: budget, totalSpent: 0, receipts: [], crew: [] });
+                setSelectedProjectId(id);
+                setView('project');
+                setShowInitModal(false);
+            };
+
+            // Calendar
+            const getShootsForDate = useCallback((date) => {
+                const dateStr = date.toISOString().split('T')[0];
+                return shoots.filter(s => {
+                    const targetDate = s.date || s.shootDate || s.dueDate || (s.startDateTime ? s.startDateTime.split('T')[0] : null);
+                    return targetDate === dateStr;
+                });
+            }, [shoots]);
+
+            const calendarDays = useMemo(() => {
+                const year = currentDate.getFullYear(), month = currentDate.getMonth();
+                const firstDay = new Date(year, month, 1), lastDay = new Date(year, month + 1, 0);
+                const startOffset = (firstDay.getDay() + 6) % 7;
+                const days = [], today = toDateKey(new Date());
+                const prevMonth = new Date(year, month, 0);
+                for (let i = startOffset - 1; i >= 0; i--) {
+                    const d = new Date(year, month - 1, prevMonth.getDate() - i);
+                    days.push({ date: d, isOtherMonth: true, isToday: false });
+                }
+                for (let d = 1; d <= lastDay.getDate(); d++) {
+                    const date = new Date(year, month, d);
+                    days.push({ date, isOtherMonth: false, isToday: toDateKey(date) === today });
+                }
+                const remaining = (7 - (days.length % 7)) % 7;
+                for (let i = 1; i <= remaining; i++) {
+                    const d = new Date(year, month + 1, i);
+                    days.push({ date: d, isOtherMonth: true, isToday: false });
+                }
+                return days;
+            }, [currentDate]);
+
+            const weekDays = useMemo(() => {
+                const start = new Date(currentDate), day = start.getDay();
+                start.setDate(start.getDate() - day + (day === 0 ? -6 : 1));
+                const today = toDateKey(new Date()), days = [];
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(start); date.setDate(start.getDate() + i);
+                    days.push({ date, isToday: toDateKey(date) === today });
+                }
+                return days;
+            }, [currentDate]);
+
+            const navMonth = (delta) => { const d = new Date(currentDate); d.setMonth(d.getMonth() + delta); setCurrentDate(d); };
+            const navWeek = (delta) => { const d = new Date(currentDate); d.setDate(d.getDate() + delta); setCurrentDate(d); };
+
+            const projectOptions = useMemo(() => [
+                { value: '', label: 'Select Project...' },
+                ...projects.map(p => ({ value: p.id, label: `${p.client || 'DMG'} – ${p.title || 'Untitled'}` }))
+            ], [projects]);
+
+            const staffOptions = useMemo(() => staff.map(s => ({ value: s.id, label: `${s.firstName || ''} ${s.lastName || ''}`.trim() })), [staff]);
+
+            const roleOptions = [
+                { value: 'Lead Producer', label: 'Lead Producer' },
+                { value: 'Director', label: 'Director' },
+                { value: 'Camera Op', label: 'Camera Op / DP' },
+                { value: 'Editor', label: 'Video Editor' },
+                { value: 'Designer', label: 'Graphic Designer' },
+                { value: 'Creative Lead', label: 'Creative Lead' },
+            ];
+
+            const formatOptions = [
+                { value: 'Standard Shoot', label: 'Standard Shoot' },
+                { value: 'Recce', label: 'Recce / Scout' },
+                { value: 'Travel', label: 'Travel Day' },
+                { value: 'Live', label: 'Live Stream' },
+            ];
+
+            if (loading) return (
+                <div style={{background:'white', borderRadius:20, border:'1px solid #EAECEF', minHeight:500}}>
+                    <Spinner text="SYNCING WITH NOTION..." />
+                </div>
+            );
+
+            const budget = productionRecord?.totalBudget || 0;
+            const spent = productionRecord?.totalSpent || 0;
+
+            return (
+                <div style={{background:'white', borderRadius:20, border:'1px solid #EAECEF', overflow:'hidden', maxWidth:1200, margin:'0 auto'}}>
+                    {/* Header */}
+                    <header style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 24px', borderBottom:'1px solid #EAECEF', background:'white'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:12}}>
+                            <DotGrid />
+                            <span style={{fontSize:11, fontWeight:900, letterSpacing:'0.1em', textTransform:'uppercase', color:'#1C1C1C'}}>PRODUCTION COMMAND</span>
+                        </div>
+                        <button onClick={() => setShowInitModal(true)} style={{
+                            padding:'10px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:10,
+                            fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', cursor:'pointer'
+                        }}>
+                            + Initialise Project
+                        </button>
+                    </header>
+
+                    {/* Tabs */}
+                    <nav style={{display:'flex', gap:8, padding:8, background:'#F9FAFB', borderBottom:'1px solid #EAECEF'}}>
+                        <TabButton active={view === 'month'} onClick={() => setView('month')}>Calendar View</TabButton>
+                        <TabButton active={view === 'week'} onClick={() => setView('week')}>Weekly Workflow</TabButton>
+                        <TabButton active={view === 'project'} onClick={() => setView('project')}>Project Desk</TabButton>
+                    </nav>
+
+                    {/* Month View */}
+                    {view === 'month' && (
+                        <div style={{background:'white'}}>
+                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 24px'}}>
+                                <button onClick={() => navMonth(-1)} style={{background:'none', border:'none', fontSize:11, fontWeight:800, color:'#CCC', cursor:'pointer'}}>← PREVIOUS</button>
+                                <h2 style={{fontSize:13, fontWeight:900, textTransform:'uppercase', letterSpacing:'0.08em', color:'#43B049'}}>
+                                    {currentDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+                                </h2>
+                                <button onClick={() => navMonth(1)} style={{background:'none', border:'none', fontSize:11, fontWeight:800, color:'#CCC', cursor:'pointer'}}>NEXT →</button>
+                            </div>
+                            <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', borderBottom:'1px solid #EAECEF', background:'#F9FAFB'}}>
+                                {['MON','TUE','WED','THU','FRI','SAT','SUN'].map(d => (
+                                    <div key={d} style={{padding:'10px 0', textAlign:'center', fontSize:9, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em'}}>{d}</div>
+                                ))}
+                            </div>
+                            <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)'}}>
+                                {calendarDays.map((day, i) => (
+                                    <DayCell key={i} date={day.date} isToday={day.isToday} isOtherMonth={day.isOtherMonth}
+                                        shoots={getShootsForDate(day.date)} onShootClick={handleShootClick} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Week View */}
+                    {view === 'week' && (
+                        <div style={{padding:24, background:'white', minHeight:450}}>
+                            <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, maxWidth:900, margin:'0 auto 20px'}}>
+                                <button onClick={() => navWeek(-7)} style={{padding:'10px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>← Prev Week</button>
+                                <h2 style={{fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'0.08em'}}>
+                                    Week Commencing {weekDays[0]?.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                                </h2>
+                                <button onClick={() => navWeek(7)} style={{padding:'10px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Next Week →</button>
+                            </div>
+                            <div style={{maxWidth:900, margin:'0 auto'}}>
+                                {weekDays.map((day, i) => (
+                                    <WeekRow key={i} date={day.date} isToday={day.isToday} shoots={getShootsForDate(day.date)} onShootClick={handleShootClick} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Project View */}
+                    {view === 'project' && (
+                        <div style={{display:'flex', flexDirection:'column', height:650, background:'white'}}>
+                            <div style={{padding:'20px 24px', borderBottom:'1px solid #EAECEF', display:'flex', alignItems:'flex-end', justifyContent:'space-between'}}>
+                                <div style={{width:350}}>
+                                    <CustomDropdown 
+                                        label="Active Project"
+                                        value={selectedProjectId || ''}
+                                        onChange={(v) => setSelectedProjectId(v || null)}
+                                        options={projectOptions}
+                                        placeholder="Select Project..."
+                                    />
+                                </div>
+                                <div style={{textAlign:'right'}}>
+                                    <div style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.08em'}}>{selectedProject?.client || '-'}</div>
+                                    <div style={{fontSize:22, fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.02em'}}>{selectedProject?.title || 'Select Project'}</div>
+                                </div>
+                            </div>
+
+                            <div style={{flex:1, overflow:'auto', padding:20, background:'white'}}>
+                                {selectedProjectId ? (
+                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
+                                        {/* Left Column */}
+                                        <div>
+                                            {/* Budget Card */}
+                                            <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20, marginBottom:16}}>
+                                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
+                                                    <div style={{display:'flex', alignItems:'center', gap:8}}>
+                                                        <span style={{width:20, height:20, background:'#43B049', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>1</span>
+                                                        <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.08em'}}>Finance</span>
+                                                    </div>
+                                                    <button onClick={() => { setEditingBudget(!editingBudget); setNewBudget(budget); }}
+                                                        style={{background:'none', border:'none', fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', cursor:'pointer'}}>
+                                                        {editingBudget ? 'Cancel' : 'Edit'}
+                                                    </button>
+                                                </div>
+                                                {editingBudget ? (
+                                                    <div style={{display:'flex', gap:8, marginBottom:16}}>
+                                                        <input type="number" value={newBudget} onChange={(e) => setNewBudget(e.target.value)}
+                                                            style={{flex:1, padding:'10px 12px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontWeight:700}} placeholder="Budget..."/>
+                                                        <button onClick={handleUpdateBudget} style={{padding:'10px 16px', background:'#1C1C1C', color:'white', border:'none', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Save</button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{marginBottom:12}}>
+                                                        <span className="mono" style={{fontSize:36, fontWeight:900}}>{formatCurrency(budget)}</span>
+                                                        <span style={{fontSize:10, fontWeight:800, color:'#CCC', marginLeft:8, textTransform:'uppercase'}}>Allocated</span>
+                                                    </div>
+                                                )}
+                                                <div style={{height:8, background:'#F3F4F6', borderRadius:4, overflow:'hidden', marginBottom:16}}>
+                                                    <div style={{height:'100%', background:'#43B049', width:`${budget > 0 ? Math.min((spent/budget)*100, 100) : 0}%`, transition:'width 0.5s'}}/>
+                                                </div>
+                                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                                                    <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                                        <div style={{fontSize:9, fontWeight:800, color:'#EF4444', textTransform:'uppercase', marginBottom:4}}>Spent</div>
+                                                        <div className="mono" style={{fontSize:18, fontWeight:900}}>{formatCurrency(spent)}</div>
+                                                    </div>
+                                                    <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                                        <div style={{fontSize:9, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Balance</div>
+                                                        <div className="mono" style={{fontSize:18, fontWeight:900}}>{formatCurrency(budget - spent)}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {/* Receipts */}
+                                            <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20}}>
+                                                <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12}}>Expenditure</div>
+                                                <div style={{maxHeight:140, overflow:'auto', marginBottom:12}}>
+                                                    {productionRecord?.receipts?.length > 0 ? productionRecord.receipts.map((r, i) => (
+                                                        <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'8px 10px', background:'#F9FAFB', borderRadius:8, marginBottom:6}}>
+                                                            <span style={{fontSize:10, fontWeight:800, textTransform:'uppercase'}}>{r.title}</span>
+                                                            <span className="mono" style={{fontSize:11, fontWeight:700}}>{formatCurrency(r.amt)}</span>
+                                                        </div>
+                                                    )) : <div style={{fontSize:10, color:'#CCC', fontStyle:'italic', textAlign:'center', padding:16}}>No expenses</div>}
+                                                </div>
+                                                <div style={{display:'flex', gap:8, marginBottom:8}}>
+                                                    <input id="recTitle" placeholder="Item" style={{flex:1, padding:'10px 12px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:11, fontWeight:600}}/>
+                                                    <input id="recAmt" type="number" placeholder="£" style={{width:80, padding:'10px 12px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:11, fontWeight:600}}/>
+                                                </div>
+                                                <button onClick={handleAddReceipt} style={{width:'100%', padding:'12px', background:'#1C1C1C', color:'white', border:'none', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Add Expense</button>
+                                            </div>
+                                        </div>
+                                        {/* Right Column */}
+                                        <div>
+                                            {/* Schedule */}
+                                            <div style={{background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:20, padding:20, marginBottom:16}}>
+                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
+                                                    <span style={{width:20, height:20, background:'#43B049', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>2</span>
+                                                    <span style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.08em'}}>Schedule</span>
+                                                </div>
+                                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
+                                                    <input type="date" id="shootDate" style={{padding:'12px 14px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:11, fontWeight:600}}/>
+                                                    <CustomDropdown value="Standard Shoot" onChange={(v) => document.getElementById('shootFormat').value = v} options={formatOptions} />
+                                                    <input type="hidden" id="shootFormat" defaultValue="Standard Shoot" />
+                                                </div>
+                                                <button onClick={handleScheduleShoot} style={{width:'100%', padding:'12px', background:'#43B049', color:'white', border:'none', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Add Shoot</button>
+                                                <div style={{marginTop:12}}>
+                                                    {projectShoots.map(s => (
+                                                        <div key={s.id} style={{display:'flex', justifyContent:'space-between', fontSize:10, fontWeight:700, color:'#43B049', background:'white', padding:'10px 12px', borderRadius:10, marginTop:6}}>
+                                                            <span>{new Date(s.date || s.startDateTime).toLocaleDateString('en-GB', { weekday:'short', day: 'numeric', month: 'short' })}</span>
+                                                            <span style={{textTransform:'uppercase'}}>{s.format || 'Shoot'}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            {/* Crew */}
+                                            <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20}}>
+                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
+                                                    <span style={{width:20, height:20, background:'#43B049', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>3</span>
+                                                    <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.08em'}}>Crew</span>
+                                                </div>
+                                                <div style={{maxHeight:120, overflow:'auto', marginBottom:16}}>
+                                                    {productionRecord?.crew?.length > 0 ? productionRecord.crew.map((c, i) => (
+                                                        <div key={i} style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'#F9FAFB', borderRadius:12, marginBottom:6}}>
+                                                            <div style={{width:36, height:36, borderRadius:10, background:'#F0FDF4', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:'#43B049'}}>{(c.name||'?')[0]}</div>
+                                                            <div>
+                                                                <div style={{fontSize:12, fontWeight:800, textTransform:'uppercase'}}>{c.name}</div>
+                                                                <div style={{fontSize:9, fontWeight:600, color:'#757575', textTransform:'uppercase'}}>{c.role}</div>
+                                                            </div>
+                                                        </div>
+                                                    )) : <div style={{fontSize:10, color:'#CCC', fontStyle:'italic', textAlign:'center', padding:16}}>No crew assigned</div>}
+                                                </div>
+                                                <div style={{marginBottom:12}}>
+                                                    <CustomDropdown value="" onChange={(v) => document.getElementById('staffSelect').value = v} options={staffOptions} placeholder="Select Team Member..." />
+                                                    <input type="hidden" id="staffSelect" />
+                                                </div>
+                                                <div style={{marginBottom:12}}>
+                                                    <CustomDropdown value="Lead Producer" onChange={(v) => document.getElementById('roleSelect').value = v} options={roleOptions} />
+                                                    <input type="hidden" id="roleSelect" defaultValue="Lead Producer" />
+                                                </div>
+                                                <button onClick={handleAssignCrew} style={{width:'100%', padding:'12px', background:'#1C1C1C', color:'white', border:'none', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Assign to Project</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{display:'flex', alignItems:'center', justifyContent:'center', height:'100%'}}>
+                                        <div style={{textAlign:'center'}}>
+                                            <div style={{fontSize:48, marginBottom:12}}>📋</div>
+                                            <div style={{fontSize:11, fontWeight:800, color:'#CCC', textTransform:'uppercase', letterSpacing:'0.1em'}}>Select a project to view details</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Shoot Detail Modal */}
+                    {selectedShoot && (
+                        <ShootDetailModal 
+                            shoot={selectedShoot}
+                            project={shootProject}
+                            allShoots={shoots}
+                            onClose={() => setSelectedShoot(null)} 
+                            onOpenDesk={handleOpenDesk}
+                        />
+                    )}
+
+                    {/* Init Modal */}
+                    {showInitModal && (
+                        <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100}}>
+                            <div style={{background:'white', borderRadius:20, padding:32, width:'100%', maxWidth:400}}>
+                                <h3 style={{fontSize:18, fontWeight:900, textTransform:'uppercase', marginBottom:4}}>Initialise Production</h3>
+                                <p style={{fontSize:10, color:'#757575', fontWeight:600, marginBottom:24, textTransform:'uppercase', letterSpacing:'0.08em'}}>Connect project to environment</p>
+                                <div style={{marginBottom:16}}>
+                                    <CustomDropdown 
+                                        label="Project"
+                                        value=""
+                                        onChange={(v) => document.getElementById('modalProjectSelect').value = v}
+                                        options={projectOptions}
+                                        placeholder="Select Project..."
+                                    />
+                                    <input type="hidden" id="modalProjectSelect" />
+                                </div>
+                                <div style={{marginBottom:24}}>
+                                    <div style={{fontSize:9, fontWeight:800, textTransform:'uppercase', color:'#757575', marginBottom:6, letterSpacing:'0.1em'}}>Budget</div>
+                                    <input id="modalBudget" type="number" style={{width:'100%', padding:'12px 14px', background:'white', border:'1px solid #EAECEF', borderRadius:12, fontSize:12, fontWeight:600}} placeholder="£0.00"/>
+                                </div>
+                                <div style={{display:'flex', gap:12}}>
+                                    <button onClick={() => setShowInitModal(false)} style={{flex:1, padding:'14px', background:'white', border:'1px solid #EAECEF', borderRadius:12, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Cancel</button>
+                                    <button onClick={handleInitProduction} style={{flex:1, padding:'14px', background:'#1C1C1C', color:'white', border:'none', borderRadius:12, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Confirm</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ProductionCommand />);
+    </script>
+</body>
+</html>
