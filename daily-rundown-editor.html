@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Rundown | Editorial</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --editorial: #E94B4B;
+            --v-sport: #43B049; --v-uk: #21A0D8; --v-respawn: #8B5CF6; --v-main: #1C1C1C; --v-money: #F59E0B; --v-spotlight: #E6468B;
+            --done: #10B981; --pending: #F59E0B; --blocked: #EF4444;
+            --ink: #1C1C1C; --ink-light: #6B7280; --border: #E5E7EB; --surface: #FFFFFF; --surface-alt: #F9FAFB;
+            --radius: 16px; --radius-sm: 10px; --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: transparent; color: var(--ink); padding: 16px; -webkit-font-smoothing: antialiased; }
+        .dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--editorial); }
+        .dots span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
+        .dots span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        .dots span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        .top-left { display: flex; align-items: center; gap: 12px; }
+        .date-label { font-size: 11px; font-weight: 700; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.05em; }
+        .btn { padding: 10px 16px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; border: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 6px; }
+        .btn:hover { border-color: var(--ink); }
+        .btn-primary { background: var(--ink); color: white; border-color: var(--ink); }
+        .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        @media (max-width: 900px) { .columns { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .columns { grid-template-columns: 1fr; } }
+        .column { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-height: 400px; }
+        .column-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .column-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--editorial); }
+        .column-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); }
+        .column-count { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--ink-light); background: var(--surface-alt); padding: 2px 8px; border-radius: 10px; }
+        .quick-add { display: flex; gap: 8px; margin-bottom: 12px; }
+        .quick-add input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; font-family: inherit; outline: none; }
+        .quick-add input:focus { border-color: var(--editorial); }
+        .select-wrapper { position: relative; }
+        .select-wrapper::after { content: ''; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid var(--ink-light); pointer-events: none; }
+        .quick-add select { padding: 10px 28px 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; font-family: inherit; background: var(--surface); cursor: pointer; appearance: none; -webkit-appearance: none; }
+        .items { display: flex; flex-direction: column; gap: 8px; }
+        .item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--surface-alt); border-radius: var(--radius-sm); border: 1px solid transparent; transition: var(--transition); }
+        .item:hover { border-color: var(--border); }
+        .item-status { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 1px; transition: var(--transition); }
+        .item-status:hover { border-color: var(--ink-light); }
+        .item-status.done { background: var(--done); border-color: var(--done); color: white; }
+        .item-status.pending { background: var(--pending); border-color: var(--pending); color: white; }
+        .item-status.blocked { background: var(--blocked); border-color: var(--blocked); color: white; }
+        .item-content { flex: 1; min-width: 0; }
+        .item-vertical { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 6px; border-radius: 4px; margin-bottom: 4px; }
+        .item-vertical.sport { background: rgba(67, 176, 73, 0.1); color: var(--v-sport); }
+        .item-vertical.uk { background: rgba(33, 160, 216, 0.1); color: var(--v-uk); }
+        .item-vertical.respawn { background: rgba(139, 92, 246, 0.1); color: var(--v-respawn); }
+        .item-vertical.main { background: rgba(28, 28, 28, 0.1); color: var(--v-main); }
+        .item-vertical.money { background: rgba(245, 158, 11, 0.1); color: var(--v-money); }
+        .item-vertical.spotlight { background: rgba(230, 70, 139, 0.1); color: var(--v-spotlight); }
+        .item-title { font-size: 12px; font-weight: 600; color: var(--ink); line-height: 1.4; }
+        .item-delete { opacity: 0; width: 20px; height: 20px; border: none; background: none; color: var(--ink-light); cursor: pointer; font-size: 14px; transition: var(--transition); }
+        .item:hover .item-delete { opacity: 1; }
+        .item-delete:hover { color: var(--blocked); }
+        .empty { text-align: center; padding: 40px 20px; color: var(--ink-light); font-size: 11px; font-weight: 500; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--ink); color: white; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; opacity: 0; transition: all 0.3s ease; z-index: 1000; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="top-left">
+            <div class="dots"><span></span><span></span><span></span><span></span></div>
+            <span class="date-label" id="dateLabel">Loading...</span>
+        </div>
+        <button class="btn btn-primary" onclick="copyForSlack()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy for Slack
+        </button>
+    </div>
+    <div class="columns" id="columns"></div>
+    <div class="toast" id="toast">Copied to clipboard</div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const collectionPath = "artifacts/dmg-command-centre-native/public/data/daily_rundowns";
+
+    const SECTIONS = ['FILMING', 'INTERNAL', 'EXTERNAL', 'GOING LIVE'];
+    const VERTICALS = ['SPORT', 'UK', 'RESPAWN', 'MAIN', 'MONEY', 'SPOTLIGHT'];
+    const STATUS_CYCLE = ['', 'done', 'pending', 'blocked'];
+    const STATUS_ICONS = { done: '✓', pending: '◔', blocked: '!' };
+    const STATUS_EMOJI = { done: ':white_check_mark:', pending: ':hourglass_flowing_sand:', blocked: ':red_circle:' };
+    let items = [];
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    function renderColumns() {
+        document.getElementById('columns').innerHTML = SECTIONS.map(section => `
+            <div class="column" data-section="${section}">
+                <div class="column-header"><div class="column-dot"></div><span class="column-title">${section}</span><span class="column-count" id="count-${section.replace(' ', '-')}">0</span></div>
+                <div class="quick-add">
+                    <div class="select-wrapper"><select id="vertical-${section.replace(' ', '-')}">${VERTICALS.map(v => `<option value="${v}">${v}</option>`).join('')}</select></div>
+                    <input type="text" placeholder="Add item..." id="input-${section.replace(' ', '-')}" onkeydown="if(event.key==='Enter') window.addItem('${section}')">
+                </div>
+                <div class="items" id="items-${section.replace(' ', '-')}"></div>
+            </div>
+        `).join('');
+    }
+
+    function renderItems() {
+        SECTIONS.forEach(section => {
+            const sectionItems = items.filter(i => i.section === section);
+            const container = document.getElementById(`items-${section.replace(' ', '-')}`);
+            document.getElementById(`count-${section.replace(' ', '-')}`).textContent = sectionItems.length;
+            container.innerHTML = sectionItems.length === 0 ? '<div class="empty">No items yet</div>' : sectionItems.map(item => `
+                <div class="item" data-id="${item.id}">
+                    <div class="item-status ${item.status || ''}" onclick="window.cycleStatus('${item.id}', '${item.status || ''}')">${item.status ? STATUS_ICONS[item.status] : ''}</div>
+                    <div class="item-content"><span class="item-vertical ${item.vertical.toLowerCase()}">${item.vertical}</span><div class="item-title">${item.title}</div></div>
+                    <button class="item-delete" onclick="window.deleteItem('${item.id}')">×</button>
+                </div>
+            `).join('');
+        });
+    }
+
+    window.addItem = async (section) => {
+        const input = document.getElementById(`input-${section.replace(' ', '-')}`);
+        const vertical = document.getElementById(`vertical-${section.replace(' ', '-')}`).value;
+        if (!input.value.trim()) return;
+        await addDoc(collection(db, collectionPath), { dateKey: today, section, vertical, title: input.value.trim(), status: '', createdAt: serverTimestamp() });
+        input.value = '';
+    };
+
+    window.cycleStatus = async (id, currentStatus) => {
+        const nextStatus = STATUS_CYCLE[(STATUS_CYCLE.indexOf(currentStatus) + 1) % STATUS_CYCLE.length];
+        await updateDoc(doc(db, collectionPath, id), { status: nextStatus });
+    };
+
+    window.deleteItem = async (id) => { await deleteDoc(doc(db, collectionPath, id)); };
+
+    window.copyForSlack = () => {
+        let text = '';
+        SECTIONS.forEach(section => {
+            const sectionItems = items.filter(i => i.section === section);
+            text += `**${section}**\n`;
+            if (sectionItems.length === 0) { text += `_No items_\n`; } 
+            else { sectionItems.forEach(item => { text += `${item.vertical} - ${item.title} ${item.status ? STATUS_EMOJI[item.status] : ':white_circle:'}\n`; }); }
+            text += '\n';
+        });
+        navigator.clipboard.writeText(text).then(() => {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        });
+    };
+
+    signInAnonymously(auth).then(() => {
+        renderColumns();
+        onSnapshot(query(collection(db, collectionPath), where("dateKey", "==", today)), (snapshot) => {
+            items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            items.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            renderItems();
+        });
+    });
+</script>
+</body>
+</html>

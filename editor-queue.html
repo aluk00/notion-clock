@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Designer Queue | DMG</title>
+    <title>Editor Queue | DMG</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -31,7 +31,6 @@
         .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
         .dots span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-
         .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
         .queue-label { font-size: 11px; font-weight: 700; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.05em; }
         .stats { margin-left: auto; display: flex; gap: 16px; }
@@ -39,61 +38,46 @@
         .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
         .stat-value { font-size: 12px; font-weight: 700; }
         .stat-label { font-size: 10px; color: var(--ink-light); }
-
-        .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-        .tab { padding: 8px 14px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: var(--transition); }
-        .tab:hover { border-color: var(--ink-light); }
-        .tab.active { background: var(--ink); color: white; border-color: var(--ink); }
-
         .columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         @media (max-width: 900px) { .columns { grid-template-columns: 1fr; } }
-
         .column { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-height: 400px; }
         .column-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
         .column-dot { width: 8px; height: 8px; border-radius: 50%; }
         .column-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); }
         .column-count { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--ink-light); background: var(--surface-alt); padding: 2px 8px; border-radius: 10px; }
-
         .cards { display: flex; flex-direction: column; gap: 10px; }
-
         .card { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; position: relative; transition: var(--transition); }
         .card:hover { border-color: var(--ink-light); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
-
         .card-priority { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
         .card-priority.high { background: var(--urgent); }
         .card-priority.medium { background: var(--warning); }
         .card-priority.low { background: var(--success); }
-
-        .card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
         .card-type { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; background: var(--production-light); color: var(--production); }
-        .card-source { font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
-        .card-source.notion { background: rgba(33, 160, 216, 0.1); color: #21A0D8; }
-        .card-source.quick { background: rgba(230, 70, 139, 0.1); color: #E6468B; }
-        .card-effort { font-size: 9px; font-weight: 600; color: var(--ink-light); margin-left: auto; }
-
+        .card-effort { font-size: 9px; font-weight: 600; color: var(--ink-light); }
         .card-title { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.4; margin-bottom: 6px; }
         .card-project { font-size: 10px; color: var(--ink-light); margin-bottom: 10px; }
-
-        .card-meta { display: flex; align-items: center; gap: 8px; }
+        .card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
         .card-due { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: var(--surface); }
         .card-due.overdue { background: rgba(239, 68, 68, 0.1); color: var(--urgent); }
         .card-due.soon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-        .card-designer { font-size: 10px; color: var(--ink-light); margin-left: auto; }
-
+        .card-editor { font-size: 10px; color: var(--ink-light); margin-left: auto; }
+        .card-blocker { font-size: 10px; font-weight: 600; color: var(--urgent); padding: 4px 8px; border-radius: 4px; background: rgba(239, 68, 68, 0.1); margin-top: 8px; display: flex; align-items: center; gap: 4px; }
         .empty { text-align: center; padding: 40px 20px; color: var(--ink-light); font-size: 11px; font-weight: 500; }
         .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; gap: 12px; }
         .loading-text { font-size: 11px; font-weight: 600; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.1em; }
+        .error { text-align: center; padding: 40px; color: var(--urgent); font-size: 12px; }
     </style>
 </head>
 <body>
     <div class="top-bar">
         <div class="dots"><span></span><span></span><span></span><span></span></div>
-        <span class="queue-label">Designer Queue</span>
+        <span class="queue-label">Editor Queue</span>
         <div class="stats">
             <div class="stat">
                 <div class="stat-dot" style="background: var(--urgent)"></div>
-                <span class="stat-value" id="urgentCount">0</span>
-                <span class="stat-label">Urgent</span>
+                <span class="stat-value" id="blockedCount">0</span>
+                <span class="stat-label">Blocked</span>
             </div>
             <div class="stat">
                 <div class="stat-dot" style="background: var(--warning)"></div>
@@ -102,49 +86,23 @@
             </div>
         </div>
     </div>
-
-    <div class="tabs">
-        <div class="tab active" data-view="all" onclick="switchTab('all')">All</div>
-        <div class="tab" data-view="deliverables" onclick="switchTab('deliverables')">Deliverables</div>
-        <div class="tab" data-view="quick" onclick="switchTab('quick')">Quick Requests</div>
-    </div>
-
     <div class="columns" id="columns">
         <div class="loading">
             <div class="dots"><span></span><span></span><span></span><span></span></div>
             <span class="loading-text">Loading queue...</span>
         </div>
     </div>
-
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-        authDomain: "dmg-command-centre-native.firebaseapp.com",
-        projectId: "dmg-command-centre-native",
-        storageBucket: "dmg-command-centre-native.firebasestorage.app",
-        messagingSenderId: "223535956454",
-        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-    };
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const APP_ID = "dmg-command-centre-native";
     const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
+    // Column definitions based on DESK STATE / workflow
     const COLUMNS = [
-        { key: 'with-design', title: 'With Design', color: 'var(--success)', filter: i => i.status === 'With Design' || i.status === 'Not Started' },
-        { key: 'in-progress', title: 'In Progress', color: 'var(--warning)', filter: i => i.status === 'In Progress' },
-        { key: 'review', title: 'Ready for Review', color: 'var(--production)', filter: i => i.status === 'Ready for Review' || i.status === 'Done' }
+        { key: 'ready', title: 'Ready for Edit', color: 'var(--success)', filter: d => d.deskState === 'Ready for Edit' && !d.editBlocker },
+        { key: 'in-progress', title: 'In Progress', color: 'var(--warning)', filter: d => d.deskState === 'In Edit' || d.productionStatus === 'In Progress' },
+        { key: 'blocked', title: 'Blocked', color: 'var(--urgent)', filter: d => d.editBlocker === true }
     ];
 
     let deliverables = [];
-    let quickRequests = [];
-    let staff = {};
-    let currentView = 'all';
 
     function isOverdue(dateStr) {
         if (!dateStr) return false;
@@ -170,72 +128,42 @@
         return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     }
 
-    function getPriority(item) {
-        if (item.priority === 'Urgent' || item.priorityLevel === 'High') return 'high';
-        if (item.priority === 'Tomorrow' || item.priorityLevel === 'Medium') return 'medium';
+    function getPriority(d) {
+        if (d.priorityLevel === 'High' || d.priorityLevel === 'Urgent') return 'high';
+        if (d.priorityLevel === 'Medium') return 'medium';
         return 'low';
     }
 
-    function normaliseDeliverable(d) {
-        let status = 'With Design';
-        if (d.deskState === 'With Design' || d.productionStatus === 'Not Started') status = 'With Design';
-        else if (d.deskState === 'In Design' || d.productionStatus === 'In Progress') status = 'In Progress';
-        else if (d.deskState === 'Design Complete' || d.productionStatus === 'Ready for Review') status = 'Ready for Review';
-
-        return {
-            id: d.id,
-            source: 'notion',
-            title: d.title || 'Untitled',
-            project: d.projectTitle || d.project || '',
-            type: d.staticAssetsNeeded?.[0] || 'Graphic',
-            effort: d.designEffort || 0,
-            dueDate: d.dueDate,
-            designer: d.graphicDesigner || 'Unassigned',
-            status: status,
-            priority: d.priorityLevel || 'Standard'
-        };
-    }
-
-    function normaliseQuickRequest(r) {
-        return {
-            id: r.id,
-            source: 'quick',
-            title: r.headline || 'Untitled',
-            project: r.seriesName || '',
-            type: r.assetType || 'Asset',
-            effort: ({ Thumbnail: 0.5, Headline: 0.5, Swipe: 1, Deck: 2, Template: 1.5 }[r.assetType] || 1),
-            dueDate: r.deadline,
-            designer: staff[r.designerId] || 'Unassigned',
-            status: r.status || 'Not Started',
-            priority: r.priority || 'Standard'
-        };
+    function getAssetType(d) {
+        if (d.movingAssetsNeeded?.length > 0) {
+            if (d.movingAssetsNeeded.includes('9:16 Video')) return '9:16 VIDEO';
+            if (d.movingAssetsNeeded.includes('16:9 Video')) return '16:9 VIDEO';
+            return 'VIDEO';
+        }
+        return 'EDIT';
     }
 
     function render() {
-        let items = [];
-        if (currentView === 'all' || currentView === 'deliverables') {
-            const designDeliverables = deliverables.filter(d => 
-                (d.staticAssetsNeeded?.length > 0 || d.staticAssetCount > 0) &&
-                d.status !== 'Live' && d.status !== 'Published'
-            ).map(normaliseDeliverable);
-            items = items.concat(designDeliverables);
-        }
-        if (currentView === 'all' || currentView === 'quick') {
-            const qr = quickRequests.filter(r => r.status !== 'Done').map(normaliseQuickRequest);
-            items = items.concat(qr);
-        }
+        // Filter to only deliverables that need editing (have moving assets or are in edit workflow)
+        const editQueue = deliverables.filter(d => 
+            (d.movingAssetsNeeded?.length > 0 || d.movingAssetCount > 0) &&
+            d.status !== 'Live' && d.status !== 'Published' && d.status !== 'Complete'
+        );
 
-        const urgent = items.filter(i => getPriority(i) === 'high').length;
-        const dueToday = items.filter(i => i.dueDate?.startsWith(new Date().toISOString().split('T')[0])).length;
+        // Stats
+        const blocked = editQueue.filter(d => d.editBlocker).length;
+        const dueToday = editQueue.filter(d => {
+            if (!d.dueDate) return false;
+            return d.dueDate.startsWith(new Date().toISOString().split('T')[0]);
+        }).length;
 
-        document.getElementById('urgentCount').textContent = urgent;
+        document.getElementById('blockedCount').textContent = blocked;
         document.getElementById('dueTodayCount').textContent = dueToday;
 
         document.getElementById('columns').innerHTML = COLUMNS.map(col => {
-            const colItems = items.filter(col.filter);
-            colItems.sort((a, b) => {
-                const pOrder = { high: 0, medium: 1, low: 2 };
-                if (pOrder[getPriority(a)] !== pOrder[getPriority(b)]) return pOrder[getPriority(a)] - pOrder[getPriority(b)];
+            const items = editQueue.filter(col.filter);
+            // Sort by due date
+            items.sort((a, b) => {
                 if (!a.dueDate) return 1;
                 if (!b.dueDate) return -1;
                 return new Date(a.dueDate) - new Date(b.dueDate);
@@ -246,26 +174,26 @@
                     <div class="column-header">
                         <div class="column-dot" style="background: ${col.color}"></div>
                         <span class="column-title">${col.title}</span>
-                        <span class="column-count">${colItems.length}</span>
+                        <span class="column-count">${items.length}</span>
                     </div>
                     <div class="cards">
-                        ${colItems.length === 0 ? '<div class="empty">No items</div>' : colItems.map(item => {
-                            const overdue = isOverdue(item.dueDate);
-                            const soon = isDueSoon(item.dueDate);
+                        ${items.length === 0 ? '<div class="empty">No items</div>' : items.map(d => {
+                            const overdue = isOverdue(d.dueDate);
+                            const soon = isDueSoon(d.dueDate);
                             return `
                                 <div class="card">
-                                    <div class="card-priority ${getPriority(item)}"></div>
+                                    <div class="card-priority ${getPriority(d)}"></div>
                                     <div class="card-top">
-                                        <span class="card-type">${item.type}</span>
-                                        <span class="card-source ${item.source}">${item.source === 'notion' ? 'DEL' : 'QR'}</span>
-                                        <span class="card-effort">${item.effort} pts</span>
+                                        <span class="card-type">${getAssetType(d)}</span>
+                                        <span class="card-effort">${d.editorEffort || 0} pts</span>
                                     </div>
-                                    <div class="card-title">${item.title}</div>
-                                    ${item.project ? `<div class="card-project">${item.project}</div>` : ''}
+                                    <div class="card-title">${d.title || 'Untitled'}</div>
+                                    <div class="card-project">${d.projectTitle || d.project || 'No project'}</div>
                                     <div class="card-meta">
-                                        ${item.dueDate ? `<span class="card-due ${overdue ? 'overdue' : (soon ? 'soon' : '')}">${formatDate(item.dueDate)}</span>` : ''}
-                                        <span class="card-designer">${item.designer}</span>
+                                        ${d.dueDate ? `<span class="card-due ${overdue ? 'overdue' : (soon ? 'soon' : '')}">${formatDate(d.dueDate)}</span>` : ''}
+                                        <span class="card-editor">${d.videoEditor || 'Unassigned'}</span>
                                     </div>
+                                    ${d.editBlocker ? `<div class="card-blocker">⚠️ ${typeof d.editBlocker === 'string' ? d.editBlocker : 'Blocked'}</div>` : ''}
                                 </div>
                             `;
                         }).join('')}
@@ -275,37 +203,21 @@
         }).join('');
     }
 
-    window.switchTab = (view) => {
-        currentView = view;
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelector(`.tab[data-view="${view}"]`).classList.add('active');
-        render();
-    };
-
-    async function loadDeliverables() {
+    async function loadData() {
         try {
             const res = await fetch(`${API_URL}/deliverables`);
             const data = await res.json();
             deliverables = data.deliverables || data.projects || [];
             render();
-        } catch (err) { console.error('Failed to load deliverables', err); }
+        } catch (err) {
+            console.error('Failed to load deliverables', err);
+            document.getElementById('columns').innerHTML = '<div class="error">Failed to load queue. Check API connection.</div>';
+        }
     }
 
-    async function loadStaff() {
-        const snap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "staff_directory"));
-        snap.docs.forEach(d => { const data = d.data(); staff[d.id] = `${data.firstName} ${data.lastName}`; });
-    }
-
-    signInAnonymously(auth).then(async () => {
-        await loadStaff();
-        await loadDeliverables();
-        onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), (snap) => {
-            quickRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            render();
-        });
-    });
-
-    setInterval(loadDeliverables, 60000);
+    loadData();
+    // Refresh every 60 seconds
+    setInterval(loadData, 60000);
 </script>
 </body>
 </html>
