@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Rundown | Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --editorial: #E94B4B;
+            --v-sport: #43B049; --v-uk: #21A0D8; --v-respawn: #8B5CF6; --v-main: #1C1C1C; --v-money: #F59E0B; --v-spotlight: #E6468B;
+            --done: #10B981; --pending: #F59E0B; --blocked: #EF4444;
+            --ink: #1C1C1C; --ink-light: #6B7280; --border: #E5E7EB; --surface: #FFFFFF; --surface-alt: #F9FAFB;
+            --radius: 16px; --radius-sm: 10px; --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: transparent; color: var(--ink); padding: 16px; -webkit-font-smoothing: antialiased; }
+        .dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--editorial); }
+        .dots span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
+        .dots span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        .dots span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        .date-label { font-size: 11px; font-weight: 700; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.05em; }
+        .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        @media (max-width: 900px) { .columns { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .columns { grid-template-columns: 1fr; } }
+        .column { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-height: 300px; }
+        .column-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .column-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--editorial); }
+        .column-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); }
+        .column-count { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--ink-light); background: var(--surface-alt); padding: 2px 8px; border-radius: 10px; }
+        .items { display: flex; flex-direction: column; gap: 8px; }
+        .item { display: flex; align-items: flex-start; gap: 10px; padding: 12px; background: var(--surface-alt); border-radius: var(--radius-sm); }
+        .item-status { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 1px; }
+        .item-status.done { background: var(--done); border-color: var(--done); color: white; }
+        .item-status.pending { background: var(--pending); border-color: var(--pending); color: white; }
+        .item-status.blocked { background: var(--blocked); border-color: var(--blocked); color: white; }
+        .item-content { flex: 1; min-width: 0; }
+        .item-vertical { display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 6px; border-radius: 4px; margin-bottom: 4px; }
+        .item-vertical.sport { background: rgba(67, 176, 73, 0.1); color: var(--v-sport); }
+        .item-vertical.uk { background: rgba(33, 160, 216, 0.1); color: var(--v-uk); }
+        .item-vertical.respawn { background: rgba(139, 92, 246, 0.1); color: var(--v-respawn); }
+        .item-vertical.main { background: rgba(28, 28, 28, 0.1); color: var(--v-main); }
+        .item-vertical.money { background: rgba(245, 158, 11, 0.1); color: var(--v-money); }
+        .item-vertical.spotlight { background: rgba(230, 70, 139, 0.1); color: var(--v-spotlight); }
+        .item-title { font-size: 12px; font-weight: 600; color: var(--ink); line-height: 1.4; }
+        .empty { text-align: center; padding: 40px 20px; color: var(--ink-light); font-size: 11px; font-weight: 500; }
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; gap: 12px; }
+        .loading-text { font-size: 11px; font-weight: 600; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.1em; }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="dots"><span></span><span></span><span></span><span></span></div>
+        <span class="date-label" id="dateLabel">Loading...</span>
+    </div>
+    <div class="columns" id="columns">
+        <div class="loading"><div class="dots"><span></span><span></span><span></span><span></span></div><span class="loading-text">Loading rundown...</span></div>
+    </div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const collectionPath = "artifacts/dmg-command-centre-native/public/data/daily_rundowns";
+
+    const SECTIONS = ['FILMING', 'INTERNAL', 'EXTERNAL', 'GOING LIVE'];
+    const STATUS_ICONS = { done: '✓', pending: '◔', blocked: '!' };
+    let items = [];
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    function render() {
+        document.getElementById('columns').innerHTML = SECTIONS.map(section => {
+            const sectionItems = items.filter(i => i.section === section);
+            return `
+                <div class="column">
+                    <div class="column-header"><div class="column-dot"></div><span class="column-title">${section}</span><span class="column-count">${sectionItems.length}</span></div>
+                    <div class="items">
+                        ${sectionItems.length === 0 ? '<div class="empty">No items</div>' : sectionItems.map(item => `
+                            <div class="item">
+                                <div class="item-status ${item.status || ''}">${item.status ? STATUS_ICONS[item.status] : ''}</div>
+                                <div class="item-content"><span class="item-vertical ${item.vertical ? item.vertical.toLowerCase() : ''}">${item.vertical || ''}</span><div class="item-title">${item.title}</div></div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    signInAnonymously(auth).then(() => {
+        onSnapshot(query(collection(db, collectionPath), where("dateKey", "==", today)), (snapshot) => {
+            items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            items.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+            render();
+        }, (error) => {
+            console.error("Firestore error:", error);
+            document.getElementById('columns').innerHTML = '<div class="empty">Error loading data. Please check permissions.</div>';
+        });
+    });
+</script>
+</body>
+</html>
