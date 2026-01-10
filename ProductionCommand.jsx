@@ -22,14 +22,11 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: -0.04em; }
-        .shoot-pill { cursor: pointer; transition: all 0.2s ease; }
-        .shoot-pill:hover { transform: translateY(-2px); border-color: #43B049 !important; box-shadow: 0 4px 12px rgba(67,176,73,0.15); }
         .modal-overlay { animation: fadeIn 0.2s ease; }
         .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
         .status-green { background: #DCFCE7; color: #166534; }
         .status-yellow { background: #FEF9C3; color: #854D0E; }
         .status-blue { background: #DBEAFE; color: #1E40AF; }
-        .status-red { background: #FEE2E2; color: #991B1B; }
         .status-gray { background: #F3F4F6; color: #374151; }
     </style>
 </head>
@@ -64,7 +61,6 @@
             if (s.includes('complete') || s.includes('done') || s.includes('live') || s.includes('won')) return 'green';
             if (s.includes('progress') || s.includes('active') || s.includes('review')) return 'blue';
             if (s.includes('pending') || s.includes('wait') || s.includes('hold')) return 'yellow';
-            if (s.includes('cancel') || s.includes('lost') || s.includes('block')) return 'red';
             return 'gray';
         };
 
@@ -155,17 +151,16 @@
             </button>
         );
 
-        // Shoot Detail Modal - works with just shoot data OR full project data
+        // Shoot Detail Modal
         const ShootDetailModal = ({ shoot, project, allShoots, onClose, onOpenDesk }) => {
             if (!shoot) return null;
 
-            // Use project data if available, otherwise fall back to shoot data
             const title = project?.title || shoot.projectTitle || shoot.title || 'Untitled';
             const client = project?.client || '';
             const projectShoots = project ? allShoots.filter(s => s.linkedProjectId === project.id) : [shoot];
 
             return (
-                <div className="modal-overlay" onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200}}>
+                <div className="modal-overlay" onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999}}>
                     <div onClick={e => e.stopPropagation()} style={{background:'white', borderRadius:24, width:'100%', maxWidth:600, maxHeight:'90vh', overflow:'hidden', boxShadow:'0 25px 50px rgba(0,0,0,0.25)'}}>
                         {/* Header */}
                         <div style={{padding:'24px 28px', borderBottom:'1px solid #EAECEF', display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
@@ -174,7 +169,7 @@
                                 <h2 style={{fontSize:20, fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.02em'}}>{title}</h2>
                             </div>
                             <button onClick={onClose} style={{background:'#F3F4F6', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}>
-                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"/></svg>
+                                ✕
                             </button>
                         </div>
 
@@ -184,7 +179,6 @@
                             <div style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:24}}>
                                 {project?.status && <span className={`status-badge status-${getStatusColor(project.status)}`}>{project.status}</span>}
                                 {project?.dealStage && <span className={`status-badge status-${getStatusColor(project.dealStage)}`}>{project.dealStage}</span>}
-                                {project?.priority && <span className="status-badge status-yellow">{project.priority}</span>}
                                 {!project && <span className="status-badge status-green">{shoot.format || 'SHOOT'}</span>}
                             </div>
 
@@ -197,7 +191,7 @@
                                 <div style={{fontSize:11, fontWeight:700, color:'#757575', marginTop:4}}>{shoot.format || 'Production Day'}</div>
                             </div>
 
-                            {/* Workflow Statuses - only if we have project data */}
+                            {/* Workflow Statuses */}
                             {project && (project.creativeWorkflowStatus || project.productionWorkflowStatus || project.socialWorkflowStatus) && (
                                 <div style={{marginBottom:24}}>
                                     <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12}}>Workflow Status</div>
@@ -218,7 +212,7 @@
                                 </div>
                             )}
 
-                            {/* Team - only if we have project data with leads */}
+                            {/* Team */}
                             {project && (project.creativeLead || project.productionLead || project.salesLead) && (
                                 <div style={{marginBottom:24}}>
                                     <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12}}>Team</div>
@@ -262,7 +256,7 @@
                                         {project.creativeResponseUrl && (
                                             <a href={project.creativeResponseUrl} target="_blank" rel="noopener noreferrer" style={{
                                                 padding:'8px 14px', background:'#F3F4F6', borderRadius:8, textDecoration:'none',
-                                                fontSize:10, fontWeight:800, color:'#1C1C1C', textTransform:'uppercase', display:'inline-flex', alignItems:'center', gap:6
+                                                fontSize:10, fontWeight:800, color:'#1C1C1C', textTransform:'uppercase'
                                             }}>
                                                 📄 Creative Response
                                             </a>
@@ -270,7 +264,7 @@
                                         {project.responseDeck && (
                                             <a href={project.responseDeck} target="_blank" rel="noopener noreferrer" style={{
                                                 padding:'8px 14px', background:'#F3F4F6', borderRadius:8, textDecoration:'none',
-                                                fontSize:10, fontWeight:800, color:'#1C1C1C', textTransform:'uppercase', display:'inline-flex', alignItems:'center', gap:6
+                                                fontSize:10, fontWeight:800, color:'#1C1C1C', textTransform:'uppercase'
                                             }}>
                                                 📊 Response Deck
                                             </a>
@@ -278,43 +272,11 @@
                                         {project.liveLink && (
                                             <a href={project.liveLink} target="_blank" rel="noopener noreferrer" style={{
                                                 padding:'8px 14px', background:'#DCFCE7', borderRadius:8, textDecoration:'none',
-                                                fontSize:10, fontWeight:800, color:'#166534', textTransform:'uppercase', display:'inline-flex', alignItems:'center', gap:6
+                                                fontSize:10, fontWeight:800, color:'#166534', textTransform:'uppercase'
                                             }}>
                                                 🔗 Live Link
                                             </a>
                                         )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Dates */}
-                            {project && (project.dueDate || project.internalDueDate) && (
-                                <div style={{marginBottom:24}}>
-                                    <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12}}>Dates</div>
-                                    <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:12}}>
-                                        <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
-                                            <div style={{fontSize:8, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Client Due</div>
-                                            <div style={{fontSize:12, fontWeight:800}}>{project.dueDate ? new Date(project.dueDate).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '—'}</div>
-                                        </div>
-                                        <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
-                                            <div style={{fontSize:8, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Internal Due</div>
-                                            <div style={{fontSize:12, fontWeight:800}}>{project.internalDueDate ? new Date(project.internalDueDate).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'}) : '—'}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Other Scheduled Shoots */}
-                            {projectShoots.length > 1 && (
-                                <div>
-                                    <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12}}>All Shoots for this Project</div>
-                                    <div style={{display:'flex', flexDirection:'column', gap:8}}>
-                                        {projectShoots.map(s => (
-                                            <div key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:12, background: s.id === shoot.id ? '#F0FDF4' : '#F9FAFB', borderRadius:10, borderLeft: s.id === shoot.id ? '4px solid #43B049' : '4px solid transparent'}}>
-                                                <span style={{fontSize:11, fontWeight:800}}>{new Date(s.date || s.startDateTime).toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'})}</span>
-                                                <span style={{fontSize:10, fontWeight:700, color:'#43B049', textTransform:'uppercase'}}>{s.format || 'Shoot'}</span>
-                                            </div>
-                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -330,15 +292,14 @@
                                     Open in Notion
                                 </a>
                             )}
-                            {project && (
+                            {project ? (
                                 <button onClick={() => { onClose(); onOpenDesk(project.id); }} style={{
                                     flex:1, padding:'12px', background:'#1C1C1C', borderRadius:10, border:'none',
                                     fontSize:10, fontWeight:800, color:'white', textTransform:'uppercase', cursor:'pointer'
                                 }}>
                                     Open Project Desk
                                 </button>
-                            )}
-                            {!project && (
+                            ) : (
                                 <button onClick={onClose} style={{
                                     flex:1, padding:'12px', background:'#1C1C1C', borderRadius:10, border:'none',
                                     fontSize:10, fontWeight:800, color:'white', textTransform:'uppercase', cursor:'pointer'
@@ -352,86 +313,6 @@
             );
         };
 
-        // Shoot Item
-        const ShootItem = ({ shoot, onClick, small }) => {
-            const displayTitle = shoot.projectTitle || shoot.title || 'Untitled Shoot';
-            
-            return (
-                <div className="shoot-pill" 
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
-                        console.log('ShootItem clicked:', shoot); 
-                        onClick(shoot); 
-                    }}
-                    style={{
-                        padding: small ? '6px 8px' : '8px 10px',
-                        background: 'white', border: '1px solid #EAECEF',
-                        borderLeft: '4px solid #43B049', borderRadius: 10, marginBottom: small ? 4 : 6
-                    }}
-                >
-                    <div style={{fontSize: small ? 9 : 10, fontWeight:900, color:'#1C1C1C', textTransform:'uppercase', lineHeight:1.2, marginBottom:2}}>
-                        {displayTitle}
-                    </div>
-                    <div style={{fontSize: small ? 7 : 8, fontWeight:700, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.02em'}}>
-                        {shoot.format || 'PRODUCTION'}
-                    </div>
-                </div>
-            );
-        };
-
-        // Day Cell
-        const DayCell = ({ date, isToday, isOtherMonth, shoots, onShootClick }) => (
-            <div style={{
-                minHeight: 120, padding: 10, background: isToday ? '#F0FDF4' : 'white',
-                borderBottom: '1px solid #EAECEF', borderRight: '1px solid #EAECEF',
-                opacity: isOtherMonth ? 0.4 : 1
-            }}>
-                <div style={{fontSize:11, fontWeight:900, color: isToday ? '#43B049' : '#CCC', marginBottom:6}}>
-                    {date.getDate()}
-                </div>
-                <div>
-                    {shoots.map(shoot => (
-                        <ShootItem key={shoot.id} shoot={shoot} onClick={onShootClick} small />
-                    ))}
-                </div>
-            </div>
-        );
-
-        // Week Row
-        const WeekRow = ({ date, isToday, shoots, onShootClick }) => (
-            <div style={{
-                display:'flex', gap:24, padding:20, background:'white',
-                borderRadius:20, border: `1px solid ${isToday ? '#43B049' : '#EAECEF'}`, marginBottom:10
-            }}>
-                <div style={{width:60, textAlign:'center', flexShrink:0}}>
-                    <div style={{fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', color: isToday ? '#43B049' : '#757575'}}>
-                        {date.toLocaleDateString('en-GB', { weekday: 'short' })}
-                    </div>
-                    <div style={{fontSize:28, fontWeight:900, color: isToday ? '#43B049' : '#1C1C1C'}}>
-                        {date.getDate()}
-                    </div>
-                </div>
-                <div style={{flex:1}}>
-                    {shoots.length > 0 ? shoots.map(shoot => (
-                        <div key={shoot.id} className="shoot-pill" 
-                            onClick={() => { console.log('Week shoot clicked:', shoot); onShootClick(shoot); }}
-                            style={{ padding:16, background:'#F9FAFB', borderRadius:16, marginBottom:8, borderLeft:'4px solid #43B049', cursor:'pointer' }}>
-                            <div style={{fontWeight:900, fontSize:14, textTransform:'uppercase', letterSpacing:'-0.02em', color:'#1C1C1C'}}>
-                                {shoot.projectTitle || shoot.title || 'Untitled Shoot'}
-                            </div>
-                            <div style={{fontSize:10, fontWeight:700, color:'#43B049', textTransform:'uppercase', marginTop:4, letterSpacing:'0.05em'}}>
-                                {shoot.format || 'PRODUCTION'}
-                            </div>
-                        </div>
-                    )) : (
-                        <div style={{fontSize:11, fontWeight:800, color:'#DDD', textTransform:'uppercase', letterSpacing:'0.1em', padding:'16px 0'}}>
-                            No Activity Logged
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-
         // Main App
         const ProductionCommand = () => {
             const [view, setView] = useState('month');
@@ -442,12 +323,9 @@
             const [projects, setProjects] = useState([]);
             const [shoots, setShoots] = useState([]);
             const [staff, setStaff] = useState([]);
-            const [deliverables, setDeliverables] = useState([]);
 
             const [selectedProjectId, setSelectedProjectId] = useState(null);
             const [productionRecord, setProductionRecord] = useState(null);
-            
-            // For the detail modal
             const [selectedShoot, setSelectedShoot] = useState(null);
 
             const [showInitModal, setShowInitModal] = useState(false);
@@ -456,12 +334,7 @@
 
             const selectedProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
             const projectShoots = useMemo(() => shoots.filter(s => s.linkedProjectId === selectedProjectId), [shoots, selectedProjectId]);
-
-            // Get project for the selected shoot
-            const shootProject = useMemo(() => {
-                if (!selectedShoot) return null;
-                return projects.find(p => p.id === selectedShoot.linkedProjectId);
-            }, [selectedShoot, projects]);
+            const shootProject = useMemo(() => selectedShoot ? projects.find(p => p.id === selectedShoot.linkedProjectId) : null, [selectedShoot, projects]);
 
             // Auth & Data
             useEffect(() => {
@@ -470,15 +343,10 @@
                     if (!u) return;
                     setUser(u);
                     try {
-                        console.log('Fetching from Notion API...');
-                        const [projRes, delRes] = await Promise.all([
-                            fetch(`${NOTION_API}/projects`).then(r => r.json()),
-                            fetch(`${NOTION_API}/deliverables`).then(r => r.json())
-                        ]);
-                        console.log('Projects loaded:', projRes);
-                        console.log('Deliverables loaded:', delRes);
+                        console.log('Fetching projects...');
+                        const projRes = await fetch(`${NOTION_API}/projects`).then(r => r.json());
+                        console.log('Projects loaded:', projRes?.projects?.length || 0);
                         setProjects(projRes?.projects || []);
-                        setDeliverables(delRes?.deliverables || []);
 
                         const staffSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("staff_directory").get();
                         setStaff(staffSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.firstName || '').localeCompare(b.firstName || '')));
@@ -496,7 +364,7 @@
                 const unsub = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events")
                     .onSnapshot(snap => {
                         const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                        console.log('Shoots from Firebase:', items);
+                        console.log('Shoots from Firebase:', items.length, items);
                         setShoots(items);
                     });
                 return () => unsub();
@@ -509,11 +377,12 @@
                 return () => unsub();
             }, [selectedProjectId, user]);
 
-            // Handle shoot click - ALWAYS opens modal with shoot data
-            const handleShootClick = useCallback((shoot) => {
-                console.log('handleShootClick called with:', shoot);
+            // CLICK HANDLER - logs and opens modal
+            const openShootModal = (shoot) => {
+                console.log('🎯 SHOOT CLICKED:', shoot);
+                alert('Shoot clicked: ' + (shoot.projectTitle || shoot.title || 'Untitled')); // Debug alert
                 setSelectedShoot(shoot);
-            }, []);
+            };
 
             const handleOpenDesk = (projectId) => {
                 setSelectedProjectId(projectId);
@@ -572,7 +441,7 @@
                 setShowInitModal(false);
             };
 
-            // Calendar
+            // Calendar helpers
             const getShootsForDate = useCallback((date) => {
                 const dateStr = date.toISOString().split('T')[0];
                 return shoots.filter(s => {
@@ -630,7 +499,6 @@
                 { value: 'Camera Op', label: 'Camera Op / DP' },
                 { value: 'Editor', label: 'Video Editor' },
                 { value: 'Designer', label: 'Graphic Designer' },
-                { value: 'Creative Lead', label: 'Creative Lead' },
             ];
 
             const formatOptions = [
@@ -688,10 +556,41 @@
                                 ))}
                             </div>
                             <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)'}}>
-                                {calendarDays.map((day, i) => (
-                                    <DayCell key={i} date={day.date} isToday={day.isToday} isOtherMonth={day.isOtherMonth}
-                                        shoots={getShootsForDate(day.date)} onShootClick={handleShootClick} />
-                                ))}
+                                {calendarDays.map((day, i) => {
+                                    const dayItems = getShootsForDate(day.date);
+                                    return (
+                                        <div key={i} style={{
+                                            minHeight: 120, padding: 10, background: day.isToday ? '#F0FDF4' : 'white',
+                                            borderBottom: '1px solid #EAECEF', borderRight: '1px solid #EAECEF',
+                                            opacity: day.isOtherMonth ? 0.4 : 1
+                                        }}>
+                                            <div style={{fontSize:11, fontWeight:900, color: day.isToday ? '#43B049' : '#CCC', marginBottom:6}}>
+                                                {day.date.getDate()}
+                                            </div>
+                                            {/* SHOOTS - Direct onClick with no wrapper issues */}
+                                            {dayItems.map(shoot => (
+                                                <button
+                                                    key={shoot.id}
+                                                    onClick={() => openShootModal(shoot)}
+                                                    style={{
+                                                        display:'block', width:'100%', textAlign:'left',
+                                                        padding:'6px 8px', marginBottom:4,
+                                                        background:'white', border:'1px solid #EAECEF',
+                                                        borderLeft:'4px solid #43B049', borderRadius:8,
+                                                        cursor:'pointer', transition:'all 0.2s'
+                                                    }}
+                                                >
+                                                    <div style={{fontSize:9, fontWeight:900, color:'#1C1C1C', textTransform:'uppercase', lineHeight:1.2, marginBottom:2}}>
+                                                        {shoot.projectTitle || shoot.title || 'Untitled'}
+                                                    </div>
+                                                    <div style={{fontSize:7, fontWeight:700, color:'#43B049', textTransform:'uppercase'}}>
+                                                        {shoot.format || 'PRODUCTION'}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -707,9 +606,50 @@
                                 <button onClick={() => navWeek(7)} style={{padding:'10px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Next Week →</button>
                             </div>
                             <div style={{maxWidth:900, margin:'0 auto'}}>
-                                {weekDays.map((day, i) => (
-                                    <WeekRow key={i} date={day.date} isToday={day.isToday} shoots={getShootsForDate(day.date)} onShootClick={handleShootClick} />
-                                ))}
+                                {weekDays.map((day, i) => {
+                                    const dayItems = getShootsForDate(day.date);
+                                    return (
+                                        <div key={i} style={{
+                                            display:'flex', gap:24, padding:20, background:'white',
+                                            borderRadius:20, border: `1px solid ${day.isToday ? '#43B049' : '#EAECEF'}`, marginBottom:10
+                                        }}>
+                                            <div style={{width:60, textAlign:'center', flexShrink:0}}>
+                                                <div style={{fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', color: day.isToday ? '#43B049' : '#757575'}}>
+                                                    {day.date.toLocaleDateString('en-GB', { weekday: 'short' })}
+                                                </div>
+                                                <div style={{fontSize:28, fontWeight:900, color: day.isToday ? '#43B049' : '#1C1C1C'}}>
+                                                    {day.date.getDate()}
+                                                </div>
+                                            </div>
+                                            <div style={{flex:1}}>
+                                                {dayItems.length > 0 ? dayItems.map(shoot => (
+                                                    <button
+                                                        key={shoot.id}
+                                                        onClick={() => openShootModal(shoot)}
+                                                        style={{
+                                                            display:'block', width:'100%', textAlign:'left',
+                                                            padding:16, marginBottom:8,
+                                                            background:'#F9FAFB', border:'none',
+                                                            borderLeft:'4px solid #43B049', borderRadius:16,
+                                                            cursor:'pointer'
+                                                        }}
+                                                    >
+                                                        <div style={{fontWeight:900, fontSize:14, textTransform:'uppercase', letterSpacing:'-0.02em', color:'#1C1C1C'}}>
+                                                            {shoot.projectTitle || shoot.title || 'Untitled'}
+                                                        </div>
+                                                        <div style={{fontSize:10, fontWeight:700, color:'#43B049', textTransform:'uppercase', marginTop:4}}>
+                                                            {shoot.format || 'PRODUCTION'}
+                                                        </div>
+                                                    </button>
+                                                )) : (
+                                                    <div style={{fontSize:11, fontWeight:800, color:'#DDD', textTransform:'uppercase', letterSpacing:'0.1em', padding:'16px 0'}}>
+                                                        No Activity Logged
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -736,24 +676,22 @@
                             <div style={{flex:1, overflow:'auto', padding:20, background:'white'}}>
                                 {selectedProjectId ? (
                                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
-                                        {/* Left Column */}
+                                        {/* Left */}
                                         <div>
-                                            {/* Budget Card */}
+                                            {/* Budget */}
                                             <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20, marginBottom:16}}>
                                                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
                                                     <div style={{display:'flex', alignItems:'center', gap:8}}>
                                                         <span style={{width:20, height:20, background:'#43B049', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>1</span>
-                                                        <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.08em'}}>Finance</span>
+                                                        <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase'}}>Finance</span>
                                                     </div>
-                                                    <button onClick={() => { setEditingBudget(!editingBudget); setNewBudget(budget); }}
-                                                        style={{background:'none', border:'none', fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', cursor:'pointer'}}>
+                                                    <button onClick={() => { setEditingBudget(!editingBudget); setNewBudget(budget); }} style={{background:'none', border:'none', fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', cursor:'pointer'}}>
                                                         {editingBudget ? 'Cancel' : 'Edit'}
                                                     </button>
                                                 </div>
                                                 {editingBudget ? (
                                                     <div style={{display:'flex', gap:8, marginBottom:16}}>
-                                                        <input type="number" value={newBudget} onChange={(e) => setNewBudget(e.target.value)}
-                                                            style={{flex:1, padding:'10px 12px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontWeight:700}} placeholder="Budget..."/>
+                                                        <input type="number" value={newBudget} onChange={(e) => setNewBudget(e.target.value)} style={{flex:1, padding:'10px 12px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontWeight:700}} placeholder="Budget..."/>
                                                         <button onClick={handleUpdateBudget} style={{padding:'10px 16px', background:'#1C1C1C', color:'white', border:'none', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Save</button>
                                                     </div>
                                                 ) : (
@@ -763,7 +701,7 @@
                                                     </div>
                                                 )}
                                                 <div style={{height:8, background:'#F3F4F6', borderRadius:4, overflow:'hidden', marginBottom:16}}>
-                                                    <div style={{height:'100%', background:'#43B049', width:`${budget > 0 ? Math.min((spent/budget)*100, 100) : 0}%`, transition:'width 0.5s'}}/>
+                                                    <div style={{height:'100%', background:'#43B049', width:`${budget > 0 ? Math.min((spent/budget)*100, 100) : 0}%`}}/>
                                                 </div>
                                                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
                                                     <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
@@ -778,7 +716,7 @@
                                             </div>
                                             {/* Receipts */}
                                             <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20}}>
-                                                <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12}}>Expenditure</div>
+                                                <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', marginBottom:12}}>Expenditure</div>
                                                 <div style={{maxHeight:140, overflow:'auto', marginBottom:12}}>
                                                     {productionRecord?.receipts?.length > 0 ? productionRecord.receipts.map((r, i) => (
                                                         <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'8px 10px', background:'#F9FAFB', borderRadius:8, marginBottom:6}}>
@@ -794,13 +732,13 @@
                                                 <button onClick={handleAddReceipt} style={{width:'100%', padding:'12px', background:'#1C1C1C', color:'white', border:'none', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Add Expense</button>
                                             </div>
                                         </div>
-                                        {/* Right Column */}
+                                        {/* Right */}
                                         <div>
                                             {/* Schedule */}
                                             <div style={{background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:20, padding:20, marginBottom:16}}>
                                                 <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
                                                     <span style={{width:20, height:20, background:'#43B049', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>2</span>
-                                                    <span style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.08em'}}>Schedule</span>
+                                                    <span style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase'}}>Schedule</span>
                                                 </div>
                                                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
                                                     <input type="date" id="shootDate" style={{padding:'12px 14px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:11, fontWeight:600}}/>
@@ -821,7 +759,7 @@
                                             <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20}}>
                                                 <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
                                                     <span style={{width:20, height:20, background:'#43B049', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>3</span>
-                                                    <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.08em'}}>Crew</span>
+                                                    <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase'}}>Crew</span>
                                                 </div>
                                                 <div style={{maxHeight:120, overflow:'auto', marginBottom:16}}>
                                                     {productionRecord?.crew?.length > 0 ? productionRecord.crew.map((c, i) => (
@@ -850,7 +788,7 @@
                                     <div style={{display:'flex', alignItems:'center', justifyContent:'center', height:'100%'}}>
                                         <div style={{textAlign:'center'}}>
                                             <div style={{fontSize:48, marginBottom:12}}>📋</div>
-                                            <div style={{fontSize:11, fontWeight:800, color:'#CCC', textTransform:'uppercase', letterSpacing:'0.1em'}}>Select a project to view details</div>
+                                            <div style={{fontSize:11, fontWeight:800, color:'#CCC', textTransform:'uppercase'}}>Select a project to view details</div>
                                         </div>
                                     </div>
                                 )}
@@ -874,7 +812,7 @@
                         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100}}>
                             <div style={{background:'white', borderRadius:20, padding:32, width:'100%', maxWidth:400}}>
                                 <h3 style={{fontSize:18, fontWeight:900, textTransform:'uppercase', marginBottom:4}}>Initialise Production</h3>
-                                <p style={{fontSize:10, color:'#757575', fontWeight:600, marginBottom:24, textTransform:'uppercase', letterSpacing:'0.08em'}}>Connect project to environment</p>
+                                <p style={{fontSize:10, color:'#757575', fontWeight:600, marginBottom:24, textTransform:'uppercase'}}>Connect project to environment</p>
                                 <div style={{marginBottom:16}}>
                                     <CustomDropdown 
                                         label="Project"
@@ -886,7 +824,7 @@
                                     <input type="hidden" id="modalProjectSelect" />
                                 </div>
                                 <div style={{marginBottom:24}}>
-                                    <div style={{fontSize:9, fontWeight:800, textTransform:'uppercase', color:'#757575', marginBottom:6, letterSpacing:'0.1em'}}>Budget</div>
+                                    <div style={{fontSize:9, fontWeight:800, textTransform:'uppercase', color:'#757575', marginBottom:6}}>Budget</div>
                                     <input id="modalBudget" type="number" style={{width:'100%', padding:'12px 14px', background:'white', border:'1px solid #EAECEF', borderRadius:12, fontSize:12, fontWeight:600}} placeholder="£0.00"/>
                                 </div>
                                 <div style={{display:'flex', gap:12}}>
