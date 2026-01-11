@@ -1,217 +1,350 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DMG Office Outlook</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
-    
+    <title>Office Outlook | DMG Command Centre</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --dmg-blue: #21a0d8;
-            --carbon: #1C1C1C;
-            --text-main: #1C1C1C;
-            --text-sub: #888;
-            --border: #eeeeee;
-            --bg-light: #f9f9f9;
-            
-            /* Team Colors */
+            --dmg-blue-light: #e8f6fc;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --border: #E5E7EB;
+            --bg-soft: #F9FAFB;
+            --st-office: #2E7D32;
+            --st-wfh: #F9A825;
+            --st-shoot: #2196F3;
+            --st-leave: #F44336;
             --team-editorial: #E94B4B;
             --team-creative: #E6468B;
             --team-production: #43B049;
             --team-social: #F2C316;
-            --team-people: #21A0D8;
-            --team-operations: #21A0D8;
+            --team-operations: #21a0d8;
             --team-executive: #1C1C1C;
         }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: transparent; padding: 16px; -webkit-font-smoothing: antialiased; }
         
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: transparent;
-            padding: 10px;
-        }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+        .outlook-widget { background: #FFF; border-radius: 20px; border: 1px solid var(--border); overflow: hidden; }
+        
+        .widget-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 20px; height: 20px; }
+        .dot { width: 100%; height: 100%; background: var(--dmg-blue); border-radius: 50%; animation: pulse 2.5s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .dot:nth-child(2) { animation-delay: 0.3s; }
+        .dot:nth-child(4) { animation-delay: 0.6s; }
+        .dot:nth-child(3) { animation-delay: 0.9s; }
+        .header-title { font-size: 14px; font-weight: 800; color: var(--ink); text-transform: uppercase; letter-spacing: 0.02em; }
+        .header-date { font-size: 11px; font-weight: 600; color: var(--ink-sub); background: var(--bg-soft); padding: 6px 12px; border-radius: 99px; }
+        
+        .status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px 24px; }
+        .status-card { background: var(--bg-soft); border-radius: 16px; padding: 20px 16px; text-align: center; cursor: pointer; transition: all 0.25s ease; border: 2px solid transparent; }
+        .status-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        .status-card.active { border-color: var(--dmg-blue); background: var(--dmg-blue-light); }
+        .status-card.locked { opacity: 0.4; filter: grayscale(1); pointer-events: none; }
+        .status-count { font-size: 36px; font-weight: 900; line-height: 1; margin-bottom: 6px; }
+        .status-count.office { color: var(--st-office); }
+        .status-count.wfh { color: var(--st-wfh); }
+        .status-count.shoot { color: var(--st-shoot); }
+        .status-count.leave { color: var(--st-leave); }
+        .status-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.05em; }
+        
+        .detail-panel { border-top: 1px solid var(--border); max-height: 0; overflow: hidden; transition: max-height 0.4s ease; }
+        .detail-panel.open { max-height: 400px; }
+        .detail-content { padding: 20px 24px; }
+        .detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .detail-title { font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--dmg-blue); letter-spacing: 0.05em; }
+        .detail-close { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-soft); border: none; cursor: pointer; font-size: 16px; color: var(--ink-sub); transition: 0.2s; }
+        .detail-close:hover { background: #EEE; color: var(--ink); }
+        
+        .staff-list { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; }
+        .staff-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-soft); border-radius: 12px; transition: 0.2s; }
+        .staff-item:hover { background: #F0F0F0; }
+        .staff-left { display: flex; align-items: center; gap: 12px; }
+        .staff-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 12px; height: 12px; }
+        .staff-dots span { width: 100%; height: 100%; border-radius: 50%; }
+        .staff-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+        .staff-team { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+        
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--ink-sub); }
+        .empty-state svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.3; }
+        .empty-text { font-size: 13px; font-weight: 600; }
+        
+        .loading { display: flex; align-items: center; justify-content: center; padding: 60px; }
+        .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .weekend-banner { background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%); padding: 16px 24px; text-align: center; }
+        .weekend-text { font-size: 12px; font-weight: 700; color: var(--ink-sub); }
     </style>
-
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
     
-    <!-- Firebase Compat -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-</head>
-<body>
-
-<div id="root"></div>
-
-<script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-        authDomain: "dmg-command-centre-native.firebaseapp.com",
-        projectId: "dmg-command-centre-native",
-        storageBucket: "dmg-command-centre-native.firebasestorage.app",
-        messagingSenderId: "223535956454",
-        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-    };
-
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-    const appId = 'dmg-command-centre-native';
-
-    const normalize = (n) => {
-        if (!n || typeof n !== 'string') return "";
-        return n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-    };
-
-    const StatusPill = ({ label, count, isLocked, onClick }) => (
-        <div onClick={onClick} className={`bg-white p-4 rounded-xl text-center border-2 border-[var(--dmg-blue)] ${isLocked ? "opacity-30 grayscale cursor-default pointer-events-none" : "cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_15px_rgba(33,160,216,0.4)]"}`}>
-            <span className="block text-4xl font-black leading-none mb-1 text-[var(--dmg-blue)]">{count}</span>
-            <span className="block text-[10px] font-extrabold uppercase text-[var(--text-sub)] tracking-wider">{label}</span>
-        </div>
-    );
-
-    const StatusModal = ({ statusType, onClose, detailedUsers, todayDateString }) => {
-        const teamColorMap = { Editorial: 'var(--team-editorial)', Creative: 'var(--team-creative)', Production: 'var(--team-production)', Social: 'var(--team-social)', Operations: 'var(--team-operations)', People: 'var(--team-people)', Executive: 'var(--team-executive)' };
-        return (
-            <div className="fixed inset-0 bg-white/95 z-50 flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col border border-gray-200" onClick={(e) => e.stopPropagation()}>
-                    <div className="p-6 border-b border-gray-100">
-                        <div className="flex items-center gap-4 mb-1">
-                            <span className="text-2xl font-black text-gray-400 uppercase tracking-tighter">Status</span>
-                            <div className="grid grid-cols-2 gap-1">
-                                {[...Array(4)].map((_, i) => <span key={i} className="w-2 h-2 rounded-full bg-gray-300"></span>)}
-                            </div>
-                            <span className="text-2xl font-black text-[var(--dmg-blue)] uppercase tracking-tighter">{statusType}</span>
-                        </div>
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">For {todayDateString}</div>
-                    </div>
-                    <div className="overflow-y-auto p-6 space-y-2">
-                        {detailedUsers.map(user => (
-                            <div key={user.name} className="flex justify-between items-center bg-gray-50/70 p-3 rounded-lg">
-                                <p className="font-bold text-sm text-[var(--dmg-blue)]">{user.name}</p>
-                                <p className="text-xs font-bold uppercase" style={{ color: teamColorMap[user.team] || 'var(--carbon)' }}>{user.team || 'Staff'}</p>
-                            </div>
-                        ))}
-                        {detailedUsers.length === 0 && <p className="text-center py-10 text-gray-400 font-semibold">No staff logged.</p>}
-                    </div>
-                    <div className="p-4 border-t border-gray-100">
-                        <button onClick={onClose} className="w-full bg-[var(--dmg-blue)] text-white py-2 rounded-lg text-sm font-bold hover:brightness-110">Close</button>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    const App = () => {
-        const [submissions, setSubmissions] = useState([]);
-        const [directory, setDirectory] = useState([]);
-        const [modalStatus, setModalStatus] = useState(null);
-
-        useEffect(() => {
-            auth.signInAnonymously();
-            auth.onAuthStateChanged((user) => {
-                if (user) {
-                    db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions').onSnapshot(snap => {
-                        const list = []; snap.forEach(doc => list.push(doc.data())); setSubmissions(list);
-                    });
-                    db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory').onSnapshot(snap => {
-                        const list = []; snap.forEach(doc => list.push({ id: doc.id, ...doc.data() })); setDirectory(list);
-                    });
-                }
-            });
-        }, []);
-
-        const { scheduleIndex, weekId, isWeekend, todayDateString } = useMemo(() => {
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const appId = 'dmg-command-centre-native';
+        
+        // Helpers
+        const normalize = (n) => n?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase() || "";
+        const teamColors = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#21a0d8', Executive: '#1C1C1C' };
+        
+        const getWeekInfo = () => {
             const today = new Date();
             const day = today.getDay();
-            const d = new Date(today);
-            d.setHours(0,0,0,0);
-            const diff = (day === 0) ? 6 : day - 1;
-            d.setDate(d.getDate() - diff);
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+            monday.setHours(0, 0, 0, 0);
             return {
-                scheduleIndex: day === 0 ? 6 : day - 1,
-                weekId: d.toISOString().split("T")[0],
+                weekId: monday.toISOString().split('T')[0],
+                dayIndex: day === 0 ? 6 : day - 1,
                 isWeekend: day === 0 || day === 6,
-                todayDateString: today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
+                dateString: today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
             };
-        }, []);
-
-        const currentWeekSubmissions = useMemo(() => {
-            const map = new Map();
-            [...submissions]
-                .filter(s => s.weekId === weekId)
-                .sort((a, b) => new Date(a.submittedAt || 0) - new Date(b.submittedAt || 0))
-                .forEach(sub => {
-                    if (sub.name) map.set(normalize(sub.name), sub);
-                });
-            return Array.from(map.values());
-        }, [submissions, weekId]);
-
-        const statusCounts = useMemo(() => {
-            const counts = { Office: 0, WFH: 0, Shoot: 0, PTO: 0 };
-            currentWeekSubmissions.forEach(sub => {
-                const day = sub.schedule?.[scheduleIndex];
-                if (!day) return;
-                const status = day.status;
-                if (isWeekend) { if (['Shoot', 'Client / Travel'].includes(status)) counts.Shoot++; return; }
-                if (status === 'Office') counts.Office++;
-                else if (status === 'WFH') counts.WFH++;
-                else if (['Shoot', 'Client / Travel'].includes(status)) counts.Shoot++;
-                else if (['PTO', 'Leave', 'Abroad'].includes(status)) counts.PTO++;
-                else counts.Office++;
-            });
-            return counts;
-        }, [currentWeekSubmissions, scheduleIndex, isWeekend]);
-
-        const detailedUsers = useMemo(() => {
-            if (!modalStatus) return [];
-            return currentWeekSubmissions
-                .filter(sub => {
-                    const status = sub.schedule?.[scheduleIndex]?.status;
-                    if (modalStatus === 'Office') return !isWeekend && status === 'Office';
-                    if (modalStatus === 'WFH') return !isWeekend && status === 'WFH';
-                    if (modalStatus === 'Shoot') return ['Shoot', 'Client / Travel'].includes(status);
-                    if (modalStatus === 'PTO') return !isWeekend && ['PTO', 'Leave', 'Abroad'].includes(status);
-                    return false;
-                })
-                .map(sub => {
-                    const dir = directory.find(d => normalize(`${d.firstName} ${d.lastName}`) === normalize(sub.name)) || {};
-                    return { name: sub.name, ...dir };
-                })
-                .sort((a, b) => a.name.localeCompare(b.name));
-        }, [modalStatus, currentWeekSubmissions, directory, scheduleIndex, isWeekend]);
-
-        return (
-            <div className="bg-white border border-[var(--border)] rounded-2xl p-6 shadow-sm max-w-3xl mx-auto">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <StatusPill label="In Building" count={statusCounts.Office} isLocked={isWeekend} onClick={() => setModalStatus('Office')} />
-                    <StatusPill label="Remote" count={statusCounts.WFH} isLocked={isWeekend} onClick={() => setModalStatus('WFH')} />
-                    <StatusPill label="Off-Site" count={statusCounts.Shoot} isLocked={false} onClick={() => setModalStatus('Shoot')} />
-                    <StatusPill label="Leave" count={statusCounts.PTO} isLocked={isWeekend} onClick={() => setModalStatus('PTO')} />
+        };
+        
+        // Components
+        function StatusCard({ type, count, label, isLocked, isActive, onClick }) {
+            return (
+                <div 
+                    className={`status-card ${isLocked ? 'locked' : ''} ${isActive ? 'active' : ''}`}
+                    onClick={isLocked ? null : onClick}
+                >
+                    <div className={`status-count ${type}`}>{count}</div>
+                    <div className="status-label">{label}</div>
                 </div>
-                {modalStatus && <StatusModal statusType={modalStatus} onClose={() => setModalStatus(null)} detailedUsers={detailedUsers} todayDateString={todayDateString} />}
-            </div>
-        );
-    };
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script>
-
+            );
+        }
+        
+        function StaffItem({ name, team }) {
+            const color = teamColors[team] || '#999';
+            return (
+                <div className="staff-item">
+                    <div className="staff-left">
+                        <div className="staff-dots">
+                            {[...Array(4)].map((_, i) => <span key={i} style={{ background: color }} />)}
+                        </div>
+                        <span className="staff-name">{name}</span>
+                    </div>
+                    <span className="staff-team" style={{ color }}>{team || 'Staff'}</span>
+                </div>
+            );
+        }
+        
+        function DetailPanel({ isOpen, title, staff, onClose }) {
+            return (
+                <div className={`detail-panel ${isOpen ? 'open' : ''}`}>
+                    <div className="detail-content">
+                        <div className="detail-header">
+                            <span className="detail-title">{title} ({staff.length})</span>
+                            <button className="detail-close" onClick={onClose}>×</button>
+                        </div>
+                        <div className="staff-list">
+                            {staff.length > 0 ? (
+                                staff.map((s, i) => <StaffItem key={i} name={s.name} team={s.team} />)
+                            ) : (
+                                <div className="empty-state">
+                                    <div className="empty-text">No staff with this status today</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        function OfficeOutlook() {
+            const [loading, setLoading] = useState(true);
+            const [submissions, setSubmissions] = useState([]);
+            const [directory, setDirectory] = useState([]);
+            const [activeStatus, setActiveStatus] = useState(null);
+            
+            const { weekId, dayIndex, isWeekend, dateString } = useMemo(() => getWeekInfo(), []);
+            
+            useEffect(() => {
+                auth.signInAnonymously();
+                const unsubAuth = auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        const basePath = `artifacts/${appId}/public/data`;
+                        
+                        db.collection(`${basePath}/rota_submissions`).onSnapshot(snap => {
+                            const list = [];
+                            snap.forEach(doc => list.push(doc.data()));
+                            setSubmissions(list);
+                            setLoading(false);
+                        });
+                        
+                        db.collection(`${basePath}/staff_directory`).onSnapshot(snap => {
+                            const list = [];
+                            snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+                            setDirectory(list);
+                        });
+                    }
+                });
+                return () => unsubAuth();
+            }, []);
+            
+            // Get current week submissions (deduplicated by name)
+            const currentWeekData = useMemo(() => {
+                const map = new Map();
+                submissions
+                    .filter(s => s.weekId === weekId)
+                    .sort((a, b) => new Date(a.submittedAt || 0) - new Date(b.submittedAt || 0))
+                    .forEach(sub => {
+                        if (sub.name) map.set(normalize(sub.name), sub);
+                    });
+                return Array.from(map.values());
+            }, [submissions, weekId]);
+            
+            // Calculate counts
+            const counts = useMemo(() => {
+                const result = { office: 0, wfh: 0, shoot: 0, leave: 0 };
+                
+                currentWeekData.forEach(sub => {
+                    const day = sub.schedule?.[dayIndex];
+                    if (!day) return;
+                    const status = day.status;
+                    
+                    if (isWeekend) {
+                        if (['Shoot', 'Client / Travel'].includes(status)) result.shoot++;
+                        return;
+                    }
+                    
+                    if (status === 'Office') result.office++;
+                    else if (status === 'WFH') result.wfh++;
+                    else if (['Shoot', 'Client / Travel'].includes(status)) result.shoot++;
+                    else if (['PTO', 'Leave', 'Abroad'].includes(status)) result.leave++;
+                    else result.office++; // Default
+                });
+                
+                return result;
+            }, [currentWeekData, dayIndex, isWeekend]);
+            
+            // Get staff list for active status
+            const activeStaff = useMemo(() => {
+                if (!activeStatus) return [];
+                
+                return currentWeekData
+                    .filter(sub => {
+                        const status = sub.schedule?.[dayIndex]?.status;
+                        if (activeStatus === 'office') return !isWeekend && status === 'Office';
+                        if (activeStatus === 'wfh') return !isWeekend && status === 'WFH';
+                        if (activeStatus === 'shoot') return ['Shoot', 'Client / Travel'].includes(status);
+                        if (activeStatus === 'leave') return !isWeekend && ['PTO', 'Leave', 'Abroad'].includes(status);
+                        return false;
+                    })
+                    .map(sub => {
+                        const dir = directory.find(d => normalize(`${d.firstName} ${d.lastName}`) === normalize(sub.name)) || {};
+                        return { name: sub.name, team: dir.team };
+                    })
+                    .sort((a, b) => a.name.localeCompare(b.name));
+            }, [activeStatus, currentWeekData, directory, dayIndex, isWeekend]);
+            
+            const handleCardClick = (status) => {
+                setActiveStatus(activeStatus === status ? null : status);
+            };
+            
+            const statusLabels = {
+                office: 'In Building',
+                wfh: 'Remote',
+                shoot: 'Off-Site',
+                leave: 'On Leave'
+            };
+            
+            if (loading) {
+                return (
+                    <div className="outlook-widget">
+                        <div className="loading"><div className="spinner"></div></div>
+                    </div>
+                );
+            }
+            
+            return (
+                <div className="outlook-widget">
+                    <div className="widget-header">
+                        <div className="header-left">
+                            <div className="dots-grid">
+                                <div className="dot"></div><div className="dot"></div>
+                                <div className="dot"></div><div className="dot"></div>
+                            </div>
+                            <span className="header-title">Office Outlook</span>
+                        </div>
+                        <span className="header-date">{dateString}</span>
+                    </div>
+                    
+                    {isWeekend && (
+                        <div className="weekend-banner">
+                            <span className="weekend-text">🌴 Weekend Mode — Only shoot/travel staff shown</span>
+                        </div>
+                    )}
+                    
+                    <div className="status-grid">
+                        <StatusCard 
+                            type="office" 
+                            count={isWeekend ? '—' : counts.office} 
+                            label="In Building" 
+                            isLocked={isWeekend}
+                            isActive={activeStatus === 'office'}
+                            onClick={() => handleCardClick('office')}
+                        />
+                        <StatusCard 
+                            type="wfh" 
+                            count={isWeekend ? '—' : counts.wfh} 
+                            label="Remote" 
+                            isLocked={isWeekend}
+                            isActive={activeStatus === 'wfh'}
+                            onClick={() => handleCardClick('wfh')}
+                        />
+                        <StatusCard 
+                            type="shoot" 
+                            count={counts.shoot} 
+                            label="Off-Site" 
+                            isLocked={false}
+                            isActive={activeStatus === 'shoot'}
+                            onClick={() => handleCardClick('shoot')}
+                        />
+                        <StatusCard 
+                            type="leave" 
+                            count={isWeekend ? '—' : counts.leave} 
+                            label="On Leave" 
+                            isLocked={isWeekend}
+                            isActive={activeStatus === 'leave'}
+                            onClick={() => handleCardClick('leave')}
+                        />
+                    </div>
+                    
+                    <DetailPanel 
+                        isOpen={activeStatus !== null}
+                        title={statusLabels[activeStatus] || ''}
+                        staff={activeStaff}
+                        onClose={() => setActiveStatus(null)}
+                    />
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<OfficeOutlook />);
+    </script>
 </body>
 </html>
-
-
