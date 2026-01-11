@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Queue | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --production: #43B049;
+            --warning: #F59E0B;
+            --urgent: #EF4444;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --border: #E5E7EB;
+            --bg-soft: #F9FAFB;
+            --blue: #2563EB;
+        }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; }
+        
+        .widget { background: #FFF; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; }
+        
+        .widget-header { 
+            display: flex; align-items: center; justify-content: space-between; 
+            padding: 14px 16px; border-bottom: 1px solid var(--border);
+        }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .dots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 14px; height: 14px; }
+        .dot { width: 100%; height: 100%; background: var(--blue); border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.625s; }
+        .dot:nth-child(3) { animation-delay: 1.25s; }
+        .dot:nth-child(4) { animation-delay: 1.875s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        .title { font-size: 11px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.03em; }
+        
+        .filter-pills { display: flex; gap: 4px; }
+        .filter-pill {
+            padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border);
+            background: #FFF; font-size: 9px; font-weight: 700; color: var(--ink-sub);
+            cursor: pointer; transition: all 0.2s;
+        }
+        .filter-pill:hover { background: var(--bg-soft); }
+        .filter-pill.active { background: var(--blue); color: #FFF; border-color: var(--blue); }
+        
+        .items-list { max-height: 320px; overflow-y: auto; }
+        
+        .edit-item { 
+            display: flex; align-items: center; gap: 12px; 
+            padding: 12px 16px; border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+        .edit-item:last-child { border-bottom: none; }
+        .edit-item:hover { background: var(--bg-soft); }
+        
+        .item-thumb {
+            width: 48px; height: 32px; border-radius: 4px; 
+            background: var(--bg-soft); flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+        }
+        
+        .item-info { flex: 1; min-width: 0; }
+        .item-title { font-size: 12px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-meta { font-size: 10px; color: var(--ink-sub); margin-top: 2px; display: flex; align-items: center; gap: 8px; }
+        
+        .status-badge { 
+            padding: 3px 8px; border-radius: 4px; 
+            font-size: 8px; font-weight: 800; text-transform: uppercase;
+        }
+        .status-badge.rough { background: #DBEAFE; color: var(--blue); }
+        .status-badge.fine { background: #FEF3C7; color: var(--warning); }
+        .status-badge.final { background: #D1FAE5; color: var(--production); }
+        .status-badge.feedback { background: #FEE2E2; color: var(--urgent); }
+        
+        .editor-badge {
+            display: flex; align-items: center; gap: 4px;
+        }
+        .editor-avatar {
+            width: 18px; height: 18px; border-radius: 50%;
+            background: var(--production); color: #FFF;
+            font-size: 7px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .editor-name { font-size: 10px; color: var(--ink-sub); }
+        
+        .item-due { 
+            font-size: 9px; font-weight: 700; color: var(--ink-sub);
+            text-align: right; flex-shrink: 0;
+        }
+        .item-due.today { color: var(--warning); }
+        .item-due.overdue { color: var(--urgent); }
+        
+        .empty-state { 
+            padding: 40px 20px; text-align: center; 
+        }
+        .empty-icon { font-size: 32px; margin-bottom: 8px; }
+        .empty-text { font-size: 11px; color: var(--ink-sub); }
+        
+        .footer { 
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 16px; border-top: 1px solid var(--border); 
+            background: var(--bg-soft);
+        }
+        .footer-stat { font-size: 9px; color: var(--ink-sub); }
+        .footer-stat strong { color: var(--ink); font-weight: 800; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        const appId = 'dmg-command-centre-native';
+        const basePath = `artifacts/${appId}/public/data`;
+        
+        const getInitials = (name) => {
+            if (!name) return '??';
+            const parts = name.split(' ');
+            return parts.map(p => p[0]).join('').toUpperCase().slice(0, 2);
+        };
+        
+        const getDueClass = (dueDate) => {
+            if (!dueDate) return '';
+            const due = new Date(dueDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            if (due < today) return 'overdue';
+            if (due < tomorrow) return 'today';
+            return '';
+        };
+        
+        const formatDue = (dueDate) => {
+            if (!dueDate) return 'No date';
+            const due = new Date(dueDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+            
+            if (diff < 0) return `${Math.abs(diff)}d overdue`;
+            if (diff === 0) return 'Due today';
+            if (diff === 1) return 'Due tomorrow';
+            return `Due in ${diff}d`;
+        };
+        
+        // Demo data
+        const DEMO_ITEMS = [
+            { id: '1', title: 'Sky Vegas Street Talk v2', stage: 'feedback', editor: 'Mimi Yates', dueDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), format: 'Street Talk' },
+            { id: '2', title: 'JAECOO 24hrs Adventure Ep1', stage: 'fine', editor: 'Dan Quinnell', dueDate: new Date().toISOString(), format: 'Mail Investigates' },
+            { id: '3', title: 'Wuthering Heights Love Notes', stage: 'rough', editor: 'Kaylee Abrahams', dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), format: 'Going Viral' },
+            { id: '4', title: 'Chery Backseat Drivers Ep3', stage: 'final', editor: 'Sophia Stanford', dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), format: 'Mail Investigates' },
+            { id: '5', title: 'Trading 212 Headlines', stage: 'rough', editor: 'Hugo', dueDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(), format: 'Headlines' },
+        ];
+        
+        function App() {
+            const [items, setItems] = useState(DEMO_ITEMS);
+            const [filter, setFilter] = useState('all');
+            
+            useEffect(() => {
+                // Try to load from Firestore
+                const unsub = db.collection(basePath).doc('edit_queue').collection('edit_queue')
+                    .orderBy('dueDate', 'asc')
+                    .limit(15)
+                    .onSnapshot(snap => {
+                        if (!snap.empty) {
+                            setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        }
+                    }, () => {});
+                
+                return () => unsub?.();
+            }, []);
+            
+            const filteredItems = useMemo(() => {
+                if (filter === 'all') return items;
+                return items.filter(i => i.stage === filter);
+            }, [items, filter]);
+            
+            const stageCounts = useMemo(() => ({
+                rough: items.filter(i => i.stage === 'rough').length,
+                fine: items.filter(i => i.stage === 'fine').length,
+                final: items.filter(i => i.stage === 'final').length,
+                feedback: items.filter(i => i.stage === 'feedback').length
+            }), [items]);
+            
+            const overdueCount = items.filter(i => getDueClass(i.dueDate) === 'overdue').length;
+            
+            return (
+                <div className="widget">
+                    <div className="widget-header">
+                        <div className="header-left">
+                            <div className="dots">
+                                <div className="dot"></div>
+                                <div className="dot"></div>
+                                <div className="dot"></div>
+                                <div className="dot"></div>
+                            </div>
+                            <span className="title">Edit Queue</span>
+                        </div>
+                        <div className="filter-pills">
+                            <button className={`filter-pill ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</button>
+                            <button className={`filter-pill ${filter === 'rough' ? 'active' : ''}`} onClick={() => setFilter('rough')}>Rough</button>
+                            <button className={`filter-pill ${filter === 'fine' ? 'active' : ''}`} onClick={() => setFilter('fine')}>Fine</button>
+                            <button className={`filter-pill ${filter === 'feedback' ? 'active' : ''}`} onClick={() => setFilter('feedback')}>Feedback</button>
+                        </div>
+                    </div>
+                    
+                    {filteredItems.length > 0 ? (
+                        <>
+                            <div className="items-list">
+                                {filteredItems.map(item => (
+                                    <div key={item.id} className="edit-item">
+                                        <div className="item-thumb">🎬</div>
+                                        <div className="item-info">
+                                            <div className="item-title">{item.title}</div>
+                                            <div className="item-meta">
+                                                <span className={`status-badge ${item.stage}`}>{item.stage}</span>
+                                                <span>{item.format}</span>
+                                            </div>
+                                        </div>
+                                        <div className="editor-badge">
+                                            <div className="editor-avatar">{getInitials(item.editor)}</div>
+                                            <span className="editor-name">{item.editor?.split(' ')[0]}</span>
+                                        </div>
+                                        <div className={`item-due ${getDueClass(item.dueDate)}`}>
+                                            {formatDue(item.dueDate)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="footer">
+                                <div className="footer-stat">
+                                    <strong>{items.length}</strong> in queue
+                                </div>
+                                <div className="footer-stat">
+                                    {overdueCount > 0 ? (
+                                        <span style={{ color: 'var(--urgent)' }}><strong>{overdueCount}</strong> overdue</span>
+                                    ) : (
+                                        <span style={{ color: 'var(--production)' }}>✓ All on track</span>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="empty-state">
+                            <div className="empty-icon">🎬</div>
+                            <div className="empty-text">No edits in queue</div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

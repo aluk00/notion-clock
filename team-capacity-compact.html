@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Capacity | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --editorial: #E94B4B;
+            --creative: #E6468B;
+            --production: #43B049;
+            --social: #F2C316;
+            --operations: #21A0D8;
+            --design: #E6468B;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --border: #E5E7EB;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; }
+        
+        .widget { background: #FFF; border-radius: 14px; border: 1px solid var(--border); overflow: hidden; }
+        
+        .widget-header { 
+            display: flex; align-items: center; justify-content: space-between; 
+            padding: 14px 16px; border-bottom: 1px solid var(--border);
+        }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .dots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 14px; height: 14px; }
+        .dot { width: 100%; height: 100%; border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.625s; }
+        .dot:nth-child(3) { animation-delay: 1.25s; }
+        .dot:nth-child(4) { animation-delay: 1.875s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        .title { font-size: 11px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.03em; }
+        
+        .capacity-badge { 
+            display: flex; align-items: center; gap: 6px; 
+            padding: 4px 10px; border-radius: 20px; background: var(--bg-soft);
+            font-size: 9px; font-weight: 800; color: var(--ink-sub); text-transform: uppercase;
+        }
+        .capacity-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .capacity-dot.green { background: #10B981; }
+        .capacity-dot.amber { background: #F59E0B; }
+        .capacity-dot.red { background: #EF4444; }
+        
+        .members-grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); 
+            gap: 2px; padding: 2px; background: var(--border);
+        }
+        
+        .member-cell { 
+            background: #FFF; padding: 10px 12px; 
+            display: flex; align-items: center; gap: 10px;
+        }
+        
+        .avatar { 
+            width: 28px; height: 28px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: 800; color: #FFF; flex-shrink: 0;
+        }
+        
+        .member-info { flex: 1; min-width: 0; }
+        .member-name { font-size: 11px; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .member-load { font-size: 9px; color: var(--ink-sub); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+        
+        .load-bar { 
+            width: 40px; height: 4px; background: #E5E7EB; border-radius: 2px; 
+            overflow: hidden; flex-shrink: 0;
+        }
+        .load-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+        .load-fill.low { background: #10B981; }
+        .load-fill.medium { background: #F59E0B; }
+        .load-fill.high { background: #EF4444; }
+        
+        .status-indicator { 
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+        .status-indicator.available { background: #10B981; }
+        .status-indicator.busy { background: #F59E0B; }
+        .status-indicator.maxed { background: #EF4444; }
+        .status-indicator.away { background: #9CA3AF; }
+        
+        .empty-state { padding: 24px; text-align: center; font-size: 11px; color: var(--ink-sub); }
+        
+        .footer { 
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg-soft);
+        }
+        .footer-stat { font-size: 9px; color: var(--ink-sub); }
+        .footer-stat strong { color: var(--ink); font-weight: 800; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        const appId = 'dmg-command-centre-native';
+        const basePath = `artifacts/${appId}/public/data`;
+        
+        const TEAM_COLORS = {
+            'Editorial': '#E94B4B',
+            'Creative': '#E6468B',
+            'Production': '#43B049',
+            'Social': '#F2C316',
+            'Operations': '#21A0D8',
+            'Design': '#E6468B'
+        };
+        
+        const getInitials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
+        
+        const getWeekInfo = () => {
+            const today = new Date();
+            const day = today.getDay();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+            monday.setHours(0, 0, 0, 0);
+            return { weekId: monday.toISOString().split('T')[0], dayIndex: day === 0 ? 4 : day - 1 };
+        };
+        
+        function App() {
+            const [staffDirectory, setStaffDirectory] = useState([]);
+            const [rotaSubmissions, setRotaSubmissions] = useState([]);
+            const [projectAssignments, setProjectAssignments] = useState([]);
+            
+            // Get team from URL param
+            const urlParams = new URLSearchParams(window.location.search);
+            const team = urlParams.get('team') || 'Production';
+            const teamColor = TEAM_COLORS[team] || '#43B049';
+            
+            const weekInfo = useMemo(() => getWeekInfo(), []);
+            
+            useEffect(() => {
+                // Staff directory
+                const unsub1 = db.collection(basePath).doc('staff_directory').collection('staff_directory')
+                    .onSnapshot(snap => setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                
+                // Rota submissions
+                const unsub2 = db.collection(basePath).doc('rota_submissions').collection('rota_submissions')
+                    .where('weekId', '==', weekInfo.weekId)
+                    .onSnapshot(snap => setRotaSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                
+                // Project assignments (if exists)
+                const unsub3 = db.collection(basePath).doc('project_assignments').collection('project_assignments')
+                    .onSnapshot(snap => setProjectAssignments(snap.docs.map(d => ({ id: d.id, ...d.data() }))), 
+                        () => setProjectAssignments([]));
+                
+                return () => { unsub1(); unsub2(); unsub3?.(); };
+            }, [weekInfo.weekId]);
+            
+            // Filter team members
+            const teamMembers = useMemo(() => {
+                return staffDirectory
+                    .filter(s => {
+                        if (team === 'Design') return s.team === 'Creative' || s.role?.toLowerCase().includes('design');
+                        return s.team === team;
+                    })
+                    .map(member => {
+                        // Get today's status from rota
+                        const rota = rotaSubmissions.find(r => 
+                            r.userId === member.id || r.name === `${member.firstName} ${member.lastName}`
+                        );
+                        const todayStatus = rota?.schedule?.[weekInfo.dayIndex]?.status || 'Unknown';
+                        
+                        // Calculate workload from project assignments
+                        const assignments = projectAssignments.filter(a => 
+                            a.userId === member.id || a.assignedTo === `${member.firstName} ${member.lastName}`
+                        );
+                        const activeProjects = assignments.filter(a => a.status === 'active' || !a.status).length;
+                        
+                        // Simulate workload percentage (in real app, would come from actual data)
+                        const workloadPercent = Math.min(100, activeProjects * 25 + Math.random() * 20);
+                        
+                        return {
+                            ...member,
+                            todayStatus,
+                            activeProjects,
+                            workloadPercent,
+                            isAway: ['Leave', 'Shoot', 'Holiday'].includes(todayStatus)
+                        };
+                    })
+                    .sort((a, b) => {
+                        if (a.isManager && !b.isManager) return -1;
+                        if (!a.isManager && b.isManager) return 1;
+                        return (a.firstName || '').localeCompare(b.firstName || '');
+                    });
+            }, [staffDirectory, rotaSubmissions, projectAssignments, team, weekInfo]);
+            
+            // Calculate overall capacity
+            const capacity = useMemo(() => {
+                const available = teamMembers.filter(m => !m.isAway).length;
+                const total = teamMembers.length;
+                const avgLoad = teamMembers.reduce((sum, m) => sum + m.workloadPercent, 0) / (total || 1);
+                
+                let status = 'green';
+                if (avgLoad > 70) status = 'amber';
+                if (avgLoad > 85) status = 'red';
+                
+                return { available, total, avgLoad: Math.round(avgLoad), status };
+            }, [teamMembers]);
+            
+            const getLoadClass = (percent) => {
+                if (percent < 50) return 'low';
+                if (percent < 80) return 'medium';
+                return 'high';
+            };
+            
+            const getStatusClass = (member) => {
+                if (member.isAway) return 'away';
+                if (member.workloadPercent > 85) return 'maxed';
+                if (member.workloadPercent > 60) return 'busy';
+                return 'available';
+            };
+            
+            return (
+                <div className="widget">
+                    <div className="widget-header">
+                        <div className="header-left">
+                            <div className="dots">
+                                <div className="dot" style={{ background: teamColor }}></div>
+                                <div className="dot" style={{ background: teamColor }}></div>
+                                <div className="dot" style={{ background: teamColor }}></div>
+                                <div className="dot" style={{ background: teamColor }}></div>
+                            </div>
+                            <span className="title">{team} Capacity</span>
+                        </div>
+                        <div className="capacity-badge">
+                            <div className={`capacity-dot ${capacity.status}`}></div>
+                            {capacity.avgLoad}% Load
+                        </div>
+                    </div>
+                    
+                    {teamMembers.length > 0 ? (
+                        <div className="members-grid">
+                            {teamMembers.map(member => (
+                                <div key={member.id} className="member-cell">
+                                    <div className="avatar" style={{ background: teamColor }}>
+                                        {getInitials(member.firstName, member.lastName)}
+                                    </div>
+                                    <div className="member-info">
+                                        <div className="member-name">{member.firstName}</div>
+                                        <div className="member-load">
+                                            <div className="load-bar">
+                                                <div 
+                                                    className={`load-fill ${getLoadClass(member.workloadPercent)}`}
+                                                    style={{ width: `${member.workloadPercent}%` }}
+                                                ></div>
+                                            </div>
+                                            <span>{Math.round(member.workloadPercent)}%</span>
+                                            <div className={`status-indicator ${getStatusClass(member)}`}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="empty-state">No team members found</div>
+                    )}
+                    
+                    <div className="footer">
+                        <div className="footer-stat">
+                            <strong>{capacity.available}</strong> of {capacity.total} available today
+                        </div>
+                        <div className="footer-stat">
+                            <strong>{teamMembers.filter(m => m.workloadPercent < 50).length}</strong> with capacity
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

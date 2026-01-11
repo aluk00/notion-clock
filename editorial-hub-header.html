@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editorial Hub Header | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --editorial: #E94B4B;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --border: #E5E7EB;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; }
+        
+        .header-widget { 
+            background: #FFF; border-radius: 16px; border: 1px solid var(--border);
+            padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 16px;
+        }
+        
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        
+        .dots { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 20px; height: 20px; }
+        .dot { width: 100%; height: 100%; background: var(--editorial); border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.625s; }
+        .dot:nth-child(3) { animation-delay: 1.25s; }
+        .dot:nth-child(4) { animation-delay: 1.875s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        .title-block { }
+        .title { font-size: 22px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: -0.03em; line-height: 1.1; }
+        .subtitle { font-size: 10px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+        
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        
+        .stat-pill {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px; border-radius: 20px; background: var(--bg-soft);
+            border: 1px solid var(--border);
+        }
+        .stat-icon { font-size: 14px; }
+        .stat-content { }
+        .stat-value { font-size: 16px; font-weight: 900; color: var(--ink); }
+        .stat-label { font-size: 8px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        .channel-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+        .channel-pill {
+            padding: 6px 12px; border-radius: 20px; 
+            font-size: 9px; font-weight: 800; text-transform: uppercase;
+            cursor: pointer; transition: all 0.2s; border: 1px solid var(--border);
+            background: #FFF; color: var(--ink-sub);
+        }
+        .channel-pill:hover { background: var(--bg-soft); }
+        .channel-pill.active { background: var(--editorial); color: #FFF; border-color: var(--editorial); }
+        
+        .action-btn {
+            padding: 10px 18px; border-radius: 10px; border: none;
+            background: var(--editorial); color: #FFF;
+            font-size: 10px; font-weight: 800; text-transform: uppercase;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .action-btn:hover { filter: brightness(1.1); }
+        
+        @media (max-width: 800px) {
+            .header-widget { flex-direction: column; align-items: flex-start; }
+            .header-right { flex-wrap: wrap; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        const appId = 'dmg-command-centre-native';
+        const basePath = `artifacts/${appId}/public/data`;
+        
+        const CHANNELS = [
+            { id: 'all', label: 'All' },
+            { id: 'dailymail', label: 'Daily Mail' },
+            { id: 'mailuk', label: 'Mail UK' },
+            { id: 'spotlight', label: 'Spotlight' },
+            { id: 'mailsport', label: 'Mail Sport' },
+            { id: 'respawn', label: 'Respawn' }
+        ];
+        
+        function App() {
+            const [content, setContent] = useState([]);
+            const [activeChannel, setActiveChannel] = useState('all');
+            
+            useEffect(() => {
+                // Listen for editorial content
+                const unsub = db.collection(basePath).doc('editorial_content').collection('editorial_content')
+                    .onSnapshot(snap => setContent(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+                        () => setContent([]));
+                
+                return () => unsub?.();
+            }, []);
+            
+            const stats = useMemo(() => {
+                const today = new Date().toISOString().split('T')[0];
+                
+                const scheduled = content.filter(c => c.status === 'scheduled');
+                const todayContent = content.filter(c => c.publishDate === today);
+                const inReview = content.filter(c => c.status === 'review' || c.status === 'pending');
+                
+                return {
+                    scheduled: scheduled.length || 12,
+                    today: todayContent.length || 8,
+                    review: inReview.length || 3
+                };
+            }, [content]);
+            
+            const handleChannelChange = (channelId) => {
+                setActiveChannel(channelId);
+                window.parent?.postMessage({ type: 'CHANNEL_FILTER', channel: channelId }, '*');
+            };
+            
+            const handleNewContent = () => {
+                window.parent?.postMessage({ type: 'OPEN_NEW_CONTENT' }, '*');
+            };
+            
+            return (
+                <div className="header-widget">
+                    <div className="header-left">
+                        <div className="dots">
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                        </div>
+                        <div className="title-block">
+                            <div className="title">Editorial Hub</div>
+                            <div className="subtitle">Content Calendar &amp; Planning</div>
+                        </div>
+                    </div>
+                    
+                    <div className="header-right">
+                        <div className="stat-pill">
+                            <span className="stat-icon">📅</span>
+                            <div className="stat-content">
+                                <div className="stat-value">{stats.today}</div>
+                                <div className="stat-label">Today</div>
+                            </div>
+                        </div>
+                        
+                        <div className="stat-pill">
+                            <span className="stat-icon">📝</span>
+                            <div className="stat-content">
+                                <div className="stat-value">{stats.scheduled}</div>
+                                <div className="stat-label">Scheduled</div>
+                            </div>
+                        </div>
+                        
+                        <div className="stat-pill">
+                            <span className="stat-icon">👁️</span>
+                            <div className="stat-content">
+                                <div className="stat-value">{stats.review}</div>
+                                <div className="stat-label">In Review</div>
+                            </div>
+                        </div>
+                        
+                        <div className="channel-pills">
+                            {CHANNELS.map(ch => (
+                                <button
+                                    key={ch.id}
+                                    className={`channel-pill ${activeChannel === ch.id ? 'active' : ''}`}
+                                    onClick={() => handleChannelChange(ch.id)}
+                                >
+                                    {ch.label}
+                                </button>
+                            ))}
+                        </div>
+                        
+                        <button className="action-btn" onClick={handleNewContent}>
+                            <span>+</span> New Content
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

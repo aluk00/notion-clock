@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commercial Shoots Header | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --production: #43B049;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --border: #E5E7EB;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; }
+        
+        .header-widget { 
+            background: #FFF; border-radius: 16px; border: 1px solid var(--border);
+            padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 16px;
+        }
+        
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        
+        .dots { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 20px; height: 20px; }
+        .dot { width: 100%; height: 100%; background: var(--production); border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.625s; }
+        .dot:nth-child(3) { animation-delay: 1.25s; }
+        .dot:nth-child(4) { animation-delay: 1.875s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        .title-block { }
+        .title { font-size: 22px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: -0.03em; line-height: 1.1; }
+        .subtitle { font-size: 10px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+        
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        
+        .stat-pill {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px; border-radius: 20px; background: var(--bg-soft);
+            border: 1px solid var(--border);
+        }
+        .stat-icon { font-size: 14px; }
+        .stat-content { }
+        .stat-value { font-size: 16px; font-weight: 900; color: var(--ink); }
+        .stat-label { font-size: 8px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        .view-toggle {
+            display: flex; border-radius: 10px; overflow: hidden; border: 1px solid var(--border);
+        }
+        .view-btn {
+            padding: 8px 14px; border: none; background: #FFF;
+            font-size: 10px; font-weight: 700; color: var(--ink-sub);
+            cursor: pointer; transition: all 0.2s;
+        }
+        .view-btn:hover { background: var(--bg-soft); }
+        .view-btn.active { background: var(--production); color: #FFF; }
+        .view-btn + .view-btn { border-left: 1px solid var(--border); }
+        
+        .action-btn {
+            padding: 10px 18px; border-radius: 10px; border: none;
+            background: var(--production); color: #FFF;
+            font-size: 10px; font-weight: 800; text-transform: uppercase;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .action-btn:hover { filter: brightness(1.1); }
+        
+        @media (max-width: 700px) {
+            .header-widget { flex-direction: column; align-items: flex-start; }
+            .header-right { flex-wrap: wrap; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        const appId = 'dmg-command-centre-native';
+        const basePath = `artifacts/${appId}/public/data`;
+        
+        function App() {
+            const [shoots, setShoots] = useState([]);
+            const [view, setView] = useState('week');
+            
+            useEffect(() => {
+                // Listen for shoots/productions
+                const unsub = db.collection(basePath).doc('shoots').collection('shoots')
+                    .onSnapshot(snap => setShoots(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+                        () => setShoots([]));
+                
+                return () => unsub?.();
+            }, []);
+            
+            const stats = useMemo(() => {
+                const today = new Date();
+                const thisWeekStart = new Date(today);
+                thisWeekStart.setDate(today.getDate() - today.getDay() + 1);
+                const thisWeekEnd = new Date(thisWeekStart);
+                thisWeekEnd.setDate(thisWeekStart.getDate() + 6);
+                
+                const thisWeek = shoots.filter(s => {
+                    const shootDate = new Date(s.date);
+                    return shootDate >= thisWeekStart && shootDate <= thisWeekEnd;
+                });
+                
+                const upcoming = shoots.filter(s => new Date(s.date) > today);
+                const confirmed = shoots.filter(s => s.status === 'confirmed' || s.crewConfirmed);
+                
+                return {
+                    thisWeek: thisWeek.length,
+                    upcoming: upcoming.length,
+                    confirmed: confirmed.length
+                };
+            }, [shoots]);
+            
+            const handleNewShoot = () => {
+                // Open new shoot form (would integrate with actual form)
+                window.parent?.postMessage({ type: 'OPEN_NEW_SHOOT' }, '*');
+            };
+            
+            const handleViewChange = (newView) => {
+                setView(newView);
+                // Notify parent about view change
+                window.parent?.postMessage({ type: 'CALENDAR_VIEW_CHANGE', view: newView }, '*');
+            };
+            
+            return (
+                <div className="header-widget">
+                    <div className="header-left">
+                        <div className="dots">
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                        </div>
+                        <div className="title-block">
+                            <div className="title">Commercial Shoots</div>
+                            <div className="subtitle">Production Calendar</div>
+                        </div>
+                    </div>
+                    
+                    <div className="header-right">
+                        <div className="stat-pill">
+                            <span className="stat-icon">📅</span>
+                            <div className="stat-content">
+                                <div className="stat-value">{stats.thisWeek}</div>
+                                <div className="stat-label">This Week</div>
+                            </div>
+                        </div>
+                        
+                        <div className="stat-pill">
+                            <span className="stat-icon">🎬</span>
+                            <div className="stat-content">
+                                <div className="stat-value">{stats.upcoming}</div>
+                                <div className="stat-label">Upcoming</div>
+                            </div>
+                        </div>
+                        
+                        <div className="stat-pill">
+                            <span className="stat-icon">✅</span>
+                            <div className="stat-content">
+                                <div className="stat-value">{stats.confirmed}</div>
+                                <div className="stat-label">Confirmed</div>
+                            </div>
+                        </div>
+                        
+                        <div className="view-toggle">
+                            <button 
+                                className={`view-btn ${view === 'day' ? 'active' : ''}`}
+                                onClick={() => handleViewChange('day')}
+                            >Day</button>
+                            <button 
+                                className={`view-btn ${view === 'week' ? 'active' : ''}`}
+                                onClick={() => handleViewChange('week')}
+                            >Week</button>
+                            <button 
+                                className={`view-btn ${view === 'month' ? 'active' : ''}`}
+                                onClick={() => handleViewChange('month')}
+                            >Month</button>
+                        </div>
+                        
+                        <button className="action-btn" onClick={handleNewShoot}>
+                            <span>+</span> New Shoot
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
