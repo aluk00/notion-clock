@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Activity | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-operations: #9333EA;
+            --notion-black: #1C1C1C;
+            --slack-purple: #4A154B;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 12px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            width: 100%;
+            max-width: 700px;
+        }
+        .widget-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--team-editorial);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        .header-title {
+            font-size: 14px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink);
+            margin: 0;
+        }
+        .header-sub {
+            font-size: 10px;
+            color: var(--ink-sub);
+            margin-left: auto;
+        }
+        .demo-badge {
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: #E6468B;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        /* Filter tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-soft);
+        }
+        .filter-tab {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .filter-tab:hover {
+            background: #FFF;
+            color: var(--ink);
+        }
+        .filter-tab.active {
+            background: #FFF;
+            color: var(--ink);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .filter-tab .source-icon {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+        }
+        .filter-tab .source-icon.notion { background: var(--notion-black); color: #FFF; }
+        .filter-tab .source-icon.slack { background: var(--slack-purple); color: #FFF; }
+        .tab-count {
+            background: var(--team-editorial);
+            color: #FFF;
+            padding: 2px 6px;
+            border-radius: 99px;
+            font-size: 9px;
+            font-weight: 800;
+        }
+        
+        /* Activity list */
+        .activity-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        
+        /* Activity item */
+        .activity-item {
+            display: flex;
+            gap: 14px;
+            padding: 14px 24px;
+            border-bottom: 1px solid #F5F5F5;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .activity-item:hover {
+            background: var(--bg-soft);
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-item.unread {
+            background: #FFFBEB;
+            border-left: 3px solid var(--team-social);
+        }
+        .activity-item.urgent {
+            border-left: 3px solid var(--team-editorial);
+        }
+        
+        /* Source icon */
+        .source-badge {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .source-badge.notion { background: var(--notion-black); color: #FFF; }
+        .source-badge.slack { background: var(--slack-purple); color: #FFF; }
+        .source-badge.system { background: var(--dmg-blue); color: #FFF; }
+        
+        /* Content */
+        .activity-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .activity-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .activity-title strong {
+            font-weight: 800;
+        }
+        .activity-desc {
+            font-size: 12px;
+            color: var(--ink-sub);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .activity-desc .mention {
+            color: var(--dmg-blue);
+            font-weight: 600;
+        }
+        
+        /* Meta row */
+        .activity-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .project-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: color-mix(in srgb, var(--tag-color, var(--dmg-blue)) 12%, white);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--tag-color, var(--dmg-blue));
+        }
+        .activity-type {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            background: var(--bg-soft);
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+        .activity-time {
+            font-size: 10px;
+            color: var(--ink-sub);
+            margin-left: auto;
+        }
+        
+        /* Empty state */
+        .empty-state {
+            padding: 60px 24px;
+            text-align: center;
+        }
+        .empty-icon { font-size: 40px; margin-bottom: 16px; }
+        .empty-title { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
+        .empty-sub { font-size: 12px; color: var(--ink-sub); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        const TEAM_COLORS = {
+            'Editorial': '#E94B4B',
+            'Creative': '#E6468B',
+            'Production': '#43B049',
+            'Social': '#F2C316',
+            'Operations': '#9333EA'
+        };
+
+        // Demo activity data
+        const DEMO_ACTIVITIES = [
+            {
+                id: '1',
+                source: 'notion',
+                type: 'mention',
+                title: '<strong>Nick B</strong> mentioned you in a comment',
+                desc: '"@Ana can you review the hook copy before EOD? The Sky Vegas team need sign-off."',
+                project: { name: 'Sky Vegas', color: '#E94B4B' },
+                timestamp: Date.now() - 600000,
+                unread: true
+            },
+            {
+                id: '2',
+                source: 'notion',
+                type: 'status_change',
+                title: '<strong>Chery Campaign</strong> moved to Creative Review',
+                desc: 'Status changed from "Briefed" to "Creative Review" by Hugo M',
+                project: { name: 'Chery', color: '#43B049' },
+                timestamp: Date.now() - 1800000,
+                unread: true
+            },
+            {
+                id: '3',
+                source: 'slack',
+                type: 'message',
+                title: 'New message in <strong>#creative-team</strong>',
+                desc: 'Mimi: "Just saw the Street Talk numbers, we\'re at 400k in 2 hours 🔥"',
+                project: null,
+                timestamp: Date.now() - 3600000,
+                unread: false
+            },
+            {
+                id: '4',
+                source: 'notion',
+                type: 'comment',
+                title: '<strong>Isobel W</strong> commented on your deliverable',
+                desc: '"Love the direction on video 2! One small note: can we swap the establishing shot?"',
+                project: { name: 'Wuthering Heights', color: '#E6468B' },
+                timestamp: Date.now() - 7200000,
+                unread: false
+            },
+            {
+                id: '5',
+                source: 'slack',
+                type: 'dm',
+                title: 'Direct message from <strong>Hugo M</strong>',
+                desc: '"Coffee? ☕ Meeting room 3 in 10?"',
+                project: null,
+                timestamp: Date.now() - 10800000,
+                unread: false
+            },
+            {
+                id: '6',
+                source: 'notion',
+                type: 'assignment',
+                title: 'You were assigned to <strong>JAECOO Video 3</strong>',
+                desc: 'New deliverable assigned by Nick B. Due: Friday 17th Jan',
+                project: { name: 'JAECOO', color: '#21a0d8' },
+                timestamp: Date.now() - 14400000,
+                unread: false
+            },
+            {
+                id: '7',
+                source: 'system',
+                type: 'deadline',
+                title: '<strong>Deadline approaching</strong>',
+                desc: 'Sky Vegas "Little Wins" concept deck due tomorrow',
+                project: { name: 'Sky Vegas', color: '#E94B4B' },
+                timestamp: Date.now() - 21600000,
+                unread: false,
+                urgent: true
+            },
+            {
+                id: '8',
+                source: 'notion',
+                type: 'tag',
+                title: 'Tagged in <strong>Q1 Planning</strong> page',
+                desc: 'You were tagged in the Creative team capacity section',
+                project: null,
+                timestamp: Date.now() - 28800000,
+                unread: false
+            }
+        ];
+
+        let currentUser = null;
+        let activities = [];
+        let isDemo = true;
+        let activeFilter = 'all';
+
+        const root = document.getElementById('root');
+
+        function timeAgo(timestamp) {
+            const seconds = Math.floor((Date.now() - timestamp) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
+        }
+
+        function getSourceIcon(source) {
+            if (source === 'notion') return 'N';
+            if (source === 'slack') return 'S';
+            return '●';
+        }
+
+        function countBySource(items, source) {
+            if (source === 'all') return items.filter(i => i.unread).length;
+            return items.filter(i => i.source === source && i.unread).length;
+        }
+
+        function render() {
+            const displayActivities = activities.length > 0 ? activities : DEMO_ACTIVITIES;
+            
+            const filtered = activeFilter === 'all' 
+                ? displayActivities 
+                : displayActivities.filter(a => a.source === activeFilter);
+
+            const allUnread = countBySource(displayActivities, 'all');
+            const notionUnread = countBySource(displayActivities, 'notion');
+            const slackUnread = countBySource(displayActivities, 'slack');
+
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="widget-header">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <h2 class="header-title">My Activity</h2>
+                        <span class="header-sub">${displayActivities.length} updates</span>
+                        ${isDemo ? '<span class="demo-badge">Preview</span>' : ''}
+                    </div>
+                    
+                    <div class="filter-tabs">
+                        <button class="filter-tab ${activeFilter === 'all' ? 'active' : ''}" onclick="window.setFilter('all')">
+                            All
+                            ${allUnread > 0 ? `<span class="tab-count">${allUnread}</span>` : ''}
+                        </button>
+                        <button class="filter-tab ${activeFilter === 'notion' ? 'active' : ''}" onclick="window.setFilter('notion')">
+                            <span class="source-icon notion">N</span>
+                            Notion
+                            ${notionUnread > 0 ? `<span class="tab-count">${notionUnread}</span>` : ''}
+                        </button>
+                        <button class="filter-tab ${activeFilter === 'slack' ? 'active' : ''}" onclick="window.setFilter('slack')">
+                            <span class="source-icon slack">S</span>
+                            Slack
+                            ${slackUnread > 0 ? `<span class="tab-count">${slackUnread}</span>` : ''}
+                        </button>
+                    </div>
+                    
+                    <div class="activity-list">
+                        ${filtered.length === 0 ? `
+                            <div class="empty-state">
+                                <div class="empty-icon">📭</div>
+                                <div class="empty-title">All caught up!</div>
+                                <div class="empty-sub">No new activity to show</div>
+                            </div>
+                        ` : filtered.map(item => `
+                            <div class="activity-item ${item.unread ? 'unread' : ''} ${item.urgent ? 'urgent' : ''}" 
+                                 onclick="window.openActivity('${item.id}')">
+                                <div class="source-badge ${item.source}">
+                                    ${getSourceIcon(item.source)}
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">${item.title}</div>
+                                    <div class="activity-desc">${item.desc}</div>
+                                    <div class="activity-meta">
+                                        ${item.project ? `
+                                            <span class="project-tag" style="--tag-color: ${item.project.color}">
+                                                ${item.project.name}
+                                            </span>
+                                        ` : ''}
+                                        <span class="activity-type">${item.type.replace('_', ' ')}</span>
+                                        <span class="activity-time">${timeAgo(item.timestamp)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        window.setFilter = (filter) => {
+            activeFilter = filter;
+            render();
+        };
+
+        window.openActivity = (activityId) => {
+            // Mark as read and navigate
+            const item = (activities.length > 0 ? activities : DEMO_ACTIVITIES).find(a => a.id === activityId);
+            if (item) {
+                item.unread = false;
+                render();
+            }
+            // In real implementation, would navigate to the source
+        };
+
+        async function loadActivities(userId) {
+            if (isDemo || !userId) {
+                activities = DEMO_ACTIVITIES;
+                render();
+                return;
+            }
+
+            try {
+                const q = query(
+                    collection(db, "artifacts", appId, "public", "data", "user_activity"),
+                    where("userId", "==", userId),
+                    orderBy("timestamp", "desc"),
+                    limit(30)
+                );
+
+                onSnapshot(q, (snap) => {
+                    activities = [];
+                    snap.forEach(d => activities.push({ id: d.id, ...d.data() }));
+                    render();
+                });
+            } catch (e) {
+                console.error('Failed to load activities:', e);
+                activities = DEMO_ACTIVITIES;
+                render();
+            }
+        }
+
+        async function resolveIdentity(authUser) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramId = urlParams.get('id');
+
+            if (paramId) {
+                try {
+                    const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", paramId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        currentUser = { id: snap.id, ...snap.data() };
+                        isDemo = false;
+                        await loadActivities(currentUser.id);
+                        return;
+                    }
+                } catch (e) {
+                    console.log('Param lookup failed:', e);
+                }
+            }
+
+            if (authUser && authUser.email && !authUser.isAnonymous) {
+                try {
+                    const q = query(
+                        collection(db, "artifacts", appId, "public", "data", "staff_directory"),
+                        where("email", "==", authUser.email)
+                    );
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        currentUser = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                        isDemo = false;
+                        await loadActivities(currentUser.id);
+                        return;
+                    }
+                } catch (e) {
+                    console.log('Email lookup failed:', e);
+                }
+            }
+
+            isDemo = true;
+            activities = DEMO_ACTIVITIES;
+            render();
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                resolveIdentity(user);
+            } else {
+                signInAnonymously(auth);
+            }
+        });
+    </script>
+</body>
+</html>
