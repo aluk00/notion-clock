@@ -3,578 +3,489 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Control Centre | DMG New Media</title>
+    <title>Admin Console | DMG Command Centre</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --dmg-blue: #21a0d8;
-            --carbon: #1C1C1C;
-            --danger: #E94B4B;
-            --success: #43B049;
-            --bg-page: #FFFFFF;
-            --bg-base: #F9FAFB;
-            --border: #E5E7EB;
+            --dmg-blue-light: #e8f6fc;
             --ink: #1C1C1C;
             --ink-sub: #6B7280;
-            --radius-xl: 32px;
-            --radius-lg: 16px;
-            --transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-            
-            /* Team Colors */
+            --border: #E5E7EB;
+            --bg-soft: #F9FAFB;
+            --success: #43B049;
+            --danger: #E94B4B;
+            --warning: #F2C316;
             --team-editorial: #E94B4B;
             --team-creative: #E6468B;
             --team-production: #43B049;
             --team-social: #F2C316;
-            --team-people: #21A0D8;
-            --team-operations: #21A0D8;
+            --team-operations: #21a0d8;
             --team-executive: #1C1C1C;
         }
-
-        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-
-        body {
-            font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            background-color: var(--bg-page);
-            margin: 0; padding: 0; color: var(--ink); min-height: 100vh;
-            overflow-x: hidden;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #FFF; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        
+        /* Lock Screen */
+        .lock-screen { position: fixed; inset: 0; background: #FFF; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+        .lock-screen.hidden { opacity: 0; pointer-events: none; }
+        .lock-title { display: flex; align-items: center; gap: 16px; margin-bottom: 40px; }
+        .lock-text { font-size: 48px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.03em; color: var(--ink); }
+        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 36px; height: 36px; }
+        .dot { width: 100%; height: 100%; background: var(--dmg-blue); border-radius: 50%; animation: pulse 2.5s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .dot:nth-child(2) { animation-delay: 0.5s; }
+        .dot:nth-child(4) { animation-delay: 1s; }
+        .dot:nth-child(3) { animation-delay: 1.5s; }
+        
+        .pin-display { display: flex; gap: 12px; margin-bottom: 32px; }
+        .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border); transition: 0.2s; }
+        .pin-dot.filled { background: var(--dmg-blue); border-color: var(--dmg-blue); transform: scale(1.2); }
+        
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 260px; }
+        .num-btn { height: 56px; border-radius: 12px; background: #FFF; border: 1px solid var(--border); font-size: 20px; font-weight: 700; cursor: pointer; transition: 0.15s; color: var(--ink); }
+        .num-btn:hover { background: var(--bg-soft); }
+        .num-btn:active { background: var(--dmg-blue); color: #FFF; transform: scale(0.96); }
+        .num-btn.action { font-size: 10px; font-weight: 800; color: var(--dmg-blue); text-transform: uppercase; }
+        
+        /* Main App */
+        .app-container { max-width: 1200px; margin: 0 auto; padding: 40px; }
+        .app-header { display: flex; align-items: center; gap: 16px; margin-bottom: 40px; }
+        .app-title { font-size: 32px; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; }
+        
+        .tab-nav { display: flex; gap: 8px; padding: 6px; background: var(--bg-soft); border-radius: 99px; width: fit-content; margin-bottom: 40px; border: 1px solid var(--border); }
+        .tab-btn { padding: 10px 24px; border: none; background: transparent; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border-radius: 99px; color: var(--ink-sub); transition: 0.2s; letter-spacing: 0.05em; }
+        .tab-btn.active { background: var(--ink); color: #FFF; }
+        
+        .panel { display: none; }
+        .panel.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .card { background: #FFF; border: 1px solid var(--border); border-radius: 20px; padding: 32px; margin-bottom: 24px; }
+        .card-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--dmg-blue); letter-spacing: 0.1em; margin-bottom: 24px; }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+        .form-group label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 8px; letter-spacing: 0.05em; }
+        .form-group input, .form-group select { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; background: var(--bg-soft); transition: 0.2s; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--dmg-blue); background: #FFF; box-shadow: 0 0 0 4px rgba(33,160,216,0.1); }
+        
+        .checkbox-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding: 16px; background: var(--bg-soft); border-radius: 12px; cursor: pointer; width: fit-content; }
+        .checkbox-row input { display: none; }
+        .checkbox-box { width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: 0.2s; color: #FFF; font-size: 12px; }
+        .checkbox-row input:checked + .checkbox-box { background: var(--dmg-blue); border-color: var(--dmg-blue); }
+        .checkbox-label { font-size: 13px; font-weight: 700; }
+        
+        .btn { padding: 14px 28px; border: none; border-radius: 12px; font-size: 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; transition: 0.2s; letter-spacing: 0.05em; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-primary { background: var(--ink); color: #FFF; }
+        .btn-primary:hover { background: var(--dmg-blue); }
+        .btn-danger { background: #FEE2E2; color: var(--danger); }
+        .btn-danger:hover { background: var(--danger); color: #FFF; }
+        .btn-secondary { background: var(--bg-soft); color: var(--ink); border: 1px solid var(--border); }
+        
+        /* Directory Table */
+        .directory-table { width: 100%; border-collapse: collapse; }
+        .directory-table th { text-align: left; padding: 16px; font-size: 10px; font-weight: 800; color: var(--ink-sub); text-transform: uppercase; border-bottom: 2px solid var(--border); background: var(--bg-soft); }
+        .directory-table td { padding: 16px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #F5F5F5; }
+        .directory-table tr:hover td { background: #FAFAFA; }
+        
+        .name-cell { display: flex; align-items: center; gap: 12px; }
+        .name-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 12px; height: 12px; }
+        .name-dots span { width: 100%; height: 100%; border-radius: 50%; }
+        .mgr-badge { font-size: 8px; background: var(--dmg-blue); color: #FFF; padding: 3px 8px; border-radius: 99px; margin-left: 8px; font-weight: 800; }
+        
+        .action-btns { display: flex; gap: 6px; }
+        .action-btn { padding: 6px 12px; border: none; border-radius: 6px; font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; }
+        .action-btn.edit { background: #EBF8FF; color: var(--dmg-blue); }
+        .action-btn.delete { background: #FEE2E2; color: var(--danger); }
+        
+        /* Toast */
+        .toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--ink); color: #FFF; padding: 14px 32px; border-radius: 99px; font-size: 13px; font-weight: 700; transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); opacity: 0; z-index: 2000; }
+        .toast.active { transform: translateX(-50%) translateY(0); opacity: 1; }
+        
+        /* Widget Registry */
+        .widget-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .widget-card { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 16px; padding: 20px; cursor: pointer; transition: 0.25s; border-left: 4px solid var(--dmg-blue); }
+        .widget-card:hover { background: #FFF; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+        .widget-name { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--ink); word-break: break-all; }
+        .widget-hint { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 6px; letter-spacing: 0.1em; }
+        
+        .loading { display: flex; align-items: center; justify-content: center; padding: 60px; }
+        .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .app-container { padding: 20px; }
         }
-
-        .hidden { display: none !important; }
-
-        /* --- IMPACT ANIMATIONS --- */
-        @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
-        @keyframes popIn { to { transform: scale(1); } }
-        @keyframes dotCycle {
-            0%, 100% { opacity: 0.2; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.1); }
-        }
-
-        /* --- AUTH / LOCK SCREEN --- */
-        #lock-screen {
-            position: fixed; inset: 0; background: #FFF; z-index: 5000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 0.5s ease;
-        }
-        
-        .header-container { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 40px; }
-        
-        .title-text { 
-            font-size: 4rem; font-weight: 800; color: var(--carbon); 
-            letter-spacing: -0.04em; line-height: 1; opacity: 0; 
-            transform: translateY(10px); text-transform: uppercase;
-            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 44px; height: 44px; flex-shrink: 0; }
-        .dot { width: 100%; height: 100%; background-color: var(--dmg-blue); border-radius: 50%; transform: scale(0); animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        
-        #lock-screen .dot { animation: dotCycle 3s infinite ease-in-out, popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        #lock-screen .dot:nth-child(1) { animation-delay: 0s, 0.2s; }
-        #lock-screen .dot:nth-child(2) { animation-delay: 0.75s, 0.3s; }
-        #lock-screen .dot:nth-child(4) { animation-delay: 1.5s, 0.4s; }
-        #lock-screen .dot:nth-child(3) { animation-delay: 2.25s, 0.3s; }
-
-        .pin-field { display: flex; gap: 16px; justify-content: center; margin-bottom: 40px; }
-        .pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #EEE; transition: 0.2s; }
-        .pin-dot.filled { background: var(--dmg-blue); border-color: var(--dmg-blue); transform: scale(1.2); box-shadow: 0 0 15px rgba(33, 160, 216, 0.3); }
-
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 320px; }
-        .n-btn { 
-            aspect-ratio: 1.4; border-radius: 12px; background: #FFF; border: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; cursor: pointer; transition: 0.2s; color: var(--carbon);
-        }
-        .n-btn:active { background: var(--dmg-blue); color: white; transform: scale(0.95); }
-        .n-btn.utility { font-size: 10px; font-weight: 900; color: var(--dmg-blue); border-color: rgba(33, 160, 216, 0.2); }
-
-        /* --- MAIN LAYOUT --- */
-        .admin-shell { max-width: 1400px; margin: 0 auto; padding: 60px 40px; }
-        
-        .tab-nav { display: flex; gap: 12px; background: #F3F4F6; padding: 6px; border-radius: 99px; width: fit-content; margin-bottom: 60px; border: 1px solid var(--border); }
-        .tab-btn { padding: 12px 28px; border: none; background: transparent; font-size: 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; border-radius: 99px; color: var(--ink-sub); transition: 0.3s; letter-spacing: 0.05em; }
-        .tab-btn.active { background: var(--carbon); color: #FFF; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-
-        .view-section { display: none; animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .view-section.active { display: block; }
-
-        .content-card { background: #FFF; border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 50px; margin-bottom: 40px; box-shadow: 0 4px 30px rgba(0,0,0,0.02); position: relative; }
-        .section-tag { font-size: 11px; font-weight: 900; text-transform: uppercase; color: var(--dmg-blue); letter-spacing: 0.15em; margin-bottom: 30px; display: flex; align-items: center; gap: 8px; }
-        
-        /* FORM STYLING */
-        .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
-        .input-group label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #999; margin-bottom: 10px; display: block; letter-spacing: 0.05em; }
-        input, select { padding: 16px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--bg-base); font-size: 14px; font-weight: 700; width: 100%; outline: none; transition: 0.2s; color: var(--carbon); }
-        input:focus, select:focus { border-color: var(--dmg-blue); background: #FFF; box-shadow: 0 0 0 4px rgba(33, 160, 216, 0.1); }
-        
-        .manager-toggle { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; cursor: pointer; padding: 15px; background: var(--bg-base); border-radius: 12px; width: fit-content; transition: 0.2s; border: 1px solid transparent; }
-        .checkbox-custom { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border); background: #FFF; display: flex; align-items: center; justify-content: center; color: #FFF; font-weight: 900; font-size: 14px; transition: 0.2s; }
-        .manager-toggle input:checked + .checkbox-custom { background: var(--dmg-blue); border-color: var(--dmg-blue); }
-        .manager-toggle input:checked + .checkbox-custom::after { content: "✓"; }
-
-        .btn-primary { background: var(--carbon); color: #FFF; border: none; padding: 18px 40px; border-radius: 14px; font-weight: 800; text-transform: uppercase; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 10px; letter-spacing: 0.05em; }
-        .btn-primary:hover { background: var(--dmg-blue); transform: translateY(-2px); }
-        .btn-secondary { background: #F3F4F6; color: var(--carbon); border: 1.5px solid var(--border); padding: 14px 30px; border-radius: 12px; font-size: 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; transition: 0.2s; }
-        .btn-secondary:hover { background: #E5E7EB; }
-        .btn-danger { background: #FFF3F3; color: var(--danger); border: 1.5px solid #FFE0E0; padding: 10px 20px; border-radius: 10px; font-size: 11px; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; }
-        .btn-danger:hover { background: var(--danger); color: #FFF; border-color: var(--danger); }
-
-        /* DIRECTORY TABLE */
-        .directory-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; padding: 20px; font-size: 10px; font-weight: 900; color: #BBB; text-transform: uppercase; border-bottom: 2px solid var(--border); background: var(--bg-base); }
-        td { padding: 20px; font-size: 15px; font-weight: 700; border-bottom: 1px solid #F9FAFB; color: var(--carbon); }
-        
-        .name-cell { display: flex; align-items: center; gap: 14px; }
-        .name-dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; flex-shrink: 0; }
-        .name-dots span { width: 6px; height: 6px; border-radius: 50%; }
-
-        .is-mgr-badge { font-size: 8px; background: var(--dmg-blue); color: #FFF; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 10px; font-weight: 900; }
-        .btn-del-small, .btn-edit-small { border: none; padding: 8px 14px; border-radius: 8px; font-size: 10px; font-weight: 900; cursor: pointer; text-transform: uppercase; margin-right: 6px; }
-        .btn-del-small { background: #FEE2E2; color: var(--danger); }
-        .btn-edit-small { background: #EBF8FF; color: var(--dmg-blue); }
-
-        /* WIDGET REGISTRY */
-        .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 35px; }
-        .asset-item { background: var(--bg-base); border: 1.5px solid var(--border); padding: 24px; border-radius: 20px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: 0.3s; border-left: 5px solid var(--dmg-blue); position: relative; }
-        .asset-item:hover { background: #FFF; border-color: var(--dmg-blue); transform: translateY(-4px); box-shadow: 0 15px 30px rgba(0,0,0,0.04); }
-        .asset-name { font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700; word-break: break-all; color: var(--carbon); }
-        .asset-copy-label { font-size: 9px; font-weight: 900; text-transform: uppercase; color: #BBB; letter-spacing: 0.12em; }
-
-        #toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: var(--carbon); color: #FFF; padding: 14px 35px; border-radius: 99px; font-size: 13px; font-weight: 800; opacity: 0; pointer-events: none; transition: 0.4s; z-index: 7000; }
-        #toast.active { opacity: 1; bottom: 60px; }
     </style>
 </head>
 <body>
-
-    <div id="toast">Update Successful</div>
-
-    <!-- LOCK SCREEN -->
-    <div id="lock-screen">
-        <div class="header-container">
-            <div class="title-text">ADMIN</div>
-            <div class="dots-grid">
-                <div class="dot"></div><div class="dot"></div>
-                <div class="dot"></div><div class="dot"></div>
-            </div>
-            <div class="title-text">HUB</div>
-        </div>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
         
-        <div class="pin-field">
-            <div class="pin-dot" id="p1"></div><div class="pin-dot" id="p2"></div>
-            <div class="pin-dot" id="p3"></div><div class="pin-dot" id="p4"></div>
-        </div>
+        // Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const appId = 'dmg-command-centre-native';
+        const basePath = `artifacts/${appId}/public/data`;
         
-        <div class="numpad">
-            <div class="n-btn" onclick="pressPin(1)">1</div><div class="n-btn" onclick="pressPin(2)">2</div><div class="n-btn" onclick="pressPin(3)">3</div>
-            <div class="n-btn" onclick="pressPin(4)">4</div><div class="n-btn" onclick="pressPin(5)">5</div><div class="n-btn" onclick="pressPin(6)">6</div>
-            <div class="n-btn" onclick="pressPin(7)">7</div><div class="n-btn" onclick="pressPin(8)">8</div><div class="n-btn" onclick="pressPin(9)">9</div>
-            <div class="n-btn utility" onclick="clearPin()">CLEAR</div>
-            <div class="n-btn" onclick="pressPin(0)">0</div>
-            <div class="n-btn utility" onclick="deleteDigit()">DELETE</div>
-        </div>
-    </div>
-
-    <!-- MAIN APP -->
-    <div id="admin-app" class="hidden">
-        <div class="admin-shell">
-            <div class="header-container" style="margin-bottom: 60px;">
-                <div class="title-text">ADMIN</div>
-                <div class="dots-grid">
-                    <div class="dot"></div><div class="dot"></div>
-                    <div class="dot"></div><div class="dot"></div>
+        // Constants
+        const CORRECT_PIN = "3646";
+        const teamColors = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#21a0d8', Executive: '#1C1C1C' };
+        const SENIORITIES = ['Intern', 'Junior', 'Freelance', 'Midweight', 'Senior', 'Lead', 'Head of', 'Director', 'Executive'];
+        const ROLES = ['Designer', 'Video Producer', 'Video Editor', 'Channel Lead', 'Creative', 'Multimedia Journalist', 'Project Manager', 'Managing Producer'];
+        const TEAMS = ['Editorial', 'Production', 'Creative', 'Social', 'Operations', 'Executive'];
+        const TYPES = ['Permanent', 'Casual', 'Freelance'];
+        
+        // Lock Screen Component
+        function LockScreen({ onUnlock }) {
+            const [pin, setPin] = useState('');
+            
+            useEffect(() => {
+                if (pin.length === 4) {
+                    if (pin === CORRECT_PIN) {
+                        setTimeout(() => onUnlock(), 200);
+                    } else {
+                        setPin('');
+                    }
+                }
+            }, [pin, onUnlock]);
+            
+            const handlePress = (n) => pin.length < 4 && setPin(p => p + n);
+            const handleClear = () => setPin('');
+            
+            return (
+                <div className="lock-screen">
+                    <div className="lock-title">
+                        <span className="lock-text">Admin</span>
+                        <div className="dots-grid">
+                            <div className="dot"></div><div className="dot"></div>
+                            <div className="dot"></div><div className="dot"></div>
+                        </div>
+                        <span className="lock-text">Hub</span>
+                    </div>
+                    
+                    <div className="pin-display">
+                        {[1,2,3,4].map(i => (
+                            <div key={i} className={`pin-dot ${pin.length >= i ? 'filled' : ''}`} />
+                        ))}
+                    </div>
+                    
+                    <div className="numpad">
+                        {[1,2,3,4,5,6,7,8,9].map(n => (
+                            <button key={n} className="num-btn" onClick={() => handlePress(n)}>{n}</button>
+                        ))}
+                        <button className="num-btn action" onClick={handleClear}>Clear</button>
+                        <button className="num-btn" onClick={() => handlePress(0)}>0</button>
+                        <button className="num-btn action" onClick={() => setPin(p => p.slice(0,-1))}>Del</button>
+                    </div>
                 </div>
-                <div class="title-text">HUB</div>
-            </div>
-
-            <nav class="tab-nav">
-                <button class="tab-btn active" onclick="switchTab('intake', this)">Personnel Intake</button>
-                <button class="tab-btn" onclick="switchTab('personnel', this)">Live Directory</button>
-                <button class="tab-btn" onclick="switchTab('registry', this)">Widget Assets</button>
-                <button class="tab-btn" onclick="switchTab('system', this)">Setup Control</button>
-            </nav>
-
-            <!-- INTAKE VIEW -->
-            <section id="view-intake" class="view-section active">
-                <div class="content-card">
-                    <span class="section-tag" id="intake-title"><span class="tag-dot"></span> Personnel Intake</span>
-                    <div class="form-grid">
-                        <div class="input-group"><label>First Name</label><input type="text" id="p-first"></div>
-                        <div class="input-group"><label>Last Name</label><input type="text" id="p-last"></div>
-                        <div class="input-group">
+            );
+        }
+        
+        // Toast Component
+        function Toast({ message, isActive }) {
+            return <div className={`toast ${isActive ? 'active' : ''}`}>{message}</div>;
+        }
+        
+        // Intake Form Component
+        function IntakeForm({ staff, editingId, onSave, onCancel, managers }) {
+            const [form, setForm] = useState({
+                firstName: '', lastName: '', seniority: 'Midweight', role: 'Designer',
+                team: 'Creative', type: 'Permanent', manager: 'None', isManager: false
+            });
+            
+            useEffect(() => {
+                if (editingId) {
+                    const s = staff.find(x => x.id === editingId);
+                    if (s) setForm({
+                        firstName: s.firstName, lastName: s.lastName, seniority: s.seniority,
+                        role: s.role, team: s.team, type: s.type, manager: s.manager, isManager: s.isManager
+                    });
+                }
+            }, [editingId, staff]);
+            
+            const handleSubmit = () => {
+                if (!form.firstName.trim()) return;
+                onSave({ ...form, active: true }, editingId);
+                setForm({ firstName: '', lastName: '', seniority: 'Midweight', role: 'Designer', team: 'Creative', type: 'Permanent', manager: 'None', isManager: false });
+            };
+            
+            return (
+                <div className="card">
+                    <div className="card-title">{editingId ? 'Edit Personnel' : 'Personnel Intake'}</div>
+                    
+                    <div className="form-grid">
+                        <div className="form-group">
+                            <label>First Name</label>
+                            <input value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                            <label>Last Name</label>
+                            <input value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} />
+                        </div>
+                        <div className="form-group">
                             <label>Seniority</label>
-                            <select id="p-seniority">
-                                <option>Intern</option><option>Junior</option><option>Freelance</option>
-                                <option>Midweight</option><option>Senior</option><option>Lead</option>
-                                <option>Head of</option><option>Director</option><option>Executive</option>
+                            <select value={form.seniority} onChange={e => setForm({...form, seniority: e.target.value})}>
+                                {SENIORITIES.map(s => <option key={s}>{s}</option>)}
                             </select>
                         </div>
                     </div>
-                    <div class="form-grid">
-                        <div class="input-group">
-                            <label>Job Role</label>
-                            <select id="p-role">
-                                <option>Designer</option><option>Video Producer</option><option>Video Editor</option>
-                                <option>Channel Lead</option><option>Creative</option><option>Multimedia Journalist</option>
-                                <option>Multimedia Reporter</option><option>Executive Videographer</option>
-                                <option>Editorial Assistant</option><option>Project Manager</option>
-                                <option>Managing Producer</option><option>UK Trainee Reporter</option>
-                                <option>Freelance Creative</option>
+                    
+                    <div className="form-grid">
+                        <div className="form-group">
+                            <label>Role</label>
+                            <select value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
+                                {ROLES.map(r => <option key={r}>{r}</option>)}
                             </select>
                         </div>
-                        <div class="input-group">
-                            <label>Vertical / Stream</label>
-                            <select id="p-team">
-                                <option>Editorial</option><option>Production</option><option>Creative</option>
-                                <option>Social</option><option>Operations</option><option>Executive</option>
+                        <div className="form-group">
+                            <label>Stream</label>
+                            <select value={form.team} onChange={e => setForm({...form, team: e.target.value})}>
+                                {TEAMS.map(t => <option key={t}>{t}</option>)}
                             </select>
                         </div>
-                        <div class="input-group">
+                        <div className="form-group">
                             <label>Reports To</label>
-                            <select id="p-mgr-select"><option value="None">None</option></select>
+                            <select value={form.manager} onChange={e => setForm({...form, manager: e.target.value})}>
+                                <option value="None">None</option>
+                                {managers.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
                         </div>
                     </div>
-                    <div class="form-grid">
-                        <div class="input-group">
+                    
+                    <div className="form-grid">
+                        <div className="form-group">
                             <label>Employment Type</label>
-                            <select id="p-type"><option>Permanent</option><option>Casual</option><option>Freelance</option></select>
+                            <select value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+                                {TYPES.map(t => <option key={t}>{t}</option>)}
+                            </select>
                         </div>
                     </div>
-                    <label class="manager-toggle">
-                        <input type="checkbox" id="p-is-manager" class="hidden">
-                        <div class="checkbox-custom"></div>
-                        <span style="font-size:13px; font-weight:800;">+ Line Manager?</span>
+                    
+                    <label className="checkbox-row">
+                        <input type="checkbox" checked={form.isManager} onChange={e => setForm({...form, isManager: e.target.checked})} />
+                        <div className="checkbox-box">{form.isManager && '✓'}</div>
+                        <span className="checkbox-label">Line Manager?</span>
                     </label>
-                    <div style="display:flex; gap:12px;">
-                        <button class="btn-primary" id="main-submit-btn" onclick="addPersonnel()">Confirm & Sync</button>
-                        <button class="btn-primary hidden" id="cancel-edit-btn" onclick="cancelEdit()" style="background:#EEE; color:#333;">Cancel Edit</button>
+                    
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <button className="btn btn-primary" onClick={handleSubmit}>
+                            {editingId ? 'Update Record' : 'Confirm & Sync'}
+                        </button>
+                        {editingId && <button className="btn btn-secondary" onClick={onCancel}>Cancel</button>}
                     </div>
                 </div>
-            </section>
-
-            <!-- DIRECTORY VIEW -->
-            <section id="view-personnel" class="view-section">
-                <div class="content-card">
-                    <div class="directory-controls">
-                        <span class="section-tag"><span class="tag-dot"></span> Active Live Directory</span>
-                        <div class="bulk-actions hidden" id="bulk-bar">
-                            <button class="btn-danger" onclick="deleteSelected()">Delete Selected Profiles</button>
-                        </div>
-                    </div>
-                    <table>
+            );
+        }
+        
+        // Directory Table Component
+        function DirectoryTable({ staff, onEdit, onDelete }) {
+            return (
+                <div className="card">
+                    <div className="card-title">Live Directory ({staff.length})</div>
+                    <table className="directory-table">
                         <thead>
                             <tr>
-                                <th style="width:50px; text-align:center;"><input type="checkbox" id="sel-all" onchange="toggleAll(this)"></th>
-                                <th>Name</th><th>Seniority</th><th>Role</th><th>Manager</th><th>Actions</th>
+                                <th>Name</th>
+                                <th>Seniority</th>
+                                <th>Stream</th>
+                                <th>Manager</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="directory-mount"></tbody>
+                        <tbody>
+                            {staff.sort((a,b) => a.firstName.localeCompare(b.firstName)).map(s => {
+                                const color = teamColors[s.team] || '#999';
+                                return (
+                                    <tr key={s.id}>
+                                        <td>
+                                            <div className="name-cell">
+                                                <div className="name-dots">
+                                                    {[...Array(4)].map((_, i) => <span key={i} style={{ background: color }} />)}
+                                                </div>
+                                                <span>{s.firstName} {s.lastName}</span>
+                                                {s.isManager && <span className="mgr-badge">MGR</span>}
+                                            </div>
+                                        </td>
+                                        <td style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', fontWeight: 700 }}>{s.seniority}</td>
+                                        <td style={{ color, fontWeight: 700, fontSize: 11, textTransform: 'uppercase' }}>{s.team}</td>
+                                        <td style={{ color: '#666', fontSize: 13 }}>{s.manager}</td>
+                                        <td>
+                                            <div className="action-btns">
+                                                <button className="action-btn edit" onClick={() => onEdit(s.id)}>Edit</button>
+                                                <button className="action-btn delete" onClick={() => onDelete(s.id)}>Del</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
                     </table>
                 </div>
-            </section>
-
-            <!-- REGISTRY VIEW -->
-            <section id="view-registry" class="view-section">
-                <div class="content-card">
-                    <span class="section-tag"><span class="tag-dot"></span> Add Widget Asset</span>
-                    <div class="form-grid">
-                        <div class="input-group"><label>HTML Filename</label><input type="text" id="reg-filename" placeholder="e.g. clock.html"></div>
-                        <div class="input-group" style="grid-column: span 2;"><label>Full Embed Link</label><input type="text" id="reg-url" placeholder="https://aluk00.github.io/notion-clock/filename"></div>
-                    </div>
-                    <button class="btn-primary" onclick="addNewAsset()">Add to Registry</button>
-                </div>
-
-                <div class="content-card">
-                    <div class="directory-controls">
-                        <span class="section-tag"><span class="tag-dot"></span> Widget Asset Library</span>
-                        <button class="btn-secondary" onclick="seedRegistryBulk()">Re-populate Default Library</button>
-                    </div>
-                    <p style="font-size:11px; color:#999; margin-top:-15px; margin-bottom:25px;">Click any asset card to instantly copy the full embed URL to your clipboard.</p>
-                    <div class="asset-grid" id="asset-mount"></div>
-                </div>
-            </section>
-
-            <!-- SYSTEM SETUP -->
-            <section id="view-system" class="view-section">
-                <div class="content-card">
-                    <span class="section-tag"><span class="tag-dot"></span> Cloud Management Protocol</span>
-                    <h3 style="font-size:20px; margin-top:0; color:var(--carbon); letter-spacing:-0.01em;">The Master Sync Reset</h3>
-                    
-                    <div style="background:var(--bg-base); padding:35px; border-radius:20px; border:1.5px solid var(--border); margin-bottom:35px;">
-                        <p style="font-size:15px; font-weight:800; color:var(--carbon); margin-top:0;">What does this do?</p>
-                        <p style="font-size:14px; color:var(--ink-sub); line-height:1.7;">This button performs a <b>Hard Reset</b> of your cloud database. It wipes every single record in the 'staff_directory' collection and re-uploads the canonical 32-member DMG hierarchy from scratch.</p>
-                        
-                        <p style="font-size:15px; font-weight:800; color:var(--carbon); margin-top:24px;">When should you use this?</p>
-                        <ul style="font-size:14px; color:var(--ink-sub); line-height:1.7; padding-left:20px;">
-                            <li>If duplicates appear in the directory that cannot be deleted manually.</li>
-                            <li>If the management hierarchy becomes corrupted or broken.</li>
-                            <li>If you need to instantly return to the "verified" starting structure.</li>
-                        </ul>
-
-                        <p style="font-size:15px; font-weight:800; color:var(--carbon); margin-top:24px;">How often should it be used?</p>
-                        <p style="font-size:14px; color:var(--ink-sub); line-height:1.7;"><b>Rarely.</b> This is a disaster recovery tool. For regular updates (new starters or leavers), please use the <b>Personnel Intake</b> tab or the <b>Remove</b> buttons in the directory.</p>
-                    </div>
-
-                    <button class="btn-primary" onclick="seedPersonnelBulk()" id="seed-btn">Run Master Reset</button>
-                </div>
-            </section>
-        </div>
-    </div>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, doc, deleteDoc, addDoc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-    const firebaseConfig = {
-        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-        authDomain: "dmg-command-centre-native.firebaseapp.com",
-        projectId: "dmg-command-centre-native",
-        storageBucket: "dmg-command-centre-native.firebasestorage.app",
-        messagingSenderId: "223535956454",
-        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
-        measurementId: "G-5HNGPRJGZY"
-    };
-    
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const appId = 'dmg-command-centre-native';
-
-    let pin = "";
-    let staffData = [];
-    let editingId = null;
-
-    const teamColors = {
-        Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049',
-        Social: '#F2C316', Operations: '#21A0D8', Executive: '#1C1C1C'
-    };
-
-    // --- PIN LOGIC ---
-    window.pressPin = (n) => { if(pin.length < 4) { pin += n; syncPin(); if(pin.length === 4) setTimeout(checkAuth, 300); } };
-    window.deleteDigit = () => { if(pin.length > 0) { pin = pin.slice(0, -1); syncPin(); } };
-    window.clearPin = () => { pin = ""; syncPin(); };
-    function syncPin() { for(let i=1; i<=4; i++) document.getElementById('p'+i).classList.toggle('filled', i <= pin.length); }
-    
-    function checkAuth() {
-        if(pin === "3646") {
-            document.getElementById('lock-screen').style.opacity = 0;
-            setTimeout(() => {
-                document.getElementById('lock-screen').classList.add('hidden');
-                document.getElementById('admin-app').classList.remove('hidden');
-                init();
-            }, 500);
-        } else { clearPin(); }
-    }
-
-    async function init() {
-        await signInAnonymously(auth);
-        onAuthStateChanged(auth, (user) => {
-            if(user) {
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), (snap) => {
-                    staffData = [];
-                    snap.forEach(d => staffData.push({id: d.id, ...d.data()}));
-                    renderDirectory();
-                    updateDropdowns();
-                });
-                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'asset_registry'), (snap) => {
-                    const registryData = [];
-                    snap.forEach(d => registryData.push({id: d.id, ...d.data()}));
-                    renderRegistry(registryData);
-                });
-            }
-        });
-    }
-
-    // --- DIRECTORY ---
-    function renderDirectory() {
-        const mount = document.getElementById('directory-mount');
-        const sorted = staffData.sort((a,b) => a.firstName.localeCompare(b.firstName));
+            );
+        }
         
-        mount.innerHTML = sorted.map(s => {
-            const col = teamColors[s.team] || '#EEE';
-            const dots = `<div class="name-dots"><span style="background:${col}"></span><span style="background:${col}"></span><span style="background:${col}"></span><span style="background:${col}"></span></div>`;
+        // Widget Registry Component
+        function WidgetRegistry({ widgets, onCopy }) {
+            return (
+                <div className="card">
+                    <div className="card-title">Widget Library ({widgets.length})</div>
+                    <p style={{ fontSize: 11, color: '#999', marginBottom: 20 }}>Click any card to copy the embed URL</p>
+                    <div className="widget-grid">
+                        {widgets.sort((a,b) => a.filename.localeCompare(b.filename)).map(w => (
+                            <div key={w.id} className="widget-card" onClick={() => onCopy(w.url)}>
+                                <div className="widget-hint">Embed URL</div>
+                                <div className="widget-name">{w.filename}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+        
+        // Main App
+        function AdminConsole() {
+            const [isLocked, setIsLocked] = useState(true);
+            const [activeTab, setActiveTab] = useState('intake');
+            const [staff, setStaff] = useState([]);
+            const [widgets, setWidgets] = useState([]);
+            const [editingId, setEditingId] = useState(null);
+            const [toast, setToast] = useState({ message: '', active: false });
+            const [loading, setLoading] = useState(true);
             
-            return `
-            <tr>
-                <td style="text-align:center;"><input type="checkbox" class="p-check" value="${s.id}" onchange="updateBulkUI()"></td>
-                <td class="name-cell">${dots} ${s.firstName} ${s.lastName} ${s.isManager ? '<span class="is-mgr-badge">MGR</span>' : ''}</td>
-                <td style="font-size:11px; color:#999; text-transform:uppercase; font-weight:800;">${s.seniority}</td>
-                <td style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--dmg-blue)">${s.team}</td>
-                <td style="color:#666; font-size:13px;">${s.manager}</td>
-                <td>
-                    <button class="btn-edit-small" onclick="startEdit('${s.id}')">Edit</button>
-                    <button class="btn-del-small" onclick="removePersonnel('${s.id}')">Del</button>
-                </td>
-            </tr>
-        `}).join('');
-        updateBulkUI();
-    }
-
-    window.toggleAll = (m) => { document.querySelectorAll('.p-check').forEach(c => c.checked = m.checked); updateBulkUI(); };
-    window.updateBulkUI = () => { document.getElementById('bulk-bar').classList.toggle('hidden', document.querySelectorAll('.p-check:checked').length === 0); };
-
-    window.addPersonnel = async () => {
-        const data = {
-            firstName: document.getElementById('p-first').value.trim(),
-            lastName: document.getElementById('p-last').value.trim(),
-            seniority: document.getElementById('p-seniority').value,
-            role: document.getElementById('p-role').value,
-            team: document.getElementById('p-team').value,
-            type: document.getElementById('p-type').value,
-            manager: document.getElementById('p-mgr-select').value,
-            isManager: document.getElementById('p-is-manager').checked,
-            active: true
-        };
-        if(!data.firstName) return;
-        if(editingId) {
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', editingId), data);
-            cancelEdit();
-        } else {
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'), data);
+            const showToast = useCallback((message) => {
+                setToast({ message, active: true });
+                setTimeout(() => setToast({ message: '', active: false }), 2500);
+            }, []);
+            
+            useEffect(() => {
+                auth.signInAnonymously();
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        db.collection(`${basePath}/staff_directory`).onSnapshot(snap => {
+                            const list = [];
+                            snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+                            setStaff(list);
+                            setLoading(false);
+                        });
+                        
+                        db.collection(`${basePath}/asset_registry`).onSnapshot(snap => {
+                            const list = [];
+                            snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+                            setWidgets(list);
+                        });
+                    }
+                });
+            }, []);
+            
+            const managers = staff.filter(s => s.isManager).map(s => `${s.firstName} ${s.lastName}`);
+            
+            const handleSave = async (data, id) => {
+                if (id) {
+                    await db.collection(`${basePath}/staff_directory`).doc(id).update(data);
+                    setEditingId(null);
+                } else {
+                    await db.collection(`${basePath}/staff_directory`).add(data);
+                }
+                showToast('Profile Synced');
+            };
+            
+            const handleDelete = async (id) => {
+                if (confirm('Delete this profile?')) {
+                    await db.collection(`${basePath}/staff_directory`).doc(id).delete();
+                    showToast('Profile Removed');
+                }
+            };
+            
+            const handleEdit = (id) => {
+                setEditingId(id);
+                setActiveTab('intake');
+            };
+            
+            const handleCopy = (url) => {
+                navigator.clipboard.writeText(url);
+                showToast('URL Copied');
+            };
+            
+            if (isLocked) {
+                return <LockScreen onUnlock={() => setIsLocked(false)} />;
+            }
+            
+            return (
+                <div className="app-container">
+                    <div className="app-header">
+                        <span className="app-title">Admin</span>
+                        <div className="dots-grid">
+                            <div className="dot"></div><div className="dot"></div>
+                            <div className="dot"></div><div className="dot"></div>
+                        </div>
+                        <span className="app-title">Hub</span>
+                    </div>
+                    
+                    <nav className="tab-nav">
+                        {[
+                            { id: 'intake', label: 'Personnel Intake' },
+                            { id: 'directory', label: 'Live Directory' },
+                            { id: 'registry', label: 'Widget Assets' }
+                        ].map(tab => (
+                            <button 
+                                key={tab.id}
+                                className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                                onClick={() => setActiveTab(tab.id)}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </nav>
+                    
+                    {loading ? (
+                        <div className="loading"><div className="spinner"></div></div>
+                    ) : (
+                        <>
+                            <div className={`panel ${activeTab === 'intake' ? 'active' : ''}`}>
+                                <IntakeForm 
+                                    staff={staff}
+                                    editingId={editingId}
+                                    onSave={handleSave}
+                                    onCancel={() => setEditingId(null)}
+                                    managers={managers}
+                                />
+                            </div>
+                            
+                            <div className={`panel ${activeTab === 'directory' ? 'active' : ''}`}>
+                                <DirectoryTable staff={staff} onEdit={handleEdit} onDelete={handleDelete} />
+                            </div>
+                            
+                            <div className={`panel ${activeTab === 'registry' ? 'active' : ''}`}>
+                                <WidgetRegistry widgets={widgets} onCopy={handleCopy} />
+                            </div>
+                        </>
+                    )}
+                    
+                    <Toast message={toast.message} isActive={toast.active} />
+                </div>
+            );
         }
-        showToast("Profile Synced");
-    };
-
-    window.deleteSelected = async () => {
-        const ids = Array.from(document.querySelectorAll('.p-check:checked')).map(c => c.value);
-        if(!confirm(`Permanently delete these ${ids.length} records?`)) return;
-        for(let id of ids) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', id));
-        showToast("Records Purged");
-    };
-
-    window.removePersonnel = async (id) => { if(confirm("Permanently delete this profile?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff_directory', id)); };
-
-    window.startEdit = (id) => {
-        const s = staffData.find(x => x.id === id);
-        editingId = id;
-        document.getElementById('p-first').value = s.firstName;
-        document.getElementById('p-last').value = s.lastName;
-        document.getElementById('p-seniority').value = s.seniority;
-        document.getElementById('p-role').value = s.role;
-        document.getElementById('p-team').value = s.team;
-        document.getElementById('p-type').value = s.type;
-        document.getElementById('p-mgr-select').value = s.manager;
-        document.getElementById('p-is-manager').checked = s.isManager;
-        document.getElementById('intake-title').innerText = "Editing Record: " + s.firstName;
-        document.getElementById('cancel-edit-btn').classList.remove('hidden');
-        switchTab('intake', document.querySelectorAll('.tab-btn')[0]);
-    };
-
-    window.cancelEdit = () => {
-        editingId = null;
-        document.getElementById('p-first').value = ""; document.getElementById('p-last').value = "";
-        document.getElementById('intake-title').innerText = "Personnel Intake";
-        document.getElementById('cancel-edit-btn').classList.add('hidden');
-    };
-
-    function updateDropdowns() {
-        const mgrSelect = document.getElementById('p-mgr-select');
-        const managers = staffData.filter(s => s.isManager);
-        mgrSelect.innerHTML = '<option value="None">None</option>' + managers.map(m => `<option value="${m.firstName} ${m.lastName}">${m.firstName} ${m.lastName}</option>`).join('');
-    }
-
-    // --- REGISTRY ---
-    function renderRegistry(data) {
-        const mount = document.getElementById('asset-mount');
-        const sorted = data.sort((a,b) => a.filename.localeCompare(b.filename));
-        mount.innerHTML = sorted.map(a => `
-            <div class="asset-item" onclick="copyAssetUrl('${a.url}')">
-                <div class="asset-copy-label">Embed URL</div>
-                <div class="asset-name">${a.filename}</div>
-            </div>
-        `).join('');
-    }
-
-    window.addNewAsset = async () => {
-        const filename = document.getElementById('reg-filename').value.trim();
-        const url = document.getElementById('reg-url').value.trim();
-        if(!filename || !url) return alert("Fill in both fields.");
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'asset_registry'), { filename, url });
-        document.getElementById('reg-filename').value = "";
-        document.getElementById('reg-url').value = "";
-        showToast("Asset Catalogued");
-    };
-
-    window.copyAssetUrl = (url) => {
-        const el = document.createElement('textarea'); el.value = url;
-        document.body.appendChild(el); el.select(); document.execCommand('copy');
-        document.body.removeChild(el); showToast("URL Copied");
-    };
-
-    // --- MASTER SYNC RESET ---
-    window.seedPersonnelBulk = async () => {
-        const btn = document.getElementById('seed-btn');
-        if(!confirm("Warning: This wipes all staff records. Continue?")) return;
-        btn.disabled = true; btn.innerText = "Purging Database...";
-        const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory'));
-        for(const d of snap.docs) await deleteDoc(d.ref);
         
-        btn.innerText = "Syncing Hierarchy...";
-        const list = [
-            { f: "Nick", l: "Moar", s: "Director", r: "Head of New Media", m: "None", t: "Executive", is: true },
-            { f: "Nev", l: "Brook", s: "Director", r: "Director of Social Production", m: "Nick Moar", t: "Production", is: true },
-            { f: "Nathan", l: "Aspell", s: "Director", r: "Director of Creative and Platforms", m: "Nick Moar", t: "Creative", is: true },
-            { f: "Ellie", l: "Beetham", s: "Head of", r: "Head of Social Creative", m: "Nathan Aspell", t: "Social", is: true },
-            { f: "Matthew", l: "Macleod", s: "Head of", r: "Head of Social Production", m: "Nev Brook", t: "Production", is: true },
-            { f: "Alex", l: "Biddle", s: "Head of", r: "Head of Sport Originals", m: "Nick Moar", t: "Editorial", is: true },
-            { f: "Anaïs", l: "Lukaku", s: "Senior", r: "Senior Creative", m: "Nick Moar", t: "Creative", is: true },
-            { f: "Alice", l: "Baker", s: "Lead", r: "Operations Lead", m: "Nick Moar", t: "Operations", is: true },
-            { f: "Nick", l: "Bolwell", s: "Lead", r: "Lead Social Creative", m: "Ellie Beetham", t: "Social", is: false },
-            { f: "Dan", l: "Quinnell", s: "Lead", r: "UK Social Video Lead", m: "Ellie Beetham", t: "Social", is: false },
-            { f: "Romy", l: "Grigg", s: "Lead", r: "Social Video Lead", m: "Ellie Beetham", t: "Social", is: false },
-            { f: "Josh", l: "Fajobi", s: "Midweight", r: "Social Designer", m: "Matthew Macleod", t: "Creative", is: false },
-            { f: "Williams", l: "Olufemi", s: "Midweight", r: "Social Designer", m: "Matthew Macleod", t: "Creative", is: false },
-            { f: "Aivhan", l: "Catacutan", s: "Freelance", r: "Freelance Designer", m: "Matthew Macleod", t: "Creative", is: false },
-            { f: "Hugo", l: "Starns", s: "Freelance", r: "Freelance Creative", m: "Anaïs Lukaku", t: "Creative", is: false },
-            { f: "Maxine", l: "Halperin", s: "Midweight", r: "Project & Operations Manager", m: "Alice Baker", t: "Operations", is: false },
-            { f: "Megan", l: "Raso", s: "Junior", r: "Editorial Assistant", m: "Alice Baker", t: "Operations", is: false },
-            { f: "Claire", l: "O’Moore", s: "Senior", r: "Senior Video Editor", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Deli", l: "Koprinkov", s: "Senior", r: "Senior Video Editor", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Stefan", l: "Burghila", s: "Midweight", r: "Video Editor & Producer", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Ben", l: "Wiley", s: "Midweight", r: "Managing Producer (Sport)", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Ismail", l: "Pulat", s: "Senior", r: "Senior Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Tomas", l: "Meehan", s: "Midweight", r: "UK Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Reuben", l: "Claypole", s: "Midweight", r: "Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Rowen", l: "Rennie", s: "Midweight", r: "Social Video Producer", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Abraham", l: "Eneh", s: "Junior", r: "Casual Production", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Luca", l: "Campos Schmitt", s: "Freelance", r: "Video Producer / Editor", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Dan", l: "Harrington", s: "Freelance", r: "Freelance Video Producer", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Monty", l: "Vann", s: "Lead", r: "Executive Videographer", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Lauren", l: "Cole-Lomas", s: "Freelance", r: "Video Producer", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "David", l: "Ojobo", s: "Freelance", r: "Designer", m: "Matthew Macleod", t: "Production", is: false },
-            { f: "Kacper", l: "Kupczyk", s: "Freelance", r: "Designer", m: "Matthew Macleod", t: "Production", is: false }
-        ];
-        const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'staff_directory');
-        for(let p of list) await addDoc(colRef, { firstName: p.f, lastName: p.l, seniority: p.s, role: p.r, team: p.t, manager: p.m, isManager: p.is, active: true });
-        btn.disabled = false; btn.innerText = "Run Master Reset";
-        showToast("Hierarchy Fully Restored");
-    };
-
-    window.seedRegistryBulk = async () => {
-        if(!confirm("Repopulate all 70+ widget links?")) return;
-        const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'asset_registry');
-        const snap = await getDocs(colRef);
-        for(const d of snap.docs) await deleteDoc(d.ref);
-
-        const files = [
-            "admin_console.html", "animated_logo.html", "calendar.html", "carousel_widget.html", "creative_deadlines_header.html", "creative_feed_header.html", "creative_header.html", "creative_quick_links.html", "daily_feeds_header.html", "daily_meetings.html", "dmg_hq_header.html", "dmg_team_log.html", "feed_header.html", "handbook_arrows.html", "handbook_header.html", "handbook_mission.html", "handbook_team_directory.html", "handbook_workflows.html", "handbook_workflows_header.html", "index.html", "key_dates_header.html", "manager_dashboard.html", "manager_rota_header.html", "meetings_list.html", "office_outlook.html", "org_chart.html", "people_master_nav.html", "people_team_header.html", "personal_actions_header.html", "personal_calendar_header.html", "personal_calendar_widget.html", "personal_header.html", "personal_meetings_header.html", "personal_notes_header.html", "personal_reminders_header.html", "personal_reminders_widget.html", "personal_unified_header.html", "priority_briefs_header.html", "production_capacity.html", "production_feed_header.html", "production_header.html", "production_schedule.html", "quick_links.html", "quick_links_bar.html", "quick_links_header.html", "ready_to_post_header.html", "review_queue_header.html", "rss_carousel_embed.html", "search_hub.html", "sidebar_people.html", "sidebar_resources.html", "sidebar_work.html", "social_header.html", "social_quick_links.html", "spotlight_carousel.html", "spotlight_header.html", "spotlight_rss_carousel.html", "spotlight_tiktok_profile.html", "stacked_clock.html", "team_announcements_header.html", "team_meetings.html", "team_navigation_widget.html", "team_tabs.html", "teams_header.html", "the_respawn_rss_carousel.html", "the_respawn_tiktok_profile.html", "this_just_in.html", "tiktok_embed_dailymail.html", "top_page_nav.html"
-        ];
-        for(let f of files) {
-            await addDoc(colRef, { filename: f, url: `https://aluk00.github.io/notion-clock/${f}` });
-        }
-        showToast("Registry Populated");
-    };
-
-    function showToast(msg) {
-        const t = document.getElementById('toast');
-        t.innerText = msg; t.classList.add('active');
-        setTimeout(() => t.classList.remove('active'), 2500);
-    }
-
-    window.switchTab = (id, btn) => {
-        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('view-'+id).classList.add('active');
-        btn.classList.add('active');
-    };
-</script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AdminConsole />);
+    </script>
 </body>
 </html>
