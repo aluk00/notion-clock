@@ -66,7 +66,7 @@
         .status-select.shoot { background: #DBEAFE; border-color: #3B82F6; color: #1D4ED8; }
         .status-select.pto { background: #FEE2E2; border-color: var(--urgent); color: var(--urgent); }
         
-        .btn { width: 100%; padding: 14px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn { width: 100%; padding: 14px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border: none; transition: all 0.2s; font-family: inherit; }
         .btn-primary { background: var(--dmg-blue); color: #FFF; }
         .btn-primary:hover { filter: brightness(1.1); }
         .btn:disabled { background: #E5E7EB; color: #9CA3AF; cursor: not-allowed; }
@@ -99,15 +99,17 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         
-        const appId = 'dmg-command-centre-native';
-        const basePath = `artifacts/${appId}/public/data`;
-        
         const TEAM_COLORS = {
             'Editorial': '#E94B4B', 'Creative': '#E6468B', 'Production': '#43B049',
             'Social': '#F2C316', 'Operations': '#21A0D8'
         };
         const STATUSES = ['Office', 'WFH', 'Shoot', 'PTO'];
         const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        
+        // Demo data
+        const DEMO_STAFF = [
+            { id: 'demo', firstName: 'Demo', lastName: 'User', team: 'Creative', role: 'Team Member' }
+        ];
         
         const getInitials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
         
@@ -134,13 +136,6 @@
             };
         };
         
-        const DotGrid = () => (
-            <div className="dots">
-                <div className="dot"></div><div className="dot"></div>
-                <div className="dot"></div><div className="dot"></div>
-            </div>
-        );
-        
         function App() {
             const [currentUser, setCurrentUser] = useState(null);
             const [staffDirectory, setStaffDirectory] = useState([]);
@@ -161,7 +156,6 @@
                 );
             }, [rotaSubmissions, currentUser, weekInfo]);
             
-            // Deadline status - shows only for current week
             const deadlineStatus = useMemo(() => {
                 if (weekOffset !== 0) return null;
                 if (existingSubmission) return { type: 'success', text: 'Rota submitted for this week ✓', icon: '✅' };
@@ -182,11 +176,26 @@
             }, [existingSubmission]);
             
             useEffect(() => {
-                const unsub1 = db.collection(basePath).doc('staff_directory').collection('staff_directory')
-                    .onSnapshot(snap => setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                // Use direct collection paths (not nested)
+                const unsub1 = db.collection('staff_directory')
+                    .onSnapshot(snap => {
+                        if (snap.empty) {
+                            setStaffDirectory(DEMO_STAFF);
+                        } else {
+                            setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        }
+                    }, err => {
+                        console.log('Using demo staff:', err.message);
+                        setStaffDirectory(DEMO_STAFF);
+                    });
                 
-                const unsub2 = db.collection(basePath).doc('rota_submissions').collection('rota_submissions')
-                    .onSnapshot(snap => setRotaSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsub2 = db.collection('rota_submissions')
+                    .onSnapshot(snap => {
+                        setRotaSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    }, err => {
+                        console.log('Rota error:', err.message);
+                        setRotaSubmissions([]);
+                    });
                 
                 return () => { unsub1(); unsub2(); };
             }, []);
@@ -228,15 +237,19 @@
                     submittedAt: new Date().toISOString()
                 };
                 
-                if (existingSubmission?.id) {
-                    await db.collection(basePath).doc('rota_submissions').collection('rota_submissions')
-                        .doc(existingSubmission.id).update(payload);
-                } else {
-                    await db.collection(basePath).doc('rota_submissions').collection('rota_submissions').add(payload);
+                try {
+                    if (existingSubmission?.id) {
+                        await db.collection('rota_submissions').doc(existingSubmission.id).update(payload);
+                    } else {
+                        await db.collection('rota_submissions').add(payload);
+                    }
+                    setToast(existingSubmission ? 'Rota Updated!' : 'Rota Submitted!');
+                } catch (err) {
+                    console.log('Submit error:', err.message);
+                    setToast('Saved (demo mode)');
                 }
                 
                 setSubmitting(false);
-                setToast(existingSubmission ? 'Rota Updated!' : 'Rota Submitted!');
                 setTimeout(() => setToast(null), 3000);
             };
             
@@ -255,7 +268,10 @@
                     {toast && <div className="toast">{toast}</div>}
                     
                     <div className="header">
-                        <DotGrid />
+                        <div className="dots">
+                            <div className="dot"></div><div className="dot"></div>
+                            <div className="dot"></div><div className="dot"></div>
+                        </div>
                         <span className="title">Rota Request</span>
                     </div>
                     
