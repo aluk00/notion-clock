@@ -4,215 +4,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team Initials | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --editorial: #E94B4B;
-            --creative: #E6468B;
-            --production: #43B049;
-            --social: #F2C316;
-            --operations: #21A0D8;
-            --ink: #1C1C1C;
-            --ink-sub: #6B7280;
-            --border: #E5E7EB;
-        }
-        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; }
-        
-        .widget { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: #FFF; border-radius: 14px; border: 1px solid var(--border); }
-        
-        .team-label { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-        .team-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 16px; height: 16px; }
-        .team-dot { width: 100%; height: 100%; border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
-        .team-dot:nth-child(1) { animation-delay: 0s; }
-        .team-dot:nth-child(2) { animation-delay: 0.625s; }
-        .team-dot:nth-child(3) { animation-delay: 1.25s; }
-        .team-dot:nth-child(4) { animation-delay: 1.875s; }
-        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-        
-        .team-name { font-size: 12px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.02em; }
-        
-        .divider { width: 1px; height: 32px; background: var(--border); flex-shrink: 0; }
-        
-        .initials-row { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
-        
-        .initial-badge { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #FFF; cursor: default; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
-        .initial-badge:hover { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; }
-        
-        .tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--ink); color: #FFF; padding: 6px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; margin-bottom: 6px; }
-        .initial-badge:hover .tooltip { opacity: 1; }
-        .tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--ink); }
-        
-        .manager-ring { box-shadow: 0 0 0 2px #FFF, 0 0 0 4px currentColor; }
-        
-        .count-badge { background: var(--border); color: var(--ink-sub); font-size: 10px; padding: 6px 12px; border-radius: 20px; font-weight: 700; flex-shrink: 0; }
-        
-        .empty { font-size: 11px; color: var(--ink-sub); font-style: italic; }
-        .loading { font-size: 10px; color: var(--ink-sub); }
+        :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; color: var(--ink); }
+        .widget { background: #FFF; border: 1px solid var(--border); border-radius: 16px; max-width: 600px; overflow: hidden; }
+        .header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 2px; }
+        .dot-grid span { width: 5px; height: 5px; border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
+        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+        .title { font-size: 13px; font-weight: 800; }
+        .count { font-size: 11px; color: var(--ink-sub); margin-left: auto; }
+        .grid { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 20px; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #FFF; cursor: pointer; transition: transform 0.15s; }
+        .avatar:hover { transform: scale(1.1); }
+        .empty { padding: 40px 20px; text-align: center; }
+        .empty-icon { font-size: 32px; margin-bottom: 10px; }
+        .empty-title { font-size: 14px; font-weight: 800; margin-bottom: 6px; }
+        .empty-sub { font-size: 11px; color: var(--ink-sub); }
+        .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--ink-sub); font-size: 12px; }
+        .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div id="root"></div>
-    
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-        
-        const firebaseConfig = {
+    <div id="root"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const app = initializeApp({
             apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
             authDomain: "dmg-command-centre-native.firebaseapp.com",
-            projectId: "dmg-command-centre-native"
-        };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        });
+        const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
+        const COLORS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', 'Social Video': '#F2C316', Operations: '#9333EA', Sales: '#F97316', Design: '#8B5CF6' };
         
-        const TEAM_COLORS = {
-            'Editorial': '#E94B4B',
-            'Creative': '#E6468B',
-            'Production': '#43B049',
-            'Social': '#F2C316',
-            'Operations': '#21A0D8'
-        };
+        const params = new URLSearchParams(window.location.search);
+        const teamFilter = params.get('team');
+        let staff = [], loading = true;
+        const root = document.getElementById('root');
         
-        // Demo data for fallback
-        const DEMO_STAFF = {
-            'Editorial': [
-                { firstName: 'Ellie', lastName: 'Beetham', isManager: true },
-                { firstName: 'Dan', lastName: 'Quinnell', isManager: false },
-                { firstName: 'Kaylee', lastName: 'Abrahams', isManager: false },
-            ],
-            'Creative': [
-                { firstName: 'Ana', lastName: 'Murphy', isManager: true },
-                { firstName: 'Nick', lastName: 'Bramley', isManager: false },
-                { firstName: 'Hugo', lastName: 'Torres', isManager: false },
-            ],
-            'Production': [
-                { firstName: 'Sarah', lastName: 'Mitchell', isManager: true },
-                { firstName: 'James', lastName: 'Cooper', isManager: false },
-                { firstName: 'Emma', lastName: 'Wilson', isManager: false },
-            ],
-            'Social': [
-                { firstName: 'Mimi', lastName: 'Yates', isManager: true },
-                { firstName: 'Sophia', lastName: 'Stanford', isManager: false },
-            ],
-            'Operations': [
-                { firstName: 'Alex', lastName: 'Thompson', isManager: true },
-                { firstName: 'Chris', lastName: 'Davies', isManager: false },
-            ]
-        };
-        
-        const getInitials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
-        
-        function App() {
-            const [staffDirectory, setStaffDirectory] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [useDemo, setUseDemo] = useState(false);
+        const color = t => COLORS[t] || '#21a0d8';
+        const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
+
+        function render() {
+            if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading team...</div></div>`; return; }
+            const filtered = teamFilter ? staff.filter(s => s.team === teamFilter) : staff;
+            const teamColor = teamFilter ? color(teamFilter) : '#21a0d8';
             
-            // Get team from URL param
-            const urlParams = new URLSearchParams(window.location.search);
-            const team = urlParams.get('team') || 'Production';
-            const teamColor = TEAM_COLORS[team] || '#21A0D8';
-            
-            useEffect(() => {
-                // Try to load from Firestore with direct collection path
-                const unsub = db.collection('staff_directory')
-                    .onSnapshot(snap => {
-                        if (snap.empty) {
-                            // No data, use demo
-                            setUseDemo(true);
-                        } else {
-                            setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                        }
-                        setLoading(false);
-                    }, err => {
-                        console.log('Firestore error, using demo data:', err.message);
-                        setUseDemo(true);
-                        setLoading(false);
-                    });
-                return () => unsub();
-            }, []);
-            
-            const teamMembers = useMemo(() => {
-                if (useDemo) {
-                    return (DEMO_STAFF[team] || []).sort((a, b) => {
-                        if (a.isManager && !b.isManager) return -1;
-                        if (!a.isManager && b.isManager) return 1;
-                        return (a.firstName || '').localeCompare(b.firstName || '');
-                    });
-                }
-                return staffDirectory
-                    .filter(s => s.team === team)
-                    .sort((a, b) => {
-                        if (a.isManager && !b.isManager) return -1;
-                        if (!a.isManager && b.isManager) return 1;
-                        return (a.firstName || '').localeCompare(b.firstName || '');
-                    });
-            }, [staffDirectory, team, useDemo]);
-            
-            if (loading) {
-                return (
-                    <div className="widget">
-                        <div className="team-label">
-                            <div className="team-dots">
-                                <div className="team-dot" style={{ background: teamColor }}></div>
-                                <div className="team-dot" style={{ background: teamColor }}></div>
-                                <div className="team-dot" style={{ background: teamColor }}></div>
-                                <div className="team-dot" style={{ background: teamColor }}></div>
-                            </div>
-                            <span className="team-name">{team}</span>
-                        </div>
-                        <div className="divider"></div>
-                        <span className="loading">Loading...</span>
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="header">
+                        <div class="dot-grid"><span style="background:${teamColor}"></span><span style="background:${teamColor}"></span><span style="background:${teamColor}"></span><span style="background:${teamColor}"></span></div>
+                        <h2 class="title">${teamFilter || 'All Teams'}</h2>
+                        <span class="count">${filtered.length} members</span>
                     </div>
-                );
-            }
-            
-            return (
-                <div className="widget">
-                    <div className="team-label">
-                        <div className="team-dots">
-                            <div className="team-dot" style={{ background: teamColor }}></div>
-                            <div className="team-dot" style={{ background: teamColor }}></div>
-                            <div className="team-dot" style={{ background: teamColor }}></div>
-                            <div className="team-dot" style={{ background: teamColor }}></div>
+                    ${filtered.length === 0 ? `
+                        <div class="empty">
+                            <div class="empty-icon">👥</div>
+                            <div class="empty-title">No Team Members</div>
+                            <div class="empty-sub">${teamFilter ? `Add staff to the ${teamFilter} team in Firebase.` : 'Add staff to the staff_directory collection.'}</div>
                         </div>
-                        <span className="team-name">{team}</span>
-                    </div>
-                    
-                    <div className="divider"></div>
-                    
-                    <div className="initials-row">
-                        {teamMembers.length > 0 ? (
-                            teamMembers.map((member, idx) => (
-                                <div 
-                                    key={member.id || idx} 
-                                    className={`initial-badge ${member.isManager ? 'manager-ring' : ''}`}
-                                    style={{ background: teamColor, color: team === 'Social' ? '#1C1C1C' : '#FFF' }}
-                                >
-                                    {getInitials(member.firstName, member.lastName)}
-                                    <div className="tooltip">
-                                        {member.firstName} {member.lastName}
-                                        {member.isManager && ' ⭐'}
-                                    </div>
+                    ` : `
+                        <div class="grid">
+                            ${filtered.map(s => `
+                                <div class="avatar" style="background:${color(s.team)}" title="${s.firstName} ${s.lastName} - ${s.role || s.team}">
+                                    ${initials(s.firstName, s.lastName)}
                                 </div>
-                            ))
-                        ) : (
-                            <span className="empty">No team members</span>
-                        )}
-                    </div>
-                    
-                    <div className="count-badge">{teamMembers.length}</div>
+                            `).join('')}
+                        </div>
+                    `}
                 </div>
-            );
+            `;
         }
-        
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "staff_directory"), snap => {
+                    staff = []; snap.forEach(d => staff.push({ id: d.id, ...d.data() }));
+                    loading = false; render();
+                }, e => { console.error(e); loading = false; render(); });
+            } else {
+                signInAnonymously(auth).catch(e => { loading = false; render(); });
+            }
+        });
     </script>
 </body>
 </html>
