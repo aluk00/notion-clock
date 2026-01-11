@@ -33,10 +33,9 @@
             border-radius: 20px;
             overflow: hidden;
             width: 100%;
-            max-width: 340px;
         }
         .widget-header {
-            padding: 16px 20px;
+            padding: 14px 20px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
@@ -71,40 +70,50 @@
             border-radius: 4px;
         }
         
-        .tools-container { padding: 16px; }
+        .tools-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px;
+        }
         
         .tool-slot {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
+            flex-direction: column;
             background: var(--bg-soft);
             border: 2px dashed var(--border);
             border-radius: 12px;
-            margin-bottom: 10px;
+            min-height: 280px;
             cursor: pointer;
             transition: all 0.2s;
+            overflow: hidden;
         }
-        .tool-slot:last-child { margin-bottom: 0; }
         .tool-slot:hover { border-color: var(--dmg-blue); background: #F0F9FF; }
         .tool-slot.filled {
             background: #FFF;
             border: 1px solid var(--border);
             border-style: solid;
+            cursor: default;
         }
-        .tool-slot.filled:hover { border-color: var(--team-editorial); }
         
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-soft);
+        }
         .tool-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 14px;
             flex-shrink: 0;
         }
-        .tool-icon.empty { background: var(--border); }
         .tool-icon.production { background: color-mix(in srgb, var(--team-production) 15%, white); }
         .tool-icon.creative { background: color-mix(in srgb, var(--team-creative) 15%, white); }
         .tool-icon.editorial { background: color-mix(in srgb, var(--team-editorial) 15%, white); }
@@ -112,7 +121,7 @@
         
         .tool-info { flex: 1; min-width: 0; }
         .tool-name {
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 700;
             color: var(--ink);
             white-space: nowrap;
@@ -120,27 +129,58 @@
             text-overflow: ellipsis;
         }
         .tool-desc {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--ink-sub);
         }
-        .empty-text { color: var(--ink-sub); font-weight: 500; }
         
-        .tool-action {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
+        .tool-actions {
+            display: flex;
+            gap: 4px;
+        }
+        .tool-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            flex-shrink: 0;
+            font-size: 12px;
+            cursor: pointer;
             transition: all 0.15s;
+            border: none;
+            background: transparent;
+            color: var(--ink-sub);
         }
-        .tool-action.add { background: var(--dmg-blue); color: #FFF; }
-        .tool-action.remove { background: transparent; color: var(--ink-sub); }
-        .tool-action.remove:hover { background: #FEE2E2; color: var(--team-editorial); }
-        .tool-action.open { background: var(--bg-soft); color: var(--ink); }
-        .tool-action.open:hover { background: var(--dmg-blue); color: #FFF; }
+        .tool-btn:hover { background: #EEE; color: var(--ink); }
+        .tool-btn.remove:hover { background: #FEE2E2; color: var(--team-editorial); }
+        
+        .tool-embed {
+            flex: 1;
+            min-height: 0;
+        }
+        .tool-embed iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .empty-slot {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .empty-icon {
+            font-size: 32px;
+            opacity: 0.3;
+        }
+        .empty-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-sub);
+        }
         
         /* Picker Modal */
         .picker-overlay {
@@ -348,33 +388,38 @@
                     <div class="widget-header">
                         <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
                         <h2 class="header-title">My Tools</h2>
-                        <span class="header-sub">Quick Access</span>
+                        <span class="header-sub">Click empty slot to add</span>
                         <span class="demo-badge">Preview</span>
                     </div>
-                    <div class="tools-container">
+                    <div class="tools-row">
                         ${slots.map(i => {
                             const tool = selectedTools[i];
                             if (tool) {
                                 return `
                                     <div class="tool-slot filled">
-                                        <div class="tool-icon ${getCatClass(tool.cat)}">${tool.icon}</div>
-                                        <div class="tool-info">
-                                            <div class="tool-name">${tool.name}</div>
-                                            <div class="tool-desc">${tool.desc}</div>
+                                        <div class="tool-header">
+                                            <div class="tool-icon ${getCatClass(tool.cat)}">${tool.icon}</div>
+                                            <div class="tool-info">
+                                                <div class="tool-name">${tool.name}</div>
+                                                <div class="tool-desc">${tool.desc}</div>
+                                            </div>
+                                            <div class="tool-actions">
+                                                <button class="tool-btn" onclick="window.open('${tool.url}', '_blank')" title="Open in new tab">↗</button>
+                                                <button class="tool-btn remove" onclick="window.removeTool(${i})" title="Remove">×</button>
+                                            </div>
                                         </div>
-                                        <button class="tool-action open" onclick="window.openTool('${tool.url}')" title="Open">↗</button>
-                                        <button class="tool-action remove" onclick="window.removeTool(${i})" title="Remove">×</button>
+                                        <div class="tool-embed">
+                                            <iframe src="${tool.url}" loading="lazy"></iframe>
+                                        </div>
                                     </div>
                                 `;
                             } else {
                                 return `
                                     <div class="tool-slot" onclick="window.openPicker(${i})">
-                                        <div class="tool-icon empty">+</div>
-                                        <div class="tool-info">
-                                            <div class="tool-name empty-text">Add a tool</div>
-                                            <div class="tool-desc">Click to browse widgets</div>
+                                        <div class="empty-slot">
+                                            <div class="empty-icon">+</div>
+                                            <div class="empty-text">Add a tool</div>
                                         </div>
-                                        <div class="tool-action add">+</div>
                                     </div>
                                 `;
                             }
@@ -473,10 +518,6 @@
             selectedTools = selectedTools.filter(t => t !== null);
             save();
             render();
-        };
-
-        window.openTool = (url) => {
-            window.open(url, '_blank');
         };
 
         onAuthStateChanged(auth, u => { if (u) render(); else signInAnonymously(auth); });
