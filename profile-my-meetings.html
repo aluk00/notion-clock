@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Meetings | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 12px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 360px;
+            overflow: hidden;
+        }
+        .widget-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
+        }
+        .dot-grid span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        .meeting-list {
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .meeting-item {
+            padding: 12px 18px;
+            border-bottom: 1px solid #F5F5F5;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+        }
+        .meeting-item:last-child { border-bottom: none; }
+        .meeting-item:hover { background: var(--bg-soft); }
+        .meeting-item.active {
+            background: #E3F2FD;
+            border-left: 3px solid var(--dmg-blue);
+        }
+        .time-block {
+            min-width: 55px;
+            text-align: center;
+        }
+        .time-main {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .time-end {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-sub);
+        }
+        .meeting-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .meeting-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 2px;
+        }
+        .meeting-meta {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .live-badge {
+            font-size: 8px;
+            font-weight: 900;
+            color: var(--dmg-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            animation: blink 2s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .join-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            background: #F0F0F0;
+            color: #BBB;
+            pointer-events: none;
+        }
+        .meeting-item.active .join-btn {
+            background: var(--dmg-blue);
+            color: #FFF;
+            pointer-events: auto;
+        }
+        .meeting-item.active .join-btn:hover {
+            background: #1a8ac6;
+            transform: translateY(-1px);
+        }
+        .add-meeting-btn {
+            display: block;
+            width: calc(100% - 36px);
+            margin: 12px 18px;
+            padding: 10px;
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--ink-sub);
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .add-meeting-btn:hover {
+            border-color: var(--dmg-blue);
+            color: var(--dmg-blue);
+            background: #F0F9FF;
+        }
+        .demo-badge {
+            font-size: 7px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: #E6468B;
+            padding: 3px 6px;
+            border-radius: 4px;
+            margin-left: auto;
+        }
+        .empty-state {
+            padding: 30px 20px;
+            text-align: center;
+            color: var(--ink-sub);
+            font-size: 12px;
+            font-weight: 600;
+        }
+        /* Config Panel */
+        .config-panel {
+            display: none;
+            padding: 16px 18px;
+            background: var(--bg-soft);
+            border-top: 1px solid var(--border);
+        }
+        .config-panel.active { display: block; }
+        .config-title {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: var(--dmg-blue);
+            margin-bottom: 12px;
+            letter-spacing: 0.05em;
+        }
+        .meeting-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #EEE;
+        }
+        .meeting-option:last-child { border-bottom: none; }
+        .meeting-option input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--dmg-blue);
+        }
+        .meeting-option label {
+            flex: 1;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .meeting-option .time-hint {
+            font-size: 10px;
+            color: var(--ink-sub);
+        }
+        .config-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .config-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .config-btn.save {
+            background: var(--dmg-blue);
+            color: #FFF;
+        }
+        .config-btn.cancel {
+            background: #E0E0E0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        // Available team meetings to choose from
+        const AVAILABLE_MEETINGS = [
+            { id: 'video-daily', title: 'Video Daily', startTime: '09:00', endTime: '09:30', link: 'https://dmgt.zoom.us/j/91362309149', type: 'team' },
+            { id: 'originals-catch', title: 'Originals Catch-Up', startTime: '16:00', endTime: '16:15', link: 'https://dmgt.zoom.us/j/91891373882', type: 'team' },
+            { id: 'creative-sync', title: 'Creative Sync', startTime: '10:00', endTime: '10:30', link: 'https://dmgt.zoom.us/j/example1', type: 'team' },
+            { id: 'editorial-standup', title: 'Editorial Standup', startTime: '09:30', endTime: '09:45', link: 'https://dmgt.zoom.us/j/example2', type: 'team' },
+            { id: 'production-weekly', title: 'Production Weekly', startTime: '14:00', endTime: '15:00', link: 'https://dmgt.zoom.us/j/example3', type: 'team' },
+            { id: 'social-planning', title: 'Social Planning', startTime: '11:00', endTime: '11:30', link: 'https://dmgt.zoom.us/j/example4', type: 'team' },
+        ];
+
+        // Demo user's meetings
+        const DEMO_MEETINGS = ['video-daily', 'originals-catch'];
+
+        let currentUser = null;
+        let userMeetings = [];
+        let isDemo = true;
+        let showConfig = false;
+
+        const root = document.getElementById('root');
+
+        function isMeetingActive(startStr, endStr) {
+            const now = new Date();
+            const [sH, sM] = startStr.split(':');
+            const [eH, eM] = endStr.split(':');
+            const start = new Date(); start.setHours(parseInt(sH), parseInt(sM), 0);
+            const end = new Date(); end.setHours(parseInt(eH), parseInt(eM), 0);
+            const windowStart = new Date(start.getTime() - 15 * 60000);
+            const windowEnd = new Date(end.getTime() + 15 * 60000);
+            return now >= windowStart && now <= windowEnd;
+        }
+
+        function render() {
+            const selectedMeetings = AVAILABLE_MEETINGS.filter(m => userMeetings.includes(m.id))
+                .sort((a, b) => a.startTime.localeCompare(b.startTime));
+            
+            const isWeekend = [0, 6].includes(new Date().getDay());
+
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="widget-header">
+                        <div class="dot-grid">
+                            <span></span><span></span><span></span><span></span>
+                        </div>
+                        <h2 style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); margin: 0;">
+                            My Meetings
+                        </h2>
+                        <span style="font-size: 9px; font-weight: 600; color: var(--ink-sub); margin-left: auto;">
+                            ${selectedMeetings.length} scheduled
+                        </span>
+                        ${isDemo ? '<span class="demo-badge">Preview</span>' : ''}
+                    </div>
+                    
+                    <div class="meeting-list">
+                        ${isWeekend ? `
+                            <div class="empty-state">
+                                <div style="font-size: 24px; margin-bottom: 8px;">🎉</div>
+                                It's the weekend! No meetings today.
+                            </div>
+                        ` : selectedMeetings.length === 0 ? `
+                            <div class="empty-state">
+                                No meetings selected.<br>
+                                Click below to add some.
+                            </div>
+                        ` : selectedMeetings.map(m => {
+                            const active = isMeetingActive(m.startTime, m.endTime);
+                            return `
+                                <div class="meeting-item ${active ? 'active' : ''}">
+                                    <div class="time-block">
+                                        <div class="time-main">${m.startTime}</div>
+                                        <div class="time-end">to ${m.endTime}</div>
+                                    </div>
+                                    <div class="meeting-info">
+                                        <div class="meeting-title">${m.title}</div>
+                                        <div class="meeting-meta">
+                                            ${active ? '<span class="live-badge">● Live Now</span>' : 'Daily · Zoom'}
+                                        </div>
+                                    </div>
+                                    <a href="${m.link}" target="_blank" class="join-btn">Join</a>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    
+                    <button class="add-meeting-btn" onclick="window.toggleConfig()">
+                        ${showConfig ? '✕ Close' : '+ Configure My Meetings'}
+                    </button>
+                    
+                    <div class="config-panel ${showConfig ? 'active' : ''}">
+                        <div class="config-title">Select Your Recurring Meetings</div>
+                        ${AVAILABLE_MEETINGS.map(m => `
+                            <div class="meeting-option">
+                                <input type="checkbox" id="opt-${m.id}" ${userMeetings.includes(m.id) ? 'checked' : ''}>
+                                <label for="opt-${m.id}">${m.title}</label>
+                                <span class="time-hint">${m.startTime}</span>
+                            </div>
+                        `).join('')}
+                        <div class="config-actions">
+                            <button class="config-btn cancel" onclick="window.toggleConfig()">Cancel</button>
+                            <button class="config-btn save" onclick="window.saveMeetings()">Save</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.toggleConfig = () => {
+            showConfig = !showConfig;
+            render();
+        };
+
+        window.saveMeetings = async () => {
+            const selected = AVAILABLE_MEETINGS
+                .filter(m => document.getElementById(`opt-${m.id}`)?.checked)
+                .map(m => m.id);
+            
+            userMeetings = selected;
+            
+            if (currentUser && !isDemo) {
+                // Save to Firestore
+                try {
+                    await setDoc(doc(db, "artifacts", appId, "public", "data", "user_meetings", currentUser.id), {
+                        meetings: selected,
+                        updatedAt: new Date().toISOString()
+                    });
+                } catch (e) {
+                    console.log('Failed to save:', e);
+                }
+            } else {
+                // Save to localStorage for demo
+                localStorage.setItem('dmg_my_meetings', JSON.stringify(selected));
+            }
+            
+            showConfig = false;
+            render();
+        };
+
+        async function loadUserMeetings(userId) {
+            if (userId) {
+                try {
+                    const docRef = doc(db, "artifacts", appId, "public", "data", "user_meetings", userId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        return snap.data().meetings || [];
+                    }
+                } catch (e) {
+                    console.log('Failed to load meetings:', e);
+                }
+            }
+            
+            // Fall back to localStorage
+            const stored = localStorage.getItem('dmg_my_meetings');
+            if (stored) {
+                return JSON.parse(stored);
+            }
+            
+            return DEMO_MEETINGS;
+        }
+
+        async function resolveIdentity(authUser) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramId = urlParams.get('id');
+
+            if (paramId) {
+                try {
+                    const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", paramId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        currentUser = { id: snap.id, ...snap.data() };
+                        isDemo = false;
+                        userMeetings = await loadUserMeetings(currentUser.id);
+                        render();
+                        return;
+                    }
+                } catch (e) { console.log('Param lookup failed:', e); }
+            }
+
+            if (authUser && authUser.email && !authUser.isAnonymous) {
+                try {
+                    const q = query(
+                        collection(db, "artifacts", appId, "public", "data", "staff_directory"), 
+                        where("email", "==", authUser.email)
+                    );
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        currentUser = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                        isDemo = false;
+                        userMeetings = await loadUserMeetings(currentUser.id);
+                        render();
+                        return;
+                    }
+                } catch (e) { console.log('Email lookup failed:', e); }
+            }
+
+            // Demo mode
+            isDemo = true;
+            userMeetings = await loadUserMeetings(null);
+            render();
+        }
+
+        // Auto-refresh every 30s to update active states
+        setInterval(render, 30000);
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                resolveIdentity(user);
+            } else {
+                signInAnonymously(auth);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Card | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-operations: #21A0D8;
+            --team-executive: #1C1C1C;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 16px;
+            color: var(--ink);
+        }
+        .card {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            max-width: 320px;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--team-color, var(--team-operations));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .card:hover::before {
+            opacity: 1;
+        }
+        .demo-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 7px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: var(--team-creative);
+            padding: 3px 6px;
+            border-radius: 4px;
+            z-index: 10;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--team-color, #DDD);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        .dot-grid span:nth-child(1) { animation-delay: 0s; }
+        .dot-grid span:nth-child(2) { animation-delay: 0.4s; }
+        .dot-grid span:nth-child(3) { animation-delay: 0.8s; }
+        .dot-grid span:nth-child(4) { animation-delay: 0.4s; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+        .avatar-ring {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            padding: 3px;
+            background: linear-gradient(135deg, var(--team-color, #DDD), transparent);
+            transition: all 0.3s ease;
+        }
+        .card:hover .avatar-ring {
+            box-shadow: 0 0 20px color-mix(in srgb, var(--team-color) 40%, transparent);
+        }
+        .avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: var(--bg-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 18px;
+            color: var(--team-color, var(--ink-sub));
+            border: 2px solid #FFF;
+        }
+        .presence-dot {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 3px solid #FFF;
+            background: #43B049;
+        }
+        .presence-dot.away { background: #F2C316; }
+        .presence-dot.offline { background: #D1D1D1; }
+        .team-badge {
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: color-mix(in srgb, var(--team-color) 12%, transparent);
+            color: var(--team-color);
+            transition: all 0.2s ease;
+        }
+        .card:hover .team-badge {
+            background: var(--team-color);
+            color: #FFF;
+        }
+        .stat-pill {
+            background: var(--bg-soft);
+            border-radius: 8px;
+            padding: 8px 12px;
+            transition: all 0.2s ease;
+        }
+        .stat-pill:hover {
+            background: #FFF;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .loading-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+        
+        const teamColors = {
+            Editorial: '#E94B4B',
+            Creative: '#E6468B',
+            Production: '#43B049',
+            Social: '#F2C316',
+            Operations: '#21A0D8',
+            Executive: '#1C1C1C'
+        };
+
+        const DEMO_USER = {
+            firstName: 'Your',
+            lastName: 'Name',
+            role: 'Your Role Here',
+            team: 'Operations',
+            manager: 'Manager Name',
+            isManager: false,
+            isDemo: true
+        };
+
+        const root = document.getElementById('root');
+
+        function renderLoading() {
+            root.innerHTML = `
+                <div class="card loading-state">
+                    <div class="dot-grid" style="--team-color: #21A0D8">
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function render(staff, isDemo = false) {
+            const teamColor = teamColors[staff.team] || '#21A0D8';
+            const initials = `${staff.firstName?.[0] || '?'}${staff.lastName?.[0] || ''}`;
+            const stats = { active: isDemo ? 3 : Math.floor(Math.random() * 5) + 1, completed: isDemo ? 12 : Math.floor(Math.random() * 20) + 5 };
+            
+            root.innerHTML = `
+                <div class="card" style="--team-color: ${teamColor}">
+                    ${isDemo ? '<div class="demo-badge">Preview</div>' : ''}
+                    <div style="display: flex; align-items: flex-start; gap: 16px;">
+                        <div style="position: relative; flex-shrink: 0;">
+                            <div class="avatar-ring">
+                                <div class="avatar">${initials}</div>
+                            </div>
+                            <div class="presence-dot"></div>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div class="dot-grid" style="--team-color: ${teamColor}">
+                                    <span></span><span></span><span></span><span></span>
+                                </div>
+                                <span class="team-badge" style="--team-color: ${teamColor}">${staff.team}</span>
+                            </div>
+                            <h2 style="font-size: 15px; font-weight: 900; color: var(--ink); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${staff.firstName} ${staff.lastName}
+                            </h2>
+                            <p style="font-size: 10px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin: 2px 0 0 0;">
+                                ${staff.role}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px; margin-top: 16px;">
+                        <div class="stat-pill" style="flex: 1; text-align: center;">
+                            <div style="font-size: 18px; font-weight: 900; color: ${teamColor};">${stats.active}</div>
+                            <div style="font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.05em;">Active</div>
+                        </div>
+                        <div class="stat-pill" style="flex: 1; text-align: center;">
+                            <div style="font-size: 18px; font-weight: 900; color: var(--ink);">${stats.completed}</div>
+                            <div style="font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.05em;">Done</div>
+                        </div>
+                        <div class="stat-pill" style="flex: 1; text-align: center;">
+                            <div style="font-size: 18px; font-weight: 900; color: var(--ink-sub);">${staff.isManager ? '★' : '—'}</div>
+                            <div style="font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.05em;">${staff.isManager ? 'Lead' : 'Team'}</div>
+                        </div>
+                    </div>
+                    
+                    ${staff.manager && staff.manager !== 'None' ? `
+                        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #F5F5F5;">
+                            <span style="font-size: 9px; font-weight: 700; text-transform: uppercase; color: #BBB; letter-spacing: 0.05em;">Reports to</span>
+                            <span style="font-size: 11px; font-weight: 700; color: var(--ink); margin-left: 8px;">${staff.manager}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        async function resolveIdentity(authUser) {
+            renderLoading();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramId = urlParams.get('id');
+
+            if (paramId) {
+                try {
+                    const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", paramId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        render({ id: snap.id, ...snap.data() }, false);
+                        return;
+                    }
+                } catch (e) { console.log('Param lookup failed:', e); }
+            }
+
+            if (authUser && authUser.email && !authUser.isAnonymous) {
+                try {
+                    const q = query(
+                        collection(db, "artifacts", appId, "public", "data", "staff_directory"), 
+                        where("email", "==", authUser.email)
+                    );
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        render({ id: snap.docs[0].id, ...snap.docs[0].data() }, false);
+                        return;
+                    }
+                } catch (e) { console.log('Email lookup failed:', e); }
+            }
+
+            render(DEMO_USER, true);
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                resolveIdentity(user);
+            } else {
+                signInAnonymously(auth);
+            }
+        });
+    </script>
+</body>
+</html>

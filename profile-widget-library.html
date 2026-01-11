@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Widgets | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 12px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 500px;
+            overflow: hidden;
+        }
+        .widget-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
+        }
+        .dot-grid span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        .category-section {
+            padding: 14px 18px;
+            border-bottom: 1px solid #F5F5F5;
+        }
+        .category-section:last-child { border-bottom: none; }
+        .category-title {
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--dmg-blue);
+            margin-bottom: 12px;
+        }
+        .widget-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .widget-option {
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .widget-option:hover {
+            border-color: var(--dmg-blue);
+            background: #F0F9FF;
+        }
+        .widget-option.added {
+            border-color: var(--team-production);
+            background: #E8F5E9;
+        }
+        .widget-icon {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        .widget-name {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--ink);
+            margin-bottom: 4px;
+        }
+        .widget-desc {
+            font-size: 9px;
+            color: var(--ink-sub);
+            line-height: 1.4;
+        }
+        .widget-status {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+        .status-add {
+            background: var(--dmg-blue);
+            color: #FFF;
+        }
+        .status-added {
+            background: var(--team-production);
+            color: #FFF;
+        }
+        .copy-toast {
+            position: fixed;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--ink);
+            color: #FFF;
+            padding: 12px 24px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .copy-toast.active {
+            bottom: 20px;
+            opacity: 1;
+        }
+        .demo-badge {
+            font-size: 7px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: #E6468B;
+            padding: 3px 6px;
+            border-radius: 4px;
+            margin-left: auto;
+        }
+        .instructions {
+            padding: 14px 18px;
+            background: #FFFBEB;
+            border-bottom: 1px solid #FEF3C7;
+            font-size: 11px;
+            color: #92400E;
+            line-height: 1.5;
+        }
+        .instructions strong {
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div class="copy-toast" id="toast">URL copied to clipboard!</div>
+    
+    <script>
+        const BASE_URL = 'https://aluk00.github.io/notion-clock/';
+        
+        // Widget library
+        const WIDGET_LIBRARY = [
+            {
+                category: 'Profile Essentials',
+                widgets: [
+                    { id: 'profile-welcome-header', name: 'Welcome Header', icon: '👋', desc: 'Greeting with clock and date', file: 'profile-welcome-header.html' },
+                    { id: 'profile-card', name: 'Profile Card', icon: '👤', desc: 'Your name, role and stats', file: 'profile-card.html' },
+                    { id: 'profile-quick-links', name: 'Quick Links', icon: '🔗', desc: 'Customisable shortcut grid', file: 'profile-quick-links.html' },
+                ]
+            },
+            {
+                category: 'Work & Tasks',
+                widgets: [
+                    { id: 'my-work', name: 'My Work', icon: '📋', desc: 'Your assigned deliverables', file: 'my-work.html' },
+                    { id: 'my-activity', name: 'Activity Feed', icon: '🔔', desc: 'Mentions and updates', file: 'my-activity.html' },
+                    { id: 'personal-reminders', name: 'Personal Reminders', icon: '✅', desc: 'Private to-do list', file: 'personal-reminders.html' },
+                ]
+            },
+            {
+                category: 'Meetings & Calendar',
+                widgets: [
+                    { id: 'my-meetings', name: 'My Meetings', icon: '📅', desc: 'Your recurring meetings', file: 'profile-my-meetings.html' },
+                    { id: 'team-meetings', name: 'Team Meetings', icon: '👥', desc: 'All team standup times', file: 'team-meetings.html' },
+                    { id: 'calendar-embed', name: 'Outlook Calendar', icon: '📆', desc: 'Embed your calendar', file: 'profile-calendar-embed.html' },
+                ]
+            },
+            {
+                category: 'Manager Tools',
+                widgets: [
+                    { id: 'rota-approvals', name: 'Rota Approvals', icon: '✍️', desc: 'Approve team rotas (managers)', file: 'profile-rota-approvals.html' },
+                ]
+            },
+            {
+                category: 'Team Dashboards',
+                widgets: [
+                    { id: 'studio-pulse', name: 'Studio Pulse', icon: '📊', desc: 'Real-time project stats', file: 'studio-pulse.html' },
+                    { id: 'production-calendar', name: 'Production Calendar', icon: '🗓️', desc: 'Shoot and deadline tracker', file: 'production-calendar.html' },
+                    { id: 'designer-queue', name: 'Designer Queue', icon: '🎨', desc: 'Design team workload', file: 'designer-queue.html' },
+                    { id: 'editor-queue', name: 'Editor Queue', icon: '🎬', desc: 'Edit team workload', file: 'editor-queue.html' },
+                ]
+            }
+        ];
+
+        // Track which widgets user has "added" (stored in localStorage for demo)
+        const STORAGE_KEY = 'dmg_added_widgets';
+        let addedWidgets = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 2500);
+        }
+
+        function toggleWidget(widgetId, fileName) {
+            if (addedWidgets.includes(widgetId)) {
+                addedWidgets = addedWidgets.filter(id => id !== widgetId);
+                showToast('Widget removed from your list');
+            } else {
+                addedWidgets.push(widgetId);
+                // Copy URL to clipboard
+                const url = BASE_URL + fileName;
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast('URL copied! Paste as embed in Notion');
+                }).catch(() => {
+                    showToast('Widget added');
+                });
+            }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(addedWidgets));
+            render();
+        }
+
+        function render() {
+            document.getElementById('root').innerHTML = `
+                <div class="widget">
+                    <div class="widget-header">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <h2 style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); margin: 0;">
+                            Widget Library
+                        </h2>
+                        <span class="demo-badge">Preview</span>
+                    </div>
+                    
+                    <div class="instructions">
+                        <strong>How to add widgets:</strong> Click a widget to copy its URL, then paste it into a Notion embed block on your profile page.
+                    </div>
+                    
+                    ${WIDGET_LIBRARY.map(category => `
+                        <div class="category-section">
+                            <div class="category-title">${category.category}</div>
+                            <div class="widget-grid">
+                                ${category.widgets.map(w => {
+                                    const isAdded = addedWidgets.includes(w.id);
+                                    return `
+                                        <div class="widget-option ${isAdded ? 'added' : ''}" onclick="toggleWidget('${w.id}', '${w.file}')">
+                                            <span class="widget-status ${isAdded ? 'status-added' : 'status-add'}">
+                                                ${isAdded ? '✓ Added' : '+ Add'}
+                                            </span>
+                                            <div class="widget-icon">${w.icon}</div>
+                                            <div class="widget-name">${w.name}</div>
+                                            <div class="widget-desc">${w.desc}</div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Initial render
+        render();
+    </script>
+</body>
+</html>

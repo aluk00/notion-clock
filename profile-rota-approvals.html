@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rota Approvals | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --st-office: #2E7D32;
+            --st-wfh: #F9A825;
+            --st-shoot: #2196F3;
+            --st-pto: #F44336;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 12px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 400px;
+            overflow: hidden;
+        }
+        .widget-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
+        }
+        .dot-grid span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        .badge-pending {
+            font-size: 9px;
+            font-weight: 900;
+            color: #FFF;
+            background: var(--team-editorial);
+            padding: 4px 8px;
+            border-radius: 99px;
+            margin-left: auto;
+        }
+        .badge-clear {
+            font-size: 9px;
+            font-weight: 900;
+            color: #FFF;
+            background: var(--st-office);
+            padding: 4px 8px;
+            border-radius: 99px;
+            margin-left: auto;
+        }
+        .demo-badge {
+            font-size: 7px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: #E6468B;
+            padding: 3px 6px;
+            border-radius: 4px;
+        }
+        .request-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .request-item {
+            padding: 14px 18px;
+            border-bottom: 1px solid #F5F5F5;
+            transition: all 0.2s ease;
+        }
+        .request-item:last-child { border-bottom: none; }
+        .request-item:hover { background: var(--bg-soft); }
+        .request-item.approved {
+            background: #E8F5E9;
+            opacity: 0.7;
+        }
+        .request-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .request-name {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .request-week {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .schedule-strip {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .day-chip {
+            flex: 1;
+            text-align: center;
+            padding: 6px 4px;
+            border-radius: 6px;
+            background: var(--bg-soft);
+        }
+        .day-chip-label {
+            font-size: 8px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .day-chip-status {
+            font-size: 9px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .day-chip.office { background: #E8F5E9; }
+        .day-chip.office .day-chip-status { color: var(--st-office); }
+        .day-chip.wfh { background: #FFF8E1; }
+        .day-chip.wfh .day-chip-status { color: var(--st-wfh); }
+        .day-chip.shoot { background: #E3F2FD; }
+        .day-chip.shoot .day-chip-status { color: var(--st-shoot); }
+        .day-chip.pto { background: #FFEBEE; }
+        .day-chip.pto .day-chip-status { color: var(--st-pto); }
+        .action-row {
+            display: flex;
+            gap: 8px;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .action-btn:hover {
+            transform: translateY(-1px);
+        }
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-approve {
+            background: var(--st-office);
+            color: #FFF;
+        }
+        .btn-view {
+            background: var(--dmg-blue);
+            color: #FFF;
+        }
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .empty-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+        .empty-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--ink);
+            margin-bottom: 4px;
+        }
+        .empty-sub {
+            font-size: 11px;
+            color: var(--ink-sub);
+        }
+        .not-manager {
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .not-manager-icon {
+            font-size: 28px;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+        .not-manager-text {
+            font-size: 11px;
+            color: var(--ink-sub);
+            line-height: 1.5;
+        }
+        .toast {
+            position: fixed;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--ink);
+            color: #FFF;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.active {
+            bottom: 20px;
+            opacity: 1;
+        }
+        .approved-badge {
+            font-size: 9px;
+            font-weight: 900;
+            color: var(--st-office);
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div class="toast" id="toast">Action completed</div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        const MANAGEMENT_HUB_URL = 'https://aluk00.github.io/notion-clock/management-hub.html';
+
+        const normalize = (n) => {
+            if (!n || typeof n !== 'string') return "";
+            return n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+        };
+
+        // Demo data
+        const DEMO_REQUESTS = [
+            {
+                id: 'demo-1',
+                name: 'Sarah Mitchell',
+                weekId: getMonday().toISOString().split('T')[0],
+                schedule: [
+                    { status: 'Office' },
+                    { status: 'WFH' },
+                    { status: 'Office' },
+                    { status: 'WFH' },
+                    { status: 'Office' }
+                ]
+            },
+            {
+                id: 'demo-2',
+                name: 'James Cooper',
+                weekId: getMonday().toISOString().split('T')[0],
+                schedule: [
+                    { status: 'Office' },
+                    { status: 'Office' },
+                    { status: 'PTO' },
+                    { status: 'PTO' },
+                    { status: 'Office' }
+                ]
+            }
+        ];
+
+        let currentUser = null;
+        let isDemo = true;
+        let staffList = [];
+        let rotaSubmissions = [];
+        let rotaResponses = [];
+        let approvedThisSession = new Set();
+
+        const root = document.getElementById('root');
+
+        function getMonday() {
+            const today = new Date();
+            const day = today.getDay();
+            const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(today.setDate(diff));
+            monday.setHours(0, 0, 0, 0);
+            return monday;
+        }
+
+        function getWeekLabel(weekId) {
+            const date = new Date(weekId);
+            return `W/C ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+        }
+
+        function getStatusClass(status) {
+            if (status === 'Office') return 'office';
+            if (status === 'WFH') return 'wfh';
+            if (status === 'Shoot' || status === 'Client / Travel') return 'shoot';
+            if (status === 'PTO' || status === 'Leave') return 'pto';
+            return '';
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 2500);
+        }
+
+        function render() {
+            if (!currentUser) {
+                root.innerHTML = `
+                    <div class="widget">
+                        <div class="widget-header">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); margin: 0;">
+                                Rota Approvals
+                            </h2>
+                        </div>
+                        <div class="not-manager">
+                            <div class="not-manager-icon">⏳</div>
+                            <div class="not-manager-text">Loading...</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // In real mode, check if user is a manager
+            if (!currentUser.isManager && !isDemo) {
+                root.innerHTML = `
+                    <div class="widget">
+                        <div class="widget-header">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); margin: 0;">
+                                Rota Approvals
+                            </h2>
+                        </div>
+                        <div class="not-manager">
+                            <div class="not-manager-icon">🔒</div>
+                            <div class="not-manager-text">
+                                This widget is for managers only.<br>
+                                You'll see it when you have direct reports.
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Get pending requests
+            let pendingRequests = [];
+            
+            if (isDemo) {
+                pendingRequests = DEMO_REQUESTS;
+            } else {
+                const managerName = `${currentUser.firstName} ${currentUser.lastName}`;
+                const reports = staffList.filter(s => s.manager === managerName);
+                const wcStr = getMonday().toISOString().split('T')[0];
+                
+                pendingRequests = reports
+                    .map(r => {
+                        const fullName = `${r.firstName} ${r.lastName}`;
+                        const sub = rotaSubmissions.find(s => 
+                            normalize(s.name) === normalize(fullName) && s.weekId === wcStr
+                        );
+                        const resp = rotaResponses.find(res => 
+                            normalize(res.staffName) === normalize(fullName) && res.weekCommencing === wcStr
+                        );
+                        
+                        if (sub && !resp) {
+                            return { ...sub, staffId: r.id, name: fullName };
+                        }
+                        return null;
+                    })
+                    .filter(Boolean);
+            }
+
+            const actualPending = pendingRequests.filter(r => !approvedThisSession.has(r.id || r.name));
+            const pendingCount = actualPending.length;
+
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="widget-header">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <h2 style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); margin: 0;">
+                            Rota Approvals
+                        </h2>
+                        ${pendingCount > 0 
+                            ? `<span class="badge-pending">${pendingCount} Pending</span>`
+                            : `<span class="badge-clear">All Clear</span>`
+                        }
+                        ${isDemo ? '<span class="demo-badge">Preview</span>' : ''}
+                    </div>
+                    
+                    <div class="request-list">
+                        ${pendingRequests.length === 0 ? `
+                            <div class="empty-state">
+                                <div class="empty-icon">✅</div>
+                                <div class="empty-title">All caught up!</div>
+                                <div class="empty-sub">No pending rota requests from your team.</div>
+                            </div>
+                        ` : pendingRequests.map(req => {
+                            const reqId = req.id || req.name;
+                            const isApproved = approvedThisSession.has(reqId);
+                            return `
+                                <div class="request-item ${isApproved ? 'approved' : ''}" id="req-${reqId}">
+                                    <div class="request-header">
+                                        <span class="request-name">${req.name}</span>
+                                        ${isApproved 
+                                            ? `<span class="approved-badge">✓ Approved</span>`
+                                            : `<span class="request-week">${getWeekLabel(req.weekId)}</span>`
+                                        }
+                                    </div>
+                                    <div class="schedule-strip">
+                                        ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, i) => {
+                                            const status = req.schedule[i]?.status || 'Office';
+                                            return `
+                                                <div class="day-chip ${getStatusClass(status)}">
+                                                    <div class="day-chip-label">${day}</div>
+                                                    <div class="day-chip-status">${status.substring(0, 3)}</div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                    <div class="action-row">
+                                        <button class="action-btn btn-approve" 
+                                            onclick="window.approveRequest('${req.name}', '${req.weekId}', '${reqId}')"
+                                            ${isApproved ? 'disabled' : ''}>
+                                            ${isApproved ? '✓ Done' : '✓ Approve All'}
+                                        </button>
+                                        <button class="action-btn btn-view" onclick="window.openManagementHub()">
+                                            Details →
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        window.approveRequest = async (name, weekCommencing, reqId) => {
+            if (isDemo) {
+                approvedThisSession.add(reqId);
+                render();
+                showToast('Preview: Approval simulated');
+                return;
+            }
+
+            try {
+                const respId = `${weekCommencing}_${normalize(name).replace(/\s+/g, '_')}`;
+                const dailyDecisions = [0, 1, 2, 3, 4].map(i => ({
+                    dayIndex: i,
+                    status: 'Approved',
+                    comment: ''
+                }));
+
+                await setDoc(doc(db, "artifacts", appId, "public", "data", "rota_responses", respId), {
+                    staffName: name,
+                    weekCommencing: weekCommencing,
+                    status: 'Reviewed',
+                    dailyDecisions: dailyDecisions,
+                    timestamp: new Date().toISOString(),
+                    approvedBy: `${currentUser.firstName} ${currentUser.lastName}`
+                });
+
+                approvedThisSession.add(reqId);
+                render();
+                showToast(`Approved ${name}'s rota`);
+            } catch (e) {
+                console.error('Failed to approve:', e);
+                showToast('Failed to approve. Try again.');
+            }
+        };
+
+        window.openManagementHub = () => {
+            window.open(MANAGEMENT_HUB_URL, '_blank');
+        };
+
+        async function resolveIdentity(authUser) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramId = urlParams.get('id');
+
+            if (paramId) {
+                try {
+                    const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", paramId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        currentUser = { id: snap.id, ...snap.data() };
+                        isDemo = false;
+                        await loadData();
+                        render();
+                        return;
+                    }
+                } catch (e) { console.log('Param lookup failed:', e); }
+            }
+
+            if (authUser && authUser.email && !authUser.isAnonymous) {
+                try {
+                    const q = query(
+                        collection(db, "artifacts", appId, "public", "data", "staff_directory"), 
+                        where("email", "==", authUser.email)
+                    );
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        currentUser = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                        isDemo = false;
+                        await loadData();
+                        render();
+                        return;
+                    }
+                } catch (e) { console.log('Email lookup failed:', e); }
+            }
+
+            // Demo mode - show as if user is a manager
+            currentUser = { firstName: 'Demo', lastName: 'Manager', isManager: true };
+            isDemo = true;
+            render();
+        }
+
+        async function loadData() {
+            // Load staff directory
+            const staffSnap = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+            staffList = [];
+            staffSnap.forEach(d => staffList.push({ id: d.id, ...d.data() }));
+
+            // Set up real-time listeners for submissions and responses
+            onSnapshot(collection(db, "artifacts", appId, "public", "data", "rota_submissions"), snap => {
+                rotaSubmissions = [];
+                snap.forEach(d => rotaSubmissions.push(d.data()));
+                render();
+            });
+
+            onSnapshot(collection(db, "artifacts", appId, "public", "data", "rota_responses"), snap => {
+                rotaResponses = [];
+                snap.forEach(d => rotaResponses.push({ id: d.id, ...d.data() }));
+                render();
+            });
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                resolveIdentity(user);
+            } else {
+                signInAnonymously(auth);
+            }
+        });
+    </script>
+</body>
+</html>
