@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Update | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-operations: #9333EA;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 12px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            width: 100%;
+            max-width: 700px;
+        }
+        .widget-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--team-creative);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        .header-title { font-size: 14px; font-weight: 900; color: var(--ink); }
+        .header-sub { font-size: 10px; color: var(--ink-sub); margin-left: auto; }
+        
+        /* Compose area */
+        .compose-area {
+            padding: 20px 24px;
+        }
+        .compose-top {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 800;
+            color: #FFF;
+            flex-shrink: 0;
+        }
+        .compose-input-wrap {
+            flex: 1;
+        }
+        .compose-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            font-size: 14px;
+            font-family: inherit;
+            line-height: 1.5;
+            resize: none;
+            transition: all 0.2s ease;
+        }
+        .compose-textarea:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+        }
+        .compose-textarea::placeholder { color: #BBB; }
+        
+        /* Attachments preview */
+        .attachments-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .attachment-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-soft);
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+        .attachment-chip .chip-icon {
+            font-size: 12px;
+        }
+        .attachment-chip .remove-chip {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #DDD;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 4px;
+        }
+        .attachment-chip .remove-chip:hover { background: var(--team-editorial); color: #FFF; }
+        .attachment-chip.mood { background: #FEF3C7; color: #B45309; }
+        .attachment-chip.project { background: color-mix(in srgb, var(--team-production) 15%, white); color: var(--team-production); }
+        .attachment-chip.person { background: color-mix(in srgb, var(--dmg-blue) 15%, white); color: var(--dmg-blue); }
+        .attachment-chip.link { background: color-mix(in srgb, var(--team-editorial) 15%, white); color: var(--team-editorial); }
+        
+        /* Action bar */
+        .action-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-soft);
+        }
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 12px;
+            background: #FFF;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid var(--border);
+        }
+        .action-btn:hover {
+            color: var(--ink);
+            border-color: var(--ink);
+        }
+        .action-btn.active {
+            background: var(--dmg-blue);
+            color: #FFF;
+            border-color: var(--dmg-blue);
+        }
+        .action-btn .btn-icon { font-size: 14px; }
+        
+        .post-btn {
+            margin-left: auto;
+            padding: 12px 28px;
+            background: var(--team-creative);
+            color: #FFF;
+            border: none;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .post-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .post-btn:disabled { background: #DDD; cursor: not-allowed; transform: none; }
+        
+        /* Dropdowns */
+        .dropdown-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 220px;
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            z-index: 100;
+            max-height: 280px;
+            overflow-y: auto;
+            margin-top: 8px;
+        }
+        .dropdown-header {
+            padding: 12px 16px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--ink-sub);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: #FFF;
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+        .dropdown-item:hover { background: var(--bg-soft); }
+        .dropdown-item .item-emoji { font-size: 16px; }
+        .dropdown-item .item-text { font-size: 12px; font-weight: 600; }
+        .dropdown-item .item-sub { font-size: 10px; color: var(--ink-sub); }
+        
+        .dropdown-search {
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-family: inherit;
+        }
+        .dropdown-search:focus { outline: none; }
+        
+        .action-btn-wrap { position: relative; }
+        
+        .demo-badge {
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: #E6468B;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--ink);
+            color: #FFF;
+            padding: 12px 24px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 700;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.active { bottom: 30px; opacity: 1; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div class="toast" id="toast">Posted!</div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, orderBy, limit, onSnapshot, addDoc, doc, getDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        const TEAM_COLORS = {
+            'Editorial': '#E94B4B',
+            'Creative': '#E6468B',
+            'Production': '#43B049',
+            'Social': '#F2C316',
+            'Social Video': '#F2C316',
+            'Operations': '#9333EA',
+            'Sales': '#F97316'
+        };
+
+        const MOODS = [
+            { emoji: '🔥', label: 'On Fire' },
+            { emoji: '😤', label: 'In The Zone' },
+            { emoji: '☕', label: 'Need Coffee' },
+            { emoji: '🧘', label: 'Zen Mode' },
+            { emoji: '🎉', label: 'Celebrating' },
+            { emoji: '😴', label: 'Low Battery' },
+            { emoji: '🤔', label: 'Thinking' },
+            { emoji: '💪', label: 'Crushing It' },
+            { emoji: '🙃', label: 'Chaos Mode' },
+            { emoji: '🎯', label: 'Locked In' }
+        ];
+
+        const DEMO_PROJECTS = [
+            { id: 'p1', name: 'Sky Vegas Campaign', status: 'Creative Review' },
+            { id: 'p2', name: 'Chery 24 Hours', status: 'In Production' },
+            { id: 'p3', name: 'JAECOO Launch', status: 'Briefed' },
+            { id: 'p4', name: 'Wuthering Heights', status: 'Published' },
+            { id: 'p5', name: 'McDonald\'s Investigates', status: 'Complete' }
+        ];
+
+        const DEMO_STAFF = [
+            { id: 's1', firstName: 'Nick', lastName: 'B', team: 'Creative' },
+            { id: 's2', firstName: 'Hugo', lastName: 'M', team: 'Production' },
+            { id: 's3', firstName: 'Mimi', lastName: 'Yates', team: 'Social' },
+            { id: 's4', firstName: 'Dan', lastName: 'Q', team: 'Social' },
+            { id: 's5', firstName: 'Kaylee', lastName: 'A', team: 'Editorial' },
+            { id: 's6', firstName: 'Sophia', lastName: 'S', team: 'Editorial' },
+            { id: 's7', firstName: 'Isobel', lastName: 'W', team: 'Creative' }
+        ];
+
+        let currentUser = null;
+        let isDemo = true;
+        let staffDirectory = DEMO_STAFF;
+        let projects = DEMO_PROJECTS;
+        
+        // Composer state
+        let postText = '';
+        let attachedMood = null;
+        let taggedPeople = [];
+        let linkedProject = null;
+        let attachedLink = '';
+        
+        // Dropdown state
+        let openDropdown = null; // 'mood' | 'people' | 'project' | 'link' | null
+        let searchQuery = '';
+
+        const root = document.getElementById('root');
+
+        function getTeamColor(team) {
+            return TEAM_COLORS[team] || '#21a0d8';
+        }
+
+        function getInitials(firstName, lastName) {
+            return `${(firstName || '?')[0]}${(lastName || '?')[0]}`.toUpperCase();
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 2500);
+        }
+
+        function render() {
+            const user = currentUser || { firstName: 'Your', lastName: 'Name', team: 'Creative' };
+            const teamColor = getTeamColor(user.team);
+            const hasContent = postText.trim() || attachedMood || taggedPeople.length > 0 || linkedProject || attachedLink;
+
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="widget-header">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <h2 class="header-title">Post Update</h2>
+                        <span class="header-sub">Share with the team</span>
+                        ${isDemo ? '<span class="demo-badge">Preview</span>' : ''}
+                    </div>
+                    
+                    <div class="compose-area">
+                        <div class="compose-top">
+                            <div class="user-avatar" style="background: ${teamColor}">
+                                ${getInitials(user.firstName, user.lastName)}
+                            </div>
+                            <div class="compose-input-wrap">
+                                <textarea 
+                                    class="compose-textarea" 
+                                    id="post-text"
+                                    placeholder="What's happening? Share an update, a win, or tag the team..."
+                                >${postText}</textarea>
+                                
+                                ${(attachedMood || taggedPeople.length > 0 || linkedProject || attachedLink) ? `
+                                    <div class="attachments-preview">
+                                        ${attachedMood ? `
+                                            <div class="attachment-chip mood">
+                                                <span class="chip-icon">${attachedMood.emoji}</span>
+                                                <span>Feeling ${attachedMood.label}</span>
+                                                <span class="remove-chip" onclick="window.removeMood()">×</span>
+                                            </div>
+                                        ` : ''}
+                                        
+                                        ${taggedPeople.map(p => `
+                                            <div class="attachment-chip person">
+                                                <span class="chip-icon">@</span>
+                                                <span>${p.firstName} ${p.lastName}</span>
+                                                <span class="remove-chip" onclick="window.removePerson('${p.id}')">×</span>
+                                            </div>
+                                        `).join('')}
+                                        
+                                        ${linkedProject ? `
+                                            <div class="attachment-chip project">
+                                                <span class="chip-icon">📁</span>
+                                                <span>${linkedProject.name}</span>
+                                                <span class="remove-chip" onclick="window.removeProject()">×</span>
+                                            </div>
+                                        ` : ''}
+                                        
+                                        ${attachedLink ? `
+                                            <div class="attachment-chip link">
+                                                <span class="chip-icon">🔗</span>
+                                                <span>${new URL(attachedLink).hostname}</span>
+                                                <span class="remove-chip" onclick="window.removeLink()">×</span>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="action-bar">
+                        <!-- Mood Button -->
+                        <div class="action-btn-wrap">
+                            <button class="action-btn ${openDropdown === 'mood' ? 'active' : ''}" onclick="window.toggleDropdown('mood')">
+                                <span class="btn-icon">😊</span>
+                                <span>Feeling</span>
+                            </button>
+                            ${openDropdown === 'mood' ? renderMoodDropdown() : ''}
+                        </div>
+                        
+                        <!-- Tag People Button -->
+                        <div class="action-btn-wrap">
+                            <button class="action-btn ${openDropdown === 'people' ? 'active' : ''}" onclick="window.toggleDropdown('people')">
+                                <span class="btn-icon">@</span>
+                                <span>Tag</span>
+                            </button>
+                            ${openDropdown === 'people' ? renderPeopleDropdown() : ''}
+                        </div>
+                        
+                        <!-- Link Project Button -->
+                        <div class="action-btn-wrap">
+                            <button class="action-btn ${openDropdown === 'project' ? 'active' : ''}" onclick="window.toggleDropdown('project')">
+                                <span class="btn-icon">📁</span>
+                                <span>Project</span>
+                            </button>
+                            ${openDropdown === 'project' ? renderProjectDropdown() : ''}
+                        </div>
+                        
+                        <!-- Add Link Button -->
+                        <div class="action-btn-wrap">
+                            <button class="action-btn ${openDropdown === 'link' ? 'active' : ''}" onclick="window.toggleDropdown('link')">
+                                <span class="btn-icon">🔗</span>
+                                <span>Link</span>
+                            </button>
+                            ${openDropdown === 'link' ? renderLinkDropdown() : ''}
+                        </div>
+                        
+                        <button class="post-btn" onclick="window.submitPost()" ${!hasContent ? 'disabled' : ''}>
+                            Post
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Bind textarea
+            setTimeout(() => {
+                const textarea = document.getElementById('post-text');
+                if (textarea) {
+                    textarea.value = postText;
+                    textarea.addEventListener('input', (e) => {
+                        postText = e.target.value;
+                    });
+                }
+            }, 10);
+        }
+
+        function renderMoodDropdown() {
+            return `
+                <div class="dropdown-panel">
+                    <div class="dropdown-header">How are you feeling?</div>
+                    ${MOODS.map(m => `
+                        <div class="dropdown-item" onclick="window.selectMood('${m.emoji}', '${m.label}')">
+                            <span class="item-emoji">${m.emoji}</span>
+                            <span class="item-text">${m.label}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderPeopleDropdown() {
+            const filtered = staffDirectory.filter(s => {
+                const name = `${s.firstName} ${s.lastName}`.toLowerCase();
+                return name.includes(searchQuery.toLowerCase()) && !taggedPeople.find(t => t.id === s.id);
+            });
+
+            return `
+                <div class="dropdown-panel">
+                    <input type="text" class="dropdown-search" placeholder="Search people..." 
+                           value="${searchQuery}" oninput="window.updateSearch(this.value)">
+                    ${filtered.map(s => `
+                        <div class="dropdown-item" onclick="window.selectPerson('${s.id}')">
+                            <div style="width: 28px; height: 28px; border-radius: 50%; background: ${getTeamColor(s.team)}; 
+                                        display: flex; align-items: center; justify-content: center; 
+                                        font-size: 10px; font-weight: 800; color: #FFF;">
+                                ${getInitials(s.firstName, s.lastName)}
+                            </div>
+                            <div>
+                                <div class="item-text">${s.firstName} ${s.lastName}</div>
+                                <div class="item-sub">${s.team}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderProjectDropdown() {
+            const filtered = projects.filter(p => 
+                p.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+
+            return `
+                <div class="dropdown-panel">
+                    <input type="text" class="dropdown-search" placeholder="Search projects..." 
+                           value="${searchQuery}" oninput="window.updateSearch(this.value)">
+                    ${filtered.map(p => `
+                        <div class="dropdown-item" onclick="window.selectProject('${p.id}')">
+                            <span class="item-emoji">📁</span>
+                            <div>
+                                <div class="item-text">${p.name}</div>
+                                <div class="item-sub">${p.status}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderLinkDropdown() {
+            return `
+                <div class="dropdown-panel" style="padding: 16px;">
+                    <div style="font-size: 11px; font-weight: 700; color: var(--ink-sub); margin-bottom: 8px;">
+                        Add a link
+                    </div>
+                    <input type="url" class="dropdown-search" style="border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px;"
+                           placeholder="https://..." id="link-input" value="${attachedLink}">
+                    <button onclick="window.addLink()" style="width: 100%; padding: 10px; background: var(--dmg-blue); color: #FFF; 
+                            border: none; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                        Add Link
+                    </button>
+                </div>
+            `;
+        }
+
+        // Global handlers
+        window.toggleDropdown = (type) => {
+            openDropdown = openDropdown === type ? null : type;
+            searchQuery = '';
+            render();
+        };
+
+        window.updateSearch = (val) => {
+            searchQuery = val;
+            render();
+        };
+
+        window.selectMood = (emoji, label) => {
+            attachedMood = { emoji, label };
+            openDropdown = null;
+            render();
+        };
+
+        window.removeMood = () => {
+            attachedMood = null;
+            render();
+        };
+
+        window.selectPerson = (id) => {
+            const person = staffDirectory.find(s => s.id === id);
+            if (person && !taggedPeople.find(t => t.id === id)) {
+                taggedPeople.push(person);
+            }
+            searchQuery = '';
+            render();
+        };
+
+        window.removePerson = (id) => {
+            taggedPeople = taggedPeople.filter(p => p.id !== id);
+            render();
+        };
+
+        window.selectProject = (id) => {
+            linkedProject = projects.find(p => p.id === id);
+            openDropdown = null;
+            render();
+        };
+
+        window.removeProject = () => {
+            linkedProject = null;
+            render();
+        };
+
+        window.addLink = () => {
+            const input = document.getElementById('link-input');
+            const url = input?.value?.trim();
+            if (url && url.startsWith('http')) {
+                attachedLink = url;
+                openDropdown = null;
+                render();
+            }
+        };
+
+        window.removeLink = () => {
+            attachedLink = '';
+            render();
+        };
+
+        window.submitPost = async () => {
+            const user = currentUser || { id: 'demo', firstName: 'You', lastName: '', team: 'Creative' };
+            
+            const newPost = {
+                type: attachedLink ? 'link' : 'text',
+                authorId: user.id,
+                authorName: `${user.firstName} ${user.lastName}`.trim(),
+                authorTeam: user.team,
+                content: postText,
+                mood: attachedMood,
+                taggedPeople: taggedPeople.map(p => ({ id: p.id, name: `${p.firstName} ${p.lastName}` })),
+                linkedProject: linkedProject ? { id: linkedProject.id, name: linkedProject.name } : null,
+                link: attachedLink ? { url: attachedLink, domain: new URL(attachedLink).hostname } : null,
+                timestamp: Date.now(),
+                reactions: {},
+                comments: []
+            };
+
+            if (isDemo) {
+                showToast('Posted! (Preview mode)');
+            } else {
+                try {
+                    await addDoc(collection(db, "artifacts", appId, "public", "data", "feed_posts"), {
+                        ...newPost,
+                        createdAt: serverTimestamp()
+                    });
+                    showToast('Posted!');
+                } catch (e) {
+                    console.error('Failed to post:', e);
+                    showToast('Failed to post');
+                    return;
+                }
+            }
+
+            // Reset form
+            postText = '';
+            attachedMood = null;
+            taggedPeople = [];
+            linkedProject = null;
+            attachedLink = '';
+            openDropdown = null;
+            render();
+        };
+
+        // Click outside to close dropdowns
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.action-btn-wrap') && openDropdown) {
+                openDropdown = null;
+                render();
+            }
+        });
+
+        async function loadData() {
+            try {
+                // Load staff directory
+                const staffSnap = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+                if (!staffSnap.empty) {
+                    staffDirectory = [];
+                    staffSnap.forEach(d => staffDirectory.push({ id: d.id, ...d.data() }));
+                }
+
+                // Load projects (if you have them)
+                // For now using demo projects
+            } catch (e) {
+                console.log('Using demo data:', e);
+            }
+            render();
+        }
+
+        async function resolveIdentity(authUser) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramId = urlParams.get('id');
+
+            if (paramId) {
+                try {
+                    const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", paramId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        currentUser = { id: snap.id, ...snap.data() };
+                        isDemo = false;
+                    }
+                } catch (e) { console.log('Param lookup failed:', e); }
+            }
+
+            if (!currentUser && authUser?.email && !authUser.isAnonymous) {
+                try {
+                    const q = query(collection(db, "artifacts", appId, "public", "data", "staff_directory"), where("email", "==", authUser.email));
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        currentUser = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                        isDemo = false;
+                    }
+                } catch (e) { console.log('Email lookup failed:', e); }
+            }
+
+            loadData();
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                resolveIdentity(user);
+            } else {
+                signInAnonymously(auth);
+            }
+        });
+    </script>
+</body>
+</html>
