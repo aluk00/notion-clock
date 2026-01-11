@@ -459,9 +459,35 @@ function renderIdeas() {
     }
 }
 
+// Fallback birthday data by month-day
+const FALLBACK_BIRTHS = {
+    '01-11': [
+        { name: 'Mary J. Blige', age: CURRENT_YEAR - 1971, desc: 'American singer' },
+        { name: 'Amanda Peet', age: CURRENT_YEAR - 1972, desc: 'American actress' },
+    ],
+    '01-12': [
+        { name: 'Zayn Malik', age: CURRENT_YEAR - 1993, desc: 'English singer' },
+        { name: 'Jeff Bezos', age: CURRENT_YEAR - 1964, desc: 'Amazon founder' },
+    ],
+    // Add more as needed
+};
+
+const FALLBACK_EVENTS = {
+    '01-11': [
+        { year: 1922, text: 'First successful insulin treatment for diabetes' },
+        { year: 1964, text: 'US Surgeon General reports smoking causes cancer' },
+    ],
+    '01-12': [
+        { year: 1966, text: 'Batman TV series premieres on ABC' },
+        { year: 2010, text: 'Haiti earthquake kills over 100,000' },
+    ],
+};
+
 async function fetchWiki(m, d) {
+    const key = `${m}-${d}`;
     try {
         const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/${m}/${d}`);
+        if (!res.ok) throw new Error('API error');
         const data = await res.json();
         const births = (data.births || []).map(b => ({
             name: b.text.split(',')[0],
@@ -469,7 +495,13 @@ async function fetchWiki(m, d) {
             desc: b.text.split(',').slice(1).join(',').trim()
         })).slice(0, 8);
         return { births, events: (data.events || []).slice(0, 5) };
-    } catch { return { births: [], events: [] }; }
+    } catch (err) {
+        console.log('Wiki API unavailable, using fallback:', err.message);
+        return { 
+            births: FALLBACK_BIRTHS[key] || [], 
+            events: FALLBACK_EVENTS[key] || [] 
+        };
+    }
 }
 
 async function loadBriefing() {
