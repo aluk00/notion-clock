@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Friends | DMG</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-editorial: #E94B4B;
+            --team-social: #F2C316;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 12px;
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px 20px;
+            max-width: 340px;
+        }
+        .widget-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .header-icon { font-size: 14px; }
+        .header-title {
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--ink-sub);
+        }
+        .edit-btn {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--dmg-blue);
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .edit-btn:hover { text-decoration: underline; }
+        
+        .friends-row {
+            display: flex;
+            gap: 12px;
+        }
+        .friend-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+        .friend-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 800;
+            color: #FFF;
+            border: 3px solid #FFF;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.15s;
+        }
+        .friend-item:hover .friend-avatar { transform: scale(1.1); }
+        .friend-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink);
+            text-align: center;
+            max-width: 56px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .empty-slot {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px dashed var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--border);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .empty-slot:hover { border-color: var(--dmg-blue); color: var(--dmg-blue); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        const TEAM_COLORS = {
+            'Editorial': '#E94B4B', 'Creative': '#E6468B', 'Production': '#43B049',
+            'Social': '#F2C316', 'Operations': '#9333EA'
+        };
+
+        // Demo friends
+        const DEMO_FRIENDS = [
+            { id: '1', firstName: 'Nick', lastName: 'B', team: 'Creative' },
+            { id: '2', firstName: 'Mimi', lastName: 'Y', team: 'Social' },
+            { id: '3', firstName: 'Hugo', lastName: 'M', team: 'Production' },
+            { id: '4', firstName: 'Kaylee', lastName: 'A', team: 'Editorial' }
+        ];
+
+        let friends = DEMO_FRIENDS;
+        const root = document.getElementById('root');
+
+        const getTeamColor = t => TEAM_COLORS[t] || '#21a0d8';
+        const getInitials = (f, l) => `${f?.[0] || ''}${l?.[0] || ''}`.toUpperCase();
+
+        function render() {
+            const slots = [0, 1, 2, 3];
+            
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="widget-header">
+                        <span class="header-icon">⭐</span>
+                        <span class="header-title">Top Friends</span>
+                        <a href="#" class="edit-btn">Edit</a>
+                    </div>
+                    <div class="friends-row">
+                        ${slots.map(i => {
+                            const friend = friends[i];
+                            if (friend) {
+                                return `
+                                    <div class="friend-item" title="${friend.firstName} ${friend.lastName}">
+                                        <div class="friend-avatar" style="background: ${getTeamColor(friend.team)}">
+                                            ${getInitials(friend.firstName, friend.lastName)}
+                                        </div>
+                                        <span class="friend-name">${friend.firstName}</span>
+                                    </div>
+                                `;
+                            } else {
+                                return `
+                                    <div class="friend-item">
+                                        <div class="empty-slot">+</div>
+                                    </div>
+                                `;
+                            }
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadProfile() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('id');
+            
+            if (userId) {
+                try {
+                    const profileRef = doc(db, "artifacts", appId, "public", "data", "user_profiles", userId);
+                    const snap = await getDoc(profileRef);
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        if (data.topFriends && data.topFriends.length > 0) {
+                            friends = data.topFriends;
+                        }
+                    }
+                } catch (e) { console.log('Using demo data'); }
+            }
+            render();
+        }
+
+        onAuthStateChanged(auth, u => { if (u) loadProfile(); else signInAnonymously(auth); });
+    </script>
+</body>
+</html>

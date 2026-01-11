@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Tools | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-editorial: #E94B4B;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 12px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            width: 100%;
+            max-width: 340px;
+        }
+        .widget-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
+        }
+        .dot-grid span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        .header-title { font-size: 13px; font-weight: 900; color: var(--ink); }
+        .header-sub { font-size: 10px; color: var(--ink-sub); margin-left: auto; }
+        .demo-badge {
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: var(--dmg-blue);
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        
+        .tools-container { padding: 16px; }
+        
+        .tool-slot {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--bg-soft);
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tool-slot:last-child { margin-bottom: 0; }
+        .tool-slot:hover { border-color: var(--dmg-blue); background: #F0F9FF; }
+        .tool-slot.filled {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-style: solid;
+        }
+        .tool-slot.filled:hover { border-color: var(--team-editorial); }
+        
+        .tool-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .tool-icon.empty { background: var(--border); }
+        .tool-icon.production { background: color-mix(in srgb, var(--team-production) 15%, white); }
+        .tool-icon.creative { background: color-mix(in srgb, var(--team-creative) 15%, white); }
+        .tool-icon.editorial { background: color-mix(in srgb, var(--team-editorial) 15%, white); }
+        .tool-icon.system { background: color-mix(in srgb, var(--dmg-blue) 15%, white); }
+        
+        .tool-info { flex: 1; min-width: 0; }
+        .tool-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tool-desc {
+            font-size: 10px;
+            color: var(--ink-sub);
+        }
+        .empty-text { color: var(--ink-sub); font-weight: 500; }
+        
+        .tool-action {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .tool-action.add { background: var(--dmg-blue); color: #FFF; }
+        .tool-action.remove { background: transparent; color: var(--ink-sub); }
+        .tool-action.remove:hover { background: #FEE2E2; color: var(--team-editorial); }
+        .tool-action.open { background: var(--bg-soft); color: var(--ink); }
+        .tool-action.open:hover { background: var(--dmg-blue); color: #FFF; }
+        
+        /* Picker Modal */
+        .picker-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .picker-overlay.active { opacity: 1; pointer-events: auto; }
+        
+        .picker-modal {
+            background: #FFF;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow: hidden;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+        .picker-overlay.active .picker-modal { transform: scale(1); }
+        
+        .picker-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .picker-title { font-size: 16px; font-weight: 900; }
+        .picker-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-soft);
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .picker-close:hover { background: #EEE; }
+        
+        .picker-search {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+        .picker-search input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .picker-search input:focus { outline: none; border-color: var(--dmg-blue); }
+        
+        .picker-categories {
+            display: flex;
+            gap: 8px;
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+        .cat-btn {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            background: #FFF;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+        }
+        .cat-btn:hover { border-color: var(--dmg-blue); }
+        .cat-btn.active { background: var(--dmg-blue); color: #FFF; border-color: var(--dmg-blue); }
+        
+        .picker-list {
+            padding: 16px 24px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .picker-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-bottom: 6px;
+        }
+        .picker-item:hover { background: var(--bg-soft); }
+        .picker-item:last-child { margin-bottom: 0; }
+        .picker-item-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        .picker-item-info { flex: 1; }
+        .picker-item-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+        .picker-item-desc { font-size: 10px; color: var(--ink-sub); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        const TOOLS = [
+            // Production & Projects
+            { id: 'production-calendar', name: 'Production Calendar', desc: 'Team schedule view', icon: '📅', cat: 'production', url: 'https://aluk00.github.io/notion-clock/ProductionCalendar.html' },
+            { id: 'project-ledger', name: 'Project Ledger', desc: 'All projects database', icon: '📊', cat: 'production', url: 'https://aluk00.github.io/notion-clock/project-ledger.html' },
+            { id: 'projects-kanban', name: 'Projects Kanban', desc: 'Board view of projects', icon: '📋', cat: 'production', url: 'https://aluk00.github.io/notion-clock/projects-kanban.html' },
+            { id: 'pipeline-overview', name: 'Pipeline Overview', desc: 'Sales pipeline status', icon: '🎯', cat: 'production', url: 'https://aluk00.github.io/notion-clock/pipeline-overview.html' },
+            { id: 'project-hub', name: 'Project Hub', desc: 'Central project view', icon: '🏠', cat: 'production', url: 'https://aluk00.github.io/notion-clock/project-hub-overview.html' },
+            // Daily Ops
+            { id: 'daily-rundown', name: 'Daily Rundown', desc: 'Today\'s agenda', icon: '☀️', cat: 'daily', url: 'https://aluk00.github.io/notion-clock/daily-rundown-viewer.html' },
+            { id: 'daily-meetings', name: 'Daily Meetings', desc: 'Meeting schedule', icon: '🤝', cat: 'daily', url: 'https://aluk00.github.io/notion-clock/daily_meetings.html' },
+            { id: 'intake-widget', name: 'Intake Form', desc: 'Submit new requests', icon: '📝', cat: 'daily', url: 'https://aluk00.github.io/notion-clock/intake_widget.html' },
+            { id: 'design-request', name: 'Design Request', desc: 'Request design work', icon: '🎨', cat: 'daily', url: 'https://aluk00.github.io/notion-clock/design-request-widget.html' },
+            { id: 'shoot-calendar', name: 'Shoot Calendar', desc: 'Studio bookings', icon: '🎬', cat: 'daily', url: 'https://aluk00.github.io/notion-clock/shoot-calendar.html' },
+            // Queues
+            { id: 'designer-queue', name: 'Designer Queue', desc: 'Design team workload', icon: '✏️', cat: 'queues', url: 'https://aluk00.github.io/notion-clock/designer-queue.html' },
+            { id: 'editor-queue', name: 'Editor Queue', desc: 'Edit team workload', icon: '🎞️', cat: 'queues', url: 'https://aluk00.github.io/notion-clock/editor-queue.html' },
+            { id: 'ready-to-post', name: 'Ready to Post', desc: 'Content awaiting publish', icon: '🚀', cat: 'queues', url: 'https://aluk00.github.io/notion-clock/ready-to-post.html' },
+            { id: 'publishing-countdown', name: 'Publishing Countdown', desc: 'Upcoming releases', icon: '⏰', cat: 'queues', url: 'https://aluk00.github.io/notion-clock/publishing_countdown.html' },
+            // Personal
+            { id: 'personal-calendar', name: 'My Calendar', desc: 'Personal schedule', icon: '📆', cat: 'personal', url: 'https://aluk00.github.io/notion-clock/personal_calendar_widget.html' },
+            { id: 'personal-reminders', name: 'My Reminders', desc: 'Task reminders', icon: '🔔', cat: 'personal', url: 'https://aluk00.github.io/notion-clock/personal_reminders_widget.html' },
+            { id: 'manager-dashboard', name: 'Manager Dashboard', desc: 'Team overview', icon: '👔', cat: 'personal', url: 'https://aluk00.github.io/notion-clock/manager_dashboard.html' },
+            // Feeds
+            { id: 'studio-pulse', name: 'Studio Pulse', desc: 'Live studio status', icon: '💡', cat: 'feeds', url: 'https://aluk00.github.io/notion-clock/studio-pulse.html' },
+            { id: 'uk-news', name: 'UK News Ticker', desc: 'Breaking news feed', icon: '📰', cat: 'feeds', url: 'https://aluk00.github.io/notion-clock/uk_news_ticker.html' },
+            { id: 'project-status', name: 'Project Status Feed', desc: 'Live project updates', icon: '📡', cat: 'feeds', url: 'https://aluk00.github.io/notion-clock/ProjectStatusFeed.html' }
+        ];
+
+        const CATEGORIES = [
+            { id: 'all', label: 'All' },
+            { id: 'production', label: 'Production' },
+            { id: 'daily', label: 'Daily Ops' },
+            { id: 'queues', label: 'Queues' },
+            { id: 'personal', label: 'Personal' },
+            { id: 'feeds', label: 'Feeds' }
+        ];
+
+        const CAT_COLORS = {
+            production: 'var(--team-production)',
+            daily: 'var(--team-editorial)',
+            queues: 'var(--team-creative)',
+            personal: 'var(--dmg-blue)',
+            feeds: '#F59E0B'
+        };
+
+        let selectedTools = [];
+        let pickerOpen = false;
+        let pickerSlot = null;
+        let searchQuery = '';
+        let selectedCat = 'all';
+
+        const root = document.getElementById('root');
+
+        // Load from localStorage
+        try {
+            const saved = localStorage.getItem('dmg_my_tools');
+            if (saved) selectedTools = JSON.parse(saved);
+        } catch (e) {}
+
+        function save() {
+            localStorage.setItem('dmg_my_tools', JSON.stringify(selectedTools));
+        }
+
+        function getCatClass(cat) {
+            if (cat === 'production') return 'production';
+            if (cat === 'daily' || cat === 'queues') return 'editorial';
+            if (cat === 'personal') return 'system';
+            return 'creative';
+        }
+
+        function render() {
+            const slots = [0, 1, 2];
+            
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="widget-header">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <h2 class="header-title">My Tools</h2>
+                        <span class="header-sub">Quick Access</span>
+                        <span class="demo-badge">Preview</span>
+                    </div>
+                    <div class="tools-container">
+                        ${slots.map(i => {
+                            const tool = selectedTools[i];
+                            if (tool) {
+                                return `
+                                    <div class="tool-slot filled">
+                                        <div class="tool-icon ${getCatClass(tool.cat)}">${tool.icon}</div>
+                                        <div class="tool-info">
+                                            <div class="tool-name">${tool.name}</div>
+                                            <div class="tool-desc">${tool.desc}</div>
+                                        </div>
+                                        <button class="tool-action open" onclick="window.openTool('${tool.url}')" title="Open">↗</button>
+                                        <button class="tool-action remove" onclick="window.removeTool(${i})" title="Remove">×</button>
+                                    </div>
+                                `;
+                            } else {
+                                return `
+                                    <div class="tool-slot" onclick="window.openPicker(${i})">
+                                        <div class="tool-icon empty">+</div>
+                                        <div class="tool-info">
+                                            <div class="tool-name empty-text">Add a tool</div>
+                                            <div class="tool-desc">Click to browse widgets</div>
+                                        </div>
+                                        <div class="tool-action add">+</div>
+                                    </div>
+                                `;
+                            }
+                        }).join('')}
+                    </div>
+                </div>
+                
+                <div class="picker-overlay ${pickerOpen ? 'active' : ''}" onclick="window.closePicker(event)">
+                    <div class="picker-modal" onclick="event.stopPropagation()">
+                        <div class="picker-header">
+                            <span class="picker-title">Choose a Tool</span>
+                            <button class="picker-close" onclick="window.closePicker()">×</button>
+                        </div>
+                        <div class="picker-search">
+                            <input type="text" placeholder="Search tools..." value="${searchQuery}" oninput="window.updateSearch(this.value)">
+                        </div>
+                        <div class="picker-categories">
+                            ${CATEGORIES.map(c => `
+                                <button class="cat-btn ${selectedCat === c.id ? 'active' : ''}" onclick="window.selectCat('${c.id}')">${c.label}</button>
+                            `).join('')}
+                        </div>
+                        <div class="picker-list">
+                            ${renderPickerItems()}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPickerItems() {
+            let filtered = TOOLS.filter(t => !selectedTools.find(s => s?.id === t.id));
+            
+            if (selectedCat !== 'all') {
+                filtered = filtered.filter(t => t.cat === selectedCat);
+            }
+            
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                filtered = filtered.filter(t => 
+                    t.name.toLowerCase().includes(q) || 
+                    t.desc.toLowerCase().includes(q)
+                );
+            }
+            
+            if (filtered.length === 0) {
+                return '<div style="text-align: center; color: var(--ink-sub); padding: 20px;">No tools found</div>';
+            }
+            
+            return filtered.map(t => `
+                <div class="picker-item" onclick="window.selectTool('${t.id}')">
+                    <div class="picker-item-icon" style="background: color-mix(in srgb, ${CAT_COLORS[t.cat] || 'var(--dmg-blue)'} 15%, white)">${t.icon}</div>
+                    <div class="picker-item-info">
+                        <div class="picker-item-name">${t.name}</div>
+                        <div class="picker-item-desc">${t.desc}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.openPicker = (slot) => {
+            pickerSlot = slot;
+            pickerOpen = true;
+            searchQuery = '';
+            selectedCat = 'all';
+            render();
+        };
+
+        window.closePicker = (e) => {
+            if (e && e.target !== e.currentTarget) return;
+            pickerOpen = false;
+            render();
+        };
+
+        window.updateSearch = (val) => {
+            searchQuery = val;
+            render();
+        };
+
+        window.selectCat = (cat) => {
+            selectedCat = cat;
+            render();
+        };
+
+        window.selectTool = (id) => {
+            const tool = TOOLS.find(t => t.id === id);
+            if (tool && pickerSlot !== null) {
+                selectedTools[pickerSlot] = tool;
+                save();
+                pickerOpen = false;
+                render();
+            }
+        };
+
+        window.removeTool = (index) => {
+            selectedTools[index] = null;
+            selectedTools = selectedTools.filter(t => t !== null);
+            save();
+            render();
+        };
+
+        window.openTool = (url) => {
+            window.open(url, '_blank');
+        };
+
+        onAuthStateChanged(auth, u => { if (u) render(); else signInAnonymously(auth); });
+    </script>
+</body>
+</html>
