@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DMG Rota Request | Live Cloud</title>
+    <title>DMG Rota Request | Auth</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,7 +12,7 @@
     
     <style>
       :root {
-          --dmg-blue: #21a0d8; /* Restored Blue */
+          --dmg-blue: #21a0d8;
           --border: #EAECEF;
           --text-main: #1f2937;
           --text-sub: #6b7280;
@@ -23,47 +23,93 @@
         background-color: transparent;
         margin: 0;
         padding: 10px;
-        height: 100vh;
+        min-height: 100vh;
         display: flex;
         justify-content: center;
-        overflow: hidden;
         color: var(--text-main);
       }
-      /* Compact Width for Column View */
       .widget-card {
         width: 100%;
         max-width: 340px; 
       }
-
       @keyframes heartbeat { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
       .dot-anim { animation: heartbeat 3s infinite ease-in-out; }
       .dot-anim:nth-child(1) { animation-delay: 0s; }
       .dot-anim:nth-child(2) { animation-delay: 0.75s; }
       .dot-anim:nth-child(4) { animation-delay: 1.5s; }
       .dot-anim:nth-child(3) { animation-delay: 2.25s; }
-
-      @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-      .animate-slideDown { animation: slideDown 0.3s ease-out forwards; }
-      
       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
-      
-      /* Custom scrollbar */
       .custom-scroll::-webkit-scrollbar { width: 4px; }
       .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
       .custom-scroll::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
+      
+      .user-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        background: var(--bg-grey);
+        border-radius: 12px;
+        margin-bottom: 16px;
+      }
+      .user-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 800;
+        color: #FFF;
+      }
+      .user-info { flex: 1; }
+      .user-name { font-size: 13px; font-weight: 800; color: var(--text-main); }
+      .user-team { font-size: 10px; font-weight: 600; color: var(--text-sub); }
+      
+      .auth-prompt {
+        padding: 60px 24px;
+        text-align: center;
+      }
+      .auth-icon { font-size: 48px; margin-bottom: 16px; }
+      .auth-title { font-size: 16px; font-weight: 900; color: var(--text-main); margin-bottom: 8px; }
+      .auth-desc { font-size: 12px; color: var(--text-sub); margin-bottom: 24px; line-height: 1.5; }
+      .auth-btn {
+        padding: 14px 28px;
+        background: var(--dmg-blue);
+        color: #FFF;
+        border: none;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .auth-btn:hover { filter: brightness(1.1); }
+      
+      .demo-badge {
+        font-size: 7px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #FFF;
+        background: #E6468B;
+        padding: 3px 6px;
+        border-radius: 4px;
+      }
     </style>
 </head>
 <body>
     <div id="root" class="w-full flex justify-center"></div>
-
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
+    
     <script type="text/babel">
         const firebaseConfig = {
             apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
@@ -77,14 +123,23 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const auth = firebase.auth();
-        auth.signInAnonymously();
-
+        
         const appId = 'dmg-command-centre-native';
         const staffDirectoryCollection = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory');
         const rotaSubmissionsCollection = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('rota_submissions');
+        
+        const TEAM_COLORS = {
+            'Editorial': '#E94B4B',
+            'Creative': '#E6468B',
+            'Production': '#43B049',
+            'Social': '#F2C316',
+            'Social Video': '#F2C316',
+            'Operations': '#9333EA',
+            'Sales': '#F97316'
+        };
 
         const normalize = (n) => n ? n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase() : "";
-
+        
         const DotGrid = ({ color = "var(--dmg-blue)" }) => (
             <div className="grid grid-cols-2 gap-1 w-fit">
                 {[...Array(4)].map((_, i) => (
@@ -93,23 +148,23 @@
             </div>
         );
 
-        const DayRow = ({ day, date, selection, isWeekend, isDisabled, onUpdate }) => {
+        const DayRow = ({ day, date, selection, isWeekend, onUpdate }) => {
             const locs = ["Office", "WFH", "Shoot", "PTO"];
             const weekendLocs = ["Weekend", "Shoot"];
             const options = isWeekend ? weekendLocs : locs;
-
             return (
                 <div className="border-b border-gray-50 last:border-0 pb-6 last:pb-0">
                     <div className="flex items-baseline gap-2 mb-3">
                         <span className="text-[11px] font-black uppercase tracking-tight text-gray-800">{day}</span>
-                        <span className="text-[9px] font-bold text-[--dmg-blue] uppercase tracking-widest opacity-60">{date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                        <span className="text-[9px] font-bold text-[--dmg-blue] uppercase tracking-widest opacity-60">
+                            {date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
                     </div>
                     <div className="flex gap-1.5 overflow-x-auto py-1 -mx-1 px-1 custom-scroll">
                         {options.map(l => (
                             <button
                                 key={l}
                                 onClick={() => onUpdate(day, 'status', l)}
-                                disabled={isDisabled}
                                 className={`shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wide border-2 transition-all
                                     ${selection.status === l 
                                         ? (l === 'Weekend' ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-[--dmg-blue] text-white border-[--dmg-blue]') 
@@ -125,23 +180,21 @@
         };
 
         function App() {
-            const { useState, useEffect, useMemo, useCallback } = React;
-            const [weekOffset, setWeekOffset] = useState(0);
+            const { useState, useEffect, useMemo } = React;
             
-            // User & Manager State
-            const [staffName, setStaffName] = useState("");
-            const [managerName, setManagerName] = useState("");
-            const [isManagerLocked, setIsManagerLocked] = useState(false);
-            const [isCorrectingManager, setIsCorrectingManager] = useState(false);
-
-            const [selections, setSelections] = useState({});
+            // Auth & Identity State
+            const [authState, setAuthState] = useState('loading'); // loading | unauthenticated | authenticated | demo
+            const [currentUser, setCurrentUser] = useState(null);
             const [staffDirectory, setStaffDirectory] = useState([]);
-            const [submissions, setSubmissions] = useState([]);
-            const [filteredStaff, setFilteredStaff] = useState([]);
-            const [showAutocomplete, setShowAutocomplete] = useState(false);
+            
+            // Form State
+            const [weekOffset, setWeekOffset] = useState(0);
+            const [selections, setSelections] = useState({});
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [isSuccess, setIsSuccess] = useState(false);
 
+            const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+            
             const mondayDate = useMemo(() => {
                 const d = new Date();
                 const day = d.getDay();
@@ -151,149 +204,228 @@
                 return d;
             }, [weekOffset]);
 
-            const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-            // Calculate available managers list
-            const managersList = useMemo(() => {
-                const mgrs = staffDirectory
-                    .filter(s => s.isManager)
-                    .map(s => `${s.firstName} ${s.lastName}`);
-                // Add current if not in list
-                if (managerName && !mgrs.includes(managerName)) mgrs.push(managerName);
-                return [...new Set(mgrs)].sort();
-            }, [staffDirectory, managerName]);
-
+            // Load staff directory
             useEffect(() => {
-                const unsubStaff = staffDirectoryCollection.onSnapshot(s => setStaffDirectory(s.docs.map(d => ({id: d.id, ...d.data()}))));
-                const unsubSubs = rotaSubmissionsCollection.onSnapshot(s => setSubmissions(s.docs.map(d => d.data())));
-                return () => { unsubStaff(); unsubSubs(); };
+                const unsub = staffDirectoryCollection.onSnapshot(snap => {
+                    setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
+                return () => unsub();
             }, []);
 
-            const selectUser = (u) => {
-                const fullName = `${u.firstName} ${u.lastName}`;
-                setStaffName(fullName);
-                setManagerName(u.manager || "");
-                setIsManagerLocked(true);
-                setIsCorrectingManager(false);
-                setShowAutocomplete(false);
-            };
+            // Auth state listener + identity resolution
+            useEffect(() => {
+                const unsub = auth.onAuthStateChanged(async (firebaseUser) => {
+                    if (!firebaseUser) {
+                        // No user at all - sign in anonymously for demo mode
+                        auth.signInAnonymously();
+                        return;
+                    }
+
+                    // Check if this is a real authenticated user (not anonymous)
+                    if (firebaseUser.isAnonymous) {
+                        // Check URL param for demo/testing
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const paramId = urlParams.get('id');
+                        
+                        if (paramId && staffDirectory.length > 0) {
+                            const found = staffDirectory.find(s => s.id === paramId);
+                            if (found) {
+                                setCurrentUser({
+                                    id: found.id,
+                                    firstName: found.firstName,
+                                    lastName: found.lastName,
+                                    team: found.team,
+                                    manager: found.manager,
+                                    email: found.email
+                                });
+                                setAuthState('demo');
+                                return;
+                            }
+                        }
+                        
+                        // Pure anonymous - show demo mode
+                        setCurrentUser({
+                            id: 'demo',
+                            firstName: 'Your',
+                            lastName: 'Name',
+                            team: 'Creative',
+                            manager: 'Manager Name',
+                            email: null
+                        });
+                        setAuthState('demo');
+                        return;
+                    }
+
+                    // Real authenticated user - look up by email
+                    if (firebaseUser.email && staffDirectory.length > 0) {
+                        const found = staffDirectory.find(s => 
+                            s.email?.toLowerCase() === firebaseUser.email.toLowerCase()
+                        );
+                        
+                        if (found) {
+                            setCurrentUser({
+                                id: found.id,
+                                firstName: found.firstName,
+                                lastName: found.lastName,
+                                team: found.team,
+                                manager: found.manager,
+                                email: found.email
+                            });
+                            setAuthState('authenticated');
+                            return;
+                        }
+                    }
+
+                    // Authenticated but not in staff directory
+                    setAuthState('unauthenticated');
+                });
+                
+                return () => unsub();
+            }, [staffDirectory]);
 
             const handleSubmit = async () => {
-                if(!managerName) { alert("Please ensure a manager is selected."); return; }
+                if (!currentUser || authState === 'demo') {
+                    alert("Please sign in to submit your rota.");
+                    return;
+                }
+                
                 setIsSubmitting(true);
+                
+                const fullName = `${currentUser.firstName} ${currentUser.lastName}`;
                 const payload = {
-                    name: staffName,
-                    manager: managerName,
+                    userId: currentUser.id,
+                    name: fullName,
+                    manager: currentUser.manager || '',
                     weekId: mondayDate.toISOString().split("T")[0],
-                    schedule: days.map(d => selections[d]),
+                    schedule: days.map(d => selections[d] || { status: d === "Saturday" || d === "Sunday" ? "Weekend" : "Office" }),
                     submittedAt: new Date().toISOString()
                 };
-                const docId = `${payload.weekId}_${normalize(staffName).replace(/\s+/g, "_")}`;
+                
+                const docId = `${payload.weekId}_${currentUser.id}`;
                 await rotaSubmissionsCollection.doc(docId).set(payload);
+                
                 setIsSubmitting(false);
                 setIsSuccess(true);
             };
 
-            if (isSuccess) {
+            const handleSignIn = () => {
+                // In production, this would redirect to your auth app or trigger Google sign-in
+                // For now, show alert with instructions
+                alert("Sign-in would redirect to the DMG auth portal.\n\nFor testing, add ?id=YOUR_STAFF_ID to the URL.");
+            };
+
+            const getInitials = (first, last) => `${(first||'?')[0]}${(last||'?')[0]}`.toUpperCase();
+            const getTeamColor = (team) => TEAM_COLORS[team] || '#21a0d8';
+
+            // Loading state
+            if (authState === 'loading') {
                 return (
-                    <div className="widget-card bg-white rounded-2xl border border-[--border] p-8 text-center animate-fadeIn">
-                        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-4 mx-auto">
-                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <h2 className="text-lg font-black uppercase text-gray-800">Synced</h2>
-                        <button onClick={() => setIsSuccess(false)} className="mt-6 text-[10px] font-black uppercase text-gray-400 hover:text-[--dmg-blue]">Done</button>
+                    <div className="widget-card bg-white rounded-2xl border border-[--border] p-8 text-center">
+                        <DotGrid />
+                        <p className="text-xs text-gray-400 mt-4">Loading...</p>
                     </div>
                 );
             }
 
+            // Success state
+            if (isSuccess) {
+                return (
+                    <div className="widget-card bg-white rounded-2xl border border-[--border] p-8 text-center animate-fadeIn">
+                        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mb-4 mx-auto">
+                            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <h2 className="text-lg font-black uppercase text-gray-800">Synced</h2>
+                        <p className="text-xs text-gray-500 mt-2">Your rota has been submitted to {currentUser?.manager || 'your manager'}</p>
+                        <button onClick={() => { setIsSuccess(false); setWeekOffset(w => w + 1); }} 
+                                className="mt-6 text-[10px] font-black uppercase text-[--dmg-blue] hover:underline">
+                            Submit Next Week →
+                        </button>
+                    </div>
+                );
+            }
+
+            // Main form
             return (
-                <div className="widget-card flex flex-col h-[94vh] rounded-2xl shadow-lg border border-[--border] bg-white overflow-hidden">
+                <div className="widget-card flex flex-col max-h-[94vh] rounded-2xl shadow-lg border border-[--border] bg-white overflow-hidden">
+                    {/* Header */}
                     <div className="p-4 border-b border-gray-50 shrink-0">
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center gap-2">
                                 <DotGrid />
-                                <h1 className="text-sm font-black uppercase tracking-tighter leading-tight text-[--dmg-blue]">Rota<br />Request</h1>
+                                <h1 className="text-sm font-black uppercase tracking-tighter leading-tight text-[--dmg-blue]">
+                                    Rota<br />Request
+                                </h1>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <button onClick={() => setWeekOffset(p => p - 1)} className="w-6 h-6 rounded bg-gray-50 text-xs font-bold hover:bg-gray-100 transition-all">‹</button>
-                                <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">{mondayDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-                                <button onClick={() => setWeekOffset(p => p + 1)} className="w-6 h-6 rounded bg-gray-50 text-xs font-bold hover:bg-gray-100 transition-all">›</button>
+                            <div className="flex items-center gap-2">
+                                {authState === 'demo' && <span className="demo-badge">Preview</span>}
+                                <div className="flex items-center gap-1.5">
+                                    <button onClick={() => setWeekOffset(p => p - 1)} 
+                                            className="w-6 h-6 rounded bg-gray-50 text-xs font-bold hover:bg-gray-100 transition-all">‹</button>
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">
+                                        {mondayDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                                    </span>
+                                    <button onClick={() => setWeekOffset(p => p + 1)} 
+                                            className="w-6 h-6 rounded bg-gray-50 text-xs font-bold hover:bg-gray-100 transition-all">›</button>
+                                </div>
                             </div>
                         </div>
                         
-                        <div className="space-y-3">
-                            {/* STAFF NAME INPUT */}
-                            <div className="relative">
-                                <label className="text-[9px] font-bold uppercase text-gray-400 tracking-wider mb-1 block">Staff Name</label>
-                                <input
-                                    type="text"
-                                    value={staffName}
-                                    onChange={(e) => {
-                                        setStaffName(e.target.value);
-                                        const matches = staffDirectory.filter(s => `${s.firstName} ${s.lastName}`.toLowerCase().includes(e.target.value.toLowerCase()));
-                                        setFilteredStaff(matches);
-                                        setShowAutocomplete(true);
-                                        // Unlock manager if typing manually
-                                        if (isManagerLocked) {
-                                            setIsManagerLocked(false);
-                                            setManagerName("");
-                                        }
-                                    }}
-                                    className="w-full p-2.5 bg-gray-50 border-2 border-gray-50 rounded-xl text-xs font-bold focus:border-[--dmg-blue] focus:bg-white transition-all outline-none"
-                                    placeholder="Your name..."
-                                />
-                                {showAutocomplete && filteredStaff.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-32 overflow-y-auto">
-                                        {filteredStaff.map(u => (
-                                            <div key={u.id} onClick={() => selectUser(u)} className="p-2 text-xs font-bold hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0">{u.firstName} {u.lastName}</div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* MANAGER AUTO-POPULATE / EDIT */}
-                            <div className="relative">
-                                <div className="flex justify-between items-center mb-1">
-                                    <label className="text-[9px] font-bold uppercase text-gray-400 tracking-wider">Line Manager</label>
-                                    {isManagerLocked && !isCorrectingManager && (
-                                        <button onClick={() => setIsCorrectingManager(true)} className="text-[9px] font-bold text-[--dmg-blue] hover:underline">Edit?</button>
-                                    )}
+                        {/* User Badge - Auto-populated from auth */}
+                        {currentUser && (
+                            <div className="user-badge">
+                                <div className="user-avatar" style={{ background: getTeamColor(currentUser.team) }}>
+                                    {getInitials(currentUser.firstName, currentUser.lastName)}
                                 </div>
-                                {isManagerLocked && !isCorrectingManager ? (
-                                    <div className="w-full p-2.5 bg-gray-100 border-2 border-transparent rounded-xl text-xs font-bold text-gray-600 truncate">
-                                        {managerName || "No Manager Assigned"}
+                                <div className="user-info">
+                                    <div className="user-name">{currentUser.firstName} {currentUser.lastName}</div>
+                                    <div className="user-team">
+                                        {currentUser.team} · Reports to {currentUser.manager || 'N/A'}
                                     </div>
-                                ) : (
-                                    <select
-                                        value={managerName}
-                                        onChange={(e) => setManagerName(e.target.value)}
-                                        className="w-full p-2.5 bg-gray-50 border-2 border-gray-50 rounded-xl text-xs font-bold focus:border-[--dmg-blue] focus:bg-white transition-all outline-none appearance-none"
-                                    >
-                                        <option value="" disabled>Select Manager</option>
-                                        {managersList.map(m => <option key={m} value={m}>{m}</option>)}
-                                    </select>
-                                )}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
-
+                    
+                    {/* Day Rows */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scroll">
                         {days.map((day, i) => {
                             const date = new Date(mondayDate);
                             date.setDate(mondayDate.getDate() + i);
-                            const sel = selections[day] || { status: (day === "Saturday" || day === "Sunday" ? "Weekend" : "Office") };
-                            return <DayRow key={day} day={day} date={date} selection={sel} isWeekend={day === "Saturday" || day === "Sunday"} onUpdate={(d, f, v) => setSelections(p => ({...p, [d]: {...(p[d]||{}), [f]: v}}))} />;
+                            const isWeekend = day === "Saturday" || day === "Sunday";
+                            const sel = selections[day] || { status: isWeekend ? "Weekend" : "Office" };
+                            return (
+                                <DayRow 
+                                    key={day} 
+                                    day={day} 
+                                    date={date} 
+                                    selection={sel} 
+                                    isWeekend={isWeekend}
+                                    onUpdate={(d, f, v) => setSelections(p => ({...p, [d]: {...(p[d]||{}), [f]: v}}))} 
+                                />
+                            );
                         })}
                     </div>
-
+                    
+                    {/* Submit */}
                     <div className="p-4 border-t border-gray-50 shrink-0">
-                        <button
-                            onClick={handleSubmit}
-                            disabled={!staffName || isSubmitting}
-                            className="w-full py-3 bg-[--dmg-blue] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all disabled:bg-gray-100 disabled:text-gray-300"
-                        >
-                            {isSubmitting ? 'Syncing...' : 'Submit Rota'}
-                        </button>
+                        {authState === 'demo' ? (
+                            <button
+                                onClick={handleSignIn}
+                                className="w-full py-3 bg-gray-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-700 transition-all"
+                            >
+                                Sign In to Submit
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSubmit}
+                                disabled={isSubmitting}
+                                className="w-full py-3 bg-[--dmg-blue] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all disabled:bg-gray-100 disabled:text-gray-300"
+                            >
+                                {isSubmitting ? 'Syncing...' : 'Submit Rota'}
+                            </button>
+                        )}
                     </div>
                 </div>
             );
