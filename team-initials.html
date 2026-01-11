@@ -6,11 +6,7 @@
     <title>Team Initials</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -49,11 +45,7 @@
             50% { opacity: 1; transform: scale(1); }
         }
         
-        .title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #111;
-        }
+        .title { font-size: 16px; font-weight: 600; color: #111; }
         
         .grid {
             display: flex;
@@ -118,46 +110,11 @@
             border-top-color: #111;
         }
         
-        .empty-state {
-            text-align: center;
-            padding: 32px 16px;
-            color: #888;
-        }
-        
-        .empty-icon {
-            font-size: 36px;
-            margin-bottom: 12px;
-            opacity: 0.5;
-        }
-        
-        .empty-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 6px;
-        }
-        
-        .empty-text {
-            font-size: 12px;
-            color: #888;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 32px;
-            color: #666;
-            font-size: 13px;
-        }
-        
-        .debug {
-            margin-top: 16px;
-            padding: 10px;
-            background: #f5f5f5;
-            border-radius: 6px;
-            font-size: 10px;
-            color: #666;
-            font-family: monospace;
-        }
+        .empty-state { text-align: center; padding: 32px 16px; color: #888; }
+        .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
+        .empty-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 6px; }
+        .empty-text { font-size: 12px; color: #888; }
+        .loading { text-align: center; padding: 32px; color: #666; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -191,7 +148,6 @@
         const db = firebase.firestore();
         const appId = "dmg-command-centre-native";
         
-        // Team colors
         const teamColors = {
             'editorial': '#E94B4B',
             'creative': '#E6468B',
@@ -202,15 +158,12 @@
             'default': '#3B82F6'
         };
         
-        // Get team from URL
         const params = new URLSearchParams(window.location.search);
         const teamFilter = params.get('team')?.toLowerCase() || '';
         
-        // Set team color
         const teamColor = teamColors[teamFilter] || teamColors.default;
         document.documentElement.style.setProperty('--team-color', teamColor);
         
-        // Set title
         if (teamFilter) {
             document.getElementById('teamTitle').textContent = teamFilter.charAt(0).toUpperCase() + teamFilter.slice(1) + ' Team';
         }
@@ -222,7 +175,6 @@
         
         async function loadTeam() {
             const content = document.getElementById('content');
-            let debugInfo = [];
             
             try {
                 const paths = [
@@ -231,40 +183,25 @@
                 ];
                 
                 let members = [];
-                let usedPath = '';
                 
                 for (const path of paths) {
-                    debugInfo.push(`Trying: ${path}`);
+                    console.log(`Trying: ${path}`);
                     try {
-                        let query = db.collection(path);
-                        
-                        // Filter by team if specified
-                        if (teamFilter) {
-                            // Try different field names for team
-                            const snapshot = await query.get();
-                            snapshot.forEach(doc => {
-                                const data = doc.data();
-                                const memberTeam = (data.team || data.department || '').toLowerCase();
-                                if (memberTeam === teamFilter || !teamFilter) {
-                                    members.push({ id: doc.id, ...data });
-                                }
-                            });
-                        } else {
-                            const snapshot = await query.limit(50).get();
-                            snapshot.forEach(doc => {
-                                members.push({ id: doc.id, ...doc.data() });
-                            });
-                        }
+                        const snapshot = await db.collection(path).get();
+                        snapshot.forEach(doc => {
+                            const data = doc.data();
+                            const memberTeam = (data.team || data.department || '').toLowerCase();
+                            if (!teamFilter || memberTeam === teamFilter) {
+                                members.push({ id: doc.id, ...data });
+                            }
+                        });
                         
                         if (members.length > 0) {
-                            usedPath = path;
-                            debugInfo.push(`✓ Found ${members.length} members in ${path}`);
+                            console.log(`Found ${members.length} members in ${path}`);
                             break;
-                        } else {
-                            debugInfo.push(`Empty or no matches: ${path}`);
                         }
                     } catch (e) {
-                        debugInfo.push(`Error on ${path}: ${e.message}`);
+                        console.log(`Error on ${path}: ${e.message}`);
                     }
                 }
                 
@@ -273,20 +210,12 @@
                         <div class="empty-state">
                             <div class="empty-icon">👥</div>
                             <div class="empty-title">No Team Members</div>
-                            <div class="empty-text">
-                                ${teamFilter ? `No members found in ${teamFilter} team` : 'Add staff to staff_directory collection'}
-                            </div>
-                        </div>
-                        <div class="debug">
-                            <strong>Debug:</strong><br>
-                            Team filter: ${teamFilter || 'none'}<br>
-                            ${debugInfo.join('<br>')}
+                            <div class="empty-text">${teamFilter ? `No members in ${teamFilter} team` : 'Add staff to staff_directory'}</div>
                         </div>
                     `;
                     return;
                 }
                 
-                // Sort alphabetically
                 members.sort((a, b) => {
                     const nameA = a.name || a.fullName || a.firstName || '';
                     const nameB = b.name || b.fullName || b.firstName || '';
@@ -300,31 +229,22 @@
                     const tooltipText = role ? `${name} • ${role}` : name;
                     
                     return `
-                        <div class="avatar" title="${name}">
+                        <div class="avatar">
                             ${initials}
                             <div class="tooltip">${tooltipText}</div>
                         </div>
                     `;
                 }).join('');
                 
-                content.innerHTML = `
-                    <div class="grid">${html}</div>
-                    <div class="debug">
-                        <strong>Debug:</strong> ${members.length} members from ${usedPath}
-                    </div>
-                `;
+                content.innerHTML = `<div class="grid">${html}</div>`;
                 
             } catch (error) {
                 console.error('Error:', error);
                 content.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">⚠️</div>
-                        <div class="empty-title">Error Loading Team</div>
-                        <div class="empty-text">${error.message}</div>
-                    </div>
-                    <div class="debug">
-                        <strong>Debug:</strong><br>
-                        ${debugInfo.join('<br>')}
+                        <div class="empty-title">Unable to Load</div>
+                        <div class="empty-text">Check console for details</div>
                     </div>
                 `;
             }

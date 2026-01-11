@@ -6,11 +6,7 @@
     <title>My Activity</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -49,17 +45,9 @@
             50% { opacity: 1; transform: scale(1); }
         }
         
-        .title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #111;
-        }
+        .title { font-size: 18px; font-weight: 600; color: #111; }
         
-        .activity-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+        .activity-list { display: flex; flex-direction: column; gap: 12px; }
         
         .activity-item {
             display: flex;
@@ -83,71 +71,15 @@
             flex-shrink: 0;
         }
         
-        .activity-content {
-            flex: 1;
-            min-width: 0;
-        }
+        .activity-content { flex: 1; min-width: 0; }
+        .activity-text { font-size: 13px; color: #333; line-height: 1.4; margin-bottom: 4px; }
+        .activity-time { font-size: 11px; color: #888; }
         
-        .activity-text {
-            font-size: 13px;
-            color: #333;
-            line-height: 1.4;
-            margin-bottom: 4px;
-        }
-        
-        .activity-time {
-            font-size: 11px;
-            color: #888;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 48px 24px;
-        }
-        
-        .empty-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.5;
-        }
-        
-        .empty-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-        }
-        
-        .empty-text {
-            font-size: 13px;
-            color: #888;
-            line-height: 1.5;
-        }
-        
-        .debug {
-            margin-top: 20px;
-            padding: 12px;
-            background: #f0f0f0;
-            border-radius: 8px;
-            font-size: 11px;
-            color: #666;
-            font-family: monospace;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 48px;
-            color: #666;
-        }
-        
-        .error {
-            background: #FEE;
-            color: #C00;
-            padding: 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-bottom: 16px;
-        }
+        .empty-state { text-align: center; padding: 48px 24px; }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+        .empty-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 8px; }
+        .empty-text { font-size: 13px; color: #888; line-height: 1.5; }
+        .loading { text-align: center; padding: 48px; color: #666; }
     </style>
 </head>
 <body>
@@ -195,27 +127,17 @@
         
         function getIcon(type) {
             const icons = {
-                'post': '📝',
-                'comment': '💬',
-                'like': '❤️',
-                'share': '🔗',
-                'upload': '📤',
-                'edit': '✏️',
-                'create': '➕',
-                'delete': '🗑️',
-                'login': '🔐',
-                'view': '👁️',
-                'default': '📌'
+                'post': '📝', 'comment': '💬', 'like': '❤️', 'share': '🔗',
+                'upload': '📤', 'edit': '✏️', 'create': '➕', 'delete': '🗑️',
+                'login': '🔐', 'view': '👁️', 'default': '📌'
             };
             return icons[type?.toLowerCase()] || icons.default;
         }
         
         async function loadActivity() {
             const content = document.getElementById('content');
-            let debugInfo = [];
             
             try {
-                // Try multiple possible collection paths
                 const paths = [
                     `artifacts/${appId}/public/data/activity_feed`,
                     `artifacts/${appId}/public/data/user_activity`,
@@ -224,28 +146,18 @@
                 ];
                 
                 let activities = [];
-                let usedPath = '';
                 
                 for (const path of paths) {
-                    debugInfo.push(`Trying: ${path}`);
+                    console.log(`Trying: ${path}`);
                     try {
-                        const snapshot = await db.collection(path)
-                            .orderBy('timestamp', 'desc')
-                            .limit(20)
-                            .get();
-                        
+                        const snapshot = await db.collection(path).orderBy('timestamp', 'desc').limit(20).get();
                         if (!snapshot.empty) {
-                            snapshot.forEach(doc => {
-                                activities.push({ id: doc.id, ...doc.data() });
-                            });
-                            usedPath = path;
-                            debugInfo.push(`✓ Found ${activities.length} items in ${path}`);
+                            snapshot.forEach(doc => activities.push({ id: doc.id, ...doc.data() }));
+                            console.log(`Found ${activities.length} items in ${path}`);
                             break;
-                        } else {
-                            debugInfo.push(`Empty: ${path}`);
                         }
                     } catch (e) {
-                        debugInfo.push(`Error on ${path}: ${e.message}`);
+                        console.log(`Error on ${path}: ${e.message}`);
                     }
                 }
                 
@@ -254,17 +166,7 @@
                         <div class="empty-state">
                             <div class="empty-icon">📭</div>
                             <div class="empty-title">No Activity Yet</div>
-                            <div class="empty-text">
-                                Activity will appear here once you start using the system.<br><br>
-                                <strong>To add test data:</strong><br>
-                                Add documents to Firestore collection:<br>
-                                <code>artifacts/${appId}/public/data/activity_feed</code><br><br>
-                                Each document needs: <code>text</code>, <code>type</code>, <code>timestamp</code>
-                            </div>
-                        </div>
-                        <div class="debug">
-                            <strong>Debug:</strong><br>
-                            ${debugInfo.join('<br>')}
+                            <div class="empty-text">Activity will appear here once you start using the system.</div>
                         </div>
                     `;
                     return;
@@ -286,22 +188,15 @@
                     `;
                 }).join('');
                 
-                content.innerHTML = `
-                    <div class="activity-list">${html}</div>
-                    <div class="debug">
-                        <strong>Debug:</strong> Loaded from ${usedPath}
-                    </div>
-                `;
+                content.innerHTML = `<div class="activity-list">${html}</div>`;
                 
             } catch (error) {
                 console.error('Error:', error);
                 content.innerHTML = `
-                    <div class="error">
-                        <strong>Error:</strong> ${error.message}
-                    </div>
-                    <div class="debug">
-                        <strong>Debug:</strong><br>
-                        ${debugInfo.join('<br>')}
+                    <div class="empty-state">
+                        <div class="empty-icon">⚠️</div>
+                        <div class="empty-title">Unable to Load</div>
+                        <div class="empty-text">Check console for details.</div>
                     </div>
                 `;
             }
