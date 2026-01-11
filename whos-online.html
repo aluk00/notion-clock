@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Who's Online | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-operations: #9333EA;
+            --team-sales: #F97316;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+            --online: #22C55E;
+            --away: #F59E0B;
+            --busy: #EF4444;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 12px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .widget-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--online);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        .header-title { font-size: 15px; font-weight: 900; color: var(--ink); }
+        .header-sub { font-size: 11px; color: var(--ink-sub); margin-left: auto; }
+        .online-count {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--online);
+        }
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--online);
+            animation: blink 2s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        
+        /* Filter tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+        .filter-tab {
+            padding: 8px 14px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            background: var(--bg-soft);
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .filter-tab:hover { color: var(--ink); }
+        .filter-tab.active {
+            background: var(--ink);
+            color: #FFF;
+        }
+        .filter-tab .count {
+            display: inline-block;
+            margin-left: 4px;
+            padding: 2px 6px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 99px;
+            font-size: 9px;
+        }
+        
+        /* People grid */
+        .people-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1px;
+            background: #F0F0F0;
+        }
+        
+        .person-card {
+            padding: 16px 20px;
+            background: #FFF;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .person-card:hover { background: var(--bg-soft); }
+        
+        .person-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 800;
+            color: #FFF;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .status-dot {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #FFF;
+        }
+        .status-dot.online { background: var(--online); }
+        .status-dot.away { background: var(--away); }
+        .status-dot.busy { background: var(--busy); }
+        .status-dot.offline { background: #CCC; }
+        
+        .person-info { flex: 1; min-width: 0; }
+        .person-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .person-role {
+            font-size: 11px;
+            color: var(--ink-sub);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .person-mood {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        /* Status label */
+        .status-label {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 99px;
+            text-transform: uppercase;
+        }
+        .status-label.online { background: #DCFCE7; color: #166534; }
+        .status-label.away { background: #FEF3C7; color: #B45309; }
+        .status-label.busy { background: #FEE2E2; color: #B91C1C; }
+        
+        .demo-badge {
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: #E6468B;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .empty-state {
+            padding: 60px 24px;
+            text-align: center;
+            background: #FFF;
+        }
+        .empty-icon { font-size: 40px; margin-bottom: 14px; }
+        .empty-title { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
+        .empty-sub { font-size: 12px; color: var(--ink-sub); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, onSnapshot, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        const TEAM_COLORS = {
+            'Editorial': '#E94B4B', 'Creative': '#E6468B', 'Production': '#43B049',
+            'Social': '#F2C316', 'Social Video': '#F2C316', 'Operations': '#9333EA', 'Sales': '#F97316'
+        };
+
+        // Demo data simulating online presence
+        const DEMO_PEOPLE = [
+            { id: '1', firstName: 'Nick', lastName: 'B', team: 'Creative', role: 'Creative Lead', status: 'online', mood: '🎯' },
+            { id: '2', firstName: 'Ana', lastName: 'C', team: 'Creative', role: 'Senior Creative', status: 'online', mood: '🔥' },
+            { id: '3', firstName: 'Hugo', lastName: 'M', team: 'Production', role: 'Producer', status: 'online', mood: '☕' },
+            { id: '4', firstName: 'Mimi', lastName: 'Yates', team: 'Social', role: 'Creator', status: 'busy', mood: '😤' },
+            { id: '5', firstName: 'Dan', lastName: 'Q', team: 'Social', role: 'Presenter', status: 'away', mood: null },
+            { id: '6', firstName: 'Kaylee', lastName: 'A', team: 'Editorial', role: 'Presenter', status: 'online', mood: '🎉' },
+            { id: '7', firstName: 'Sophia', lastName: 'S', team: 'Editorial', role: 'Finance Creator', status: 'online', mood: '💪' },
+            { id: '8', firstName: 'Isobel', lastName: 'W', team: 'Editorial', role: 'Editor', status: 'away', mood: null },
+            { id: '9', firstName: 'Henry', lastName: 'Williams', team: 'Social', role: 'Sport Creator', status: 'busy', mood: '⚽' },
+            { id: '10', firstName: 'Gemma', lastName: 'P', team: 'Production', role: 'Producer', status: 'online', mood: '🧘' },
+            { id: '11', firstName: 'Tom', lastName: 'R', team: 'Operations', role: 'Ops Manager', status: 'online', mood: null },
+            { id: '12', firstName: 'Ellie', lastName: 'B', team: 'Creative', role: 'Head of Social', status: 'busy', mood: '🔥' }
+        ];
+
+        let people = DEMO_PEOPLE;
+        let isDemo = true;
+        let activeFilter = 'all';
+        const root = document.getElementById('root');
+
+        const getTeamColor = t => TEAM_COLORS[t] || '#21a0d8';
+        const getInitials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
+
+        function getFilteredPeople() {
+            if (activeFilter === 'all') return people;
+            if (activeFilter === 'online') return people.filter(p => p.status === 'online');
+            return people.filter(p => p.team === activeFilter);
+        }
+
+        function getTeams() {
+            return [...new Set(people.map(p => p.team))].sort();
+        }
+
+        function render() {
+            const filtered = getFilteredPeople();
+            const onlineCount = people.filter(p => p.status === 'online').length;
+            const teams = getTeams();
+
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="widget-header">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <h2 class="header-title">Who's Online</h2>
+                        <div class="online-count">
+                            <span class="online-dot"></span>
+                            <span>${onlineCount} online</span>
+                        </div>
+                        ${isDemo ? '<span class="demo-badge">Preview</span>' : ''}
+                    </div>
+                    
+                    <div class="filter-tabs">
+                        <button class="filter-tab ${activeFilter === 'all' ? 'active' : ''}" onclick="window.setFilter('all')">
+                            All<span class="count">${people.length}</span>
+                        </button>
+                        <button class="filter-tab ${activeFilter === 'online' ? 'active' : ''}" onclick="window.setFilter('online')">
+                            Online<span class="count">${onlineCount}</span>
+                        </button>
+                        ${teams.map(t => `
+                            <button class="filter-tab ${activeFilter === t ? 'active' : ''}" onclick="window.setFilter('${t}')">
+                                ${t}<span class="count">${people.filter(p => p.team === t).length}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="people-grid">
+                        ${filtered.length === 0 ? `
+                            <div class="empty-state">
+                                <div class="empty-icon">👀</div>
+                                <div class="empty-title">Nobody here</div>
+                                <div class="empty-sub">No team members match this filter</div>
+                            </div>
+                        ` : filtered.map(p => `
+                            <div class="person-card" onclick="window.viewProfile('${p.id}')">
+                                <div class="person-avatar" style="background: ${getTeamColor(p.team)}">
+                                    ${getInitials(p.firstName, p.lastName)}
+                                    <div class="status-dot ${p.status}"></div>
+                                </div>
+                                <div class="person-info">
+                                    <div class="person-name">${p.firstName} ${p.lastName}</div>
+                                    <div class="person-role">${p.role || p.team}</div>
+                                </div>
+                                ${p.mood ? `<div class="person-mood">${p.mood}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        window.setFilter = (filter) => {
+            activeFilter = filter;
+            render();
+        };
+
+        window.viewProfile = (id) => {
+            // Could open profile modal or navigate to profile page
+            console.log('View profile:', id);
+        };
+
+        async function loadStaffWithPresence() {
+            try {
+                // Load staff directory
+                const staffSnap = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+                if (!staffSnap.empty) {
+                    people = [];
+                    staffSnap.forEach(d => {
+                        const data = d.data();
+                        people.push({
+                            id: d.id,
+                            ...data,
+                            // Random status for demo - in production would come from presence system
+                            status: ['online', 'online', 'online', 'away', 'busy'][Math.floor(Math.random() * 5)],
+                            mood: null
+                        });
+                    });
+                }
+
+                // Load user profiles for moods
+                const profilesSnap = await getDocs(collection(db, "artifacts", appId, "public", "data", "user_profiles"));
+                profilesSnap.forEach(d => {
+                    const profile = d.data();
+                    const person = people.find(p => p.id === d.id);
+                    if (person && profile.mood) {
+                        person.mood = profile.mood.emoji;
+                    }
+                });
+
+                isDemo = false;
+            } catch (e) {
+                console.log('Using demo data:', e);
+                people = DEMO_PEOPLE;
+                isDemo = true;
+            }
+            render();
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loadStaffWithPresence();
+            } else {
+                signInAnonymously(auth);
+            }
+        });
+    </script>
+</body>
+</html>
