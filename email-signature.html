@@ -1,1 +1,205 @@
-[email-signature.html content as provided]
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Signature | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #F5F5F7; margin: 0; padding: 20px; color: var(--ink); }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: #FFF; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
+        .header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 2px; }
+        .dot-grid span { width: 5px; height: 5px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
+        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+        .title { font-size: 14px; font-weight: 800; }
+        .body { padding: 20px; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 6px; }
+        .form-input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; }
+        .form-input:focus { outline: none; border-color: var(--dmg-blue); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        
+        .btn { padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; }
+        .btn-primary { background: var(--dmg-blue); color: #FFF; }
+        .btn-primary:hover { background: #1a8bc0; }
+        .btn-secondary { background: var(--bg-soft); color: var(--ink); }
+        
+        .preview-label { font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 12px; }
+        .signature-preview { background: #FFF; border: 1px solid var(--border); border-radius: 8px; padding: 20px; font-family: Arial, sans-serif; }
+        .sig-name { font-size: 16px; font-weight: bold; color: #1C1C1C; margin-bottom: 2px; }
+        .sig-role { font-size: 13px; color: #666; margin-bottom: 8px; }
+        .sig-company { font-size: 13px; font-weight: bold; color: #E94B4B; margin-bottom: 8px; }
+        .sig-details { font-size: 12px; color: #666; line-height: 1.6; }
+        .sig-details a { color: #21a0d8; text-decoration: none; }
+        .sig-social { margin-top: 10px; }
+        .sig-social a { display: inline-block; margin-right: 8px; color: #21a0d8; font-size: 12px; text-decoration: none; }
+        
+        .copy-box { margin-top: 16px; padding: 12px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; font-size: 12px; color: #166534; display: none; }
+        .copy-box.show { display: block; }
+        
+        .empty { padding: 40px 20px; text-align: center; }
+        .empty-icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
+        .empty-sub { font-size: 12px; color: var(--ink-sub); margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="root"></div>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script>
+        firebase.initializeApp({
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        });
+        
+        var db = firebase.firestore();
+        var auth = firebase.auth();
+        var appId = "dmg-command-centre-native";
+        var root = document.getElementById('root');
+        
+        var params = new URLSearchParams(window.location.search);
+        var staffId = params.get('id');
+        var profile = null;
+        var copied = false;
+
+        function render() {
+            root.innerHTML = '\
+                <div class="card">\
+                    <div class="header">\
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>\
+                        <h2 class="title">Email Signature Generator</h2>\
+                    </div>\
+                    <div class="body">\
+                        <div class="form-row">\
+                            <div class="form-group">\
+                                <label class="form-label">First Name</label>\
+                                <input type="text" id="firstName" class="form-input" value="' + (profile ? profile.firstName || '' : '') + '" placeholder="Your first name" oninput="updatePreview()">\
+                            </div>\
+                            <div class="form-group">\
+                                <label class="form-label">Last Name</label>\
+                                <input type="text" id="lastName" class="form-input" value="' + (profile ? profile.lastName || '' : '') + '" placeholder="Your last name" oninput="updatePreview()">\
+                            </div>\
+                        </div>\
+                        <div class="form-group">\
+                            <label class="form-label">Job Title</label>\
+                            <input type="text" id="role" class="form-input" value="' + (profile ? profile.role || '' : '') + '" placeholder="e.g. Senior Creative" oninput="updatePreview()">\
+                        </div>\
+                        <div class="form-group">\
+                            <label class="form-label">Email</label>\
+                            <input type="email" id="email" class="form-input" value="' + (profile ? profile.email || '' : '') + '" placeholder="you@dmgmedia.co.uk" oninput="updatePreview()">\
+                        </div>\
+                        <div class="form-group">\
+                            <label class="form-label">Phone (Optional)</label>\
+                            <input type="text" id="phone" class="form-input" value="' + (profile ? profile.phone || '' : '') + '" placeholder="+44 20 xxxx xxxx" oninput="updatePreview()">\
+                        </div>\
+                    </div>\
+                </div>\
+                \
+                <div class="card">\
+                    <div class="header">\
+                        <h2 class="title">Preview</h2>\
+                    </div>\
+                    <div class="body">\
+                        <div id="signaturePreview" class="signature-preview">\
+                            <div class="sig-name" id="previewName">Your Name</div>\
+                            <div class="sig-role" id="previewRole">Your Role</div>\
+                            <div class="sig-company">DMG Media</div>\
+                            <div class="sig-details">\
+                                <span id="previewEmail">email@dmgmedia.co.uk</span><br>\
+                                <span id="previewPhone"></span>\
+                                Northcliffe House, 2 Derry Street, London W8 5TT\
+                            </div>\
+                            <div class="sig-social">\
+                                <a href="https://www.dailymail.co.uk">dailymail.co.uk</a>\
+                                <a href="https://www.linkedin.com/company/dmg-media">LinkedIn</a>\
+                            </div>\
+                        </div>\
+                        <div style="margin-top: 16px; display: flex; gap: 10px;">\
+                            <button class="btn btn-primary" onclick="copySignature()">Copy to Clipboard</button>\
+                            <button class="btn btn-secondary" onclick="copyHTML()">Copy HTML</button>\
+                        </div>\
+                        <div id="copyMsg" class="copy-box">✓ Signature copied! Paste into your email client.</div>\
+                    </div>\
+                </div>\
+            ';
+            updatePreview();
+        }
+
+        window.updatePreview = function() {
+            var firstName = document.getElementById('firstName').value || 'Your';
+            var lastName = document.getElementById('lastName').value || 'Name';
+            var role = document.getElementById('role').value || 'Your Role';
+            var email = document.getElementById('email').value || 'email@dmgmedia.co.uk';
+            var phone = document.getElementById('phone').value;
+            
+            document.getElementById('previewName').textContent = firstName + ' ' + lastName;
+            document.getElementById('previewRole').textContent = role;
+            document.getElementById('previewEmail').textContent = email;
+            document.getElementById('previewPhone').textContent = phone ? phone + ' | ' : '';
+        };
+
+        window.copySignature = function() {
+            var sig = document.getElementById('signaturePreview');
+            var range = document.createRange();
+            range.selectNode(sig);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            document.getElementById('copyMsg').classList.add('show');
+            setTimeout(function() { document.getElementById('copyMsg').classList.remove('show'); }, 3000);
+        };
+
+        window.copyHTML = function() {
+            var sig = document.getElementById('signaturePreview');
+            navigator.clipboard.writeText(sig.outerHTML).then(function() {
+                document.getElementById('copyMsg').textContent = '✓ HTML copied!';
+                document.getElementById('copyMsg').classList.add('show');
+                setTimeout(function() { 
+                    document.getElementById('copyMsg').classList.remove('show');
+                    document.getElementById('copyMsg').textContent = '✓ Signature copied! Paste into your email client.';
+                }, 3000);
+            });
+        };
+
+        function loadProfile() {
+            if (!staffId) {
+                render();
+                return;
+            }
+            
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory').doc(staffId)
+                .get().then(function(doc) {
+                    if (doc.exists) {
+                        profile = doc.data();
+                    }
+                    render();
+                }).catch(function(error) {
+                    console.error('Load error:', error);
+                    render();
+                });
+        }
+
+        auth.signInAnonymously().then(function() {
+            loadProfile();
+        }).catch(function(error) {
+            console.error('Auth error:', error);
+            render();
+        });
+    </script>
+</body>
+</html>

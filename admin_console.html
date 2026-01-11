@@ -1,1 +1,355 @@
-[admin_console.html content as provided]
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Console | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; --success: #22C55E; --warning: #F59E0B; --danger: #EF4444; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #F5F5F7; margin: 0; padding: 16px; color: var(--ink); }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: #FFF; border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dot-grid span { width: 6px; height: 6px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
+        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+        .title { font-size: 18px; font-weight: 900; }
+        .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-dot.connected { background: var(--success); }
+        .status-dot.error { background: var(--danger); }
+        
+        .card { background: #FFF; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .card-title { font-size: 14px; font-weight: 800; }
+        .card-body { padding: 0; }
+        
+        .btn { padding: 10px 16px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--dmg-blue); color: #FFF; }
+        .btn-primary:hover { background: #1a8bc0; }
+        .btn-success { background: var(--success); color: #FFF; }
+        .btn-danger { background: var(--danger); color: #FFF; }
+        .btn-ghost { background: transparent; color: var(--ink-sub); }
+        .btn-ghost:hover { background: var(--bg-soft); color: var(--ink); }
+        .btn-sm { padding: 6px 10px; font-size: 11px; }
+        
+        .table { width: 100%; border-collapse: collapse; }
+        .table th { text-align: left; padding: 12px 16px; font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg-soft); border-bottom: 1px solid var(--border); }
+        .table td { padding: 14px 16px; border-bottom: 1px solid #F5F5F5; font-size: 13px; }
+        .table tr:last-child td { border-bottom: none; }
+        .table tr:hover { background: #FAFAFA; }
+        
+        .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #FFF; flex-shrink: 0; }
+        .user-cell { display: flex; align-items: center; gap: 12px; }
+        .user-name { font-weight: 700; }
+        .user-email { font-size: 11px; color: var(--ink-sub); }
+        
+        .badge { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 99px; }
+        .badge-active { background: #DCFCE7; color: #166534; }
+        .badge-inactive { background: #FEE2E2; color: #B91C1C; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.2s; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal { background: #FFF; border-radius: 20px; width: 90%; max-width: 480px; max-height: 90vh; overflow: hidden; transform: scale(0.95); transition: transform 0.2s; }
+        .modal-overlay.active .modal { transform: scale(1); }
+        .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .modal-title { font-size: 16px; font-weight: 800; }
+        .modal-close { width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--bg-soft); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+        .modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; }
+        .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 8px; }
+        .form-input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; transition: border-color 0.15s; }
+        .form-input:focus { outline: none; border-color: var(--dmg-blue); }
+        .form-select { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; background: #FFF; }
+        
+        .empty { padding: 60px 24px; text-align: center; }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-title { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+        .empty-sub { font-size: 13px; color: var(--ink-sub); margin-bottom: 20px; }
+        
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 14px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #FFF; transform: translateY(100px); opacity: 0; transition: all 0.3s; z-index: 2000; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; padding: 20px; }
+        .stat { text-align: center; padding: 16px; background: var(--bg-soft); border-radius: 12px; }
+        .stat-value { font-size: 28px; font-weight: 900; color: var(--dmg-blue); }
+        .stat-label { font-size: 11px; color: var(--ink-sub); font-weight: 600; text-transform: uppercase; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="root"></div>
+    </div>
+    <div id="modal-root"></div>
+    <div id="toast" class="toast"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const app = initializeApp({
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        });
+        const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
+        const COLORS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#9333EA', Sales: '#F97316', Design: '#8B5CF6' };
+        const TEAMS = ['Editorial', 'Creative', 'Production', 'Social', 'Operations', 'Sales', 'Design'];
+        
+        let staff = [], loading = true, connected = false, modalOpen = false, editingStaff = null;
+        const root = document.getElementById('root');
+        const modalRoot = document.getElementById('modal-root');
+        const toastEl = document.getElementById('toast');
+        
+        const staffRef = () => collection(db, "artifacts", appId, "public", "data", "staff_directory");
+        const color = t => COLORS[t] || '#21a0d8';
+        const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
+
+        function showToast(message, type = 'success') {
+            toastEl.textContent = message;
+            toastEl.className = `toast ${type} show`;
+            setTimeout(() => toastEl.classList.remove('show'), 3000);
+        }
+
+        function renderModal() {
+            if (!modalOpen) { modalRoot.innerHTML = ''; return; }
+            const isEdit = !!editingStaff;
+            const s = editingStaff || {};
+            
+            modalRoot.innerHTML = `
+                <div class="modal-overlay active" onclick="if(event.target===this) window.closeModal()">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3 class="modal-title">${isEdit ? 'Edit Staff Member' : 'Add Staff Member'}</h3>
+                            <button class="modal-close" onclick="window.closeModal()">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="staffForm">
+                                <div class="form-group">
+                                    <label class="form-label">First Name *</label>
+                                    <input type="text" id="firstName" class="form-input" value="${s.firstName || ''}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Last Name *</label>
+                                    <input type="text" id="lastName" class="form-input" value="${s.lastName || ''}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Email *</label>
+                                    <input type="email" id="email" class="form-input" value="${s.email || ''}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Team *</label>
+                                    <select id="team" class="form-select" required>
+                                        <option value="">Select team</option>
+                                        ${TEAMS.map(t => `<option value="${t}" ${s.team === t ? 'selected' : ''}>${t}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Role</label>
+                                    <input type="text" id="role" class="form-input" value="${s.role || ''}" placeholder="e.g. Senior Creative">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Capacity (%)</label>
+                                    <input type="number" id="capacity" class="form-input" value="${s.capacity || 0}" min="0" max="100">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Status</label>
+                                    <select id="status" class="form-select">
+                                        <option value="active" ${s.status !== 'inactive' ? 'selected' : ''}>Active</option>
+                                        <option value="inactive" ${s.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            ${isEdit ? `<button class="btn btn-danger" onclick="window.deleteStaff('${s.id}')">Delete</button>` : ''}
+                            <button class="btn btn-ghost" onclick="window.closeModal()">Cancel</button>
+                            <button class="btn btn-primary" onclick="window.saveStaff()">${isEdit ? 'Update' : 'Add'}</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function render() {
+            const teamCounts = TEAMS.reduce((acc, t) => { acc[t] = staff.filter(s => s.team === t).length; return acc; }, {});
+            
+            root.innerHTML = `
+                <div class="header">
+                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                    <h1 class="title">Admin Console</h1>
+                    <div class="status">
+                        <span class="status-dot ${connected ? 'connected' : 'error'}"></span>
+                        <span>${connected ? 'Connected to Firebase' : 'Connecting...'}</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-value">${staff.length}</div>
+                            <div class="stat-label">Total Staff</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${TEAMS.filter(t => teamCounts[t] > 0).length}</div>
+                            <div class="stat-label">Teams</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${staff.filter(s => s.status !== 'inactive').length}</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Staff Directory</h2>
+                        <button class="btn btn-primary" onclick="window.openAddModal()">
+                            <span>+</span> Add Staff
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        ${staff.length === 0 ? `
+                            <div class="empty">
+                                <div class="empty-icon">👥</div>
+                                <div class="empty-title">No Staff Members</div>
+                                <div class="empty-sub">Add your first team member to get started. Data saves directly to Firebase.</div>
+                                <button class="btn btn-primary" onclick="window.openAddModal()">Add First Member</button>
+                            </div>
+                        ` : `
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Role</th>
+                                        <th>Team</th>
+                                        <th>Capacity</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${staff.map(s => `
+                                        <tr>
+                                            <td>
+                                                <div class="user-cell">
+                                                    <div class="avatar" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div>
+                                                    <div>
+                                                        <div class="user-name">${s.firstName} ${s.lastName}</div>
+                                                        <div class="user-email">${s.email || 'No email'}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>${s.role || '-'}</td>
+                                            <td><span style="color:${color(s.team)}; font-weight:700;">${s.team || '-'}</span></td>
+                                            <td>${s.capacity || 0}%</td>
+                                            <td><span class="badge ${s.status === 'inactive' ? 'badge-inactive' : 'badge-active'}">${s.status === 'inactive' ? 'Inactive' : 'Active'}</span></td>
+                                            <td>
+                                                <button class="btn btn-ghost btn-sm" onclick="window.editStaff('${s.id}')">Edit</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `}
+                    </div>
+                </div>
+            `;
+            renderModal();
+        }
+
+        // CRUD Operations - All write to Firebase
+        window.openAddModal = () => { editingStaff = null; modalOpen = true; renderModal(); };
+        window.closeModal = () => { modalOpen = false; editingStaff = null; renderModal(); };
+        
+        window.editStaff = (id) => {
+            editingStaff = staff.find(s => s.id === id);
+            modalOpen = true;
+            renderModal();
+        };
+
+        window.saveStaff = async () => {
+            const data = {
+                firstName: document.getElementById('firstName').value.trim(),
+                lastName: document.getElementById('lastName').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                team: document.getElementById('team').value,
+                role: document.getElementById('role').value.trim(),
+                capacity: parseInt(document.getElementById('capacity').value) || 0,
+                status: document.getElementById('status').value,
+                updatedAt: serverTimestamp()
+            };
+            
+            if (!data.firstName || !data.lastName || !data.email || !data.team) {
+                showToast('Please fill in all required fields', 'error');
+                return;
+            }
+            
+            try {
+                if (editingStaff) {
+                    // UPDATE existing document in Firebase
+                    await updateDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", editingStaff.id), data);
+                    showToast('Staff member updated in Firebase!', 'success');
+                } else {
+                    // ADD new document to Firebase
+                    data.createdAt = serverTimestamp();
+                    await addDoc(staffRef(), data);
+                    showToast('Staff member added to Firebase!', 'success');
+                }
+                window.closeModal();
+            } catch (e) {
+                console.error('Save error:', e);
+                showToast('Error saving: ' + e.message, 'error');
+            }
+        };
+
+        window.deleteStaff = async (id) => {
+            if (!confirm('Are you sure you want to delete this staff member? This will remove them from Firebase.')) return;
+            try {
+                // DELETE document from Firebase
+                await deleteDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", id));
+                showToast('Staff member deleted from Firebase!', 'success');
+                window.closeModal();
+            } catch (e) {
+                console.error('Delete error:', e);
+                showToast('Error deleting: ' + e.message, 'error');
+            }
+        };
+
+        // Real-time Firebase listener
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                onSnapshot(staffRef(), snap => {
+                    staff = [];
+                    snap.forEach(d => staff.push({ id: d.id, ...d.data() }));
+                    staff.sort((a, b) => (a.firstName || '').localeCompare(b.firstName || ''));
+                    loading = false;
+                    connected = true;
+                    render();
+                }, e => {
+                    console.error('Firestore error:', e);
+                    connected = false;
+                    loading = false;
+                    render();
+                });
+            } else {
+                signInAnonymously(auth).catch(e => {
+                    console.error('Auth error:', e);
+                    loading = false;
+                    render();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

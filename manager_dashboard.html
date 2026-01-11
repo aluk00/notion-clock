@@ -1,1 +1,400 @@
-[manager_dashboard.html content as provided]
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Dashboard | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; --success: #22C55E; --warning: #F59E0B; --danger: #EF4444; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #F5F5F7; margin: 0; padding: 16px; color: var(--ink); }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: #FFF; border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dot-grid span { width: 6px; height: 6px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
+        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+        .title { font-size: 18px; font-weight: 900; }
+        .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
+        
+        .tabs { display: flex; gap: 4px; background: #FFF; border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+        .tab { flex: 1; padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; cursor: pointer; transition: all 0.15s; border: none; background: transparent; color: var(--ink-sub); }
+        .tab:hover { background: var(--bg-soft); color: var(--ink); }
+        .tab.active { background: var(--dmg-blue); color: #FFF; }
+        .tab .count { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 99px; font-size: 10px; background: rgba(255,255,255,0.2); }
+        
+        .card { background: #FFF; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .card-title { font-size: 14px; font-weight: 800; }
+        
+        .btn { padding: 10px 16px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--dmg-blue); color: #FFF; }
+        .btn-primary:hover { background: #1a8bc0; }
+        .btn-success { background: var(--success); color: #FFF; }
+        .btn-warning { background: var(--warning); color: #FFF; }
+        .btn-danger { background: var(--danger); color: #FFF; }
+        .btn-ghost { background: transparent; color: var(--ink-sub); }
+        .btn-ghost:hover { background: var(--bg-soft); }
+        .btn-sm { padding: 6px 12px; font-size: 11px; }
+        
+        .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #FFF; flex-shrink: 0; }
+        
+        /* Team capacity cards */
+        .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 20px; }
+        .team-card { background: var(--bg-soft); border-radius: 14px; padding: 20px; }
+        .team-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .team-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .team-name { font-size: 14px; font-weight: 800; }
+        .team-count { margin-left: auto; font-size: 12px; color: var(--ink-sub); }
+        .capacity-bar { height: 8px; background: #E5E5E5; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+        .capacity-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .capacity-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-sub); }
+        .members-row { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+        .member-avatar { width: 32px; height: 32px; border-radius: 50%; font-size: 10px; font-weight: 800; color: #FFF; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.15s; }
+        .member-avatar:hover { transform: scale(1.1); }
+        
+        /* Rota requests */
+        .rota-list { }
+        .rota-item { padding: 16px 20px; border-bottom: 1px solid #F5F5F5; display: flex; align-items: center; gap: 14px; }
+        .rota-item:last-child { border-bottom: none; }
+        .rota-info { flex: 1; }
+        .rota-name { font-size: 14px; font-weight: 700; }
+        .rota-detail { font-size: 12px; color: var(--ink-sub); margin-top: 2px; }
+        .rota-dates { font-size: 13px; font-weight: 600; margin-top: 4px; }
+        .rota-type { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 99px; }
+        .rota-type.wfh { background: #DBEAFE; color: #1D4ED8; }
+        .rota-type.leave { background: #FEF3C7; color: #B45309; }
+        .rota-type.sick { background: #FEE2E2; color: #B91C1C; }
+        .rota-actions { display: flex; gap: 8px; }
+        
+        .empty { padding: 60px 24px; text-align: center; }
+        .empty-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-title { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+        .empty-sub { font-size: 13px; color: var(--ink-sub); }
+        
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 14px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #FFF; transform: translateY(100px); opacity: 0; transition: all 0.3s; z-index: 2000; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px; }
+        .stat { text-align: center; padding: 16px; background: var(--bg-soft); border-radius: 12px; }
+        .stat-value { font-size: 24px; font-weight: 900; }
+        .stat-label { font-size: 10px; color: var(--ink-sub); font-weight: 600; text-transform: uppercase; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="root"></div>
+    </div>
+    <div id="toast" class="toast"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const app = initializeApp({
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        });
+        const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
+        const COLORS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#9333EA', Sales: '#F97316', Design: '#8B5CF6' };
+        const TEAMS = ['Editorial', 'Creative', 'Production', 'Social', 'Operations', 'Sales', 'Design'];
+        
+        let staff = [], rotaRequests = [], activeTab = 'overview', loading = true;
+        const root = document.getElementById('root');
+        const toastEl = document.getElementById('toast');
+        
+        const staffRef = () => collection(db, "artifacts", appId, "public", "data", "staff_directory");
+        const rotaRef = () => collection(db, "artifacts", appId, "public", "data", "rota_requests");
+        const color = t => COLORS[t] || '#21a0d8';
+        const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
+        const capacityColor = c => c > 85 ? '#EF4444' : c > 70 ? '#F59E0B' : '#22C55E';
+
+        function showToast(msg, type = 'success') {
+            toastEl.textContent = msg;
+            toastEl.className = `toast ${type} show`;
+            setTimeout(() => toastEl.classList.remove('show'), 3000);
+        }
+
+        function formatDate(d) {
+            if (!d) return '';
+            const date = d.toDate ? d.toDate() : new Date(d);
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        }
+
+        function renderOverview() {
+            const teamData = TEAMS.map(t => {
+                const members = staff.filter(s => s.team === t);
+                const avgCap = members.length ? Math.round(members.reduce((sum, m) => sum + (m.capacity || 0), 0) / members.length) : 0;
+                return { name: t, members, avgCap };
+            }).filter(t => t.members.length > 0);
+            
+            const pendingRota = rotaRequests.filter(r => r.status === 'pending').length;
+            const totalCapacity = staff.length ? Math.round(staff.reduce((sum, s) => sum + (s.capacity || 0), 0) / staff.length) : 0;
+            
+            return `
+                <div class="card">
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-value">${staff.length}</div>
+                            <div class="stat-label">Total Staff</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" style="color:${capacityColor(totalCapacity)}">${totalCapacity}%</div>
+                            <div class="stat-label">Avg Capacity</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" style="color:${pendingRota > 0 ? '#F59E0B' : '#22C55E'}">${pendingRota}</div>
+                            <div class="stat-label">Pending Requests</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${teamData.length}</div>
+                            <div class="stat-label">Active Teams</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Team Capacity</h2>
+                    </div>
+                    ${teamData.length === 0 ? `
+                        <div class="empty">
+                            <div class="empty-icon">📊</div>
+                            <div class="empty-title">No Teams Yet</div>
+                            <div class="empty-sub">Add staff members in the Admin Console to see team capacity.</div>
+                        </div>
+                    ` : `
+                        <div class="team-grid">
+                            ${teamData.map(t => `
+                                <div class="team-card">
+                                    <div class="team-header">
+                                        <div class="team-dot" style="background:${color(t.name)}"></div>
+                                        <span class="team-name">${t.name}</span>
+                                        <span class="team-count">${t.members.length} members</span>
+                                    </div>
+                                    <div class="capacity-bar">
+                                        <div class="capacity-fill" style="width:${t.avgCap}%; background:${capacityColor(t.avgCap)}"></div>
+                                    </div>
+                                    <div class="capacity-label">
+                                        <span>Capacity</span>
+                                        <span style="color:${capacityColor(t.avgCap)}; font-weight:700;">${t.avgCap}%</span>
+                                    </div>
+                                    <div class="members-row">
+                                        ${t.members.slice(0, 6).map(m => `
+                                            <div class="member-avatar" style="background:${color(t.name)}" title="${m.firstName} ${m.lastName}: ${m.capacity || 0}%">
+                                                ${initials(m.firstName, m.lastName)}
+                                            </div>
+                                        `).join('')}
+                                        ${t.members.length > 6 ? `<div class="member-avatar" style="background:#999">+${t.members.length - 6}</div>` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderCapacity() {
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Individual Capacity</h2>
+                    </div>
+                    ${staff.length === 0 ? `
+                        <div class="empty">
+                            <div class="empty-icon">👥</div>
+                            <div class="empty-title">No Staff</div>
+                            <div class="empty-sub">Add staff in Admin Console.</div>
+                        </div>
+                    ` : `
+                        <div style="padding: 16px;">
+                            ${staff.map(s => `
+                                <div style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #F5F5F5;">
+                                    <div class="avatar" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div>
+                                    <div style="flex:1;">
+                                        <div style="font-weight:700; font-size:13px;">${s.firstName} ${s.lastName}</div>
+                                        <div style="font-size:11px; color:var(--ink-sub);">${s.team} • ${s.role || 'Team Member'}</div>
+                                    </div>
+                                    <div style="width:120px;">
+                                        <div class="capacity-bar" style="margin-bottom:4px;">
+                                            <div class="capacity-fill" style="width:${s.capacity || 0}%; background:${capacityColor(s.capacity || 0)}"></div>
+                                        </div>
+                                    </div>
+                                    <div style="width:50px; text-align:right; font-weight:800; color:${capacityColor(s.capacity || 0)}">${s.capacity || 0}%</div>
+                                    <input type="range" min="0" max="100" value="${s.capacity || 0}" 
+                                           style="width:80px;" 
+                                           onchange="window.updateCapacity('${s.id}', this.value)">
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderRotaRequests() {
+            const pending = rotaRequests.filter(r => r.status === 'pending');
+            const processed = rotaRequests.filter(r => r.status !== 'pending');
+            
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Pending Requests</h2>
+                        <span style="font-size:12px; color:var(--ink-sub);">${pending.length} awaiting</span>
+                    </div>
+                    ${pending.length === 0 ? `
+                        <div class="empty">
+                            <div class="empty-icon">✅</div>
+                            <div class="empty-title">All Clear</div>
+                            <div class="empty-sub">No pending rota requests. Requests appear here when staff submit via the Rota Request widget.</div>
+                        </div>
+                    ` : `
+                        <div class="rota-list">
+                            ${pending.map(r => `
+                                <div class="rota-item">
+                                    <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName || '')}</div>
+                                    <div class="rota-info">
+                                        <div class="rota-name">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div>
+                                        <div class="rota-detail">${r.team || 'No team'} • ${r.reason || 'No reason given'}</div>
+                                        <div class="rota-dates">${formatDate(r.startDate)} → ${formatDate(r.endDate)}</div>
+                                    </div>
+                                    <span class="rota-type ${(r.type || 'leave').toLowerCase()}">${r.type || 'Leave'}</span>
+                                    <div class="rota-actions">
+                                        <button class="btn btn-success btn-sm" onclick="window.approveRota('${r.id}')">Approve</button>
+                                        <button class="btn btn-danger btn-sm" onclick="window.rejectRota('${r.id}')">Reject</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+                
+                ${processed.length > 0 ? `
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Processed</h2>
+                        </div>
+                        <div class="rota-list">
+                            ${processed.slice(0, 10).map(r => `
+                                <div class="rota-item" style="opacity:0.7;">
+                                    <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName || '')}</div>
+                                    <div class="rota-info">
+                                        <div class="rota-name">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div>
+                                        <div class="rota-dates">${formatDate(r.startDate)} → ${formatDate(r.endDate)}</div>
+                                    </div>
+                                    <span class="rota-type" style="background:${r.status === 'approved' ? '#DCFCE7' : '#FEE2E2'}; color:${r.status === 'approved' ? '#166534' : '#B91C1C'}">${r.status}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function render() {
+            const pendingCount = rotaRequests.filter(r => r.status === 'pending').length;
+            
+            root.innerHTML = `
+                <div class="header">
+                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                    <h1 class="title">Manager Dashboard</h1>
+                    <div class="status">
+                        <span class="status-dot"></span>
+                        <span>Live</span>
+                    </div>
+                </div>
+                
+                <div class="tabs">
+                    <button class="tab ${activeTab === 'overview' ? 'active' : ''}" onclick="window.setTab('overview')">Overview</button>
+                    <button class="tab ${activeTab === 'capacity' ? 'active' : ''}" onclick="window.setTab('capacity')">Capacity</button>
+                    <button class="tab ${activeTab === 'rota' ? 'active' : ''}" onclick="window.setTab('rota')">
+                        Rota Requests
+                        ${pendingCount > 0 ? `<span class="count">${pendingCount}</span>` : ''}
+                    </button>
+                </div>
+                
+                ${activeTab === 'overview' ? renderOverview() : ''}
+                ${activeTab === 'capacity' ? renderCapacity() : ''}
+                ${activeTab === 'rota' ? renderRotaRequests() : ''}
+            `;
+        }
+
+        window.setTab = (tab) => { activeTab = tab; render(); };
+
+        // Firebase CRUD operations
+        window.updateCapacity = async (id, value) => {
+            try {
+                await updateDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", id), {
+                    capacity: parseInt(value),
+                    updatedAt: serverTimestamp()
+                });
+                showToast('Capacity updated!');
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            }
+        };
+
+        window.approveRota = async (id) => {
+            try {
+                await updateDoc(doc(db, "artifacts", appId, "public", "data", "rota_requests", id), {
+                    status: 'approved',
+                    processedAt: serverTimestamp()
+                });
+                showToast('Request approved!');
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            }
+        };
+
+        window.rejectRota = async (id) => {
+            try {
+                await updateDoc(doc(db, "artifacts", appId, "public", "data", "rota_requests", id), {
+                    status: 'rejected',
+                    processedAt: serverTimestamp()
+                });
+                showToast('Request rejected.');
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            }
+        };
+
+        // Real-time listeners
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                // Listen to staff
+                onSnapshot(staffRef(), snap => {
+                    staff = [];
+                    snap.forEach(d => staff.push({ id: d.id, ...d.data() }));
+                    staff.sort((a, b) => (a.firstName || '').localeCompare(b.firstName || ''));
+                    loading = false;
+                    render();
+                });
+                
+                // Listen to rota requests
+                onSnapshot(rotaRef(), snap => {
+                    rotaRequests = [];
+                    snap.forEach(d => rotaRequests.push({ id: d.id, ...d.data() }));
+                    rotaRequests.sort((a, b) => {
+                        const aT = a.submittedAt?.toDate?.() || new Date(0);
+                        const bT = b.submittedAt?.toDate?.() || new Date(0);
+                        return bT - aT;
+                    });
+                    render();
+                });
+            } else {
+                signInAnonymously(auth);
+            }
+        });
+    </script>
+</body>
+</html>
