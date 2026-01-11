@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Initials | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --editorial: #E94B4B;
+            --creative: #E6468B;
+            --production: #43B049;
+            --social: #F2C316;
+            --operations: #21A0D8;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --border: #E5E7EB;
+        }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; }
+        
+        .widget { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: #FFF; border-radius: 14px; border: 1px solid var(--border); }
+        
+        .team-label { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .team-dots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 16px; height: 16px; }
+        .team-dot { width: 100%; height: 100%; border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
+        .team-dot:nth-child(1) { animation-delay: 0s; }
+        .team-dot:nth-child(2) { animation-delay: 0.625s; }
+        .team-dot:nth-child(3) { animation-delay: 1.25s; }
+        .team-dot:nth-child(4) { animation-delay: 1.875s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        .team-name { font-size: 12px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.02em; }
+        
+        .divider { width: 1px; height: 32px; background: var(--border); flex-shrink: 0; }
+        
+        .initials-row { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; }
+        
+        .initial-badge { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #FFF; cursor: default; transition: transform 0.2s, box-shadow 0.2s; position: relative; }
+        .initial-badge:hover { transform: scale(1.15); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; }
+        
+        .tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--ink); color: #FFF; padding: 6px 10px; border-radius: 6px; font-size: 10px; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; margin-bottom: 6px; }
+        .initial-badge:hover .tooltip { opacity: 1; }
+        .tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--ink); }
+        
+        .manager-ring { box-shadow: 0 0 0 2px #FFF, 0 0 0 4px currentColor; }
+        
+        .count-badge { background: var(--border); color: var(--ink-sub); font-size: 10px; padding: 6px 12px; border-radius: 20px; font-weight: 700; flex-shrink: 0; }
+        
+        .empty { font-size: 11px; color: var(--ink-sub); font-style: italic; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        const appId = 'dmg-command-centre-native';
+        const basePath = `artifacts/${appId}/public/data`;
+        
+        const TEAM_COLORS = {
+            'Editorial': '#E94B4B',
+            'Creative': '#E6468B',
+            'Production': '#43B049',
+            'Social': '#F2C316',
+            'Operations': '#21A0D8'
+        };
+        
+        const getInitials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
+        
+        function App() {
+            const [staffDirectory, setStaffDirectory] = useState([]);
+            
+            // Get team from URL param
+            const urlParams = new URLSearchParams(window.location.search);
+            const team = urlParams.get('team') || 'Production';
+            const teamColor = TEAM_COLORS[team] || '#21A0D8';
+            
+            useEffect(() => {
+                const unsub = db.collection(basePath).doc('staff_directory').collection('staff_directory')
+                    .onSnapshot(snap => {
+                        setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    });
+                return () => unsub();
+            }, []);
+            
+            const teamMembers = useMemo(() => {
+                return staffDirectory
+                    .filter(s => s.team === team)
+                    .sort((a, b) => {
+                        // Managers first, then alphabetical
+                        if (a.isManager && !b.isManager) return -1;
+                        if (!a.isManager && b.isManager) return 1;
+                        return (a.firstName || '').localeCompare(b.firstName || '');
+                    });
+            }, [staffDirectory, team]);
+            
+            return (
+                <div className="widget">
+                    <div className="team-label">
+                        <div className="team-dots">
+                            <div className="team-dot" style={{ background: teamColor }}></div>
+                            <div className="team-dot" style={{ background: teamColor }}></div>
+                            <div className="team-dot" style={{ background: teamColor }}></div>
+                            <div className="team-dot" style={{ background: teamColor }}></div>
+                        </div>
+                        <span className="team-name">{team}</span>
+                    </div>
+                    
+                    <div className="divider"></div>
+                    
+                    <div className="initials-row">
+                        {teamMembers.length > 0 ? (
+                            teamMembers.map(member => (
+                                <div 
+                                    key={member.id} 
+                                    className={`initial-badge ${member.isManager ? 'manager-ring' : ''}`}
+                                    style={{ background: teamColor, color: team === 'Social' ? '#1C1C1C' : '#FFF' }}
+                                >
+                                    {getInitials(member.firstName, member.lastName)}
+                                    <div className="tooltip">
+                                        {member.firstName} {member.lastName}
+                                        {member.isManager && ' ⭐'}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <span className="empty">No team members found</span>
+                        )}
+                    </div>
+                    
+                    <div className="count-badge">{teamMembers.length}</div>
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

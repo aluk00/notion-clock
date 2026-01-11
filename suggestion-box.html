@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suggestion Box | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --border: #E5E7EB;
+            --bg-soft: #F9FAFB;
+            --success: #10B981;
+        }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 16px; }
+        
+        .widget { background: #FFF; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; max-width: 400px; }
+        
+        .header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+        .dots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 18px; height: 18px; }
+        .dot { width: 100%; height: 100%; background: var(--dmg-blue); border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.625s; }
+        .dot:nth-child(3) { animation-delay: 1.25s; }
+        .dot:nth-child(4) { animation-delay: 1.875s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        .title { font-size: 14px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: -0.02em; }
+        
+        .body { padding: 20px; }
+        
+        .intro { font-size: 12px; color: var(--ink-sub); line-height: 1.5; margin-bottom: 16px; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 6px; display: block; }
+        .form-select, .form-textarea { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; }
+        .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--dmg-blue); }
+        .form-textarea { resize: vertical; min-height: 100px; }
+        
+        .anon-toggle { display: flex; align-items: center; gap: 10px; padding: 12px; background: var(--bg-soft); border-radius: 10px; margin-bottom: 16px; }
+        .anon-toggle input { width: 18px; height: 18px; accent-color: var(--dmg-blue); }
+        .anon-label { font-size: 12px; color: var(--ink); cursor: pointer; flex: 1; }
+        .anon-note { font-size: 10px; color: var(--ink-sub); margin-top: 4px; }
+        
+        .btn { width: 100%; padding: 14px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: var(--dmg-blue); color: #FFF; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn:disabled { background: #E5E7EB; color: #9CA3AF; cursor: not-allowed; }
+        
+        .success-state { text-align: center; padding: 40px 20px; }
+        .success-icon { font-size: 48px; margin-bottom: 16px; }
+        .success-title { font-size: 16px; font-weight: 900; color: var(--ink); margin-bottom: 8px; }
+        .success-text { font-size: 12px; color: var(--ink-sub); }
+        .reset-link { font-size: 11px; color: var(--dmg-blue); cursor: pointer; margin-top: 16px; display: inline-block; }
+        .reset-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        const appId = 'dmg-command-centre-native';
+        const basePath = `artifacts/${appId}/public/data`;
+        
+        const CATEGORIES = [
+            'Workflow Improvement',
+            'Tool / Software Request',
+            'Office / Facilities',
+            'Team Culture',
+            'Training / Development',
+            'General Feedback',
+            'Other'
+        ];
+        
+        const DotGrid = () => (
+            <div className="dots">
+                <div className="dot"></div>
+                <div className="dot"></div>
+                <div className="dot"></div>
+                <div className="dot"></div>
+            </div>
+        );
+        
+        function App() {
+            const [category, setCategory] = useState(CATEGORIES[0]);
+            const [suggestion, setSuggestion] = useState('');
+            const [anonymous, setAnonymous] = useState(true);
+            const [submitting, setSubmitting] = useState(false);
+            const [submitted, setSubmitted] = useState(false);
+            const [currentUser, setCurrentUser] = useState(null);
+            const [staffDirectory, setStaffDirectory] = useState([]);
+            
+            useEffect(() => {
+                const unsub = db.collection(basePath).doc('staff_directory').collection('staff_directory')
+                    .onSnapshot(snap => {
+                        setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                    });
+                return () => unsub();
+            }, []);
+            
+            useEffect(() => {
+                const unsub = auth.onAuthStateChanged(async (firebaseUser) => {
+                    if (!firebaseUser) { auth.signInAnonymously(); return; }
+                    
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const paramId = urlParams.get('id');
+                    
+                    if (paramId && staffDirectory.length > 0) {
+                        const found = staffDirectory.find(s => s.id === paramId);
+                        if (found) { setCurrentUser(found); return; }
+                    }
+                    
+                    if (firebaseUser.email && staffDirectory.length > 0) {
+                        const found = staffDirectory.find(s => s.email?.toLowerCase() === firebaseUser.email.toLowerCase());
+                        if (found) { setCurrentUser(found); return; }
+                    }
+                    
+                    setCurrentUser(null);
+                });
+                return () => unsub();
+            }, [staffDirectory]);
+            
+            const handleSubmit = async () => {
+                if (!suggestion.trim()) return;
+                
+                setSubmitting(true);
+                
+                const payload = {
+                    category,
+                    suggestion: suggestion.trim(),
+                    anonymous,
+                    submittedAt: new Date().toISOString(),
+                    status: 'new'
+                };
+                
+                if (!anonymous && currentUser) {
+                    payload.submittedBy = {
+                        id: currentUser.id,
+                        name: `${currentUser.firstName} ${currentUser.lastName}`,
+                        team: currentUser.team
+                    };
+                }
+                
+                await db.collection(basePath).doc('suggestions').collection('suggestions').add(payload);
+                
+                setSubmitting(false);
+                setSubmitted(true);
+            };
+            
+            const reset = () => {
+                setCategory(CATEGORIES[0]);
+                setSuggestion('');
+                setAnonymous(true);
+                setSubmitted(false);
+            };
+            
+            if (submitted) {
+                return (
+                    <div className="widget">
+                        <div className="header">
+                            <DotGrid />
+                            <span className="title">Suggestion Box</span>
+                        </div>
+                        <div className="body">
+                            <div className="success-state">
+                                <div className="success-icon">💡</div>
+                                <div className="success-title">Thanks for your input!</div>
+                                <div className="success-text">Your suggestion has been submitted{anonymous ? ' anonymously' : ''}. The Ops team reviews all submissions weekly.</div>
+                                <span className="reset-link" onClick={reset}>Submit another suggestion</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            
+            return (
+                <div className="widget">
+                    <div className="header">
+                        <DotGrid />
+                        <span className="title">Suggestion Box</span>
+                    </div>
+                    <div className="body">
+                        <div className="intro">
+                            Got an idea to improve how we work? Share it here. All suggestions go directly to the Ops team.
+                        </div>
+                        
+                        <div className="form-group">
+                            <label className="form-label">Category</label>
+                            <select 
+                                className="form-select"
+                                value={category}
+                                onChange={e => setCategory(e.target.value)}
+                            >
+                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        
+                        <div className="form-group">
+                            <label className="form-label">Your Suggestion</label>
+                            <textarea 
+                                className="form-textarea"
+                                value={suggestion}
+                                onChange={e => setSuggestion(e.target.value)}
+                                placeholder="What's on your mind?"
+                            />
+                        </div>
+                        
+                        <div className="anon-toggle">
+                            <input 
+                                type="checkbox" 
+                                id="anon" 
+                                checked={anonymous}
+                                onChange={e => setAnonymous(e.target.checked)}
+                            />
+                            <label htmlFor="anon" className="anon-label">
+                                Submit anonymously
+                                <div className="anon-note">Your name won't be attached to this suggestion</div>
+                            </label>
+                        </div>
+                        
+                        <button 
+                            className="btn btn-primary"
+                            onClick={handleSubmit}
+                            disabled={!suggestion.trim() || submitting}
+                        >
+                            {submitting ? 'Submitting...' : 'Submit Suggestion'}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
