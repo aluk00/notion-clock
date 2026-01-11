@@ -105,11 +105,8 @@
         };
         const STATUSES = ['Office', 'WFH', 'Shoot', 'PTO'];
         const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-        
-        // Demo data
-        const DEMO_STAFF = [
-            { id: 'demo', firstName: 'Demo', lastName: 'User', team: 'Creative', role: 'Team Member' }
-        ];
+        const appId = 'dmg-command-centre-native';
+        const basePath = `artifacts/${appId}/public/data`;
         
         const getInitials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
         
@@ -176,24 +173,20 @@
             }, [existingSubmission]);
             
             useEffect(() => {
-                // Use direct collection paths (not nested)
-                const unsub1 = db.collection('staff_directory')
+                // Use correct nested Firestore path
+                const unsub1 = db.collection(basePath).doc('staff_directory').collection('staff_directory')
                     .onSnapshot(snap => {
-                        if (snap.empty) {
-                            setStaffDirectory(DEMO_STAFF);
-                        } else {
-                            setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                        }
+                        setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                     }, err => {
-                        console.log('Using demo staff:', err.message);
-                        setStaffDirectory(DEMO_STAFF);
+                        console.error('Staff directory error:', err.message);
+                        setStaffDirectory([]);
                     });
                 
-                const unsub2 = db.collection('rota_submissions')
+                const unsub2 = db.collection(basePath).doc('rota_submissions').collection('rota_submissions')
                     .onSnapshot(snap => {
                         setRotaSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                     }, err => {
-                        console.log('Rota error:', err.message);
+                        console.error('Rota submissions error:', err.message);
                         setRotaSubmissions([]);
                     });
                 
@@ -217,7 +210,8 @@
                         if (found) { setCurrentUser(found); setLoading(false); return; }
                     }
                     
-                    setCurrentUser({ id: 'demo', firstName: 'Demo', lastName: 'User', team: 'Creative', role: 'Team Member' });
+                    // No user found - show empty state
+                    setCurrentUser(null);
                     setLoading(false);
                 });
                 return () => unsub();
@@ -239,14 +233,14 @@
                 
                 try {
                     if (existingSubmission?.id) {
-                        await db.collection('rota_submissions').doc(existingSubmission.id).update(payload);
+                        await db.collection(basePath).doc('rota_submissions').collection('rota_submissions').doc(existingSubmission.id).update(payload);
                     } else {
-                        await db.collection('rota_submissions').add(payload);
+                        await db.collection(basePath).doc('rota_submissions').collection('rota_submissions').add(payload);
                     }
                     setToast(existingSubmission ? 'Rota Updated!' : 'Rota Submitted!');
                 } catch (err) {
-                    console.log('Submit error:', err.message);
-                    setToast('Saved (demo mode)');
+                    console.error('Submit error:', err.message);
+                    setToast('Error saving. Please try again.');
                 }
                 
                 setSubmitting(false);
@@ -261,6 +255,31 @@
             
             if (loading) {
                 return <div className="loading">Loading...</div>;
+            }
+            
+            if (!currentUser) {
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <div className="dots">
+                                <div className="dot"></div><div className="dot"></div>
+                                <div className="dot"></div><div className="dot"></div>
+                            </div>
+                            <span className="title">Rota Request</span>
+                        </div>
+                        <div className="card">
+                            <div className="card-body">
+                                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>👤</div>
+                                    <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '8px' }}>User Not Found</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--ink-sub)' }}>
+                                        Please access this page via your profile or contact support.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
             }
             
             return (
