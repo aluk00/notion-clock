@@ -1,279 +1,299 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  Download, 
-  ExternalLink, 
-  BarChart2,
-  Share2
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Analytics Widget</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Palette matches your Daily Rundown */
+            --editorial: #E94B4B;
+            --ink: #1C1C1C; 
+            --ink-light: #6B7280; 
+            --border: #E5E7EB; 
+            --surface: #FFFFFF; 
+            --surface-alt: #F9FAFB;
+            --radius: 16px; 
+            --radius-sm: 10px;
+            --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
 
-// --- Styles & Animation ---
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-  
-  :root {
-    --editorial: #E94B4B;
-    --v-sport: #43B049; --v-uk: #21A0D8; --v-respawn: #8B5CF6; --v-main: #1C1C1C; 
-    --ink: #1C1C1C; --ink-light: #6B7280; --border: #E5E7EB; --surface: #FFFFFF; --surface-alt: #F9FAFB;
-    --radius: 16px; --radius-sm: 10px;
-  }
-
-  body { font-family: 'Inter', sans-serif; }
-
-  .dots-loader span {
-    width: 6px; height: 6px; border-radius: 50%; background: var(--editorial);
-    display: inline-block;
-  }
-  .dots-loader span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
-  .dots-loader span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
-  .dots-loader span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
-  .dots-loader span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
-  
-  @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-
-  .tracker-btn {
-    padding: 8px 16px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 700;
-    border: 1px solid var(--border); background: var(--surface); cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); display: flex; align-items: center; gap: 6px;
-    color: var(--ink);
-  }
-  .tracker-btn:hover { border-color: var(--ink); }
-  .tracker-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .tracker-btn-primary { background: var(--ink); color: white; border-color: var(--ink); }
-  .tracker-btn-primary:hover { opacity: 0.9; }
-
-  .tracker-input {
-    padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
-    font-size: 12px; font-weight: 500; font-family: 'Inter', sans-serif; outline: none;
-    transition: all 0.2s; background: var(--surface); color: var(--ink);
-  }
-  .tracker-input:focus { border-color: var(--editorial); }
-
-  .tracker-card {
-    background: var(--surface-alt); border: 1px solid transparent; border-radius: var(--radius-sm);
-    padding: 12px; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .tracker-card:hover { border-color: var(--border); background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
-`;
-
-// --- Mock Data Generator ---
-const mockFetchTikTokData = async (url) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const views = Math.floor(Math.random() * 5000000) + 10000;
-      const likes = Math.floor(views * (Math.random() * 0.15 + 0.05));
-      const comments = Math.floor(likes * 0.01);
-      const shares = Math.floor(likes * 0.05);
-      
-      resolve({
-        id: Math.random().toString(36).substr(2, 9),
-        url,
-        thumbnail: `https://picsum.photos/seed/${Math.random()}/300/500`,
-        title: "POV: You're a producer for a major channel 🎥 #filmmaking",
-        author: "@mourad_abdou",
-        uploadDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-        stats: { views, likes, comments, shares }
-      });
-    }, 1000);
-  });
-};
-
-export default function TikTokTracker() {
-  const [inputUrl, setInputUrl] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [items, setItems] = useState([]);
-  const [currentDate, setCurrentDate] = useState('');
-
-  useEffect(() => {
-    const date = new Date();
-    setCurrentDate(date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }));
-  }, []);
-
-  const handleAddItem = async (e) => {
-    e.preventDefault();
-    if (!inputUrl.trim()) return;
-
-    setIsLoading(true);
-    try {
-      const newData = await mockFetchTikTokData(inputUrl);
-      setItems(prev => [newData, ...prev]);
-      setInputUrl('');
-    } catch (error) {
-      console.error("Failed to fetch", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDelete = (id) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleExportCSV = () => {
-    const headers = ["Title", "URL", "Author", "Date", "Views", "Likes", "Comments", "Shares"];
-    const rows = items.map(item => [
-      `"${item.title.replace(/"/g, '""')}"`,
-      item.url,
-      item.author,
-      item.uploadDate,
-      item.stats.views,
-      item.stats.likes,
-      item.stats.comments,
-      item.stats.shares
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n" 
-      + rows.map(e => e.join(",")).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "tiktok_analytics_report.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const formatNumber = (num) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
-  };
-
-  return (
-    <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: 'transparent', color: '#1C1C1C' }}>
-      <style>{styles}</style>
-      
-      {/* Top Bar */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#E5E7EB]">
-        <div className="flex items-center gap-3">
-          <div className="dots-loader grid grid-cols-2 gap-[3px]">
-            <span></span><span></span><span></span><span></span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[11px] font-bold text-[#6B7280] uppercase tracking-wider">
-              {currentDate || 'Loading...'}
-            </span>
-            <span className="text-[13px] font-bold text-[#1C1C1C]">
-              TikTok Analytics
-            </span>
-          </div>
-        </div>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        <button 
-          onClick={handleExportCSV}
-          disabled={items.length === 0}
-          className="tracker-btn tracker-btn-primary"
-        >
-          <Download size={14} />
-          Export CSV
-        </button>
-      </div>
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: transparent; 
+            color: var(--ink); 
+            padding: 16px; 
+            -webkit-font-smoothing: antialiased; 
+        }
 
-      <div className="max-w-5xl mx-auto">
+        /* --- Header Animation --- */
+        .dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--editorial); }
+        .dots span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
+        .dots span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        .dots span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        /* --- Layout --- */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        .top-left { display: flex; align-items: center; gap: 12px; }
+        .date-label { font-size: 11px; font-weight: 700; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* --- Buttons & Inputs --- */
+        .btn { 
+            padding: 8px 16px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; 
+            border: 1px solid var(--border); background: var(--surface); cursor: pointer; 
+            transition: var(--transition); display: flex; align-items: center; gap: 6px; 
+            color: var(--ink);
+        }
+        .btn:hover { border-color: var(--ink); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        {/* Input Section */}
-        <div className="mb-8 p-4 border border-[#E5E7EB] rounded-[16px] bg-white">
-          <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#E5E7EB]">
-            <div className="w-2 h-2 rounded-full bg-[#E94B4B]"></div>
-            <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest">Add New Content</span>
-          </div>
-          
-          <form onSubmit={handleAddItem} className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Paste TikTok URL here..."
-              className="tracker-input flex-1"
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
-            />
-            <button 
-              type="submit" 
-              disabled={isLoading || !inputUrl}
-              className="tracker-btn tracker-btn-primary"
-            >
-              {isLoading ? 'Fetching...' : (
-                <>
-                  <Plus size={14} /> Track
-                </>
-              )}
-            </button>
-          </form>
-        </div>
+        .btn-primary { background: var(--ink); color: white; border-color: var(--ink); }
+        .btn-primary:hover { opacity: 0.9; }
 
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 gap-3">
-          {items.length === 0 ? (
-            <div className="text-center py-12 text-[#6B7280] text-[11px] font-medium bg-[#F9FAFB] rounded-[16px] border border-dashed border-[#E5E7EB]">
-              No content tracked. Add a link above to start.
+        .input-group { 
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); 
+            padding: 16px; margin-bottom: 24px;
+        }
+        .input-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .input-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--editorial); }
+        .input-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); }
+
+        .form-row { display: flex; gap: 8px; }
+        .main-input { 
+            flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); 
+            font-size: 12px; font-weight: 500; font-family: inherit; outline: none; transition: var(--transition);
+        }
+        .main-input:focus { border-color: var(--editorial); }
+
+        /* --- List Items --- */
+        .items-container { display: flex; flex-direction: column; gap: 12px; }
+        
+        .empty-state { 
+            text-align: center; padding: 40px; color: var(--ink-light); font-size: 11px; font-weight: 500; 
+            background: var(--surface-alt); border-radius: var(--radius); border: 1px dashed var(--border);
+        }
+
+        .item-card { 
+            background: var(--surface-alt); border: 1px solid transparent; border-radius: var(--radius-sm); 
+            padding: 12px; display: flex; gap: 16px; align-items: center; transition: var(--transition);
+        }
+        .item-card:hover { border-color: var(--border); background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+
+        .item-thumb { 
+            width: 48px; height: 64px; background: var(--border); border-radius: 6px; 
+            overflow: hidden; flex-shrink: 0; position: relative; 
+        }
+        .item-thumb img { width: 100%; height: 100%; object-filter: cover; }
+        
+        .item-info { flex: 1; min-width: 0; }
+        .item-meta { display: flex; gap: 8px; margin-bottom: 4px; align-items: center; }
+        .tag { background: rgba(28, 28, 28, 0.05); color: var(--ink); font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+        .date { font-size: 10px; color: var(--ink-light); }
+        
+        .item-title { font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-author { font-size: 10px; color: var(--ink-light); }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-right: 16px; }
+        .stat-box { display: flex; flex-direction: column; align-items: flex-start; }
+        .stat-label { font-size: 9px; font-weight: 700; color: var(--ink-light); text-transform: uppercase; margin-bottom: 2px; }
+        .stat-value { font-size: 12px; font-weight: 700; color: var(--ink); }
+
+        .btn-icon { background: none; border: none; cursor: pointer; color: var(--ink-light); padding: 4px; transition: var(--transition); }
+        .btn-icon:hover { color: var(--editorial); }
+
+        /* SVG Styling */
+        svg { display: block; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="top-bar">
+        <div class="top-left">
+            <div class="dots"><span></span><span></span><span></span><span></span></div>
+            <div style="display: flex; flex-direction: column;">
+                <span class="date-label" id="dateLabel">Loading...</span>
+                <span style="font-size: 13px; font-weight: 700;">TikTok Analytics</span>
             </div>
-          ) : (
-            <>
-               <div className="flex items-center justify-between mb-2 px-2">
-                 <span className="text-[10px] font-bold text-[#6B7280] uppercase">Tracked Items ({items.length})</span>
-               </div>
-               
-               {items.map((item) => (
-                <div key={item.id} className="tracker-card flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                  
-                  {/* Thumbnail */}
-                  <div className="w-16 h-16 sm:w-12 sm:h-12 bg-[#E5E7EB] rounded-[8px] overflow-hidden flex-shrink-0 relative group cursor-pointer">
-                    <img src={item.thumbnail} alt="" className="w-full h-full object-cover" />
-                    <a href={item.url} target="_blank" rel="noreferrer" className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ExternalLink size={12} className="text-white" />
-                    </a>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="inline-block px-1.5 py-0.5 rounded-[4px] bg-[#1C1C1C]/5 text-[#1C1C1C] text-[9px] font-bold uppercase tracking-wide">
-                        Video
-                      </span>
-                      <span className="text-[10px] text-[#6B7280] font-medium">{item.uploadDate}</span>
-                    </div>
-                    <h3 className="text-[12px] font-semibold text-[#1C1C1C] truncate leading-tight mb-1">
-                      {item.title}
-                    </h3>
-                    <p className="text-[10px] text-[#6B7280]">{item.author}</p>
-                  </div>
-
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-4 gap-4 sm:gap-8 border-t sm:border-t-0 sm:border-l border-[#E5E7EB] pt-3 sm:pt-0 sm:pl-6 w-full sm:w-auto mt-2 sm:mt-0">
-                    <div className="flex flex-col items-center sm:items-start">
-                      <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider mb-0.5">Views</span>
-                      <span className="text-[12px] font-bold text-[#1C1C1C]">{formatNumber(item.stats.views)}</span>
-                    </div>
-                    <div className="flex flex-col items-center sm:items-start">
-                      <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider mb-0.5">Likes</span>
-                      <span className="text-[12px] font-bold text-[#1C1C1C]">{formatNumber(item.stats.likes)}</span>
-                    </div>
-                    <div className="flex flex-col items-center sm:items-start">
-                      <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider mb-0.5">Cmts</span>
-                      <span className="text-[12px] font-bold text-[#1C1C1C]">{formatNumber(item.stats.comments)}</span>
-                    </div>
-                    <div className="flex flex-col items-center sm:items-start">
-                      <span className="text-[9px] font-bold text-[#6B7280] uppercase tracking-wider mb-0.5">Shares</span>
-                      <span className="text-[12px] font-bold text-[#1C1C1C]">{formatNumber(item.stats.shares)}</span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <button 
-                    onClick={() => handleDelete(item.id)}
-                    className="hidden sm:flex p-2 text-[#6B7280] hover:text-[#E94B4B] transition-colors ml-2"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-               ))}
-            </>
-          )}
         </div>
-
-      </div>
+        <button class="btn btn-primary" onclick="window.exportCSV()" id="exportBtn" disabled>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export CSV
+        </button>
     </div>
-  );
-}
+
+    <!-- Input Area -->
+    <div class="input-group">
+        <div class="input-header">
+            <div class="input-dot"></div>
+            <span class="input-label">Add New Content</span>
+        </div>
+        <div class="form-row">
+            <input type="text" class="main-input" id="urlInput" placeholder="Paste TikTok URL here (e.g. tiktok.com/@user/video/...)">
+            <button class="btn btn-primary" onclick="window.addItem()" id="trackBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Track
+            </button>
+        </div>
+    </div>
+
+    <!-- List Area -->
+    <div class="items-container" id="itemsList">
+        <div class="empty-state">No content tracked yet. Paste a link above.</div>
+    </div>
+
+    <script>
+        // --- Logic ---
+        
+        let items = [];
+        const dateLabel = document.getElementById('dateLabel');
+        const itemsList = document.getElementById('itemsList');
+        const urlInput = document.getElementById('urlInput');
+        const trackBtn = document.getElementById('trackBtn');
+        const exportBtn = document.getElementById('exportBtn');
+
+        // Set Date
+        dateLabel.textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+
+        // Format Numbers (1.2M, 500K)
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        // Render List
+        function render() {
+            if (items.length === 0) {
+                itemsList.innerHTML = '<div class="empty-state">No content tracked yet. Paste a link above.</div>';
+                exportBtn.disabled = true;
+                return;
+            }
+
+            exportBtn.disabled = false;
+            itemsList.innerHTML = items.map(item => `
+                <div class="item-card">
+                    <div class="item-thumb">
+                        <img src="${item.thumbnail}" alt="thumb">
+                    </div>
+                    
+                    <div class="item-info">
+                        <div class="item-meta">
+                            <span class="tag">Video</span>
+                            <span class="date">${item.uploadDate}</span>
+                        </div>
+                        <div class="item-title" title="${item.title}">${item.title}</div>
+                        <div class="item-author">${item.author}</div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <span class="stat-label">Views</span>
+                            <span class="stat-value">${formatNumber(item.stats.views)}</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Likes</span>
+                            <span class="stat-value">${formatNumber(item.stats.likes)}</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Cmts</span>
+                            <span class="stat-value">${formatNumber(item.stats.comments)}</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Shares</span>
+                            <span class="stat-value">${formatNumber(item.stats.shares)}</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-icon" onclick="window.deleteItem('${item.id}')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Mock API Call
+        window.addItem = async () => {
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            // UI Loading State
+            const originalBtnText = trackBtn.innerHTML;
+            trackBtn.disabled = true;
+            trackBtn.innerHTML = 'Fetching...';
+
+            // Simulate API Delay
+            setTimeout(() => {
+                // Generate Mock Data
+                const views = Math.floor(Math.random() * 5000000) + 10000;
+                const newItem = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    url: url,
+                    thumbnail: `https://picsum.photos/seed/${Math.random()}/100/150`,
+                    title: "POV: You're a producer for a major channel 🎥 #filmmaking",
+                    author: "@mourad_abdou",
+                    uploadDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+                    stats: {
+                        views: views,
+                        likes: Math.floor(views * 0.1),
+                        comments: Math.floor(views * 0.01),
+                        shares: Math.floor(views * 0.05)
+                    }
+                };
+
+                items.unshift(newItem); // Add to top
+                render();
+                
+                // Reset UI
+                urlInput.value = '';
+                trackBtn.innerHTML = originalBtnText;
+                trackBtn.disabled = false;
+            }, 1000);
+        };
+
+        window.deleteItem = (id) => {
+            items = items.filter(i => i.id !== id);
+            render();
+        };
+
+        window.exportCSV = () => {
+            const headers = ["Title", "URL", "Author", "Date", "Views", "Likes", "Comments", "Shares"];
+            const rows = items.map(item => [
+                `"${item.title.replace(/"/g, '""')}"`,
+                item.url,
+                item.author,
+                item.uploadDate,
+                item.stats.views,
+                item.stats.likes,
+                item.stats.comments,
+                item.stats.shares
+            ]);
+
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + headers.join(",") + "\n" 
+                + rows.map(e => e.join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "tiktok_analytics_report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        // Handle Enter Key
+        urlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') window.addItem();
+        });
+
+    </script>
+</body>
+</html>
