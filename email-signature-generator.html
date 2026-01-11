@@ -48,42 +48,41 @@
         /* Signature Preview */
         .signature-preview { background: #FFF; border: 1px solid var(--border); border-radius: 8px; padding: 20px; font-family: Arial, sans-serif; }
         .sig-name { font-size: 16px; font-weight: bold; color: #1C1C1C; margin-bottom: 2px; }
-        .sig-role { font-size: 13px; color: #666; margin-bottom: 8px; }
-        .sig-divider { height: 3px; width: 40px; background: #21a0d8; margin: 10px 0; }
-        .sig-company { font-size: 12px; font-weight: bold; color: #1C1C1C; }
-        .sig-contact { font-size: 11px; color: #666; margin-top: 4px; }
+        .sig-role { font-size: 13px; color: #6B7280; margin-bottom: 8px; }
+        .sig-divider { height: 2px; background: linear-gradient(90deg, #21a0d8, #E6468B); margin: 12px 0; width: 60px; }
+        .sig-company { font-size: 12px; font-weight: bold; color: #1C1C1C; margin-bottom: 4px; }
+        .sig-contact { font-size: 11px; color: #6B7280; line-height: 1.6; }
         .sig-contact a { color: #21a0d8; text-decoration: none; }
-        .sig-logo { margin-top: 12px; }
-        .sig-logo img { height: 30px; }
+        .sig-social { margin-top: 10px; display: flex; gap: 8px; }
+        .sig-social a { color: #6B7280; font-size: 11px; text-decoration: none; }
+        .sig-social a:hover { color: #21a0d8; }
         
-        .btn { padding: 12px 24px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border: none; transition: all 0.2s; }
-        .btn-primary { background: var(--dmg-blue); color: #FFF; }
+        .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+        .btn { padding: 12px 20px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border: none; transition: all 0.2s; font-family: inherit; }
+        .btn-primary { background: var(--dmg-blue); color: #FFF; flex: 1; }
         .btn-primary:hover { filter: brightness(1.1); }
+        .btn-secondary { background: var(--bg-soft); color: var(--ink); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #F3F4F6; }
         
-        .copy-btn { width: 100%; margin-top: 16px; }
+        .copied-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--success); color: #FFF; padding: 12px 24px; border-radius: 10px; font-size: 12px; font-weight: 700; opacity: 0; transition: opacity 0.3s; }
+        .copied-toast.show { opacity: 1; }
         
-        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; background: var(--success); color: #FFF; border-radius: 10px; font-size: 12px; font-weight: 700; z-index: 1000; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        
-        .instructions { background: #FEF3C7; border: 1px solid #FDE68A; border-radius: 10px; padding: 16px; margin-top: 20px; }
-        .instructions-title { font-size: 11px; font-weight: 800; color: #92400E; margin-bottom: 8px; }
-        .instructions-text { font-size: 11px; color: #92400E; line-height: 1.5; }
-        .instructions-text ol { margin: 8px 0 0 16px; padding: 0; }
-        .instructions-text li { margin-bottom: 4px; }
+        .staff-select { margin-bottom: 20px; padding: 16px; background: var(--bg-soft); border-radius: 10px; }
+        .staff-select-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 8px; display: block; }
     </style>
 </head>
 <body>
     <div id="root"></div>
+    <div class="copied-toast" id="toast">Signature copied to clipboard!</div>
     
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
         
         const firebaseConfig = {
             apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
@@ -92,131 +91,122 @@
         };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const auth = firebase.auth();
         
-        const appId = 'dmg-command-centre-native';
-        const basePath = `artifacts/${appId}/public/data`;
-        
-        const TEAMS = ['Editorial', 'Creative', 'Production', 'Social', 'Operations'];
-        
-        const DotGrid = () => (
-            <div className="dots">
-                <div className="dot"></div>
-                <div className="dot"></div>
-                <div className="dot"></div>
-                <div className="dot"></div>
-            </div>
-        );
+        // Demo staff data
+        const DEMO_STAFF = [
+            { id: '1', firstName: 'Ana', lastName: 'Murphy', role: 'Senior Creative', email: 'ana.murphy@dmgmedia.co.uk', team: 'Creative' },
+            { id: '2', firstName: 'Ellie', lastName: 'Beetham', role: 'Head of Social Creative', email: 'ellie.beetham@dmgmedia.co.uk', team: 'Editorial' },
+            { id: '3', firstName: 'Dan', lastName: 'Quinnell', role: 'Senior Presenter', email: 'dan.quinnell@dmgmedia.co.uk', team: 'Editorial' },
+            { id: '4', firstName: 'Mimi', lastName: 'Yates', role: 'Social Creator', email: 'mimi.yates@dmgmedia.co.uk', team: 'Social' },
+            { id: '5', firstName: 'Nick', lastName: 'Bramley', role: 'Creative Strategist', email: 'nick.bramley@dmgmedia.co.uk', team: 'Creative' },
+        ];
         
         function App() {
-            const [form, setForm] = useState({
-                firstName: '',
-                lastName: '',
+            const [staff, setStaff] = useState([]);
+            const [selectedStaff, setSelectedStaff] = useState(null);
+            const [formData, setFormData] = useState({
+                name: '',
                 role: '',
-                team: 'Creative',
+                email: '',
                 phone: '',
-                email: ''
+                mobile: ''
             });
-            const [toast, setToast] = useState(null);
-            const [staffDirectory, setStaffDirectory] = useState([]);
-            const signatureRef = useRef(null);
             
-            // Load staff directory for auto-fill
             useEffect(() => {
-                const unsub = db.collection(basePath).doc('staff_directory').collection('staff_directory')
+                // Try to load from Firestore
+                const unsub = db.collection('staff_directory')
                     .onSnapshot(snap => {
-                        setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        if (snap.empty) {
+                            setStaff(DEMO_STAFF);
+                        } else {
+                            setStaff(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        }
+                    }, err => {
+                        console.log('Using demo data:', err.message);
+                        setStaff(DEMO_STAFF);
                     });
                 return () => unsub();
             }, []);
             
-            // Auto-fill from auth
-            useEffect(() => {
-                const unsub = auth.onAuthStateChanged(async (firebaseUser) => {
-                    if (!firebaseUser) { auth.signInAnonymously(); return; }
-                    
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const paramId = urlParams.get('id');
-                    
-                    let found = null;
-                    if (paramId && staffDirectory.length > 0) {
-                        found = staffDirectory.find(s => s.id === paramId);
-                    } else if (firebaseUser.email && staffDirectory.length > 0) {
-                        found = staffDirectory.find(s => s.email?.toLowerCase() === firebaseUser.email.toLowerCase());
-                    }
-                    
-                    if (found) {
-                        setForm({
-                            firstName: found.firstName || '',
-                            lastName: found.lastName || '',
-                            role: found.role || '',
-                            team: found.team || 'Creative',
-                            phone: found.phone || '',
-                            email: found.email || ''
-                        });
-                    }
-                });
-                return () => unsub();
-            }, [staffDirectory]);
-            
-            const copySignature = async () => {
-                if (!signatureRef.current) return;
-                
-                try {
-                    // Create a range and select the signature content
-                    const range = document.createRange();
-                    range.selectNodeContents(signatureRef.current);
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                    
-                    // Copy to clipboard
-                    document.execCommand('copy');
-                    selection.removeAllRanges();
-                    
-                    setToast('Signature copied! Paste into Outlook.');
-                    setTimeout(() => setToast(null), 3000);
-                } catch (err) {
-                    console.error('Copy failed:', err);
+            const handleStaffSelect = (e) => {
+                const staffId = e.target.value;
+                if (!staffId) {
+                    setSelectedStaff(null);
+                    setFormData({ name: '', role: '', email: '', phone: '', mobile: '' });
+                    return;
                 }
+                const person = staff.find(s => s.id === staffId);
+                if (person) {
+                    setSelectedStaff(person);
+                    setFormData({
+                        name: `${person.firstName} ${person.lastName}`,
+                        role: person.role || '',
+                        email: person.email || `${person.firstName.toLowerCase()}.${person.lastName.toLowerCase()}@dmgmedia.co.uk`,
+                        phone: person.phone || '+44 20 3615 0000',
+                        mobile: person.mobile || ''
+                    });
+                }
+            };
+            
+            const updateField = (field, value) => {
+                setFormData(prev => ({ ...prev, [field]: value }));
+            };
+            
+            const copySignature = () => {
+                const sigEl = document.getElementById('signature-html');
+                if (!sigEl) return;
+                
+                const range = document.createRange();
+                range.selectNode(sigEl);
+                window.getSelection().removeAllRanges();
+                window.getSelection().addRange(range);
+                document.execCommand('copy');
+                window.getSelection().removeAllRanges();
+                
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
             };
             
             return (
                 <div className="container">
-                    {toast && <div className="toast">{toast}</div>}
-                    
                     <div className="header">
-                        <DotGrid />
-                        <span className="title">Email Signature Generator</span>
+                        <div className="dots">
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                        </div>
+                        <h1 className="title">Email Signature Generator</h1>
                     </div>
                     
                     <div className="grid">
                         <div className="card">
                             <div className="card-header">
-                                <span className="card-title">Your Details</span>
+                                <div className="card-title">Your Details</div>
                             </div>
                             <div className="card-body">
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                    <div className="form-group">
-                                        <label className="form-label">First Name</label>
-                                        <input 
-                                            type="text" 
-                                            className="form-input" 
-                                            value={form.firstName}
-                                            onChange={e => setForm({...form, firstName: e.target.value})}
-                                            placeholder="Ana"
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Last Name</label>
-                                        <input 
-                                            type="text" 
-                                            className="form-input" 
-                                            value={form.lastName}
-                                            onChange={e => setForm({...form, lastName: e.target.value})}
-                                            placeholder="Smith"
-                                        />
-                                    </div>
+                                <div className="staff-select">
+                                    <label className="staff-select-label">Quick Fill from Staff Directory</label>
+                                    <select className="form-select" onChange={handleStaffSelect}>
+                                        <option value="">Select a person...</option>
+                                        {staff.map(s => (
+                                            <option key={s.id} value={s.id}>
+                                                {s.firstName} {s.lastName} - {s.team}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                
+                                <div className="form-group">
+                                    <label className="form-label">Full Name</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        value={formData.name}
+                                        onChange={e => updateField('name', e.target.value)}
+                                        placeholder="John Smith"
+                                    />
                                 </div>
                                 
                                 <div className="form-group">
@@ -224,21 +214,10 @@
                                     <input 
                                         type="text" 
                                         className="form-input" 
-                                        value={form.role}
-                                        onChange={e => setForm({...form, role: e.target.value})}
+                                        value={formData.role}
+                                        onChange={e => updateField('role', e.target.value)}
                                         placeholder="Senior Creative"
                                     />
-                                </div>
-                                
-                                <div className="form-group">
-                                    <label className="form-label">Team</label>
-                                    <select 
-                                        className="form-select"
-                                        value={form.team}
-                                        onChange={e => setForm({...form, team: e.target.value})}
-                                    >
-                                        {TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
                                 </div>
                                 
                                 <div className="form-group">
@@ -246,20 +225,31 @@
                                     <input 
                                         type="email" 
                                         className="form-input" 
-                                        value={form.email}
-                                        onChange={e => setForm({...form, email: e.target.value})}
-                                        placeholder="ana.smith@mailonline.co.uk"
+                                        value={formData.email}
+                                        onChange={e => updateField('email', e.target.value)}
+                                        placeholder="name@dmgmedia.co.uk"
                                     />
                                 </div>
                                 
                                 <div className="form-group">
-                                    <label className="form-label">Phone (Optional)</label>
+                                    <label className="form-label">Office Phone</label>
                                     <input 
                                         type="tel" 
                                         className="form-input" 
-                                        value={form.phone}
-                                        onChange={e => setForm({...form, phone: e.target.value})}
-                                        placeholder="+44 20 7938 6000"
+                                        value={formData.phone}
+                                        onChange={e => updateField('phone', e.target.value)}
+                                        placeholder="+44 20 3615 0000"
+                                    />
+                                </div>
+                                
+                                <div className="form-group">
+                                    <label className="form-label">Mobile (Optional)</label>
+                                    <input 
+                                        type="tel" 
+                                        className="form-input" 
+                                        value={formData.mobile}
+                                        onChange={e => updateField('mobile', e.target.value)}
+                                        placeholder="+44 7XXX XXX XXX"
                                     />
                                 </div>
                             </div>
@@ -267,38 +257,35 @@
                         
                         <div className="card">
                             <div className="card-header">
-                                <span className="card-title">Preview</span>
+                                <div className="card-title">Preview</div>
                             </div>
                             <div className="card-body">
-                                <div className="signature-preview" ref={signatureRef}>
-                                    <div className="sig-name">{form.firstName} {form.lastName}</div>
-                                    <div className="sig-role">{form.role} | DMG New Media</div>
+                                <div className="preview-title">Your Email Signature</div>
+                                
+                                <div id="signature-html" className="signature-preview">
+                                    <div className="sig-name">{formData.name || 'Your Name'}</div>
+                                    <div className="sig-role">{formData.role || 'Job Title'}</div>
                                     <div className="sig-divider"></div>
-                                    <div className="sig-company">Daily Mail Group</div>
+                                    <div className="sig-company">DMG Media | Daily Mail Group</div>
                                     <div className="sig-contact">
-                                        {form.email && <><a href={`mailto:${form.email}`}>{form.email}</a><br/></>}
-                                        {form.phone && <>{form.phone}<br/></>}
-                                        Northcliffe House, London W8 5TT
+                                        {formData.email && <div>✉️ <a href={`mailto:${formData.email}`}>{formData.email}</a></div>}
+                                        {formData.phone && <div>📞 {formData.phone}</div>}
+                                        {formData.mobile && <div>📱 {formData.mobile}</div>}
+                                        <div>🌐 <a href="https://www.dailymail.co.uk">dailymail.co.uk</a></div>
                                     </div>
-                                    <div className="sig-logo">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Daily_Mail_mastance.svg/200px-Daily_Mail_mastance.svg.png" alt="Daily Mail" style={{ height: '24px' }} />
+                                    <div className="sig-social">
+                                        <a href="https://twitter.com/dailymail">Twitter</a>
+                                        <span style={{color: '#E5E7EB'}}>|</span>
+                                        <a href="https://www.instagram.com/dailymail">Instagram</a>
+                                        <span style={{color: '#E5E7EB'}}>|</span>
+                                        <a href="https://www.tiktok.com/@dailymail">TikTok</a>
                                     </div>
                                 </div>
                                 
-                                <button className="btn btn-primary copy-btn" onClick={copySignature}>
-                                    📋 Copy Signature
-                                </button>
-                                
-                                <div className="instructions">
-                                    <div className="instructions-title">How to Add to Outlook</div>
-                                    <div className="instructions-text">
-                                        <ol>
-                                            <li>Click "Copy Signature" above</li>
-                                            <li>Open Outlook → File → Options → Mail → Signatures</li>
-                                            <li>Create new signature, paste, and save</li>
-                                            <li>Set as default for new messages</li>
-                                        </ol>
-                                    </div>
+                                <div className="btn-row">
+                                    <button className="btn btn-primary" onClick={copySignature}>
+                                        Copy Signature
+                                    </button>
                                 </div>
                             </div>
                         </div>
