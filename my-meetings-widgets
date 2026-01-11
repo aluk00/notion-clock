@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Meetings | DMG</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 8px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            max-width: 900px;
+        }
+        .widget-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .title-text {
+            font-size: 13px;
+            font-weight: 900;
+            color: var(--ink);
+            text-transform: uppercase;
+            letter-spacing: -0.02em;
+        }
+        .dots-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
+        }
+        .dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .dot:nth-child(1) { animation-delay: 0.2s; }
+        .dot:nth-child(2) { animation-delay: 0.3s; }
+        .dot:nth-child(3) { animation-delay: 0.3s; }
+        .dot:nth-child(4) { animation-delay: 0.4s; }
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+        
+        .header-sub {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--ink-sub);
+        }
+        
+        .meetings-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px 20px;
+        }
+        
+        .meeting-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 14px;
+            background: var(--bg-soft);
+            border-radius: 12px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .meeting-card.active {
+            border-color: var(--dmg-blue);
+            background: #F0F9FF;
+            box-shadow: 0 2px 8px rgba(33, 160, 216, 0.1);
+        }
+        
+        .meeting-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .meeting-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+            line-height: 1.2;
+        }
+        .meeting-time-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .meeting-time {
+            font-size: 11px;
+            color: var(--ink-sub);
+            font-weight: 600;
+        }
+        .live-badge {
+            display: none;
+            font-size: 9px;
+            font-weight: 800;
+            color: var(--dmg-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            animation: pulseText 2s infinite;
+        }
+        .meeting-card.active .live-badge { display: inline-block; }
+        @keyframes pulseText { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        .join-btn {
+            width: 100%;
+            padding: 10px 0;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.15s ease;
+            background: #E5E7EB;
+            color: #9CA3AF;
+            pointer-events: none;
+            border: none;
+        }
+        .meeting-card.active .join-btn {
+            background: var(--dmg-blue);
+            color: #FFF;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        .meeting-card.active .join-btn:hover {
+            background: #1a8bbd;
+            transform: translateY(-1px);
+        }
+        
+        .empty-card {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+            background: var(--bg-soft);
+            border-radius: 12px;
+            border: 2px dashed var(--border);
+            min-height: 100px;
+        }
+        .empty-text {
+            font-size: 11px;
+            color: var(--ink-sub);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="widget">
+        <div class="widget-header">
+            <div class="header-container">
+                <span class="title-text">My</span>
+                <div class="dots-grid">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+                <span class="title-text">Meetings</span>
+            </div>
+            <span class="header-sub">Today</span>
+        </div>
+        <div id="listMount" class="meetings-row"></div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", 
+            authDomain: "dmg-command-centre-native.firebaseapp.com", 
+            projectId: "dmg-command-centre-native"
+        };
+        const appId = "dmg-command-centre-native";
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        const RECURRING_MEETINGS = [
+            { id: 'r1', title: 'Video Daily', startTime: '09:00', endTime: '09:30', link: 'https://dmgt.zoom.us/j/91362309149?from=addon' },
+            { id: 'r2', title: 'Originals Catch-Up', startTime: '16:00', endTime: '16:15', link: 'https://dmgt.zoom.us/j/91891373882?pwd=lQ8vNW93lVdI7LCceVmGDRwGokv8ht.1&from=addon' },
+            { id: 'r3', title: 'Creative Sync', startTime: '11:00', endTime: '11:30', link: 'https://dmgt.zoom.us/j/example' }
+        ];
+
+        let dynamicMeetings = [];
+
+        function isMeetingActive(startStr, endStr) {
+            const now = new Date();
+            const [sH, sM] = startStr.split(':');
+            const [eH, eM] = endStr.split(':');
+            const start = new Date(); start.setHours(parseInt(sH), parseInt(sM), 0);
+            const end = new Date(); end.setHours(parseInt(eH), parseInt(eM), 0);
+            const windowStart = new Date(start.getTime() - 15 * 60000);
+            const windowEnd = new Date(end.getTime() + 15 * 60000);
+            return now >= windowStart && now <= windowEnd;
+        }
+
+        function render() {
+            const mount = document.getElementById('listMount');
+            const isWeekend = [0, 6].includes(new Date().getDay());
+            let allMeetings = isWeekend ? [...dynamicMeetings] : [...RECURRING_MEETINGS, ...dynamicMeetings];
+            const sorted = allMeetings.sort((a,b) => a.startTime.localeCompare(b.startTime)).slice(0, 3);
+            
+            if (sorted.length === 0) {
+                mount.innerHTML = `
+                    <div class="empty-card"><span class="empty-text">No meetings</span></div>
+                    <div class="empty-card"><span class="empty-text">No meetings</span></div>
+                    <div class="empty-card"><span class="empty-text">No meetings</span></div>
+                `;
+                return;
+            }
+            
+            let html = sorted.map(m => {
+                const active = isMeetingActive(m.startTime, m.endTime);
+                return `
+                    <div class="meeting-card ${active ? 'active' : ''}">
+                        <div class="meeting-info">
+                            <span class="meeting-name">${m.title}</span>
+                            <div class="meeting-time-row">
+                                <span class="meeting-time">${m.startTime} - ${m.endTime}</span>
+                                <span class="live-badge">● LIVE</span>
+                            </div>
+                        </div>
+                        <a href="${m.link}" target="_blank" class="join-btn">${active ? 'Join Now' : 'Join'}</a>
+                    </div>
+                `;
+            }).join('');
+            
+            // Fill remaining slots with empty cards
+            for (let i = sorted.length; i < 3; i++) {
+                html += `<div class="empty-card"><span class="empty-text">No meeting</span></div>`;
+            }
+            
+            mount.innerHTML = html;
+        }
+
+        setInterval(render, 30000);
+
+        async function init() {
+            const todayKey = new Date().toISOString().split('T')[0];
+            onSnapshot(collection(db, "artifacts", appId, "public", "data", "team_meetings"), snap => {
+                dynamicMeetings = snap.docs
+                    .map(d => ({id: d.id, ...d.data()}))
+                    .filter(m => !m.dateKey || m.dateKey === todayKey);
+                render();
+            });
+        }
+
+        signInAnonymously(auth).then(init);
+    </script>
+</body>
+</html>
