@@ -48,6 +48,7 @@
         .count-badge { background: var(--border); color: var(--ink-sub); font-size: 10px; padding: 6px 12px; border-radius: 20px; font-weight: 700; flex-shrink: 0; }
         
         .empty { font-size: 11px; color: var(--ink-sub); font-style: italic; }
+        .loading { font-size: 10px; color: var(--ink-sub); }
     </style>
 </head>
 <body>
@@ -70,9 +71,6 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         
-        const appId = 'dmg-command-centre-native';
-        const basePath = `artifacts/${appId}/public/data`;
-        
         const TEAM_COLORS = {
             'Editorial': '#E94B4B',
             'Creative': '#E6468B',
@@ -81,10 +79,39 @@
             'Operations': '#21A0D8'
         };
         
+        // Demo data for fallback
+        const DEMO_STAFF = {
+            'Editorial': [
+                { firstName: 'Ellie', lastName: 'Beetham', isManager: true },
+                { firstName: 'Dan', lastName: 'Quinnell', isManager: false },
+                { firstName: 'Kaylee', lastName: 'Abrahams', isManager: false },
+            ],
+            'Creative': [
+                { firstName: 'Ana', lastName: 'Murphy', isManager: true },
+                { firstName: 'Nick', lastName: 'Bramley', isManager: false },
+                { firstName: 'Hugo', lastName: 'Torres', isManager: false },
+            ],
+            'Production': [
+                { firstName: 'Sarah', lastName: 'Mitchell', isManager: true },
+                { firstName: 'James', lastName: 'Cooper', isManager: false },
+                { firstName: 'Emma', lastName: 'Wilson', isManager: false },
+            ],
+            'Social': [
+                { firstName: 'Mimi', lastName: 'Yates', isManager: true },
+                { firstName: 'Sophia', lastName: 'Stanford', isManager: false },
+            ],
+            'Operations': [
+                { firstName: 'Alex', lastName: 'Thompson', isManager: true },
+                { firstName: 'Chris', lastName: 'Davies', isManager: false },
+            ]
+        };
+        
         const getInitials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
         
         function App() {
             const [staffDirectory, setStaffDirectory] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [useDemo, setUseDemo] = useState(false);
             
             // Get team from URL param
             const urlParams = new URLSearchParams(window.location.search);
@@ -92,23 +119,58 @@
             const teamColor = TEAM_COLORS[team] || '#21A0D8';
             
             useEffect(() => {
-                const unsub = db.collection(basePath).doc('staff_directory').collection('staff_directory')
+                // Try to load from Firestore with direct collection path
+                const unsub = db.collection('staff_directory')
                     .onSnapshot(snap => {
-                        setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        if (snap.empty) {
+                            // No data, use demo
+                            setUseDemo(true);
+                        } else {
+                            setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        }
+                        setLoading(false);
+                    }, err => {
+                        console.log('Firestore error, using demo data:', err.message);
+                        setUseDemo(true);
+                        setLoading(false);
                     });
                 return () => unsub();
             }, []);
             
             const teamMembers = useMemo(() => {
-                return staffDirectory
-                    .filter(s => s.team === team)
-                    .sort((a, b) => {
-                        // Managers first, then alphabetical
+                if (useDemo) {
+                    return (DEMO_STAFF[team] || []).sort((a, b) => {
                         if (a.isManager && !b.isManager) return -1;
                         if (!a.isManager && b.isManager) return 1;
                         return (a.firstName || '').localeCompare(b.firstName || '');
                     });
-            }, [staffDirectory, team]);
+                }
+                return staffDirectory
+                    .filter(s => s.team === team)
+                    .sort((a, b) => {
+                        if (a.isManager && !b.isManager) return -1;
+                        if (!a.isManager && b.isManager) return 1;
+                        return (a.firstName || '').localeCompare(b.firstName || '');
+                    });
+            }, [staffDirectory, team, useDemo]);
+            
+            if (loading) {
+                return (
+                    <div className="widget">
+                        <div className="team-label">
+                            <div className="team-dots">
+                                <div className="team-dot" style={{ background: teamColor }}></div>
+                                <div className="team-dot" style={{ background: teamColor }}></div>
+                                <div className="team-dot" style={{ background: teamColor }}></div>
+                                <div className="team-dot" style={{ background: teamColor }}></div>
+                            </div>
+                            <span className="team-name">{team}</span>
+                        </div>
+                        <div className="divider"></div>
+                        <span className="loading">Loading...</span>
+                    </div>
+                );
+            }
             
             return (
                 <div className="widget">
@@ -126,9 +188,9 @@
                     
                     <div className="initials-row">
                         {teamMembers.length > 0 ? (
-                            teamMembers.map(member => (
+                            teamMembers.map((member, idx) => (
                                 <div 
-                                    key={member.id} 
+                                    key={member.id || idx} 
                                     className={`initial-badge ${member.isManager ? 'manager-ring' : ''}`}
                                     style={{ background: teamColor, color: team === 'Social' ? '#1C1C1C' : '#FFF' }}
                                 >
@@ -140,7 +202,7 @@
                                 </div>
                             ))
                         ) : (
-                            <span className="empty">No team members found</span>
+                            <span className="empty">No team members</span>
                         )}
                     </div>
                     
