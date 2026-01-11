@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Projects Kanban | DMG Command Centre</title>
+    <title>Sales Projects Table | DMG Command Centre</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -69,6 +69,75 @@
         }
 
         .kanban-container { padding: 12px; }
+        
+        .table-container {
+            padding: 12px;
+            overflow-x: auto;
+        }
+        
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .sales-table thead {
+            background: var(--surface-alt);
+        }
+        
+        .sales-table th {
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .sales-table td {
+            padding: 10px 12px;
+            font-size: 10px;
+            border-bottom: 1px solid var(--border);
+            color: var(--ink);
+        }
+        
+        .sales-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .sales-table tbody tr {
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        
+        .sales-table tbody tr:hover {
+            background: var(--surface-alt);
+        }
+        
+        .table-tag {
+            font-size: 8px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: var(--surface-alt);
+            color: var(--ink-sub);
+            display: inline-block;
+        }
+        
+        .table-link {
+            color: var(--dmg-blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .table-link:hover {
+            text-decoration: underline;
+        }
 
         .header {
             display: flex;
@@ -636,12 +705,18 @@
         }
 
         function renderKanban() {
-            const filtered = currentView === 'all' ? allProjects : allProjects.filter(p => p.team === currentView || p.primaryTeam === currentView);
+            // Filter to only show Sales team projects with specific dealStages
+            const filtered = allProjects.filter(p => {
+                const isSalesTeam = p.team === 'Sales' || p.primaryTeam === 'Sales';
+                const isCorrectStage = p.dealStage === 'Brief Recieved' || p.dealStage === 'Pitch Sent';
+                return isSalesTeam && isCorrectStage;
+            });
+            
             const totalValue = filtered.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
             const valueStr = totalValue >= 1000 ? `£${Math.round(totalValue / 1000)}K` : `£${totalValue}`;
 
             let html = `
-                <div class="kanban-container">
+                <div class="table-container">
                     <div class="header">
                         <div class="header-left">
                             <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
@@ -652,105 +727,70 @@
                             <span class="stat"><strong>${valueStr}</strong> Pipeline</span>
                         </div>
                     </div>
-                    <div class="kanban">`;
+                    <table class="sales-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Sales Lead(s)</th>
+                                <th>Deal Stage</th>
+                                <th>Priority</th>
+                                <th>Deal Value</th>
+                                <th>Client Due Date</th>
+                                <th>Internal Due Date</th>
+                                <th>Live Link</th>
+                                <th>Project Status</th>
+                                <th>Project Type</th>
+                                <th>Response (Deck)</th>
+                                <th>Response (PDF)</th>
+                                <th>Response Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
 
-            Object.entries(columns).forEach(([title, config]) => {
-                const columnProjects = filtered.filter(p => p.dealStage === config.stage);
-                html += `
-                    <div class="column" data-stage="${config.stage}" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-                        <div class="column-header">
-                            <span class="column-title" style="color: ${config.color}">${title}</span>
-                            <span class="column-count">${columnProjects.length}</span>
-                        </div>
-                        <div class="cards-container">`;
+            if (filtered.length === 0) {
+                html += `<tr><td colspan="13" style="text-align: center; padding: 40px; color: var(--ink-muted);">No projects found</td></tr>`;
+            } else {
+                filtered.forEach(project => {
+                    const salesLead = project.salesLead || project.salesLeads || '';
+                    const dealStage = project.dealStage || '';
+                    const priority = project.priority || project.priorityLevel || '';
+                    const dealValue = parseFloat(project.dealValue) || 0;
+                    const valueStr = dealValue >= 1000 ? `£${Math.round(dealValue / 1000)}K` : dealValue > 0 ? `£${dealValue}` : '';
+                    const clientDueDate = project.dueDate || '';
+                    const internalDueDate = project.internalDueDate || '';
+                    const liveLink = project.liveLink || '';
+                    const projectStatus = project.projectStatus || project.status || '';
+                    const projectType = project.projectType || '';
+                    const responseDeck = project.responseDeck || project.deckLink || '';
+                    const responsePdf = project.responsePdf || project.pdfLink || '';
+                    const responseTypeNeeded = project.responseTypeNeeded || project.responseType || '';
+                    
+                    html += `
+                        <tr onclick="openProject('${project.id}')">
+                            <td style="font-weight: 600;">${project.title || 'Untitled'}</td>
+                            <td>${salesLead}</td>
+                            <td><span class="table-tag">${dealStage}</span></td>
+                            <td>${priority}</td>
+                            <td style="font-weight: 700; color: var(--production);">${valueStr}</td>
+                            <td>${clientDueDate}</td>
+                            <td>${internalDueDate}</td>
+                            <td>${liveLink ? `<a href="${liveLink}" target="_blank" class="table-link" onclick="event.stopPropagation()">🔗 Link</a>` : ''}</td>
+                            <td>${projectStatus}</td>
+                            <td>${projectType}</td>
+                            <td>${responseDeck ? `<a href="${responseDeck}" target="_blank" class="table-link" onclick="event.stopPropagation()">📊 Deck</a>` : ''}</td>
+                            <td>${responsePdf ? `<a href="${responsePdf}" target="_blank" class="table-link" onclick="event.stopPropagation()">📄 PDF</a>` : ''}</td>
+                            <td>${responseTypeNeeded}</td>
+                        </tr>`;
+                });
+            }
 
-                if (columnProjects.length === 0) {
-                    html += `<div class="empty-column">Drop here</div>`;
-                } else {
-                    columnProjects.forEach(project => {
-                        const value = parseFloat(project.dealValue) || 0;
-                        const valueStr = value >= 1000 ? `£${Math.round(value / 1000)}K` : value > 0 ? `£${value}` : '';
-                        const team = project.team || project.primaryTeam || 'Sales';
-                        html += `
-                            <div class="project-card" data-id="${project.id}" data-team="${team}" draggable="true" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" onclick="openProject('${project.id}')">
-                                <div class="card-client">${project.client || 'Internal'}</div>
-                                <div class="card-title">${project.title || 'Untitled'}</div>
-                                <div class="card-meta">
-                                    <span class="card-tag">${team}</span>
-                                    ${valueStr ? `<span class="card-value">${valueStr}</span>` : ''}
-                                </div>
-                            </div>`;
-                    });
-                }
-                html += `</div></div>`;
-            });
-
-            html += `</div></div>`;
+            html += `</tbody></table></div>`;
             if (loading) html = `<div class="loading-screen"><div class="dot-grid"><span></span><span></span><span></span><span></span></div><span class="loading-text">Syncing with Notion...</span></div>`;
             document.getElementById('app').innerHTML = html;
         }
 
         function setView(view) { currentView = view; render(); }
         function openProject(id) { navigate(`?project=${id}`); }
-
-        function handleDragStart(e) {
-            draggedCard = e.target;
-            e.target.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', e.target.dataset.id);
-        }
-
-        function handleDragEnd(e) {
-            e.target.classList.remove('dragging');
-            document.querySelectorAll('.column').forEach(c => c.classList.remove('drag-over'));
-            draggedCard = null;
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            const column = e.target.closest('.column');
-            if (column) column.classList.add('drag-over');
-        }
-
-        function handleDragLeave(e) {
-            const column = e.target.closest('.column');
-            if (column && !column.contains(e.relatedTarget)) column.classList.remove('drag-over');
-        }
-
-        async function handleDrop(e) {
-            e.preventDefault();
-            const column = e.target.closest('.column');
-            if (!column || !draggedCard) return;
-            column.classList.remove('drag-over');
-
-            const projectId = draggedCard.dataset.id;
-            const newStage = column.dataset.stage;
-            const project = allProjects.find(p => p.id === projectId);
-            if (!project || project.dealStage === newStage) return;
-
-            const oldStage = project.dealStage;
-            project.dealStage = newStage;
-            render();
-            showUpdating(true);
-
-            try {
-                const res = await fetch(`${API_URL}/projects/${projectId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dealStage: newStage })
-                });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error || 'Update failed');
-                showToast(`Moved to ${newStage}`, 'success');
-            } catch (err) {
-                console.error('Update failed:', err);
-                project.dealStage = oldStage;
-                render();
-                showToast('Failed to update', 'error');
-            }
-            showUpdating(false);
-        }
 
         function showUpdating(visible) {
             document.getElementById('updatingBadge').classList.toggle('visible', visible);
