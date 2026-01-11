@@ -4,533 +4,489 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manager Dashboard | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --dmg-blue: #21a0d8;
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-operations: #9333EA;
+            --team-sales: #F97316;
+            --border: #EAECEF;
             --ink: #1C1C1C;
-            --ink-sub: #6B7280;
-            --border: #E5E7EB;
+            --ink-sub: #757575;
             --bg-soft: #F9FAFB;
-            --success: #10B981;
+            --success: #22C55E;
             --warning: #F59E0B;
-            --urgent: #EF4444;
+            --danger: #EF4444;
         }
-        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg-soft); margin: 0; padding: 20px; min-height: 100vh; }
-        
-        .dashboard { max-width: 1200px; margin: 0 auto; }
-        
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
-        .header-left { display: flex; align-items: center; gap: 16px; }
-        .dots { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 24px; height: 24px; }
-        .dot { width: 100%; height: 100%; background: var(--dmg-blue); border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
-        .dot:nth-child(1) { animation-delay: 0s; }
-        .dot:nth-child(2) { animation-delay: 0.625s; }
-        .dot:nth-child(3) { animation-delay: 1.25s; }
-        .dot:nth-child(4) { animation-delay: 1.875s; }
-        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-        
-        .title { font-size: 24px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: -0.03em; }
-        
-        .manager-badge { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #FFF; border-radius: 12px; border: 1px solid var(--border); }
-        .manager-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #FFF; }
-        .manager-name { font-size: 13px; font-weight: 800; color: var(--ink); }
-        .manager-role { font-size: 10px; color: var(--ink-sub); }
-        
-        .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-        .tab { padding: 10px 20px; border-radius: 10px; border: 1px solid var(--border); background: #FFF; font-size: 11px; font-weight: 700; color: var(--ink-sub); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; }
-        .tab:hover { background: var(--bg-soft); }
-        .tab.active { background: var(--dmg-blue); color: #FFF; border-color: var(--dmg-blue); }
-        .tab-badge { min-width: 18px; height: 18px; border-radius: 9px; font-size: 10px; font-weight: 800; margin-left: 8px; padding: 0 6px; display: flex; align-items: center; justify-content: center; }
-        .tab.active .tab-badge { background: rgba(255,255,255,0.3); }
-        .tab:not(.active) .tab-badge { background: var(--urgent); color: #FFF; }
-        
-        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat-card { background: #FFF; border-radius: 12px; border: 1px solid var(--border); padding: 16px; text-align: center; }
-        .stat-value { font-size: 28px; font-weight: 900; color: var(--ink); }
-        .stat-label { font-size: 9px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
-        .stat-card.urgent { border-color: var(--urgent); }
-        .stat-card.urgent .stat-value { color: var(--urgent); }
-        
-        .card { background: #FFF; border-radius: 16px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 16px; }
-        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-        .card-title { font-size: 12px; font-weight: 800; color: var(--ink); text-transform: uppercase; }
-        .card-body { padding: 16px 20px; }
-        
-        .staff-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
-        .staff-item:last-child { border-bottom: none; }
-        .staff-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #FFF; flex-shrink: 0; }
-        .staff-info { flex: 1; }
-        .staff-name { font-size: 13px; font-weight: 700; color: var(--ink); }
-        .staff-role { font-size: 10px; color: var(--ink-sub); }
-        
-        .status-badge { padding: 4px 10px; border-radius: 6px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
-        .status-badge.submitted { background: #D1FAE5; color: var(--success); }
-        .status-badge.pending { background: #FEF3C7; color: var(--warning); }
-        .status-badge.overdue { background: #FEE2E2; color: var(--urgent); }
-        
-        .approval-item { background: var(--bg-soft); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-        .approval-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-        .approval-user { display: flex; align-items: center; gap: 10px; }
-        .approval-week { font-size: 10px; font-weight: 700; color: var(--ink-sub); }
-        
-        .schedule-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-        .schedule-day { padding: 6px 10px; border-radius: 6px; font-size: 9px; font-weight: 700; text-align: center; min-width: 60px; }
-        .schedule-day.office { background: #D1FAE5; color: var(--success); }
-        .schedule-day.wfh { background: #FEF3C7; color: var(--warning); }
-        .schedule-day.shoot { background: #DBEAFE; color: #2563EB; }
-        .schedule-day.leave { background: #FEE2E2; color: var(--urgent); }
-        .schedule-day.weekend { background: #F3F4F6; color: #9CA3AF; }
-        
-        .approval-actions { display: flex; gap: 8px; }
-        .action-btn { padding: 10px 20px; border-radius: 8px; border: none; font-size: 10px; font-weight: 800; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
-        .action-btn.approve { background: var(--success); color: #FFF; }
-        .action-btn.approve:hover { filter: brightness(1.1); }
-        .action-btn.deny { background: #FFF; color: var(--urgent); border: 1px solid var(--urgent); }
-        .action-btn.deny:hover { background: #FEF2F2; }
-        
-        .workload-table { width: 100%; border-collapse: collapse; }
-        .workload-table th, .workload-table td { padding: 10px; text-align: center; border: 1px solid var(--border); font-size: 10px; }
-        .workload-table th { background: var(--bg-soft); font-weight: 800; text-transform: uppercase; color: var(--ink-sub); }
-        .workload-table td:first-child { text-align: left; font-weight: 700; }
-        .workload-status { padding: 4px 8px; border-radius: 4px; font-weight: 700; }
-        .workload-status.office { background: #D1FAE5; color: var(--success); }
-        .workload-status.wfh { background: #FEF3C7; color: var(--warning); }
-        .workload-status.shoot { background: #DBEAFE; color: #2563EB; }
-        .workload-status.leave { background: #FEE2E2; color: var(--urgent); }
-        .workload-status.unknown { background: #F3F4F6; color: #9CA3AF; }
-        
-        .empty-state { text-align: center; padding: 40px 20px; }
-        .empty-icon { font-size: 40px; margin-bottom: 12px; }
-        .empty-text { font-size: 13px; color: var(--ink-sub); }
-        
-        .not-manager { text-align: center; padding: 80px 20px; background: #FFF; border-radius: 16px; border: 1px solid var(--border); }
-        .not-manager-icon { font-size: 48px; margin-bottom: 16px; }
-        .not-manager-title { font-size: 18px; font-weight: 900; color: var(--ink); margin-bottom: 8px; }
-        .not-manager-desc { font-size: 13px; color: var(--ink-sub); }
-        
-        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; background: var(--ink); color: #FFF; border-radius: 10px; font-size: 12px; font-weight: 700; z-index: 1000; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        
-        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; }
-        
-        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 16px; }
-        
-        @media (max-width: 600px) {
-            .grid-2 { grid-template-columns: 1fr; }
-            .stats-row { grid-template-columns: repeat(2, 1fr); }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 16px;
+            color: var(--ink);
         }
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        .dot-grid span:nth-child(1) { animation-delay: 0s; }
+        .dot-grid span:nth-child(2) { animation-delay: 0.15s; }
+        .dot-grid span:nth-child(3) { animation-delay: 0.3s; }
+        .dot-grid span:nth-child(4) { animation-delay: 0.45s; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        .dashboard-title {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--ink);
+        }
+        .demo-badge {
+            font-size: 8px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: var(--team-creative);
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-left: auto;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+        }
+        .stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--ink);
+        }
+        .stat-trend {
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+        .stat-trend.up { color: var(--success); }
+        .stat-trend.down { color: var(--danger); }
+        
+        /* Team Capacity Section */
+        .section {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .section-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .section-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 99px;
+            background: var(--bg-soft);
+            color: var(--ink-sub);
+        }
+        
+        /* Team Row */
+        .team-row {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #F5F5F5;
+        }
+        .team-row:last-child { border-bottom: none; }
+        .team-color {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+        .team-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+            width: 120px;
+        }
+        .team-members {
+            display: flex;
+            gap: 4px;
+            flex: 1;
+            margin: 0 16px;
+        }
+        .member-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 800;
+            color: #FFF;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .member-avatar:hover { transform: scale(1.1); }
+        .capacity-bar {
+            width: 100px;
+            height: 6px;
+            background: #E5E5E5;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-right: 12px;
+        }
+        .capacity-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        .capacity-value {
+            font-size: 12px;
+            font-weight: 800;
+            width: 40px;
+            text-align: right;
+        }
+        
+        /* Recent Activity */
+        .activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 20px;
+            border-bottom: 1px solid #F5F5F5;
+        }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 800;
+            color: #FFF;
+            flex-shrink: 0;
+        }
+        .activity-content { flex: 1; }
+        .activity-text {
+            font-size: 13px;
+            color: var(--ink);
+            line-height: 1.4;
+        }
+        .activity-text strong { font-weight: 700; }
+        .activity-time {
+            font-size: 11px;
+            color: var(--ink-sub);
+            margin-top: 4px;
+        }
+        
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            color: var(--ink-sub);
+            font-size: 13px;
+        }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--dmg-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div id="root"></div>
-    
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-        
+    <div id="root">
+        <div class="loading">
+            <div class="spinner"></div>
+            Loading dashboard...
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
         const firebaseConfig = {
             apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
             authDomain: "dmg-command-centre-native.firebaseapp.com",
-            projectId: "dmg-command-centre-native"
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
         };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        
-        const appId = 'dmg-command-centre-native';
-        const basePath = `artifacts/${appId}/public/data`;
-        
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
         const TEAM_COLORS = {
-            'Editorial': '#E94B4B', 'Creative': '#E6468B', 'Production': '#43B049',
-            'Social': '#F2C316', 'Operations': '#21A0D8', 'Executive': '#1C1C1C'
+            'Editorial': '#E94B4B',
+            'Creative': '#E6468B',
+            'Production': '#43B049',
+            'Social': '#F2C316',
+            'Social Video': '#F2C316',
+            'Operations': '#9333EA',
+            'Sales': '#F97316'
         };
-        const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-        
+
+        // Demo data fallback
+        const DEMO_STAFF = [
+            { id: '1', firstName: 'Nick', lastName: 'B', team: 'Creative', role: 'Creative Lead', isManager: true },
+            { id: '2', firstName: 'Ana', lastName: 'C', team: 'Creative', role: 'Senior Creative' },
+            { id: '3', firstName: 'Hugo', lastName: 'M', team: 'Production', role: 'Producer' },
+            { id: '4', firstName: 'Isobel', lastName: 'W', team: 'Editorial', role: 'Editor', isManager: true },
+            { id: '5', firstName: 'Mimi', lastName: 'Y', team: 'Social', role: 'Creator' },
+            { id: '6', firstName: 'Dan', lastName: 'Q', team: 'Social', role: 'Presenter' },
+            { id: '7', firstName: 'Kaylee', lastName: 'A', team: 'Editorial', role: 'Presenter' },
+            { id: '8', firstName: 'Sophia', lastName: 'S', team: 'Editorial', role: 'Finance Creator' },
+            { id: '9', firstName: 'Henry', lastName: 'W', team: 'Social', role: 'Sport Creator' },
+            { id: '10', firstName: 'Gemma', lastName: 'P', team: 'Production', role: 'Producer', isManager: true },
+            { id: '11', firstName: 'Tom', lastName: 'R', team: 'Operations', role: 'Ops Manager', isManager: true },
+            { id: '12', firstName: 'Ellie', lastName: 'B', team: 'Creative', role: 'Head of Social', isManager: true }
+        ];
+
+        const DEMO_ACTIVITY = [
+            { person: 'Nick B', action: 'approved', target: 'Sky Vegas concept deck', time: '10 mins ago', team: 'Creative' },
+            { person: 'Gemma P', action: 'scheduled', target: 'Street Talks shoot for Monday', time: '25 mins ago', team: 'Production' },
+            { person: 'Isobel W', action: 'published', target: '3 new Headlines videos', time: '1 hour ago', team: 'Editorial' },
+            { person: 'Ana C', action: 'submitted', target: 'Chery creative response', time: '2 hours ago', team: 'Creative' },
+            { person: 'Tom R', action: 'updated', target: 'team rota for next week', time: '3 hours ago', team: 'Operations' }
+        ];
+
+        let staff = [];
+        let activity = DEMO_ACTIVITY;
+        let isDemo = true;
+        const root = document.getElementById('root');
+
+        const getTeamColor = t => TEAM_COLORS[t] || '#21a0d8';
         const getInitials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
-        const getTeamColor = (t) => TEAM_COLORS[t] || '#21a0d8';
-        
-        const getWeekInfo = () => {
-            const today = new Date();
-            const day = today.getDay();
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
-            monday.setHours(0, 0, 0, 0);
-            const wed = new Date(monday);
-            wed.setDate(monday.getDate() + 2);
-            wed.setHours(17, 0, 0, 0);
-            return {
-                weekId: monday.toISOString().split('T')[0],
-                isPastDeadline: today > wed,
-                weekLabel: monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-            };
-        };
-        
-        const DotGrid = () => (
-            <div className="dots">
-                <div className="dot"></div><div className="dot"></div>
-                <div className="dot"></div><div className="dot"></div>
-            </div>
-        );
-        
-        const Toast = ({ message, onClose }) => {
-            useEffect(() => { const t = setTimeout(onClose, 2500); return () => clearTimeout(t); }, []);
-            return <div className="toast">{message}</div>;
-        };
-        
-        function App() {
-            const [currentUser, setCurrentUser] = useState(null);
-            const [staffDirectory, setStaffDirectory] = useState([]);
-            const [rotaSubmissions, setRotaSubmissions] = useState([]);
-            const [rotaResponses, setRotaResponses] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [activeTab, setActiveTab] = useState('overview');
-            const [toast, setToast] = useState(null);
-            
-            const weekInfo = useMemo(() => getWeekInfo(), []);
-            
-            // Get direct reports for current manager
-            const directReports = useMemo(() => {
-                if (!currentUser) return [];
-                const managerName = `${currentUser.firstName} ${currentUser.lastName}`;
-                return staffDirectory.filter(s => s.manager === managerName);
-            }, [currentUser, staffDirectory]);
-            
-            // Get submissions from direct reports for this week
-            const teamSubmissions = useMemo(() => {
-                return rotaSubmissions.filter(s => {
-                    const isThisWeek = s.weekId === weekInfo.weekId;
-                    const isFromTeam = directReports.some(dr => 
-                        s.userId === dr.id || s.name === `${dr.firstName} ${dr.lastName}`
-                    );
-                    return isThisWeek && isFromTeam;
-                });
-            }, [rotaSubmissions, directReports, weekInfo]);
-            
-            // Pending approvals (not yet responded)
-            const pendingApprovals = useMemo(() => {
-                return teamSubmissions.filter(s => {
-                    const hasResponse = rotaResponses.some(r => r.submissionId === s.id);
-                    return !hasResponse;
-                });
-            }, [teamSubmissions, rotaResponses]);
-            
-            // Stats
-            const stats = useMemo(() => {
-                const submitted = teamSubmissions.length;
-                const pending = directReports.length - submitted;
-                const overdue = weekInfo.isPastDeadline ? pending : 0;
-                return { total: directReports.length, submitted, pending, overdue };
-            }, [directReports, teamSubmissions, weekInfo]);
-            
-            // Load data
-            useEffect(() => {
-                const unsub1 = db.collection(basePath).doc('staff_directory').collection('staff_directory')
-                    .onSnapshot(snap => setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-                
-                const unsub2 = db.collection(basePath).doc('rota_submissions').collection('rota_submissions')
-                    .onSnapshot(snap => setRotaSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-                
-                const unsub3 = db.collection(basePath).doc('rota_responses').collection('rota_responses')
-                    .onSnapshot(snap => setRotaResponses(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-                
-                return () => { unsub1(); unsub2(); unsub3(); };
-            }, []);
-            
-            // Auth
-            useEffect(() => {
-                const unsub = auth.onAuthStateChanged(async (firebaseUser) => {
-                    if (!firebaseUser) { auth.signInAnonymously(); return; }
-                    
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const paramId = urlParams.get('id');
-                    
-                    if (paramId && staffDirectory.length > 0) {
-                        const found = staffDirectory.find(s => s.id === paramId);
-                        if (found) { setCurrentUser(found); setLoading(false); return; }
-                    }
-                    
-                    if (firebaseUser.email && staffDirectory.length > 0) {
-                        const found = staffDirectory.find(s => s.email?.toLowerCase() === firebaseUser.email.toLowerCase());
-                        if (found) { setCurrentUser(found); setLoading(false); return; }
-                    }
-                    
-                    setCurrentUser(null);
-                    setLoading(false);
-                });
-                return () => unsub();
-            }, [staffDirectory]);
-            
-            const handleApprove = async (submission) => {
-                await db.collection(basePath).doc('rota_responses').collection('rota_responses').add({
-                    submissionId: submission.id,
-                    status: 'approved',
-                    managerId: currentUser.id,
-                    managerName: `${currentUser.firstName} ${currentUser.lastName}`,
-                    respondedAt: new Date().toISOString()
-                });
-                setToast('Rota Approved');
-            };
-            
-            const handleDeny = async (submission) => {
-                await db.collection(basePath).doc('rota_responses').collection('rota_responses').add({
-                    submissionId: submission.id,
-                    status: 'denied',
-                    managerId: currentUser.id,
-                    managerName: `${currentUser.firstName} ${currentUser.lastName}`,
-                    respondedAt: new Date().toISOString()
-                });
-                setToast('Rota Denied');
-            };
-            
-            const getStaffStatus = (staff) => {
-                const hasSubmission = teamSubmissions.some(s => 
-                    s.userId === staff.id || s.name === `${staff.firstName} ${staff.lastName}`
-                );
-                if (hasSubmission) return 'submitted';
-                if (weekInfo.isPastDeadline) return 'overdue';
-                return 'pending';
-            };
-            
-            const getStaffSchedule = (staff, dayIndex) => {
-                const submission = teamSubmissions.find(s => 
-                    s.userId === staff.id || s.name === `${staff.firstName} ${staff.lastName}`
-                );
-                if (!submission || !submission.schedule || !submission.schedule[dayIndex]) return null;
-                return submission.schedule[dayIndex].status;
-            };
-            
-            if (loading) {
-                return (
-                    <div className="dashboard">
-                        <div className="loading">
-                            <DotGrid />
-                            <p style={{ fontSize: '12px', color: 'var(--ink-sub)', marginTop: '16px' }}>Loading dashboard...</p>
-                        </div>
-                    </div>
-                );
-            }
-            
-            if (!currentUser || !currentUser.isManager) {
-                return (
-                    <div className="dashboard">
-                        <div className="not-manager">
-                            <div className="not-manager-icon">🔒</div>
-                            <div className="not-manager-title">Manager Access Only</div>
-                            <div className="not-manager-desc">
-                                This dashboard is restricted to line managers.<br/>
-                                If you believe this is an error, contact Operations.
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-            
-            return (
-                <div className="dashboard">
-                    {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-                    
-                    <div className="header">
-                        <div className="header-left">
-                            <DotGrid />
-                            <div>
-                                <div className="title">Manager Dashboard</div>
-                            </div>
-                        </div>
-                        <div className="manager-badge">
-                            <div className="manager-avatar" style={{ background: getTeamColor(currentUser.team) }}>
-                                {getInitials(currentUser.firstName, currentUser.lastName)}
-                            </div>
-                            <div>
-                                <div className="manager-name">{currentUser.firstName} {currentUser.lastName}</div>
-                                <div className="manager-role">{currentUser.role}</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="tabs">
-                        <button className={`tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
-                            Overview
-                        </button>
-                        <button className={`tab ${activeTab === 'approvals' ? 'active' : ''}`} onClick={() => setActiveTab('approvals')}>
-                            Approvals
-                            {pendingApprovals.length > 0 && <span className="tab-badge">{pendingApprovals.length}</span>}
-                        </button>
-                        <button className={`tab ${activeTab === 'workload' ? 'active' : ''}`} onClick={() => setActiveTab('workload')}>
-                            Week View
-                        </button>
-                    </div>
-                    
-                    {activeTab === 'overview' && (
-                        <>
-                            <div className="stats-row">
-                                <div className="stat-card">
-                                    <div className="stat-value">{stats.total}</div>
-                                    <div className="stat-label">Direct Reports</div>
-                                </div>
-                                <div className="stat-card">
-                                    <div className="stat-value">{stats.submitted}</div>
-                                    <div className="stat-label">Submitted</div>
-                                </div>
-                                <div className="stat-card">
-                                    <div className="stat-value">{stats.pending}</div>
-                                    <div className="stat-label">Pending</div>
-                                </div>
-                                <div className={`stat-card ${stats.overdue > 0 ? 'urgent' : ''}`}>
-                                    <div className="stat-value">{stats.overdue}</div>
-                                    <div className="stat-label">Overdue</div>
-                                </div>
-                            </div>
-                            
-                            <div className="card">
-                                <div className="card-header">
-                                    <span className="card-title">Team Status</span>
-                                    <span style={{ fontSize: '10px', color: 'var(--ink-sub)' }}>Week of {weekInfo.weekLabel}</span>
-                                </div>
-                                <div className="card-body">
-                                    {directReports.length > 0 ? (
-                                        directReports.map(staff => {
-                                            const status = getStaffStatus(staff);
-                                            return (
-                                                <div key={staff.id} className="staff-item">
-                                                    <div className="staff-avatar" style={{ background: getTeamColor(staff.team) }}>
-                                                        {getInitials(staff.firstName, staff.lastName)}
-                                                    </div>
-                                                    <div className="staff-info">
-                                                        <div className="staff-name">{staff.firstName} {staff.lastName}</div>
-                                                        <div className="staff-role">{staff.role}</div>
-                                                    </div>
-                                                    <span className={`status-badge ${status}`}>
-                                                        {status === 'submitted' ? '✓ Submitted' : status === 'overdue' ? '⚠ Overdue' : 'Pending'}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="empty-state">
-                                            <div className="empty-icon">👥</div>
-                                            <div className="empty-text">No direct reports found</div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </>
-                    )}
-                    
-                    {activeTab === 'approvals' && (
-                        <div className="card">
-                            <div className="card-header">
-                                <span className="card-title">Pending Approvals</span>
-                            </div>
-                            <div className="card-body">
-                                {pendingApprovals.length > 0 ? (
-                                    pendingApprovals.map(submission => {
-                                        const staff = directReports.find(dr => 
-                                            dr.id === submission.userId || `${dr.firstName} ${dr.lastName}` === submission.name
-                                        );
-                                        const statusClass = { 'Office': 'office', 'WFH': 'wfh', 'Shoot': 'shoot', 'PTO': 'leave', 'Weekend': 'weekend' };
-                                        
-                                        return (
-                                            <div key={submission.id} className="approval-item">
-                                                <div className="approval-header">
-                                                    <div className="approval-user">
-                                                        <div className="staff-avatar" style={{ background: getTeamColor(staff?.team), width: 32, height: 32, fontSize: 10 }}>
-                                                            {getInitials(staff?.firstName, staff?.lastName)}
-                                                        </div>
-                                                        <div>
-                                                            <div className="staff-name">{submission.name}</div>
-                                                            <div className="staff-role">{staff?.role}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="approval-week">Week of {submission.weekId}</div>
-                                                </div>
-                                                
-                                                <div className="schedule-row">
-                                                    {submission.schedule?.slice(0, 5).map((day, i) => (
-                                                        <div key={i} className={`schedule-day ${statusClass[day.status] || 'unknown'}`}>
-                                                            <div style={{ fontSize: '8px', opacity: 0.7 }}>{DAYS[i]}</div>
-                                                            <div>{day.status}</div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                                
-                                                <div className="approval-actions">
-                                                    <button className="action-btn approve" onClick={() => handleApprove(submission)}>
-                                                        ✓ Approve
-                                                    </button>
-                                                    <button className="action-btn deny" onClick={() => handleDeny(submission)}>
-                                                        ✗ Deny
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="empty-state">
-                                        <div className="empty-icon">✅</div>
-                                        <div className="empty-text">All caught up! No pending approvals.</div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    
-                    {activeTab === 'workload' && (
-                        <div className="card">
-                            <div className="card-header">
-                                <span className="card-title">Week at a Glance</span>
-                                <span style={{ fontSize: '10px', color: 'var(--ink-sub)' }}>Week of {weekInfo.weekLabel}</span>
-                            </div>
-                            <div className="card-body" style={{ overflowX: 'auto' }}>
-                                <table className="workload-table">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ textAlign: 'left' }}>Team Member</th>
-                                            {DAYS.map(d => <th key={d}>{d}</th>)}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {directReports.map(staff => (
-                                            <tr key={staff.id}>
-                                                <td>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <div className="staff-avatar" style={{ background: getTeamColor(staff.team), width: 24, height: 24, fontSize: 9 }}>
-                                                            {getInitials(staff.firstName, staff.lastName)}
-                                                        </div>
-                                                        {staff.firstName} {staff.lastName}
-                                                    </div>
-                                                </td>
-                                                {[0, 1, 2, 3, 4].map(dayIndex => {
-                                                    const status = getStaffSchedule(staff, dayIndex);
-                                                    const cls = status ? status.toLowerCase().replace(' ', '') : 'unknown';
-                                                    return (
-                                                        <td key={dayIndex}>
-                                                            <span className={`workload-status ${cls === 'pto' ? 'leave' : cls}`}>
-                                                                {status || '—'}
-                                                            </span>
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+
+        function getTeamStats() {
+            const teams = {};
+            staff.forEach(s => {
+                if (!teams[s.team]) {
+                    teams[s.team] = { members: [], capacity: Math.floor(Math.random() * 40) + 60 };
+                }
+                teams[s.team].members.push(s);
+            });
+            return teams;
         }
-        
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+
+        function render() {
+            const teamStats = getTeamStats();
+            const totalStaff = staff.length;
+            const totalManagers = staff.filter(s => s.isManager).length;
+            const avgCapacity = Object.values(teamStats).reduce((sum, t) => sum + t.capacity, 0) / Object.keys(teamStats).length || 0;
+
+            root.innerHTML = `
+                <div class="dashboard">
+                    <div class="dashboard-header">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <h1 class="dashboard-title">Manager Dashboard</h1>
+                        ${isDemo ? '<span class="demo-badge">Preview Mode</span>' : ''}
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Team Members</div>
+                            <div class="stat-value">${totalStaff}</div>
+                            <div class="stat-trend up">↑ Active staff</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Team Leads</div>
+                            <div class="stat-value">${totalManagers}</div>
+                            <div class="stat-trend">Across ${Object.keys(teamStats).length} teams</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Capacity</div>
+                            <div class="stat-value">${Math.round(avgCapacity)}%</div>
+                            <div class="stat-trend ${avgCapacity > 80 ? 'down' : 'up'}">${avgCapacity > 80 ? 'High load' : 'Healthy'}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Active Projects</div>
+                            <div class="stat-value">8</div>
+                            <div class="stat-trend up">↑ 2 this week</div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Team Capacity</h2>
+                            <span class="section-badge">${Object.keys(teamStats).length} Teams</span>
+                        </div>
+                        ${Object.entries(teamStats).map(([team, data]) => `
+                            <div class="team-row">
+                                <div class="team-color" style="background: ${getTeamColor(team)}"></div>
+                                <div class="team-name">${team}</div>
+                                <div class="team-members">
+                                    ${data.members.slice(0, 6).map(m => `
+                                        <div class="member-avatar" style="background: ${getTeamColor(team)}" title="${m.firstName} ${m.lastName}">
+                                            ${getInitials(m.firstName, m.lastName)}
+                                        </div>
+                                    `).join('')}
+                                    ${data.members.length > 6 ? `<div class="member-avatar" style="background: #999">+${data.members.length - 6}</div>` : ''}
+                                </div>
+                                <div class="capacity-bar">
+                                    <div class="capacity-fill" style="width: ${data.capacity}%; background: ${data.capacity > 85 ? '#EF4444' : data.capacity > 70 ? '#F59E0B' : '#22C55E'}"></div>
+                                </div>
+                                <div class="capacity-value" style="color: ${data.capacity > 85 ? '#EF4444' : data.capacity > 70 ? '#F59E0B' : '#22C55E'}">${data.capacity}%</div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="section">
+                        <div class="section-header">
+                            <h2 class="section-title">Recent Activity</h2>
+                            <span class="section-badge">Last 24h</span>
+                        </div>
+                        ${activity.map(a => `
+                            <div class="activity-item">
+                                <div class="activity-avatar" style="background: ${getTeamColor(a.team)}">
+                                    ${a.person.split(' ').map(n => n[0]).join('')}
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-text"><strong>${a.person}</strong> ${a.action} <strong>${a.target}</strong></div>
+                                    <div class="activity-time">${a.time}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadData() {
+            try {
+                // Load staff from Firebase
+                const staffSnap = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+                if (!staffSnap.empty) {
+                    staff = [];
+                    staffSnap.forEach(d => {
+                        staff.push({ id: d.id, ...d.data() });
+                    });
+                    isDemo = false;
+                } else {
+                    staff = DEMO_STAFF;
+                    isDemo = true;
+                }
+
+                // Try to load activity feed
+                try {
+                    const activitySnap = await getDocs(
+                        query(collection(db, "artifacts", appId, "public", "data", "activity_feed"), orderBy("timestamp", "desc"), limit(5))
+                    );
+                    if (!activitySnap.empty) {
+                        activity = [];
+                        activitySnap.forEach(d => {
+                            const data = d.data();
+                            activity.push({
+                                person: data.userName || 'Unknown',
+                                action: data.action || 'updated',
+                                target: data.target || 'item',
+                                time: data.timestamp ? formatTime(data.timestamp.toDate()) : 'Recently',
+                                team: data.team || 'Operations'
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.log('Using demo activity');
+                }
+
+            } catch (e) {
+                console.log('Using demo data:', e);
+                staff = DEMO_STAFF;
+                isDemo = true;
+            }
+            render();
+        }
+
+        function formatTime(date) {
+            const diff = Date.now() - date.getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 60) return `${mins} mins ago`;
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+            return `${Math.floor(hours / 24)} days ago`;
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loadData();
+            } else {
+                signInAnonymously(auth).catch(e => {
+                    console.error('Auth failed:', e);
+                    staff = DEMO_STAFF;
+                    isDemo = true;
+                    render();
+                });
+            }
+        });
     </script>
 </body>
 </html>
