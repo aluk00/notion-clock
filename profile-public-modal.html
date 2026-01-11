@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-operations: #9333EA;
+            --team-sales: #F97316;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: rgba(0,0,0,0.6);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        .modal-container {
+            background: #FFF;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 440px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.4);
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Header with gradient */
+        .profile-header {
+            position: relative;
+            padding: 24px 20px 60px;
+            background: linear-gradient(135deg, var(--team-color, var(--dmg-blue)) 0%, color-mix(in srgb, var(--team-color, var(--dmg-blue)) 70%, black) 100%);
+        }
+        .close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: #FFF;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .close-btn:hover { background: rgba(255,255,255,0.3); }
+        
+        .mood-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.2);
+            padding: 6px 12px;
+            border-radius: 99px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #FFF;
+            margin-bottom: 8px;
+        }
+        .mood-emoji { font-size: 14px; }
+        
+        .profile-name {
+            font-size: 24px;
+            font-weight: 900;
+            color: #FFF;
+            margin: 0 0 4px;
+        }
+        .profile-role {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        /* Avatar */
+        .avatar-ring {
+            position: absolute;
+            bottom: -40px;
+            left: 20px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #FFF;
+            padding: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .avatar-inner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: var(--team-color, var(--dmg-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 900;
+            color: #FFF;
+        }
+        .online-dot {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #22C55E;
+            border: 3px solid #FFF;
+        }
+        
+        /* Body */
+        .profile-body {
+            padding: 50px 20px 20px;
+        }
+        
+        /* Song of the moment */
+        .song-section {
+            background: var(--bg-soft);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .song-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #1DB954 0%, #191414 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .song-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .song-label {
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--ink-sub);
+            margin-bottom: 2px;
+        }
+        .song-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .song-artist {
+            font-size: 10px;
+            color: var(--ink-sub);
+        }
+        .song-play {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #1DB954;
+            border: none;
+            color: #FFF;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Section headers */
+        .section-header {
+            font-size: 9px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--ink-sub);
+            margin: 20px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        
+        /* Top Friends */
+        .top-friends {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .friend-item {
+            flex: 1;
+            text-align: center;
+            padding: 10px 4px;
+            border-radius: 12px;
+            background: var(--bg-soft);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .friend-item:hover {
+            background: #EEE;
+            transform: translateY(-2px);
+        }
+        .friend-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            margin: 0 auto 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 800;
+            color: #FFF;
+        }
+        .friend-name {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Currently working on */
+        .working-on {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .work-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-soft);
+            border-radius: 10px;
+            border-left: 3px solid var(--team-color, var(--dmg-blue));
+        }
+        .work-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #F59E0B;
+        }
+        .work-status.done { background: #22C55E; }
+        .work-status.review { background: #8B5CF6; }
+        .work-title {
+            flex: 1;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .work-campaign {
+            font-size: 9px;
+            color: var(--ink-sub);
+            font-weight: 500;
+        }
+        
+        /* Wall / Guestbook */
+        .wall-posts {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .wall-post {
+            padding: 10px 12px;
+            background: var(--bg-soft);
+            border-radius: 10px;
+        }
+        .wall-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .wall-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 800;
+            color: #FFF;
+        }
+        .wall-author {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+        .wall-time {
+            font-size: 9px;
+            color: var(--ink-sub);
+            margin-left: auto;
+        }
+        .wall-text {
+            font-size: 12px;
+            color: var(--ink);
+            line-height: 1.5;
+        }
+        
+        /* Wall input */
+        .wall-input-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .wall-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 2px solid var(--border);
+            border-radius: 99px;
+            font-size: 12px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .wall-input:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+        }
+        .wall-send {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            border: none;
+            color: #FFF;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .wall-send:hover { background: #1a8ac6; }
+        
+        /* Stats row */
+        .stats-row {
+            display: flex;
+            gap: 16px;
+            padding: 12px 0;
+            border-top: 1px solid var(--border);
+            margin-top: 16px;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--ink);
+        }
+        .stat-label {
+            font-size: 9px;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Edit button (only on own profile) */
+        .edit-profile-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-soft);
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 16px;
+        }
+        .edit-profile-btn:hover {
+            border-color: var(--dmg-blue);
+            color: var(--dmg-blue);
+        }
+        
+        /* Demo badge */
+        .demo-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            font-size: 7px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #FFF;
+            background: rgba(0,0,0,0.3);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--ink);
+            color: #FFF;
+            padding: 12px 24px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 700;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.active {
+            bottom: 30px;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div class="toast" id="toast">Posted to wall!</div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, orderBy, limit, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        const TEAM_COLORS = {
+            'Editorial': '#E94B4B',
+            'Creative': '#E6468B',
+            'Production': '#43B049',
+            'Social': '#F2C316',
+            'Social Video': '#F2C316',
+            'Operations': '#9333EA',
+            'Sales': '#F97316'
+        };
+
+        const MOODS = [
+            { emoji: '🔥', label: 'On Fire' },
+            { emoji: '😤', label: 'In The Zone' },
+            { emoji: '☕', label: 'Need Coffee' },
+            { emoji: '🧘', label: 'Zen Mode' },
+            { emoji: '🎉', label: 'Celebrating' },
+            { emoji: '😴', label: 'Running on Fumes' },
+            { emoji: '🤔', label: 'Deep in Thought' },
+            { emoji: '💪', label: 'Crushing It' }
+        ];
+
+        // Demo data
+        const DEMO_PROFILE = {
+            id: 'demo-user',
+            firstName: 'Your',
+            lastName: 'Name',
+            role: 'Your Role',
+            team: 'Creative',
+            isDemo: true
+        };
+
+        const DEMO_PROFILE_DATA = {
+            mood: { emoji: '🔥', label: 'On Fire' },
+            song: { title: 'Running Up That Hill', artist: 'Kate Bush', spotifyUrl: '' },
+            topFriends: [
+                { id: '1', firstName: 'Nick', lastName: 'B', team: 'Creative' },
+                { id: '2', firstName: 'Hugo', lastName: 'M', team: 'Production' },
+                { id: '3', firstName: 'Isobel', lastName: 'W', team: 'Editorial' },
+                { id: '4', firstName: 'Dan', lastName: 'Q', team: 'Social' }
+            ],
+            workingOn: [
+                { title: 'Sky Vegas Campaign', campaign: 'Sky', status: 'in-progress' },
+                { title: 'Chery Creative Response', campaign: 'Chery', status: 'review' }
+            ]
+        };
+
+        const DEMO_WALL_POSTS = [
+            { id: '1', authorId: '1', authorName: 'Nick B', authorTeam: 'Creative', text: 'Those Sky Vegas concepts are looking 🔥', timestamp: Date.now() - 3600000 },
+            { id: '2', authorId: '2', authorName: 'Hugo M', authorTeam: 'Production', text: 'Coffee run? ☕', timestamp: Date.now() - 7200000 }
+        ];
+
+        let viewingProfile = null;      // The profile being viewed
+        let currentUser = null;         // The logged-in user
+        let profileData = null;         // Extended profile data (mood, song, friends)
+        let wallPosts = [];
+        let staffDirectory = [];
+        let isDemo = true;
+        let isOwnProfile = false;
+
+        const root = document.getElementById('root');
+
+        function getTeamColor(team) {
+            return TEAM_COLORS[team] || '#21a0d8';
+        }
+
+        function getInitials(firstName, lastName) {
+            return `${(firstName || '?')[0]}${(lastName || '?')[0]}`.toUpperCase();
+        }
+
+        function timeAgo(timestamp) {
+            const seconds = Math.floor((Date.now() - timestamp) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 2500);
+        }
+
+        function render() {
+            if (!viewingProfile) {
+                root.innerHTML = `<div style="color:#FFF;text-align:center;padding:40px;">Loading profile...</div>`;
+                return;
+            }
+
+            const teamColor = getTeamColor(viewingProfile.team);
+            const initials = getInitials(viewingProfile.firstName, viewingProfile.lastName);
+            const mood = profileData?.mood || DEMO_PROFILE_DATA.mood;
+            const song = profileData?.song || DEMO_PROFILE_DATA.song;
+            const topFriends = profileData?.topFriends || DEMO_PROFILE_DATA.topFriends;
+            const workingOn = profileData?.workingOn || DEMO_PROFILE_DATA.workingOn;
+            const posts = wallPosts.length > 0 ? wallPosts : DEMO_WALL_POSTS;
+
+            root.innerHTML = `
+                <div class="modal-container" style="--team-color: ${teamColor}">
+                    <div class="profile-header">
+                        ${isDemo ? '<span class="demo-badge">Preview</span>' : ''}
+                        <button class="close-btn" onclick="window.closeModal()">✕</button>
+                        
+                        <div class="mood-badge">
+                            <span class="mood-emoji">${mood.emoji}</span>
+                            <span>${mood.label}</span>
+                        </div>
+                        
+                        <h1 class="profile-name">${viewingProfile.firstName} ${viewingProfile.lastName}</h1>
+                        <p class="profile-role">${viewingProfile.role} · ${viewingProfile.team}</p>
+                        
+                        <div class="avatar-ring">
+                            <div class="avatar-inner">${initials}</div>
+                            <div class="online-dot"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-body">
+                        <!-- Song of the Moment -->
+                        <div class="song-section">
+                            <div class="song-icon">🎵</div>
+                            <div class="song-info">
+                                <div class="song-label">Song of the Moment</div>
+                                <div class="song-title">${song.title || 'No song set'}</div>
+                                <div class="song-artist">${song.artist || 'Add your vibe'}</div>
+                            </div>
+                            ${song.spotifyUrl ? `
+                                <button class="song-play" onclick="window.open('${song.spotifyUrl}', '_blank')">▶</button>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Top Friends -->
+                        <div class="section-header">Top Friends</div>
+                        <div class="top-friends">
+                            ${topFriends.slice(0, 4).map(friend => `
+                                <div class="friend-item" onclick="window.viewProfile('${friend.id}')">
+                                    <div class="friend-avatar" style="background: ${getTeamColor(friend.team)}">
+                                        ${getInitials(friend.firstName, friend.lastName)}
+                                    </div>
+                                    <div class="friend-name">${friend.firstName}</div>
+                                </div>
+                            `).join('')}
+                            ${topFriends.length < 4 ? `
+                                <div class="friend-item" style="opacity: 0.5;">
+                                    <div class="friend-avatar" style="background: #DDD">+</div>
+                                    <div class="friend-name">Add</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Currently Working On -->
+                        <div class="section-header">Working On</div>
+                        <div class="working-on">
+                            ${workingOn.slice(0, 3).map(work => `
+                                <div class="work-item">
+                                    <div class="work-status ${work.status}"></div>
+                                    <div>
+                                        <div class="work-title">${work.title}</div>
+                                        <div class="work-campaign">${work.campaign}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            ${workingOn.length === 0 ? `
+                                <div class="work-item" style="opacity: 0.5;">
+                                    <div class="work-title">Nothing assigned yet</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Wall -->
+                        <div class="section-header">Wall</div>
+                        <div class="wall-posts">
+                            ${posts.map(post => `
+                                <div class="wall-post">
+                                    <div class="wall-header">
+                                        <div class="wall-avatar" style="background: ${getTeamColor(post.authorTeam)}">${getInitials(post.authorName.split(' ')[0], post.authorName.split(' ')[1] || '')}</div>
+                                        <span class="wall-author">${post.authorName}</span>
+                                        <span class="wall-time">${timeAgo(post.timestamp)}</span>
+                                    </div>
+                                    <div class="wall-text">${post.text}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="wall-input-row">
+                            <input type="text" class="wall-input" id="wall-input" placeholder="Write on ${viewingProfile.firstName}'s wall...">
+                            <button class="wall-send" onclick="window.postToWall()">→</button>
+                        </div>
+                        
+                        <!-- Stats -->
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <div class="stat-value">${workingOn.length}</div>
+                                <div class="stat-label">Projects</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${posts.length}</div>
+                                <div class="stat-label">Wall Posts</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${topFriends.length}</div>
+                                <div class="stat-label">Top Friends</div>
+                            </div>
+                        </div>
+                        
+                        ${isOwnProfile ? `
+                            <button class="edit-profile-btn" onclick="window.openProfileEditor()">
+                                ✏️ Edit Your Profile
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+
+            // Focus wall input
+            setTimeout(() => {
+                const input = document.getElementById('wall-input');
+                if (input) {
+                    input.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') window.postToWall();
+                    });
+                }
+            }, 100);
+        }
+
+        window.closeModal = () => {
+            // In real implementation, this would close the modal overlay
+            // For standalone testing, we'll just show a message
+            showToast('Modal would close here');
+        };
+
+        window.viewProfile = (profileId) => {
+            // Navigate to another profile
+            window.location.href = `?id=${profileId}`;
+        };
+
+        window.postToWall = async () => {
+            const input = document.getElementById('wall-input');
+            const text = input?.value?.trim();
+            if (!text) return;
+
+            if (isDemo) {
+                // Add to local array for demo
+                wallPosts.unshift({
+                    id: Date.now().toString(),
+                    authorId: 'demo',
+                    authorName: 'You',
+                    authorTeam: 'Creative',
+                    text: text,
+                    timestamp: Date.now()
+                });
+                input.value = '';
+                render();
+                showToast('Posted to wall! (Preview mode)');
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "artifacts", appId, "public", "data", "wall_posts"), {
+                    profileId: viewingProfile.id,
+                    authorId: currentUser.id,
+                    authorName: `${currentUser.firstName} ${currentUser.lastName}`,
+                    authorTeam: currentUser.team,
+                    text: text,
+                    timestamp: Date.now(),
+                    createdAt: serverTimestamp()
+                });
+                input.value = '';
+                showToast('Posted to wall!');
+            } catch (e) {
+                console.error('Failed to post:', e);
+                showToast('Failed to post. Try again.');
+            }
+        };
+
+        window.openProfileEditor = () => {
+            // This would open the profile editor modal
+            showToast('Profile editor coming soon!');
+        };
+
+        async function loadProfileData(profileId) {
+            if (isDemo) {
+                profileData = DEMO_PROFILE_DATA;
+                wallPosts = DEMO_WALL_POSTS;
+                return;
+            }
+
+            try {
+                // Load extended profile data
+                const profileDocRef = doc(db, "artifacts", appId, "public", "data", "user_profiles", profileId);
+                const profileSnap = await getDoc(profileDocRef);
+                if (profileSnap.exists()) {
+                    profileData = profileSnap.data();
+                    
+                    // Resolve top friends IDs to full objects
+                    if (profileData.topFriendIds && profileData.topFriendIds.length > 0) {
+                        profileData.topFriends = profileData.topFriendIds
+                            .map(id => staffDirectory.find(s => s.id === id))
+                            .filter(Boolean);
+                    }
+                }
+
+                // Listen for wall posts
+                const wallQuery = query(
+                    collection(db, "artifacts", appId, "public", "data", "wall_posts"),
+                    where("profileId", "==", profileId),
+                    orderBy("timestamp", "desc"),
+                    limit(20)
+                );
+                
+                onSnapshot(wallQuery, (snap) => {
+                    wallPosts = [];
+                    snap.forEach(d => wallPosts.push({ id: d.id, ...d.data() }));
+                    render();
+                });
+
+            } catch (e) {
+                console.error('Failed to load profile data:', e);
+                profileData = DEMO_PROFILE_DATA;
+            }
+        }
+
+        async function loadStaffDirectory() {
+            try {
+                const snap = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+                staffDirectory = [];
+                snap.forEach(d => staffDirectory.push({ id: d.id, ...d.data() }));
+            } catch (e) {
+                console.error('Failed to load staff directory:', e);
+            }
+        }
+
+        async function resolveIdentities(authUser) {
+            await loadStaffDirectory();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewingId = urlParams.get('id');
+
+            // Resolve current user (who is viewing)
+            if (authUser && authUser.email && !authUser.isAnonymous) {
+                const found = staffDirectory.find(s => s.email === authUser.email);
+                if (found) {
+                    currentUser = found;
+                }
+            }
+
+            // Resolve profile being viewed
+            if (viewingId) {
+                const found = staffDirectory.find(s => s.id === viewingId);
+                if (found) {
+                    viewingProfile = found;
+                    isDemo = false;
+                    isOwnProfile = currentUser && currentUser.id === viewingProfile.id;
+                    await loadProfileData(viewingProfile.id);
+                    render();
+                    return;
+                }
+            }
+
+            // Demo mode
+            viewingProfile = DEMO_PROFILE;
+            isDemo = true;
+            isOwnProfile = true;
+            profileData = DEMO_PROFILE_DATA;
+            wallPosts = DEMO_WALL_POSTS;
+            render();
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                resolveIdentities(user);
+            } else {
+                signInAnonymously(auth);
+            }
+        });
+    </script>
+</body>
+</html>
