@@ -575,10 +575,10 @@
         let draggedCard = null;
 
         const columns = {
-            'Brief In': { stage: 'Brief Recieved', color: '#E6468B' },
-            'Pitch Sent': { stage: 'Pitch Sent', color: '#21A0D8' },
-            'Agreed': { stage: 'Deal Agreed', color: '#43B049' },
-            'Complete': { stage: 'Campaign Complete', color: '#F2C316' }
+            'With Design': { stage: 'With Design', color: '#E6468B' },
+            'Ready for Edit': { stage: 'Ready for Edit', color: '#21A0D8' },
+            'Edit Blockers': { stage: 'Edit Blockers', color: '#E94B4B' },
+            'Ready for Social': { stage: 'Ready for Social', color: '#43B049' }
         };
 
         const dealStageOptions = ['Brief Recieved', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete'];
@@ -655,7 +655,7 @@
                     <div class="kanban">`;
 
             Object.entries(columns).forEach(([title, config]) => {
-                const columnProjects = filtered.filter(p => p.dealStage === config.stage);
+                const columnProjects = filtered.filter(p => p.deskState === config.stage);
                 html += `
                     <div class="column" data-stage="${config.stage}" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                         <div class="column-header">
@@ -668,16 +668,29 @@
                     html += `<div class="empty-column">Drop here</div>`;
                 } else {
                     columnProjects.forEach(project => {
-                        const value = parseFloat(project.dealValue) || 0;
-                        const valueStr = value >= 1000 ? `£${Math.round(value / 1000)}K` : value > 0 ? `£${value}` : '';
-                        const team = project.team || project.primaryTeam || 'Sales';
+                        const team = project.team || project.primaryTeam || 'Production';
+                        const productionLead = project.productionLead || project.productionLeads || '';
+                        const priorityLevel = project.priority || project.priorityLevel || '';
+                        const qaApproved = project.productionQaApproved || project.qaApproved || '';
+                        const cardSummary = project.cardSummary || project.summary || '';
+                        const liveLink = project.liveLink || '';
+                        const internalNotes = project.internalNotes || '';
+                        const editBlocker = project.editBlocker || '';
+                        
+                        // Use Client Due Date for Ready for Social, otherwise Internal Due Date
+                        const dueDate = (config.stage === 'Ready for Social' && project.dueDate) ? project.dueDate : (project.internalDueDate || project.dueDate || '');
+                        
                         html += `
                             <div class="project-card" data-id="${project.id}" data-team="${team}" draggable="true" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" onclick="openProject('${project.id}')">
-                                <div class="card-client">${project.client || 'Internal'}</div>
                                 <div class="card-title">${project.title || 'Untitled'}</div>
-                                <div class="card-meta">
-                                    <span class="card-tag">${team}</span>
-                                    ${valueStr ? `<span class="card-value">${valueStr}</span>` : ''}
+                                <div class="card-meta" style="flex-direction: column; gap: 3px; align-items: flex-start;">
+                                    ${dueDate ? `<span class="card-tag" style="font-size: 7px;">Due: ${dueDate}</span>` : ''}
+                                    ${productionLead ? `<span class="card-tag" style="font-size: 7px;">Lead: ${productionLead}</span>` : ''}
+                                    ${priorityLevel ? `<span class="card-tag" style="font-size: 7px;">Priority: ${priorityLevel}</span>` : ''}
+                                    ${qaApproved ? `<span class="card-tag" style="font-size: 7px;">QA: ${qaApproved}</span>` : ''}
+                                    ${cardSummary ? `<span class="card-tag" style="font-size: 7px;">${cardSummary}</span>` : ''}
+                                    ${liveLink ? `<span class="card-tag" style="font-size: 7px;">🔗 Link</span>` : ''}
+                                    ${config.stage === 'Edit Blockers' && (internalNotes || editBlocker) ? `<span class="card-tag" style="font-size: 7px; background: #fee;">⚠️ ${editBlocker || internalNotes}</span>` : ''}
                                 </div>
                             </div>`;
                     });
@@ -727,10 +740,10 @@
             const projectId = draggedCard.dataset.id;
             const newStage = column.dataset.stage;
             const project = allProjects.find(p => p.id === projectId);
-            if (!project || project.dealStage === newStage) return;
+            if (!project || project.deskState === newStage) return;
 
-            const oldStage = project.dealStage;
-            project.dealStage = newStage;
+            const oldStage = project.deskState;
+            project.deskState = newStage;
             render();
             showUpdating(true);
 
@@ -738,14 +751,14 @@
                 const res = await fetch(`${API_URL}/projects/${projectId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dealStage: newStage })
+                    body: JSON.stringify({ deskState: newStage })
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error || 'Update failed');
                 showToast(`Moved to ${newStage}`, 'success');
             } catch (err) {
                 console.error('Update failed:', err);
-                project.dealStage = oldStage;
+                project.deskState = oldStage;
                 render();
                 showToast('Failed to update', 'error');
             }
