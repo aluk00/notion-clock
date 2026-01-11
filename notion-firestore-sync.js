@@ -11,6 +11,8 @@
  * - GOOGLE_APPLICATION_CREDENTIALS: Path to Firebase service account JSON
  * - NOTION_STAFF_DB_ID: Notion database ID for staff directory
  * - NOTION_PROJECTS_DB_ID: Notion database ID for projects (optional)
+ * - APP_ID: Application ID (default: dmg-command-centre-native)
+ * - FIREBASE_PROJECT_ID: Firebase project ID (default: dmg-command-centre-native)
  * 
  * Usage:
  *   node notion-firestore-sync.js
@@ -22,7 +24,8 @@ const { Client } = require('@notionhq/client');
 const admin = require('firebase-admin');
 
 // Configuration
-const APP_ID = 'dmg-command-centre-native';
+const APP_ID = process.env.APP_ID || 'dmg-command-centre-native';
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'dmg-command-centre-native';
 const BASE_PATH = `artifacts/${APP_ID}/public/data`;
 
 // Initialize Notion client
@@ -32,7 +35,7 @@ const notion = new Client({ auth: process.env.NOTION_API_KEY });
 if (!admin.apps.length) {
     admin.initializeApp({
         credential: admin.credential.applicationDefault(),
-        projectId: 'dmg-command-centre-native'
+        projectId: FIREBASE_PROJECT_ID
     });
 }
 
@@ -93,8 +96,11 @@ async function syncStaffDirectory() {
                 continue;
             }
 
-            // Generate document ID from email
-            const docId = staffData.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+            // Generate document ID from email with hash to prevent collisions
+            const crypto = require('crypto');
+            const emailLocal = staffData.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const emailHash = crypto.createHash('md5').update(staffData.email).digest('hex').substring(0, 8);
+            const docId = `${emailLocal}_${emailHash}`;
 
             if (dryRun) {
                 console.log(`[DRY RUN] Would update: ${docId}`, staffData);
