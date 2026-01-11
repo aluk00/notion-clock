@@ -1,479 +1,1002 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  LayoutDashboard, 
-  ListTodo, 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
-  MapPin, 
-  User, 
-  Clock, 
-  MoreHorizontal, 
-  X,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  HelpCircle,
-  Filter,
-  Sparkles
-} from 'lucide-react';
-
-// --- Constants & Types ---
-const ACCREDITATION_STATUS = {
-  NONE: { label: 'Not Needed', color: 'bg-slate-300', border: 'border-slate-300', text: 'text-slate-500', bg: 'bg-slate-50', ring: 'ring-slate-200' },
-  AMBER: { label: 'To Do', color: 'bg-amber-400', border: 'border-amber-400', text: 'text-amber-700', bg: 'bg-amber-50', ring: 'ring-amber-200' },
-  BLUE: { label: 'Requested', color: 'bg-blue-400', border: 'border-blue-400', text: 'text-blue-700', bg: 'bg-blue-50', ring: 'ring-blue-200' },
-  GREEN: { label: 'Approved', color: 'bg-emerald-400', border: 'border-emerald-400', text: 'text-emerald-700', bg: 'bg-emerald-50', ring: 'ring-emerald-200' },
-  RED: { label: 'Blocked', color: 'bg-rose-400', border: 'border-rose-400', text: 'text-rose-700', bg: 'bg-rose-50', ring: 'ring-rose-200' },
-};
-
-const VIEW_TYPES = {
-  CALENDAR: 'calendar',
-  BOARD: 'board',
-  AGENDA: 'agenda'
-};
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
-
-// --- Comprehensive UK Event Data 2026 ---
-const initialEvents = [
-  // January
-  { id: 'jan1', title: 'New Year’s Tube Ride', date: new Date(2026, 0, 1), location: 'London', assignment: 'Social Team', status: 'GREEN', type: 'Viral' },
-  { id: 'jan2', title: 'Ice Bath UK', date: new Date(2026, 0, 5), location: 'Brighton', assignment: 'Mourad Abdou', status: 'AMBER', type: 'Challenge' },
-  { id: 'jan3', title: 'Horse Racing Fixtures', date: new Date(2026, 0, 10), location: 'England & Wales', assignment: 'Sport Desk', status: 'BLUE', type: 'Coverage' },
-  { id: 'jan4', title: 'UK Snooker Tour', date: new Date(2026, 0, 15), location: 'Sheffield', assignment: 'Freelance', status: 'GREEN', type: 'Tournament' },
-  { id: 'jan5', title: 'Super Bowl Prep (Vox Pops)', date: new Date(2026, 0, 20), location: 'London/US', assignment: 'US Team', status: 'AMBER', type: 'Feature' },
-  { id: 'jan6', title: 'London Fashion Week (Mens)', date: new Date(2026, 0, 25), location: 'Soho', assignment: 'Lifestyle', status: 'NONE', type: 'Event' },
-  { id: 'jan7', title: 'Ashbourne Royal Football', date: new Date(2026, 0, 28), location: 'Derbyshire', assignment: 'Viral Unit', status: 'RED', type: 'Action' },
-  { id: 'jan8', title: 'January Returns Queues', date: new Date(2026, 0, 3), location: 'Oxford Street', assignment: 'Money Team', status: 'NONE', type: 'Consumer' },
-  
-  // February
-  { id: 'feb1', title: 'Six Nations: Eng vs Wal', date: new Date(2026, 1, 4), location: 'Twickenham', assignment: 'Rugby Team', status: 'BLUE', type: 'Match' },
-  { id: 'feb2', title: 'Brit Awards', date: new Date(2026, 1, 12), location: 'O2 Arena', assignment: 'Showbiz', status: 'AMBER', type: 'Red Carpet' },
-  { id: 'feb3', title: 'LFW (Main)', date: new Date(2026, 1, 15), location: 'London', assignment: 'Fashion', status: 'GREEN', type: 'Runway' },
-  { id: 'feb4', title: 'World Ice Swimming', date: new Date(2026, 1, 20), location: 'Cheltenham', assignment: 'Video', status: 'NONE', type: 'Niche' },
-  { id: 'feb5', title: 'BAFTA TV Awards', date: new Date(2026, 1, 22), location: 'Royal Festival Hall', assignment: 'Ents', status: 'AMBER', type: 'Awards' },
-  
-  // March
-  { id: 'mar1', title: 'Cheltenham Festival', date: new Date(2026, 2, 10), location: 'Cheltenham', assignment: 'Racing Team', status: 'BLUE', type: 'Festival' },
-  { id: 'mar2', title: 'St Patrick’s Day', date: new Date(2026, 2, 17), location: 'Dublin/London', assignment: 'Social', status: 'NONE', type: 'Vox Pop' },
-  { id: 'mar3', title: 'Grand National Prep', date: new Date(2026, 2, 25), location: 'Aintree', assignment: 'Sport', status: 'AMBER', type: 'Planning' },
-  { id: 'mar4', title: 'Oxford vs Cambridge Boat Race', date: new Date(2026, 2, 29), location: 'The Thames', assignment: 'Social/Sport', status: 'NONE', type: 'Tradition' },
-
-  // April
-  { id: 'apr1', title: 'World Car Boot Sale Day', date: new Date(2026, 3, 5), location: 'TBC', assignment: 'Features', status: 'NONE', type: 'Quirky' },
-  { id: 'apr2', title: 'Grand National', date: new Date(2026, 3, 10), location: 'Aintree', assignment: 'Racing Team', status: 'GREEN', type: 'Major' },
-  { id: 'apr3', title: 'London Marathon', date: new Date(2026, 3, 21), location: 'London', assignment: 'All Hands', status: 'GREEN', type: 'Live' },
-  { id: 'apr4', title: 'World Mud Race', date: new Date(2026, 3, 28), location: 'Essex', assignment: 'Viral', status: 'AMBER', type: 'Messy' },
-  { id: 'apr5', title: 'Women’s Six Nations', date: new Date(2026, 3, 15), location: 'UK Home Fixtures', assignment: 'Rugby Team', status: 'BLUE', type: 'Coverage' },
-
-  // May
-  { id: 'may1', title: 'Jack in the Green', date: new Date(2026, 4, 1), location: 'Hastings', assignment: 'Culture', status: 'NONE', type: 'Folk' },
-  { id: 'may2', title: 'Eurovision Final', date: new Date(2026, 4, 15), location: 'TBC', assignment: 'Ents', status: 'BLUE', type: 'Show' },
-  { id: 'may3', title: 'Chelsea Flower Show', date: new Date(2026, 4, 20), location: 'Chelsea', assignment: 'Lifestyle', status: 'GREEN', type: 'Garden' },
-  { id: 'may4', title: 'FA Cup Final', date: new Date(2026, 4, 25), location: 'Wembley', assignment: 'Football', status: 'BLUE', type: 'Final' },
-  { id: 'may5', title: 'Cheese Rolling', date: new Date(2026, 4, 26), location: 'Gloucestershire', assignment: 'Mourad', status: 'RED', type: 'Danger' },
-  { id: 'may6', title: 'May Day Celebrations', date: new Date(2026, 4, 4), location: 'Multi-city', assignment: 'News', status: 'NONE', type: 'Culture' },
-  { id: 'may7', title: 'Women’s FA Cup Final', date: new Date(2026, 4, 17), location: 'Wembley', assignment: 'Sport', status: 'BLUE', type: 'Coverage' },
-  { id: 'may8', title: 'University Graduations', date: new Date(2026, 4, 30), location: 'Russell Group Cities', assignment: 'Youth Unit', status: 'NONE', type: 'Social' },
-
-  // June
-  { id: 'jun1', title: 'Royal Ascot', date: new Date(2026, 5, 15), location: 'Ascot', assignment: 'Fashion/Sport', status: 'GREEN', type: 'Royal' },
-  { id: 'jun2', title: 'Wimbledon Prep', date: new Date(2026, 5, 20), location: 'SW19', assignment: 'Tennis', status: 'GREEN', type: 'Setup' },
-  { id: 'jun3', title: 'Glastonbury', date: new Date(2026, 5, 25), location: 'Pilton', assignment: 'Music Team', status: 'BLUE', type: 'Festival' },
-  { id: 'jun4', title: 'Henley Regatta', date: new Date(2026, 5, 28), location: 'Henley', assignment: 'Social', status: 'AMBER', type: 'Posh' },
-  { id: 'jun5', title: 'Rugby Premiership Final', date: new Date(2026, 5, 10), location: 'Twickenham', assignment: 'Sport', status: 'AMBER', type: 'Coverage' },
-  { id: 'jun6', title: 'Cricket Test: Lords', date: new Date(2026, 5, 12), location: 'London', assignment: 'Cricket Team', status: 'BLUE', type: 'Major' },
-
-  // July
-  { id: 'jul1', title: 'Wimbledon Championships', date: new Date(2026, 6, 1), location: 'SW19', assignment: 'Tennis Team', status: 'GREEN', type: 'Major' },
-  { id: 'jul2', title: 'British Grand Prix', date: new Date(2026, 6, 7), location: 'Silverstone', assignment: 'F1 Team', status: 'BLUE', type: 'Race' },
-  { id: 'jul3', title: 'Henley Festival', date: new Date(2026, 6, 10), location: 'Henley', assignment: 'Ents', status: 'NONE', type: 'Music' },
-  { id: 'jul4', title: 'UK Pride Marches', date: new Date(2026, 6, 15), location: 'MCR/Brighton', assignment: 'Culture', status: 'NONE', type: 'Social' },
-  { id: 'jul5', title: 'Latitude Festival', date: new Date(2026, 6, 24), location: 'Suffolk', assignment: 'Ents', status: 'AMBER', type: 'Culture' },
-
-  // August
-  { id: 'aug1', title: 'Edinburgh Fringe', date: new Date(2026, 7, 1), location: 'Edinburgh', assignment: 'Comedy', status: 'AMBER', type: 'Arts' },
-  { id: 'aug2', title: 'A-level Results Day', date: new Date(2026, 7, 15), location: 'UK-wide', assignment: 'News', status: 'NONE', type: 'Viral' },
-  { id: 'aug3', title: 'Gravy Wrestling', date: new Date(2026, 7, 25), location: 'Lancashire', assignment: 'Viral', status: 'RED', type: 'Weird' },
-  { id: 'aug4', title: 'Bog Snorkelling', date: new Date(2026, 7, 28), location: 'Wales', assignment: 'Viral', status: 'AMBER', type: 'Wet' },
-  { id: 'aug5', title: 'Hay Festival', date: new Date(2026, 7, 10), location: 'Hay-on-Wye', assignment: 'Culture', status: 'NONE', type: 'Arts' },
-  { id: 'aug6', title: 'World Toe Wrestling', date: new Date(2026, 7, 12), location: 'Derbyshire', assignment: 'Social', status: 'NONE', type: 'Quirky' },
-
-  // September
-  { id: 'sep1', title: 'Great North Run', date: new Date(2026, 8, 8), location: 'Newcastle', assignment: 'Sport', status: 'GREEN', type: 'Run' },
-  { id: 'sep2', title: 'Freshers’ Week', date: new Date(2026, 8, 15), location: 'University Cities', assignment: 'Youth Unit', status: 'NONE', type: 'Feature' },
-  { id: 'sep3', title: 'Student Move-in Weekend', date: new Date(2026, 8, 20), location: 'UK-wide', assignment: 'Money Team', status: 'NONE', type: 'Consumer' },
-  { id: 'sep4', title: 'Blackpool Illuminations', date: new Date(2026, 8, 4), location: 'Blackpool', assignment: 'Social', status: 'NONE', type: 'Tourism' },
-  { id: 'sep5', title: 'Green Man Festival', date: new Date(2026, 8, 12), location: 'Wales', assignment: 'Culture', status: 'AMBER', type: 'Culture' },
-  { id: 'sep6', title: 'Durham Miners’ Gala', date: new Date(2026, 8, 10), location: 'Durham', assignment: 'News', status: 'NONE', type: 'Heritage' },
-  
-  // October
-  { id: 'oct1', title: 'Oktoberfest Events', date: new Date(2026, 9, 5), location: 'London/MCR', assignment: 'Social', status: 'NONE', type: 'Beer' },
-  { id: 'oct2', title: 'London Film Festival', date: new Date(2026, 9, 10), location: 'Southbank', assignment: 'Film', status: 'AMBER', type: 'Cinema' },
-  { id: 'oct3', title: 'Comic Con UK', date: new Date(2026, 9, 25), location: 'London ExCel', assignment: 'Ents', status: 'AMBER', type: 'Fan' },
-  { id: 'oct4', title: 'Whitby Goth Weekend', date: new Date(2026, 9, 31), location: 'Whitby', assignment: 'Culture', status: 'NONE', type: 'Viral' },
-
-  // November
-  { id: 'nov1', title: 'Lewes Bonfire Night', date: new Date(2026, 10, 5), location: 'Lewes', assignment: 'Viral Unit', status: 'AMBER', type: 'Fire' },
-  { id: 'nov2', title: 'Winter Wonderland Open', date: new Date(2026, 10, 18), location: 'Hyde Park', assignment: 'Social', status: 'GREEN', type: 'Seasonal' },
-  { id: 'nov3', title: 'Black Friday Interviews', date: new Date(2026, 10, 27), location: 'Regional Centres', assignment: 'Money Team', status: 'NONE', type: 'Consumer' },
-  { id: 'nov4', title: 'Remembrance Sunday', date: new Date(2026, 10, 8), location: 'Cenotaph', assignment: 'News', status: 'GREEN', type: 'Solemn' },
-
-  // December
-  { id: 'dec1', title: 'Burning the Clocks', date: new Date(2026, 11, 21), location: 'Brighton', assignment: 'Visuals', status: 'NONE', type: 'Winter' },
-  { id: 'dec2', title: 'Christmas Late Shopping', date: new Date(2026, 11, 15), location: 'Oxford St/Westfield', assignment: 'Consumer', status: 'NONE', type: 'Retail' },
-];
-
-// --- Sub-Components ---
-
-const StatusDot = ({ status }) => {
-  const config = ACCREDITATION_STATUS[status] || ACCREDITATION_STATUS.NONE;
-  return <div className={`w-1.5 h-1.5 rounded-full ${config.color}`} title={config.label} />;
-};
-
-const Badge = ({ status }) => {
-  const config = ACCREDITATION_STATUS[status] || ACCREDITATION_STATUS.NONE;
-  return (
-    <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${config.border} ${config.bg} ${config.text}`}>
-      {config.label}
-    </span>
-  );
-};
-
-export default function ProductionPlanner() {
-  const [view, setView] = useState(VIEW_TYPES.CALENDAR);
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 0, 1));
-  const [events, setEvents] = useState(initialEvents);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // --- Helpers ---
-  const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
-  const firstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
-
-  const calendarDays = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const totalDays = daysInMonth(year, month);
-    const startingDay = firstDayOfMonth(year, month);
-    const days = [];
-
-    for (let i = 0; i < startingDay; i++) days.push({ day: null, date: null });
-    
-    for (let i = 1; i <= totalDays; i++) {
-      const date = new Date(year, month, i);
-      const dayEvents = events.filter(e => e.date.toDateString() === date.toDateString());
-      days.push({ day: i, date, events: dayEvents });
-    }
-    return days;
-  }, [currentDate, events]);
-
-  const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  const handlePrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  
-  const openEvent = (event) => {
-    setSelectedEvent(event);
-    setDrawerOpen(true);
-  };
-
-  // --- Views ---
-
-  const CalendarGrid = () => (
-    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm animate-in fade-in duration-300">
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} className="py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest border-r border-slate-200 last:border-r-0">
-            {d}
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 bg-slate-50">
-        {calendarDays.map((dayObj, i) => (
-          <div 
-            key={i} 
-            className={`min-h-[90px] p-1.5 border-r border-b border-slate-200 last:border-r-0 transition-all duration-200 ${!dayObj.day ? 'bg-slate-50/50' : 'bg-white hover:bg-slate-50'}`}
-          >
-            {dayObj.day && (
-              <>
-                <div className="flex justify-between items-start mb-1">
-                  <span className={`text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full ${dayObj.date?.toDateString() === new Date().toDateString() ? 'bg-emerald-500 text-white' : 'text-slate-400'}`}>
-                    {dayObj.day}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  {dayObj.events.slice(0, 3).map(event => (
-                    <button 
-                      key={event.id}
-                      onClick={(e) => { e.stopPropagation(); openEvent(event); }}
-                      className={`w-full text-left px-1.5 py-1 rounded border border-slate-100 shadow-sm flex items-center gap-1.5 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 transition-all bg-white group`}
-                    >
-                      <StatusDot status={event.status} />
-                      <span className="text-[9px] font-semibold text-slate-700 truncate leading-tight group-hover:text-slate-900">{event.title}</span>
-                    </button>
-                  ))}
-                  {dayObj.events.length > 3 && (
-                    <div className="text-[9px] font-bold text-slate-400 px-1 text-center mt-1">
-                      + {dayObj.events.length - 3} more
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const BoardView = () => {
-    const boardMonths = MONTHS.map((name, idx) => ({
-      name,
-      events: events.filter(e => e.date.getMonth() === idx && e.date.getFullYear() === currentDate.getFullYear())
-    }));
-
-    return (
-      <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 h-[calc(100vh-180px)] snap-x">
-        {boardMonths.map((month, idx) => (
-          <div key={idx} className="flex-shrink-0 w-64 snap-start">
-            <div className="flex items-center justify-between mb-3 px-1 sticky top-0 bg-[#F9FAFB] z-10 py-2">
-              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-widest">{month.name.substring(0,3)}</h3>
-              <span className="text-[9px] font-bold text-slate-400 bg-slate-200/50 px-1.5 py-0.5 rounded-md">
-                {month.events.length}
-              </span>
-            </div>
-            <div className="space-y-2">
-              {month.events.map(event => (
-                <div 
-                  key={event.id}
-                  onClick={() => openEvent(event)}
-                  className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm hover:shadow-md hover:border-emerald-500/30 hover:-translate-y-0.5 transition-all cursor-pointer group"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${ACCREDITATION_STATUS[event.status].color}`} />
-                    <span className="text-[9px] font-medium text-slate-400">{event.date.getDate()}</span>
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-700 leading-tight mb-2 group-hover:text-emerald-700 transition-colors line-clamp-2">
-                    {event.title}
-                  </h4>
-                  <div className="flex items-center gap-1 text-[9px] text-slate-400 font-medium truncate">
-                    <MapPin size={10} />
-                    {event.location}
-                  </div>
-                </div>
-              ))}
-              {month.events.length === 0 && (
-                <div className="h-24 border border-dashed border-slate-200 rounded-lg flex items-center justify-center text-[10px] text-slate-300 font-medium">
-                  No events
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const AgendaView = () => (
-    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm animate-in slide-in-from-bottom-2 duration-300">
-      <table className="w-full text-left text-xs">
-        <thead>
-          <tr className="bg-slate-50 border-b border-slate-200">
-            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest w-24">Date</th>
-            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Event</th>
-            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Where</th>
-            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest w-32">Status</th>
-            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Who</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {events.sort((a,b) => a.date - b.date).map(event => (
-            <tr 
-              key={event.id} 
-              className="hover:bg-emerald-50/30 transition-colors cursor-pointer group"
-              onClick={() => openEvent(event)}
-            >
-              <td className="px-4 py-3 font-bold text-slate-700 tabular-nums">
-                {event.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-              </td>
-              <td className="px-4 py-3">
-                <div className="font-semibold text-slate-800">{event.title}</div>
-                <div className="text-[9px] text-slate-400 font-medium uppercase tracking-wide mt-0.5">{event.type}</div>
-              </td>
-              <td className="px-4 py-3 text-slate-500 font-medium">
-                {event.location}
-              </td>
-              <td className="px-4 py-3">
-                <Badge status={event.status} />
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-1.5 font-medium text-slate-600">
-                  <div className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[8px] font-bold">
-                    {event.assignment.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <span className="truncate max-w-[100px]">{event.assignment}</span>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-[#F9FAFB] text-[#1C1C1C] font-sans selection:bg-emerald-100">
-      
-      {/* Compact Top Bar */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center justify-between gap-4">
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Planning | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --team-editorial: #E94B4B;
+            --team-creative: #E6468B;
+            --team-production: #43B049;
+            --team-social: #F2C316;
+            --team-operations: #9333EA;
+            --team-sales: #F97316;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+            --success: #22C55E;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #F5F5F7;
+            margin: 0;
+            padding: 0;
+            color: var(--ink);
+            min-height: 100vh;
+        }
         
-        {/* Date & Nav */}
-        <div className="flex items-center gap-2">
-          <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
-            <button onClick={handlePrevMonth} className="p-1 hover:bg-white rounded-md transition-all text-slate-500 hover:text-slate-900 shadow-sm hover:shadow">
-              <ChevronLeft size={16} />
-            </button>
-            <button onClick={handleNextMonth} className="p-1 hover:bg-white rounded-md transition-all text-slate-500 hover:text-slate-900 shadow-sm hover:shadow">
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight min-w-[100px]">
-            {MONTHS[currentDate.getMonth()]} <span className="text-slate-400 font-medium">{currentDate.getFullYear()}</span>
-          </h2>
+        /* Layout */
+        .planner {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .top-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 20px;
+            background: #FFF;
+            border-bottom: 1px solid var(--border);
+        }
+        .main-area {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .calendar-section {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+        }
+        .detail-panel {
+            width: 340px;
+            background: #FFF;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header Elements */
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--team-production);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        .dot-grid span:nth-child(1) { animation-delay: 0s; }
+        .dot-grid span:nth-child(2) { animation-delay: 0.15s; }
+        .dot-grid span:nth-child(3) { animation-delay: 0.3s; }
+        .dot-grid span:nth-child(4) { animation-delay: 0.45s; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 1; }
+        }
+        
+        .month-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .month-title {
+            font-size: 15px;
+            font-weight: 900;
+            color: var(--ink);
+            min-width: 140px;
+            text-align: center;
+        }
+        .nav-btn {
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--border);
+            background: #FFF;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--ink-sub);
+            transition: all 0.15s;
+        }
+        .nav-btn:hover {
+            border-color: var(--team-production);
+            color: var(--team-production);
+        }
+        
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: var(--bg-soft);
+            border-radius: 8px;
+            margin-left: auto;
+        }
+        .view-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .view-btn.active {
+            background: #FFF;
+            color: var(--team-production);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .view-btn:hover:not(.active) { color: var(--ink); }
+        
+        .add-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--team-production);
+            color: #FFF;
+            border: none;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .add-btn:hover { background: #3a9d42; }
+        
+        /* Calendar Grid */
+        .calendar-grid {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .calendar-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            background: var(--bg-soft);
+            border-bottom: 1px solid var(--border);
+        }
+        .calendar-header-cell {
+            padding: 10px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+        }
+        .calendar-body {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+        .calendar-day {
+            min-height: 100px;
+            padding: 8px;
+            border-right: 1px solid #F0F0F0;
+            border-bottom: 1px solid #F0F0F0;
+            background: #FFF;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .calendar-day:nth-child(7n) { border-right: none; }
+        .calendar-day:hover { background: var(--bg-soft); }
+        .calendar-day.empty { background: #FAFAFA; cursor: default; }
+        .calendar-day.today { background: #F0FDF4; }
+        .day-number {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 6px;
+        }
+        .day-number.today {
+            background: var(--team-production);
+            color: #FFF;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Event Card */
+        .event-card {
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .event-card:hover {
+            border-color: var(--team-production);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transform: translateY(-1px);
+        }
+        .event-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .event-title {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .more-events {
+            font-size: 10px;
+            color: var(--ink-sub);
+            font-weight: 600;
+        }
+        
+        /* Status Colors */
+        .status-none { background: #E5E5E5; }
+        .status-amber { background: #F59E0B; }
+        .status-blue { background: #3B82F6; }
+        .status-green { background: var(--success); }
+        .status-red { background: var(--danger); }
+        
+        /* Board View */
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 12px;
+        }
+        .board-column {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .board-header {
+            padding: 10px 12px;
+            background: var(--bg-soft);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .board-month {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .board-count {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            background: #FFF;
+            padding: 2px 8px;
+            border-radius: 99px;
+        }
+        .board-body {
+            padding: 10px;
+            min-height: 200px;
+        }
+        .board-event {
+            padding: 10px;
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .board-event:hover {
+            border-color: var(--team-production);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .board-event-date {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+        }
+        .board-event-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink);
+            margin: 4px 0;
+        }
+        .board-event-location {
+            font-size: 10px;
+            color: var(--ink-sub);
+        }
+        
+        /* Agenda View */
+        .agenda-table {
+            width: 100%;
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            border-collapse: collapse;
+        }
+        .agenda-table th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            background: var(--bg-soft);
+            border-bottom: 1px solid var(--border);
+        }
+        .agenda-table td {
+            padding: 12px 16px;
+            font-size: 12px;
+            border-bottom: 1px solid #F5F5F5;
+        }
+        .agenda-table tr:last-child td { border-bottom: none; }
+        .agenda-table tr:hover { background: var(--bg-soft); cursor: pointer; }
+        
+        /* Detail Panel */
+        .panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .close-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: var(--bg-soft);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--ink-sub);
+            transition: all 0.15s;
+        }
+        .close-btn:hover { background: #E5E5E5; color: var(--ink); }
+        
+        .panel-body {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .panel-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+        }
+        .panel-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border);
+            background: #FFF;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .panel-btn:hover { border-color: var(--team-production); color: var(--team-production); }
+        .panel-btn.primary {
+            background: var(--team-production);
+            border-color: var(--team-production);
+            color: #FFF;
+        }
+        .panel-btn.primary:hover { background: #3a9d42; }
+        
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .empty-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--ink);
+            margin-bottom: 8px;
+        }
+        .empty-sub {
+            font-size: 12px;
+            color: var(--ink-sub);
+            max-width: 280px;
+            line-height: 1.5;
+        }
+        
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 99px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .status-badge.none { background: #F5F5F5; color: #757575; }
+        .status-badge.amber { background: #FEF3C7; color: #B45309; }
+        .status-badge.blue { background: #DBEAFE; color: #1D4ED8; }
+        .status-badge.green { background: #DCFCE7; color: #166534; }
+        .status-badge.red { background: #FEE2E2; color: #B91C1C; }
+        
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            color: var(--ink-sub);
+            font-size: 13px;
+        }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--team-production);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Form */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--team-production);
+        }
+        .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            background: #FFF;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="loading">
+            <div class="spinner"></div>
+            Loading production planner...
         </div>
-
-        {/* View Toggle */}
-        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-            {[
-              { id: VIEW_TYPES.CALENDAR, icon: CalendarIcon, label: 'Grid' },
-              { id: VIEW_TYPES.BOARD, icon: LayoutDashboard, label: 'Board' },
-              { id: VIEW_TYPES.AGENDA, icon: ListTodo, label: 'List' }
-            ].map(v => (
-              <button 
-                key={v.id}
-                onClick={() => setView(v.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${view === v.id ? 'bg-white shadow-sm text-emerald-600 ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-800'}`}
-              >
-                <v.icon size={12} /> <span className="hidden sm:inline">{v.label}</span>
-              </button>
-            ))}
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-            <div className="relative hidden sm:block">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs w-32 focus:w-48 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-400"
-              />
-            </div>
-            <button className="bg-emerald-600 text-white p-1.5 sm:px-3 sm:py-1.5 rounded-lg font-bold text-xs hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1 active:scale-95">
-              <Plus size={14} /> <span className="hidden sm:inline">New</span>
-            </button>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="px-4 py-4 max-w-[1600px] mx-auto">
-        {view === VIEW_TYPES.CALENDAR && <CalendarGrid />}
-        {view === VIEW_TYPES.BOARD && <BoardView />}
-        {view === VIEW_TYPES.AGENDA && <AgendaView />}
-      </main>
-
-      {/* Right Side Detail Drawer */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-[2px] transition-opacity" onClick={() => setDrawerOpen(false)} />
-          <div className="relative w-full max-w-sm bg-white h-full shadow-2xl flex flex-col transform transition-transform animate-in slide-in-from-right duration-300 border-l border-slate-200">
-            
-            {/* Drawer Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                <Sparkles size={12} className="text-emerald-500" />
-                Event Details
-              </div>
-              <button onClick={() => setDrawerOpen(false)} className="p-1.5 hover:bg-slate-200 rounded-md transition-colors text-slate-400 hover:text-slate-600">
-                <X size={16} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6">
-              {selectedEvent ? (
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <Badge status={selectedEvent.status} />
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{selectedEvent.type}</span>
-                    </div>
-                    <h1 className="text-xl font-black text-slate-900 leading-tight mb-1">
-                      {selectedEvent.title}
-                    </h1>
-                  </div>
-
-                  <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <CalendarIcon size={14} className="text-slate-400" />
-                      <span className="text-xs font-semibold text-slate-700">{selectedEvent.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' })}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <MapPin size={14} className="text-slate-400" />
-                      <span className="text-xs font-semibold text-slate-700">{selectedEvent.location}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <User size={14} className="text-slate-400" />
-                      <span className="text-xs font-semibold text-slate-700">{selectedEvent.assignment}</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Quick Actions</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button className="bg-white border border-slate-200 py-2.5 rounded-lg text-xs font-bold flex flex-col items-center justify-center gap-1 hover:border-emerald-500 hover:text-emerald-600 transition-all hover:shadow-sm group">
-                        <CheckCircle2 size={16} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
-                        Approve
-                      </button>
-                      <button className="bg-white border border-slate-200 py-2.5 rounded-lg text-xs font-bold flex flex-col items-center justify-center gap-1 hover:border-rose-500 hover:text-rose-600 transition-all hover:shadow-sm group">
-                        <AlertCircle size={16} className="text-slate-300 group-hover:text-rose-500 transition-colors" />
-                        Flag Issue
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Production Notes</h3>
-                    <div className="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-100 p-3 rounded-lg">
-                      <span className="font-bold text-amber-700 block mb-1">Deadline: 48h Prior</span>
-                      Ensure travel logistics are booked. Check kit requirements for {selectedEvent.location}.
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-20 flex flex-col items-center">
-                  <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                    <Sparkles size={20} className="text-slate-300" />
-                  </div>
-                  <p className="text-slate-400 text-xs font-medium">Select an event to view details</p>
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-slate-100 flex gap-2 bg-slate-50/50">
-              <button className="flex-1 bg-slate-900 text-white py-2.5 rounded-lg font-bold text-xs hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 active:scale-95">
-                Edit Event
-              </button>
-              <button className="px-3 py-2.5 border border-slate-200 rounded-lg text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-all text-xs font-bold">
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  );
-}
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        
+        const STATUS_CONFIG = {
+            'NONE': { label: 'Not Needed', class: 'none', dot: 'status-none' },
+            'AMBER': { label: 'To Do', class: 'amber', dot: 'status-amber' },
+            'BLUE': { label: 'Requested', class: 'blue', dot: 'status-blue' },
+            'GREEN': { label: 'Approved', class: 'green', dot: 'status-green' },
+            'RED': { label: 'Blocked', class: 'red', dot: 'status-red' }
+        };
+
+        let events = [];
+        let currentDate = new Date();
+        let currentView = 'calendar';
+        let selectedEvent = null;
+        let showAddForm = false;
+        let isLoading = true;
+        const root = document.getElementById('root');
+
+        // Calendar helpers
+        const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+        const firstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+        
+        const getEventsForDate = (date) => {
+            return events.filter(e => {
+                const eventDate = e.date instanceof Date ? e.date : e.date?.toDate?.() || new Date(e.date);
+                return eventDate.toDateString() === date.toDateString();
+            });
+        };
+
+        const getEventsForMonth = (month) => {
+            return events.filter(e => {
+                const eventDate = e.date instanceof Date ? e.date : e.date?.toDate?.() || new Date(e.date);
+                return eventDate.getMonth() === month && eventDate.getFullYear() === currentDate.getFullYear();
+            });
+        };
+
+        const formatDate = (date) => {
+            const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
+            return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        };
+
+        const formatFullDate = (date) => {
+            const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
+            return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+        };
+
+        const isToday = (date) => {
+            const today = new Date();
+            return date.toDateString() === today.toDateString();
+        };
+
+        // Render functions
+        function renderCalendarView() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const totalDays = daysInMonth(year, month);
+            const startingDay = firstDayOfMonth(year, month);
+            
+            let daysHtml = '';
+            
+            // Empty cells for days before month starts
+            for (let i = 0; i < startingDay; i++) {
+                daysHtml += '<div class="calendar-day empty"></div>';
+            }
+            
+            // Days of the month
+            for (let day = 1; day <= totalDays; day++) {
+                const date = new Date(year, month, day);
+                const dayEvents = getEventsForDate(date);
+                const todayClass = isToday(date) ? 'today' : '';
+                
+                daysHtml += `
+                    <div class="calendar-day ${todayClass}" onclick="window.selectDate(${year}, ${month}, ${day})">
+                        <div class="day-number ${todayClass}">${day}</div>
+                        ${dayEvents.slice(0, 3).map(e => `
+                            <div class="event-card" onclick="event.stopPropagation(); window.selectEvent('${e.id}')">
+                                <div class="event-dot ${STATUS_CONFIG[e.status || 'NONE'].dot}"></div>
+                                <span class="event-title">${e.title}</span>
+                            </div>
+                        `).join('')}
+                        ${dayEvents.length > 3 ? `<div class="more-events">+${dayEvents.length - 3} more</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="calendar-grid">
+                    <div class="calendar-header">
+                        ${DAYS.map(d => `<div class="calendar-header-cell">${d}</div>`).join('')}
+                    </div>
+                    <div class="calendar-body">
+                        ${daysHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBoardView() {
+            return `
+                <div class="board-grid">
+                    ${MONTHS.map((month, idx) => {
+                        const monthEvents = getEventsForMonth(idx);
+                        return `
+                            <div class="board-column">
+                                <div class="board-header">
+                                    <span class="board-month">${month.substring(0, 3)}</span>
+                                    <span class="board-count">${monthEvents.length}</span>
+                                </div>
+                                <div class="board-body">
+                                    ${monthEvents.length === 0 ? `
+                                        <div style="text-align: center; padding: 20px; color: var(--ink-sub); font-size: 11px;">No events</div>
+                                    ` : monthEvents.map(e => {
+                                        const eventDate = e.date instanceof Date ? e.date : e.date?.toDate?.() || new Date(e.date);
+                                        return `
+                                            <div class="board-event" onclick="window.selectEvent('${e.id}')">
+                                                <div class="board-event-date">${eventDate.getDate()}</div>
+                                                <div class="board-event-title">${e.title}</div>
+                                                <div class="board-event-location">📍 ${e.location || 'TBC'}</div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderAgendaView() {
+            if (events.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <div class="empty-icon">📅</div>
+                        <div class="empty-title">No Events Scheduled</div>
+                        <div class="empty-sub">Add your first production event to get started with planning.</div>
+                    </div>
+                `;
+            }
+            
+            const sortedEvents = [...events].sort((a, b) => {
+                const dateA = a.date instanceof Date ? a.date : a.date?.toDate?.() || new Date(a.date);
+                const dateB = b.date instanceof Date ? b.date : b.date?.toDate?.() || new Date(b.date);
+                return dateA - dateB;
+            });
+            
+            return `
+                <table class="agenda-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Event</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Assignment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sortedEvents.map(e => `
+                            <tr onclick="window.selectEvent('${e.id}')">
+                                <td style="font-weight: 700;">${formatDate(e.date)}</td>
+                                <td>
+                                    <div style="font-weight: 700; color: var(--ink);">${e.title}</div>
+                                    ${e.type ? `<div style="font-size: 10px; color: var(--ink-sub);">${e.type}</div>` : ''}
+                                </td>
+                                <td style="color: var(--ink-sub);">${e.location || 'TBC'}</td>
+                                <td><span class="status-badge ${STATUS_CONFIG[e.status || 'NONE'].class}">${STATUS_CONFIG[e.status || 'NONE'].label}</span></td>
+                                <td style="color: var(--ink-sub);">${e.assignment || 'Unassigned'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderDetailPanel() {
+            if (showAddForm) {
+                return renderAddForm();
+            }
+            
+            if (!selectedEvent) {
+                return `
+                    <div class="empty-state">
+                        <div class="empty-icon">👆</div>
+                        <div class="empty-title">Select an Event</div>
+                        <div class="empty-sub">Click on any event to view and edit its details.</div>
+                    </div>
+                `;
+            }
+            
+            const e = selectedEvent;
+            const status = STATUS_CONFIG[e.status || 'NONE'];
+            
+            return `
+                <div style="margin-bottom: 20px;">
+                    <span class="status-badge ${status.class}">${status.label}</span>
+                </div>
+                <h2 style="font-size: 18px; font-weight: 900; color: var(--ink); margin-bottom: 8px;">${e.title}</h2>
+                <p style="font-size: 12px; color: var(--ink-sub); margin-bottom: 20px;">${formatFullDate(e.date)}</p>
+                
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <div style="font-size: 13px; color: var(--ink);">📍 ${e.location || 'TBC'}</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Assignment</label>
+                    <div style="font-size: 13px; color: var(--ink);">👤 ${e.assignment || 'Unassigned'}</div>
+                </div>
+                
+                ${e.type ? `
+                    <div class="form-group">
+                        <label class="form-label">Type</label>
+                        <div style="font-size: 13px; color: var(--ink);">${e.type}</div>
+                    </div>
+                ` : ''}
+                
+                ${e.notes ? `
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <div style="font-size: 13px; color: var(--ink); line-height: 1.5;">${e.notes}</div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function renderAddForm() {
+            return `
+                <div class="form-group">
+                    <label class="form-label">Event Title</label>
+                    <input type="text" id="event-title" class="form-input" placeholder="e.g. Street Talks Shoot">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" id="event-date" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Location</label>
+                    <input type="text" id="event-location" class="form-input" placeholder="e.g. London">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Assignment</label>
+                    <input type="text" id="event-assignment" class="form-input" placeholder="e.g. Social Team">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <input type="text" id="event-type" class="form-input" placeholder="e.g. Shoot, Interview, Coverage">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select id="event-status" class="form-select">
+                        <option value="NONE">Not Needed</option>
+                        <option value="AMBER">To Do</option>
+                        <option value="BLUE">Requested</option>
+                        <option value="GREEN">Approved</option>
+                        <option value="RED">Blocked</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea id="event-notes" class="form-input" rows="3" placeholder="Additional details..."></textarea>
+                </div>
+            `;
+        }
+
+        function render() {
+            if (isLoading) {
+                root.innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading production planner...
+                    </div>
+                `;
+                return;
+            }
+
+            root.innerHTML = `
+                <div class="planner">
+                    <div class="top-bar">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        
+                        <div class="month-nav">
+                            <button class="nav-btn" onclick="window.prevMonth()">‹</button>
+                            <span class="month-title">${MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}</span>
+                            <button class="nav-btn" onclick="window.nextMonth()">›</button>
+                        </div>
+                        
+                        <div class="view-toggle">
+                            <button class="view-btn ${currentView === 'calendar' ? 'active' : ''}" onclick="window.setView('calendar')">Calendar</button>
+                            <button class="view-btn ${currentView === 'board' ? 'active' : ''}" onclick="window.setView('board')">Board</button>
+                            <button class="view-btn ${currentView === 'agenda' ? 'active' : ''}" onclick="window.setView('agenda')">Agenda</button>
+                        </div>
+                        
+                        <button class="add-btn" onclick="window.showAdd()">
+                            <span>+</span> New Event
+                        </button>
+                    </div>
+                    
+                    <div class="main-area">
+                        <div class="calendar-section">
+                            ${currentView === 'calendar' ? renderCalendarView() : ''}
+                            ${currentView === 'board' ? renderBoardView() : ''}
+                            ${currentView === 'agenda' ? renderAgendaView() : ''}
+                        </div>
+                        
+                        <div class="detail-panel">
+                            <div class="panel-header">
+                                <span class="panel-title">${showAddForm ? 'Add Event' : 'Event Details'}</span>
+                                ${(selectedEvent || showAddForm) ? `<button class="close-btn" onclick="window.closePanel()">✕</button>` : ''}
+                            </div>
+                            <div class="panel-body">
+                                ${renderDetailPanel()}
+                            </div>
+                            ${showAddForm ? `
+                                <div class="panel-footer">
+                                    <button class="panel-btn" onclick="window.closePanel()">Cancel</button>
+                                    <button class="panel-btn primary" onclick="window.saveEvent()">Save Event</button>
+                                </div>
+                            ` : selectedEvent ? `
+                                <div class="panel-footer">
+                                    <button class="panel-btn" onclick="window.deleteEvent()">Delete</button>
+                                    <button class="panel-btn primary" onclick="window.editEvent()">Edit</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Event handlers
+        window.prevMonth = () => {
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+            render();
+        };
+
+        window.nextMonth = () => {
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+            render();
+        };
+
+        window.setView = (view) => {
+            currentView = view;
+            render();
+        };
+
+        window.selectEvent = (id) => {
+            selectedEvent = events.find(e => e.id === id);
+            showAddForm = false;
+            render();
+        };
+
+        window.selectDate = (year, month, day) => {
+            // Could open add form with pre-filled date
+            console.log('Selected date:', year, month, day);
+        };
+
+        window.showAdd = () => {
+            showAddForm = true;
+            selectedEvent = null;
+            render();
+        };
+
+        window.closePanel = () => {
+            showAddForm = false;
+            selectedEvent = null;
+            render();
+        };
+
+        window.saveEvent = async () => {
+            const title = document.getElementById('event-title').value;
+            const dateStr = document.getElementById('event-date').value;
+            const location = document.getElementById('event-location').value;
+            const assignment = document.getElementById('event-assignment').value;
+            const type = document.getElementById('event-type').value;
+            const status = document.getElementById('event-status').value;
+            const notes = document.getElementById('event-notes').value;
+            
+            if (!title || !dateStr) {
+                alert('Please enter a title and date');
+                return;
+            }
+            
+            try {
+                await addDoc(collection(db, "artifacts", appId, "public", "data", "production_events"), {
+                    title,
+                    date: new Date(dateStr),
+                    location,
+                    assignment,
+                    type,
+                    status,
+                    notes,
+                    createdAt: new Date()
+                });
+                showAddForm = false;
+                render();
+            } catch (e) {
+                console.error('Error saving:', e);
+                alert('Error saving event. Please try again.');
+            }
+        };
+
+        window.deleteEvent = async () => {
+            if (!selectedEvent || !confirm('Delete this event?')) return;
+            try {
+                await deleteDoc(doc(db, "artifacts", appId, "public", "data", "production_events", selectedEvent.id));
+                selectedEvent = null;
+                render();
+            } catch (e) {
+                console.error('Error deleting:', e);
+                alert('Error deleting event.');
+            }
+        };
+
+        window.editEvent = () => {
+            // For now, just show add form - could pre-populate with selected event data
+            showAddForm = true;
+            render();
+        };
+
+        // Load data from Firebase
+        async function loadEvents() {
+            try {
+                const eventsRef = collection(db, "artifacts", appId, "public", "data", "production_events");
+                
+                // Set up real-time listener
+                onSnapshot(eventsRef, (snapshot) => {
+                    events = [];
+                    snapshot.forEach(doc => {
+                        events.push({ id: doc.id, ...doc.data() });
+                    });
+                    isLoading = false;
+                    render();
+                }, (error) => {
+                    console.error('Snapshot error:', error);
+                    isLoading = false;
+                    render();
+                });
+            } catch (e) {
+                console.error('Load error:', e);
+                isLoading = false;
+                render();
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loadEvents();
+            } else {
+                signInAnonymously(auth).catch(e => {
+                    console.error('Auth failed:', e);
+                    isLoading = false;
+                    render();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
