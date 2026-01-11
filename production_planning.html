@@ -1,0 +1,479 @@
+import React, { useState, useMemo } from 'react';
+import { 
+  Calendar as CalendarIcon, 
+  LayoutDashboard, 
+  ListTodo, 
+  ChevronLeft, 
+  ChevronRight, 
+  Plus, 
+  MapPin, 
+  User, 
+  Clock, 
+  MoreHorizontal, 
+  X,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  HelpCircle,
+  Filter,
+  Sparkles
+} from 'lucide-react';
+
+// --- Constants & Types ---
+const ACCREDITATION_STATUS = {
+  NONE: { label: 'Not Needed', color: 'bg-slate-300', border: 'border-slate-300', text: 'text-slate-500', bg: 'bg-slate-50', ring: 'ring-slate-200' },
+  AMBER: { label: 'To Do', color: 'bg-amber-400', border: 'border-amber-400', text: 'text-amber-700', bg: 'bg-amber-50', ring: 'ring-amber-200' },
+  BLUE: { label: 'Requested', color: 'bg-blue-400', border: 'border-blue-400', text: 'text-blue-700', bg: 'bg-blue-50', ring: 'ring-blue-200' },
+  GREEN: { label: 'Approved', color: 'bg-emerald-400', border: 'border-emerald-400', text: 'text-emerald-700', bg: 'bg-emerald-50', ring: 'ring-emerald-200' },
+  RED: { label: 'Blocked', color: 'bg-rose-400', border: 'border-rose-400', text: 'text-rose-700', bg: 'bg-rose-50', ring: 'ring-rose-200' },
+};
+
+const VIEW_TYPES = {
+  CALENDAR: 'calendar',
+  BOARD: 'board',
+  AGENDA: 'agenda'
+};
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+// --- Comprehensive UK Event Data 2026 ---
+const initialEvents = [
+  // January
+  { id: 'jan1', title: 'New Year’s Tube Ride', date: new Date(2026, 0, 1), location: 'London', assignment: 'Social Team', status: 'GREEN', type: 'Viral' },
+  { id: 'jan2', title: 'Ice Bath UK', date: new Date(2026, 0, 5), location: 'Brighton', assignment: 'Mourad Abdou', status: 'AMBER', type: 'Challenge' },
+  { id: 'jan3', title: 'Horse Racing Fixtures', date: new Date(2026, 0, 10), location: 'England & Wales', assignment: 'Sport Desk', status: 'BLUE', type: 'Coverage' },
+  { id: 'jan4', title: 'UK Snooker Tour', date: new Date(2026, 0, 15), location: 'Sheffield', assignment: 'Freelance', status: 'GREEN', type: 'Tournament' },
+  { id: 'jan5', title: 'Super Bowl Prep (Vox Pops)', date: new Date(2026, 0, 20), location: 'London/US', assignment: 'US Team', status: 'AMBER', type: 'Feature' },
+  { id: 'jan6', title: 'London Fashion Week (Mens)', date: new Date(2026, 0, 25), location: 'Soho', assignment: 'Lifestyle', status: 'NONE', type: 'Event' },
+  { id: 'jan7', title: 'Ashbourne Royal Football', date: new Date(2026, 0, 28), location: 'Derbyshire', assignment: 'Viral Unit', status: 'RED', type: 'Action' },
+  { id: 'jan8', title: 'January Returns Queues', date: new Date(2026, 0, 3), location: 'Oxford Street', assignment: 'Money Team', status: 'NONE', type: 'Consumer' },
+  
+  // February
+  { id: 'feb1', title: 'Six Nations: Eng vs Wal', date: new Date(2026, 1, 4), location: 'Twickenham', assignment: 'Rugby Team', status: 'BLUE', type: 'Match' },
+  { id: 'feb2', title: 'Brit Awards', date: new Date(2026, 1, 12), location: 'O2 Arena', assignment: 'Showbiz', status: 'AMBER', type: 'Red Carpet' },
+  { id: 'feb3', title: 'LFW (Main)', date: new Date(2026, 1, 15), location: 'London', assignment: 'Fashion', status: 'GREEN', type: 'Runway' },
+  { id: 'feb4', title: 'World Ice Swimming', date: new Date(2026, 1, 20), location: 'Cheltenham', assignment: 'Video', status: 'NONE', type: 'Niche' },
+  { id: 'feb5', title: 'BAFTA TV Awards', date: new Date(2026, 1, 22), location: 'Royal Festival Hall', assignment: 'Ents', status: 'AMBER', type: 'Awards' },
+  
+  // March
+  { id: 'mar1', title: 'Cheltenham Festival', date: new Date(2026, 2, 10), location: 'Cheltenham', assignment: 'Racing Team', status: 'BLUE', type: 'Festival' },
+  { id: 'mar2', title: 'St Patrick’s Day', date: new Date(2026, 2, 17), location: 'Dublin/London', assignment: 'Social', status: 'NONE', type: 'Vox Pop' },
+  { id: 'mar3', title: 'Grand National Prep', date: new Date(2026, 2, 25), location: 'Aintree', assignment: 'Sport', status: 'AMBER', type: 'Planning' },
+  { id: 'mar4', title: 'Oxford vs Cambridge Boat Race', date: new Date(2026, 2, 29), location: 'The Thames', assignment: 'Social/Sport', status: 'NONE', type: 'Tradition' },
+
+  // April
+  { id: 'apr1', title: 'World Car Boot Sale Day', date: new Date(2026, 3, 5), location: 'TBC', assignment: 'Features', status: 'NONE', type: 'Quirky' },
+  { id: 'apr2', title: 'Grand National', date: new Date(2026, 3, 10), location: 'Aintree', assignment: 'Racing Team', status: 'GREEN', type: 'Major' },
+  { id: 'apr3', title: 'London Marathon', date: new Date(2026, 3, 21), location: 'London', assignment: 'All Hands', status: 'GREEN', type: 'Live' },
+  { id: 'apr4', title: 'World Mud Race', date: new Date(2026, 3, 28), location: 'Essex', assignment: 'Viral', status: 'AMBER', type: 'Messy' },
+  { id: 'apr5', title: 'Women’s Six Nations', date: new Date(2026, 3, 15), location: 'UK Home Fixtures', assignment: 'Rugby Team', status: 'BLUE', type: 'Coverage' },
+
+  // May
+  { id: 'may1', title: 'Jack in the Green', date: new Date(2026, 4, 1), location: 'Hastings', assignment: 'Culture', status: 'NONE', type: 'Folk' },
+  { id: 'may2', title: 'Eurovision Final', date: new Date(2026, 4, 15), location: 'TBC', assignment: 'Ents', status: 'BLUE', type: 'Show' },
+  { id: 'may3', title: 'Chelsea Flower Show', date: new Date(2026, 4, 20), location: 'Chelsea', assignment: 'Lifestyle', status: 'GREEN', type: 'Garden' },
+  { id: 'may4', title: 'FA Cup Final', date: new Date(2026, 4, 25), location: 'Wembley', assignment: 'Football', status: 'BLUE', type: 'Final' },
+  { id: 'may5', title: 'Cheese Rolling', date: new Date(2026, 4, 26), location: 'Gloucestershire', assignment: 'Mourad', status: 'RED', type: 'Danger' },
+  { id: 'may6', title: 'May Day Celebrations', date: new Date(2026, 4, 4), location: 'Multi-city', assignment: 'News', status: 'NONE', type: 'Culture' },
+  { id: 'may7', title: 'Women’s FA Cup Final', date: new Date(2026, 4, 17), location: 'Wembley', assignment: 'Sport', status: 'BLUE', type: 'Coverage' },
+  { id: 'may8', title: 'University Graduations', date: new Date(2026, 4, 30), location: 'Russell Group Cities', assignment: 'Youth Unit', status: 'NONE', type: 'Social' },
+
+  // June
+  { id: 'jun1', title: 'Royal Ascot', date: new Date(2026, 5, 15), location: 'Ascot', assignment: 'Fashion/Sport', status: 'GREEN', type: 'Royal' },
+  { id: 'jun2', title: 'Wimbledon Prep', date: new Date(2026, 5, 20), location: 'SW19', assignment: 'Tennis', status: 'GREEN', type: 'Setup' },
+  { id: 'jun3', title: 'Glastonbury', date: new Date(2026, 5, 25), location: 'Pilton', assignment: 'Music Team', status: 'BLUE', type: 'Festival' },
+  { id: 'jun4', title: 'Henley Regatta', date: new Date(2026, 5, 28), location: 'Henley', assignment: 'Social', status: 'AMBER', type: 'Posh' },
+  { id: 'jun5', title: 'Rugby Premiership Final', date: new Date(2026, 5, 10), location: 'Twickenham', assignment: 'Sport', status: 'AMBER', type: 'Coverage' },
+  { id: 'jun6', title: 'Cricket Test: Lords', date: new Date(2026, 5, 12), location: 'London', assignment: 'Cricket Team', status: 'BLUE', type: 'Major' },
+
+  // July
+  { id: 'jul1', title: 'Wimbledon Championships', date: new Date(2026, 6, 1), location: 'SW19', assignment: 'Tennis Team', status: 'GREEN', type: 'Major' },
+  { id: 'jul2', title: 'British Grand Prix', date: new Date(2026, 6, 7), location: 'Silverstone', assignment: 'F1 Team', status: 'BLUE', type: 'Race' },
+  { id: 'jul3', title: 'Henley Festival', date: new Date(2026, 6, 10), location: 'Henley', assignment: 'Ents', status: 'NONE', type: 'Music' },
+  { id: 'jul4', title: 'UK Pride Marches', date: new Date(2026, 6, 15), location: 'MCR/Brighton', assignment: 'Culture', status: 'NONE', type: 'Social' },
+  { id: 'jul5', title: 'Latitude Festival', date: new Date(2026, 6, 24), location: 'Suffolk', assignment: 'Ents', status: 'AMBER', type: 'Culture' },
+
+  // August
+  { id: 'aug1', title: 'Edinburgh Fringe', date: new Date(2026, 7, 1), location: 'Edinburgh', assignment: 'Comedy', status: 'AMBER', type: 'Arts' },
+  { id: 'aug2', title: 'A-level Results Day', date: new Date(2026, 7, 15), location: 'UK-wide', assignment: 'News', status: 'NONE', type: 'Viral' },
+  { id: 'aug3', title: 'Gravy Wrestling', date: new Date(2026, 7, 25), location: 'Lancashire', assignment: 'Viral', status: 'RED', type: 'Weird' },
+  { id: 'aug4', title: 'Bog Snorkelling', date: new Date(2026, 7, 28), location: 'Wales', assignment: 'Viral', status: 'AMBER', type: 'Wet' },
+  { id: 'aug5', title: 'Hay Festival', date: new Date(2026, 7, 10), location: 'Hay-on-Wye', assignment: 'Culture', status: 'NONE', type: 'Arts' },
+  { id: 'aug6', title: 'World Toe Wrestling', date: new Date(2026, 7, 12), location: 'Derbyshire', assignment: 'Social', status: 'NONE', type: 'Quirky' },
+
+  // September
+  { id: 'sep1', title: 'Great North Run', date: new Date(2026, 8, 8), location: 'Newcastle', assignment: 'Sport', status: 'GREEN', type: 'Run' },
+  { id: 'sep2', title: 'Freshers’ Week', date: new Date(2026, 8, 15), location: 'University Cities', assignment: 'Youth Unit', status: 'NONE', type: 'Feature' },
+  { id: 'sep3', title: 'Student Move-in Weekend', date: new Date(2026, 8, 20), location: 'UK-wide', assignment: 'Money Team', status: 'NONE', type: 'Consumer' },
+  { id: 'sep4', title: 'Blackpool Illuminations', date: new Date(2026, 8, 4), location: 'Blackpool', assignment: 'Social', status: 'NONE', type: 'Tourism' },
+  { id: 'sep5', title: 'Green Man Festival', date: new Date(2026, 8, 12), location: 'Wales', assignment: 'Culture', status: 'AMBER', type: 'Culture' },
+  { id: 'sep6', title: 'Durham Miners’ Gala', date: new Date(2026, 8, 10), location: 'Durham', assignment: 'News', status: 'NONE', type: 'Heritage' },
+  
+  // October
+  { id: 'oct1', title: 'Oktoberfest Events', date: new Date(2026, 9, 5), location: 'London/MCR', assignment: 'Social', status: 'NONE', type: 'Beer' },
+  { id: 'oct2', title: 'London Film Festival', date: new Date(2026, 9, 10), location: 'Southbank', assignment: 'Film', status: 'AMBER', type: 'Cinema' },
+  { id: 'oct3', title: 'Comic Con UK', date: new Date(2026, 9, 25), location: 'London ExCel', assignment: 'Ents', status: 'AMBER', type: 'Fan' },
+  { id: 'oct4', title: 'Whitby Goth Weekend', date: new Date(2026, 9, 31), location: 'Whitby', assignment: 'Culture', status: 'NONE', type: 'Viral' },
+
+  // November
+  { id: 'nov1', title: 'Lewes Bonfire Night', date: new Date(2026, 10, 5), location: 'Lewes', assignment: 'Viral Unit', status: 'AMBER', type: 'Fire' },
+  { id: 'nov2', title: 'Winter Wonderland Open', date: new Date(2026, 10, 18), location: 'Hyde Park', assignment: 'Social', status: 'GREEN', type: 'Seasonal' },
+  { id: 'nov3', title: 'Black Friday Interviews', date: new Date(2026, 10, 27), location: 'Regional Centres', assignment: 'Money Team', status: 'NONE', type: 'Consumer' },
+  { id: 'nov4', title: 'Remembrance Sunday', date: new Date(2026, 10, 8), location: 'Cenotaph', assignment: 'News', status: 'GREEN', type: 'Solemn' },
+
+  // December
+  { id: 'dec1', title: 'Burning the Clocks', date: new Date(2026, 11, 21), location: 'Brighton', assignment: 'Visuals', status: 'NONE', type: 'Winter' },
+  { id: 'dec2', title: 'Christmas Late Shopping', date: new Date(2026, 11, 15), location: 'Oxford St/Westfield', assignment: 'Consumer', status: 'NONE', type: 'Retail' },
+];
+
+// --- Sub-Components ---
+
+const StatusDot = ({ status }) => {
+  const config = ACCREDITATION_STATUS[status] || ACCREDITATION_STATUS.NONE;
+  return <div className={`w-1.5 h-1.5 rounded-full ${config.color}`} title={config.label} />;
+};
+
+const Badge = ({ status }) => {
+  const config = ACCREDITATION_STATUS[status] || ACCREDITATION_STATUS.NONE;
+  return (
+    <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${config.border} ${config.bg} ${config.text}`}>
+      {config.label}
+    </span>
+  );
+};
+
+export default function ProductionPlanner() {
+  const [view, setView] = useState(VIEW_TYPES.CALENDAR);
+  const [currentDate, setCurrentDate] = useState(new Date(2026, 0, 1));
+  const [events, setEvents] = useState(initialEvents);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // --- Helpers ---
+  const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+  const calendarDays = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const totalDays = daysInMonth(year, month);
+    const startingDay = firstDayOfMonth(year, month);
+    const days = [];
+
+    for (let i = 0; i < startingDay; i++) days.push({ day: null, date: null });
+    
+    for (let i = 1; i <= totalDays; i++) {
+      const date = new Date(year, month, i);
+      const dayEvents = events.filter(e => e.date.toDateString() === date.toDateString());
+      days.push({ day: i, date, events: dayEvents });
+    }
+    return days;
+  }, [currentDate, events]);
+
+  const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const handlePrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  
+  const openEvent = (event) => {
+    setSelectedEvent(event);
+    setDrawerOpen(true);
+  };
+
+  // --- Views ---
+
+  const CalendarGrid = () => (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm animate-in fade-in duration-300">
+      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50/80">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+          <div key={d} className="py-2 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest border-r border-slate-200 last:border-r-0">
+            {d}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 bg-slate-50">
+        {calendarDays.map((dayObj, i) => (
+          <div 
+            key={i} 
+            className={`min-h-[90px] p-1.5 border-r border-b border-slate-200 last:border-r-0 transition-all duration-200 ${!dayObj.day ? 'bg-slate-50/50' : 'bg-white hover:bg-slate-50'}`}
+          >
+            {dayObj.day && (
+              <>
+                <div className="flex justify-between items-start mb-1">
+                  <span className={`text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full ${dayObj.date?.toDateString() === new Date().toDateString() ? 'bg-emerald-500 text-white' : 'text-slate-400'}`}>
+                    {dayObj.day}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {dayObj.events.slice(0, 3).map(event => (
+                    <button 
+                      key={event.id}
+                      onClick={(e) => { e.stopPropagation(); openEvent(event); }}
+                      className={`w-full text-left px-1.5 py-1 rounded border border-slate-100 shadow-sm flex items-center gap-1.5 hover:shadow-md hover:border-slate-300 hover:-translate-y-0.5 transition-all bg-white group`}
+                    >
+                      <StatusDot status={event.status} />
+                      <span className="text-[9px] font-semibold text-slate-700 truncate leading-tight group-hover:text-slate-900">{event.title}</span>
+                    </button>
+                  ))}
+                  {dayObj.events.length > 3 && (
+                    <div className="text-[9px] font-bold text-slate-400 px-1 text-center mt-1">
+                      + {dayObj.events.length - 3} more
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const BoardView = () => {
+    const boardMonths = MONTHS.map((name, idx) => ({
+      name,
+      events: events.filter(e => e.date.getMonth() === idx && e.date.getFullYear() === currentDate.getFullYear())
+    }));
+
+    return (
+      <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 h-[calc(100vh-180px)] snap-x">
+        {boardMonths.map((month, idx) => (
+          <div key={idx} className="flex-shrink-0 w-64 snap-start">
+            <div className="flex items-center justify-between mb-3 px-1 sticky top-0 bg-[#F9FAFB] z-10 py-2">
+              <h3 className="text-xs font-bold text-slate-600 uppercase tracking-widest">{month.name.substring(0,3)}</h3>
+              <span className="text-[9px] font-bold text-slate-400 bg-slate-200/50 px-1.5 py-0.5 rounded-md">
+                {month.events.length}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {month.events.map(event => (
+                <div 
+                  key={event.id}
+                  onClick={() => openEvent(event)}
+                  className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm hover:shadow-md hover:border-emerald-500/30 hover:-translate-y-0.5 transition-all cursor-pointer group"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className={`w-1.5 h-1.5 rounded-full ${ACCREDITATION_STATUS[event.status].color}`} />
+                    <span className="text-[9px] font-medium text-slate-400">{event.date.getDate()}</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-700 leading-tight mb-2 group-hover:text-emerald-700 transition-colors line-clamp-2">
+                    {event.title}
+                  </h4>
+                  <div className="flex items-center gap-1 text-[9px] text-slate-400 font-medium truncate">
+                    <MapPin size={10} />
+                    {event.location}
+                  </div>
+                </div>
+              ))}
+              {month.events.length === 0 && (
+                <div className="h-24 border border-dashed border-slate-200 rounded-lg flex items-center justify-center text-[10px] text-slate-300 font-medium">
+                  No events
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const AgendaView = () => (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm animate-in slide-in-from-bottom-2 duration-300">
+      <table className="w-full text-left text-xs">
+        <thead>
+          <tr className="bg-slate-50 border-b border-slate-200">
+            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest w-24">Date</th>
+            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Event</th>
+            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Where</th>
+            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest w-32">Status</th>
+            <th className="px-4 py-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Who</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {events.sort((a,b) => a.date - b.date).map(event => (
+            <tr 
+              key={event.id} 
+              className="hover:bg-emerald-50/30 transition-colors cursor-pointer group"
+              onClick={() => openEvent(event)}
+            >
+              <td className="px-4 py-3 font-bold text-slate-700 tabular-nums">
+                {event.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+              </td>
+              <td className="px-4 py-3">
+                <div className="font-semibold text-slate-800">{event.title}</div>
+                <div className="text-[9px] text-slate-400 font-medium uppercase tracking-wide mt-0.5">{event.type}</div>
+              </td>
+              <td className="px-4 py-3 text-slate-500 font-medium">
+                {event.location}
+              </td>
+              <td className="px-4 py-3">
+                <Badge status={event.status} />
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1.5 font-medium text-slate-600">
+                  <div className="w-5 h-5 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[8px] font-bold">
+                    {event.assignment.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <span className="truncate max-w-[100px]">{event.assignment}</span>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#F9FAFB] text-[#1C1C1C] font-sans selection:bg-emerald-100">
+      
+      {/* Compact Top Bar */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 py-3 sticky top-0 z-30 flex items-center justify-between gap-4">
+        
+        {/* Date & Nav */}
+        <div className="flex items-center gap-2">
+          <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+            <button onClick={handlePrevMonth} className="p-1 hover:bg-white rounded-md transition-all text-slate-500 hover:text-slate-900 shadow-sm hover:shadow">
+              <ChevronLeft size={16} />
+            </button>
+            <button onClick={handleNextMonth} className="p-1 hover:bg-white rounded-md transition-all text-slate-500 hover:text-slate-900 shadow-sm hover:shadow">
+              <ChevronRight size={16} />
+            </button>
+          </div>
+          <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight min-w-[100px]">
+            {MONTHS[currentDate.getMonth()]} <span className="text-slate-400 font-medium">{currentDate.getFullYear()}</span>
+          </h2>
+        </div>
+
+        {/* View Toggle */}
+        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            {[
+              { id: VIEW_TYPES.CALENDAR, icon: CalendarIcon, label: 'Grid' },
+              { id: VIEW_TYPES.BOARD, icon: LayoutDashboard, label: 'Board' },
+              { id: VIEW_TYPES.AGENDA, icon: ListTodo, label: 'List' }
+            ].map(v => (
+              <button 
+                key={v.id}
+                onClick={() => setView(v.id)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${view === v.id ? 'bg-white shadow-sm text-emerald-600 ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                <v.icon size={12} /> <span className="hidden sm:inline">{v.label}</span>
+              </button>
+            ))}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+            <div className="relative hidden sm:block">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
+              <input 
+                type="text" 
+                placeholder="Search..." 
+                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs w-32 focus:w-48 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-400"
+              />
+            </div>
+            <button className="bg-emerald-600 text-white p-1.5 sm:px-3 sm:py-1.5 rounded-lg font-bold text-xs hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1 active:scale-95">
+              <Plus size={14} /> <span className="hidden sm:inline">New</span>
+            </button>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="px-4 py-4 max-w-[1600px] mx-auto">
+        {view === VIEW_TYPES.CALENDAR && <CalendarGrid />}
+        {view === VIEW_TYPES.BOARD && <BoardView />}
+        {view === VIEW_TYPES.AGENDA && <AgendaView />}
+      </main>
+
+      {/* Right Side Detail Drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-[2px] transition-opacity" onClick={() => setDrawerOpen(false)} />
+          <div className="relative w-full max-w-sm bg-white h-full shadow-2xl flex flex-col transform transition-transform animate-in slide-in-from-right duration-300 border-l border-slate-200">
+            
+            {/* Drawer Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <Sparkles size={12} className="text-emerald-500" />
+                Event Details
+              </div>
+              <button onClick={() => setDrawerOpen(false)} className="p-1.5 hover:bg-slate-200 rounded-md transition-colors text-slate-400 hover:text-slate-600">
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {selectedEvent ? (
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <Badge status={selectedEvent.status} />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{selectedEvent.type}</span>
+                    </div>
+                    <h1 className="text-xl font-black text-slate-900 leading-tight mb-1">
+                      {selectedEvent.title}
+                    </h1>
+                  </div>
+
+                  <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <CalendarIcon size={14} className="text-slate-400" />
+                      <span className="text-xs font-semibold text-slate-700">{selectedEvent.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' })}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <MapPin size={14} className="text-slate-400" />
+                      <span className="text-xs font-semibold text-slate-700">{selectedEvent.location}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <User size={14} className="text-slate-400" />
+                      <span className="text-xs font-semibold text-slate-700">{selectedEvent.assignment}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Quick Actions</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button className="bg-white border border-slate-200 py-2.5 rounded-lg text-xs font-bold flex flex-col items-center justify-center gap-1 hover:border-emerald-500 hover:text-emerald-600 transition-all hover:shadow-sm group">
+                        <CheckCircle2 size={16} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
+                        Approve
+                      </button>
+                      <button className="bg-white border border-slate-200 py-2.5 rounded-lg text-xs font-bold flex flex-col items-center justify-center gap-1 hover:border-rose-500 hover:text-rose-600 transition-all hover:shadow-sm group">
+                        <AlertCircle size={16} className="text-slate-300 group-hover:text-rose-500 transition-colors" />
+                        Flag Issue
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Production Notes</h3>
+                    <div className="text-xs text-slate-600 leading-relaxed bg-amber-50 border border-amber-100 p-3 rounded-lg">
+                      <span className="font-bold text-amber-700 block mb-1">Deadline: 48h Prior</span>
+                      Ensure travel logistics are booked. Check kit requirements for {selectedEvent.location}.
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-20 flex flex-col items-center">
+                  <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                    <Sparkles size={20} className="text-slate-300" />
+                  </div>
+                  <p className="text-slate-400 text-xs font-medium">Select an event to view details</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex gap-2 bg-slate-50/50">
+              <button className="flex-1 bg-slate-900 text-white py-2.5 rounded-lg font-bold text-xs hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 active:scale-95">
+                Edit Event
+              </button>
+              <button className="px-3 py-2.5 border border-slate-200 rounded-lg text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-all text-xs font-bold">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
