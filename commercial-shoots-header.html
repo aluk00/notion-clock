@@ -16,15 +16,10 @@
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
         body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; }
         
-        .header-widget { 
-            background: #FFF; border-radius: 16px; border: 1px solid var(--border);
-            padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;
-            flex-wrap: wrap; gap: 16px;
-        }
+        .widget { background: #FFF; border-radius: 14px; border: 1px solid var(--border); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
         
-        .header-left { display: flex; align-items: center; gap: 16px; }
-        
-        .dots { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 20px; height: 20px; }
+        .left { display: flex; align-items: center; gap: 14px; }
+        .dots { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 18px; height: 18px; }
         .dot { width: 100%; height: 100%; background: var(--production); border-radius: 50%; animation: pulse 2.5s infinite ease-in-out; }
         .dot:nth-child(1) { animation-delay: 0s; }
         .dot:nth-child(2) { animation-delay: 0.625s; }
@@ -32,47 +27,21 @@
         .dot:nth-child(4) { animation-delay: 1.875s; }
         @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
         
-        .title-block { }
-        .title { font-size: 22px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: -0.03em; line-height: 1.1; }
-        .subtitle { font-size: 10px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+        .title { font-size: 16px; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: -0.02em; }
         
-        .header-right { display: flex; align-items: center; gap: 12px; }
+        .center { display: flex; align-items: center; gap: 10px; }
         
-        .stat-pill {
-            display: flex; align-items: center; gap: 8px;
-            padding: 8px 14px; border-radius: 20px; background: var(--bg-soft);
-            border: 1px solid var(--border);
-        }
-        .stat-icon { font-size: 14px; }
-        .stat-content { }
-        .stat-value { font-size: 16px; font-weight: 900; color: var(--ink); }
-        .stat-label { font-size: 8px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-pill { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-soft); border-radius: 20px; font-size: 10px; font-weight: 700; color: var(--ink-sub); }
+        .stat-pill strong { color: var(--ink); font-size: 12px; }
         
-        .view-toggle {
-            display: flex; border-radius: 10px; overflow: hidden; border: 1px solid var(--border);
-        }
-        .view-btn {
-            padding: 8px 14px; border: none; background: #FFF;
-            font-size: 10px; font-weight: 700; color: var(--ink-sub);
-            cursor: pointer; transition: all 0.2s;
-        }
-        .view-btn:hover { background: var(--bg-soft); }
+        .right { display: flex; align-items: center; gap: 10px; }
+        
+        .view-toggle { display: flex; background: var(--bg-soft); border-radius: 8px; padding: 3px; }
+        .view-btn { padding: 6px 12px; border: none; background: transparent; font-size: 9px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); cursor: pointer; border-radius: 6px; font-family: inherit; }
         .view-btn.active { background: var(--production); color: #FFF; }
-        .view-btn + .view-btn { border-left: 1px solid var(--border); }
         
-        .action-btn {
-            padding: 10px 18px; border-radius: 10px; border: none;
-            background: var(--production); color: #FFF;
-            font-size: 10px; font-weight: 800; text-transform: uppercase;
-            cursor: pointer; transition: all 0.2s;
-            display: flex; align-items: center; gap: 6px;
-        }
+        .action-btn { padding: 8px 16px; background: var(--production); color: #FFF; border: none; border-radius: 8px; font-size: 10px; font-weight: 800; text-transform: uppercase; cursor: pointer; font-family: inherit; }
         .action-btn:hover { filter: brightness(1.1); }
-        
-        @media (max-width: 700px) {
-            .header-widget { flex-direction: column; align-items: flex-start; }
-            .header-right { flex-wrap: wrap; width: 100%; }
-        }
     </style>
 </head>
 <body>
@@ -95,95 +64,88 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         
-        const appId = 'dmg-command-centre-native';
-        const basePath = `artifacts/${appId}/public/data`;
+        // Demo shoots data
+        const DEMO_SHOOTS = [
+            { title: 'Sky Vegas Campaign', date: '2025-01-13', status: 'confirmed', client: 'Sky' },
+            { title: 'JAECOO 24 Hours', date: '2025-01-15', status: 'confirmed', client: 'JAECOO' },
+            { title: 'Wuthering Heights', date: '2025-01-20', status: 'pending', client: 'Studio Canal' },
+            { title: 'Trading 212', date: '2025-01-22', status: 'confirmed', client: 'Trading 212' },
+            { title: 'Chery Family', date: '2025-01-28', status: 'pending', client: 'Chery' },
+        ];
         
         function App() {
             const [shoots, setShoots] = useState([]);
             const [view, setView] = useState('week');
             
             useEffect(() => {
-                // Listen for shoots/productions
-                const unsub = db.collection(basePath).doc('shoots').collection('shoots')
-                    .onSnapshot(snap => setShoots(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-                        () => setShoots([]));
-                
-                return () => unsub?.();
+                const unsub = db.collection('shoots')
+                    .onSnapshot(snap => {
+                        if (snap.empty) {
+                            setShoots(DEMO_SHOOTS);
+                        } else {
+                            setShoots(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                        }
+                    }, err => {
+                        console.log('Using demo shoots:', err.message);
+                        setShoots(DEMO_SHOOTS);
+                    });
+                return () => unsub();
             }, []);
             
             const stats = useMemo(() => {
-                const today = new Date();
-                const thisWeekStart = new Date(today);
-                thisWeekStart.setDate(today.getDate() - today.getDay() + 1);
-                const thisWeekEnd = new Date(thisWeekStart);
-                thisWeekEnd.setDate(thisWeekStart.getDate() + 6);
+                const now = new Date();
+                const weekEnd = new Date(now);
+                weekEnd.setDate(weekEnd.getDate() + 7);
                 
                 const thisWeek = shoots.filter(s => {
-                    const shootDate = new Date(s.date);
-                    return shootDate >= thisWeekStart && shootDate <= thisWeekEnd;
-                });
+                    const d = new Date(s.date);
+                    return d >= now && d <= weekEnd;
+                }).length;
                 
-                const upcoming = shoots.filter(s => new Date(s.date) > today);
-                const confirmed = shoots.filter(s => s.status === 'confirmed' || s.crewConfirmed);
+                const upcoming = shoots.filter(s => new Date(s.date) >= now).length;
+                const confirmed = shoots.filter(s => s.status === 'confirmed').length;
                 
-                return {
-                    thisWeek: thisWeek.length,
-                    upcoming: upcoming.length,
-                    confirmed: confirmed.length
-                };
+                return { thisWeek, upcoming, confirmed };
             }, [shoots]);
-            
-            const handleNewShoot = () => {
-                // Open new shoot form (would integrate with actual form)
-                window.parent?.postMessage({ type: 'OPEN_NEW_SHOOT' }, '*');
-            };
             
             const handleViewChange = (newView) => {
                 setView(newView);
-                // Notify parent about view change
-                window.parent?.postMessage({ type: 'CALENDAR_VIEW_CHANGE', view: newView }, '*');
+                // Notify parent page
+                window.parent.postMessage({ type: 'VIEW_CHANGE', view: newView }, '*');
+            };
+            
+            const handleNewShoot = () => {
+                window.parent.postMessage({ type: 'NEW_SHOOT' }, '*');
             };
             
             return (
-                <div className="header-widget">
-                    <div className="header-left">
+                <div className="widget">
+                    <div className="left">
                         <div className="dots">
                             <div className="dot"></div>
                             <div className="dot"></div>
                             <div className="dot"></div>
                             <div className="dot"></div>
                         </div>
-                        <div className="title-block">
-                            <div className="title">Commercial Shoots</div>
-                            <div className="subtitle">Production Calendar</div>
+                        <span className="title">Commercial Shoots</span>
+                    </div>
+                    
+                    <div className="center">
+                        <div className="stat-pill">
+                            <span>This Week</span>
+                            <strong>{stats.thisWeek}</strong>
+                        </div>
+                        <div className="stat-pill">
+                            <span>Upcoming</span>
+                            <strong>{stats.upcoming}</strong>
+                        </div>
+                        <div className="stat-pill">
+                            <span>Confirmed</span>
+                            <strong>{stats.confirmed}</strong>
                         </div>
                     </div>
                     
-                    <div className="header-right">
-                        <div className="stat-pill">
-                            <span className="stat-icon">📅</span>
-                            <div className="stat-content">
-                                <div className="stat-value">{stats.thisWeek}</div>
-                                <div className="stat-label">This Week</div>
-                            </div>
-                        </div>
-                        
-                        <div className="stat-pill">
-                            <span className="stat-icon">🎬</span>
-                            <div className="stat-content">
-                                <div className="stat-value">{stats.upcoming}</div>
-                                <div className="stat-label">Upcoming</div>
-                            </div>
-                        </div>
-                        
-                        <div className="stat-pill">
-                            <span className="stat-icon">✅</span>
-                            <div className="stat-content">
-                                <div className="stat-value">{stats.confirmed}</div>
-                                <div className="stat-label">Confirmed</div>
-                            </div>
-                        </div>
-                        
+                    <div className="right">
                         <div className="view-toggle">
                             <button 
                                 className={`view-btn ${view === 'day' ? 'active' : ''}`}
@@ -198,10 +160,7 @@
                                 onClick={() => handleViewChange('month')}
                             >Month</button>
                         </div>
-                        
-                        <button className="action-btn" onClick={handleNewShoot}>
-                            <span>+</span> New Shoot
-                        </button>
+                        <button className="action-btn" onClick={handleNewShoot}>+ New Shoot</button>
                     </div>
                 </div>
             );
