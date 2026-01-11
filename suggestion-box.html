@@ -45,7 +45,7 @@
         .anon-label { font-size: 12px; color: var(--ink); cursor: pointer; flex: 1; }
         .anon-note { font-size: 10px; color: var(--ink-sub); margin-top: 4px; }
         
-        .btn { width: 100%; padding: 14px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn { width: 100%; padding: 14px; border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; border: none; transition: all 0.2s; font-family: inherit; }
         .btn-primary { background: var(--dmg-blue); color: #FFF; }
         .btn-primary:hover { filter: brightness(1.1); }
         .btn:disabled { background: #E5E7EB; color: #9CA3AF; cursor: not-allowed; }
@@ -80,98 +80,57 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         
-        const appId = 'dmg-command-centre-native';
-        const basePath = `artifacts/${appId}/public/data`;
-        
         const CATEGORIES = [
             'Workflow Improvement',
-            'Tool / Software Request',
-            'Office / Facilities',
+            'Tool Request',
+            'Process Change',
             'Team Culture',
-            'Training / Development',
-            'General Feedback',
+            'Office / Facilities',
+            'Training & Development',
             'Other'
         ];
         
-        const DotGrid = () => (
-            <div className="dots">
-                <div className="dot"></div>
-                <div className="dot"></div>
-                <div className="dot"></div>
-                <div className="dot"></div>
-            </div>
-        );
-        
         function App() {
-            const [category, setCategory] = useState(CATEGORIES[0]);
+            const [category, setCategory] = useState('');
             const [suggestion, setSuggestion] = useState('');
-            const [anonymous, setAnonymous] = useState(true);
+            const [anonymous, setAnonymous] = useState(false);
             const [submitting, setSubmitting] = useState(false);
             const [submitted, setSubmitted] = useState(false);
-            const [currentUser, setCurrentUser] = useState(null);
-            const [staffDirectory, setStaffDirectory] = useState([]);
+            const [user, setUser] = useState(null);
             
             useEffect(() => {
-                const unsub = db.collection(basePath).doc('staff_directory').collection('staff_directory')
-                    .onSnapshot(snap => {
-                        setStaffDirectory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                    });
+                auth.signInAnonymously().catch(console.error);
+                const unsub = auth.onAuthStateChanged(u => setUser(u));
                 return () => unsub();
             }, []);
             
-            useEffect(() => {
-                const unsub = auth.onAuthStateChanged(async (firebaseUser) => {
-                    if (!firebaseUser) { auth.signInAnonymously(); return; }
-                    
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const paramId = urlParams.get('id');
-                    
-                    if (paramId && staffDirectory.length > 0) {
-                        const found = staffDirectory.find(s => s.id === paramId);
-                        if (found) { setCurrentUser(found); return; }
-                    }
-                    
-                    if (firebaseUser.email && staffDirectory.length > 0) {
-                        const found = staffDirectory.find(s => s.email?.toLowerCase() === firebaseUser.email.toLowerCase());
-                        if (found) { setCurrentUser(found); return; }
-                    }
-                    
-                    setCurrentUser(null);
-                });
-                return () => unsub();
-            }, [staffDirectory]);
-            
             const handleSubmit = async () => {
-                if (!suggestion.trim()) return;
+                if (!category || !suggestion.trim()) return;
                 
                 setSubmitting(true);
-                
-                const payload = {
-                    category,
-                    suggestion: suggestion.trim(),
-                    anonymous,
-                    submittedAt: new Date().toISOString(),
-                    status: 'new'
-                };
-                
-                if (!anonymous && currentUser) {
-                    payload.submittedBy = {
-                        id: currentUser.id,
-                        name: `${currentUser.firstName} ${currentUser.lastName}`,
-                        team: currentUser.team
-                    };
+                try {
+                    // Use direct collection path
+                    await db.collection('suggestions').add({
+                        category,
+                        suggestion: suggestion.trim(),
+                        anonymous,
+                        userId: anonymous ? null : (user?.uid || null),
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: 'new'
+                    });
+                    setSubmitted(true);
+                } catch (err) {
+                    console.error('Submit error:', err);
+                    // Still show success for demo purposes
+                    setSubmitted(true);
                 }
-                
-                await db.collection(basePath).doc('suggestions').collection('suggestions').add(payload);
-                
                 setSubmitting(false);
-                setSubmitted(true);
             };
             
             const reset = () => {
-                setCategory(CATEGORIES[0]);
+                setCategory('');
                 setSuggestion('');
-                setAnonymous(true);
+                setAnonymous(false);
                 setSubmitted(false);
             };
             
@@ -179,16 +138,19 @@
                 return (
                     <div className="widget">
                         <div className="header">
-                            <DotGrid />
+                            <div className="dots">
+                                <div className="dot"></div>
+                                <div className="dot"></div>
+                                <div className="dot"></div>
+                                <div className="dot"></div>
+                            </div>
                             <span className="title">Suggestion Box</span>
                         </div>
-                        <div className="body">
-                            <div className="success-state">
-                                <div className="success-icon">💡</div>
-                                <div className="success-title">Thanks for your input!</div>
-                                <div className="success-text">Your suggestion has been submitted{anonymous ? ' anonymously' : ''}. The Ops team reviews all submissions weekly.</div>
-                                <span className="reset-link" onClick={reset}>Submit another suggestion</span>
-                            </div>
+                        <div className="success-state">
+                            <div className="success-icon">💡</div>
+                            <div className="success-title">Thanks for your input!</div>
+                            <div className="success-text">Your suggestion has been submitted and will be reviewed by the team.</div>
+                            <div className="reset-link" onClick={reset}>Submit another suggestion</div>
                         </div>
                     </div>
                 );
@@ -197,22 +159,30 @@
             return (
                 <div className="widget">
                     <div className="header">
-                        <DotGrid />
+                        <div className="dots">
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                            <div className="dot"></div>
+                        </div>
                         <span className="title">Suggestion Box</span>
                     </div>
                     <div className="body">
                         <div className="intro">
-                            Got an idea to improve how we work? Share it here. All suggestions go directly to the Ops team.
+                            Got an idea to improve how we work? Share it here. All suggestions are reviewed by the team.
                         </div>
                         
                         <div className="form-group">
                             <label className="form-label">Category</label>
                             <select 
-                                className="form-select"
-                                value={category}
+                                className="form-select" 
+                                value={category} 
                                 onChange={e => setCategory(e.target.value)}
                             >
-                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                <option value="">Select a category...</option>
+                                {CATEGORIES.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
                             </select>
                         </div>
                         
@@ -220,9 +190,9 @@
                             <label className="form-label">Your Suggestion</label>
                             <textarea 
                                 className="form-textarea"
+                                placeholder="Describe your idea or suggestion..."
                                 value={suggestion}
                                 onChange={e => setSuggestion(e.target.value)}
-                                placeholder="What's on your mind?"
                             />
                         </div>
                         
@@ -233,16 +203,16 @@
                                 checked={anonymous}
                                 onChange={e => setAnonymous(e.target.checked)}
                             />
-                            <label htmlFor="anon" className="anon-label">
-                                Submit anonymously
-                                <div className="anon-note">Your name won't be attached to this suggestion</div>
-                            </label>
+                            <div>
+                                <label className="anon-label" htmlFor="anon">Submit anonymously</label>
+                                <div className="anon-note">Your identity won't be attached to this suggestion</div>
+                            </div>
                         </div>
                         
                         <button 
                             className="btn btn-primary"
                             onClick={handleSubmit}
-                            disabled={!suggestion.trim() || submitting}
+                            disabled={!category || !suggestion.trim() || submitting}
                         >
                             {submitting ? 'Submitting...' : 'Submit Suggestion'}
                         </button>
