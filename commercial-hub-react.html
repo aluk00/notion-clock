@@ -257,7 +257,7 @@
         <div id="sidebar-content"></div>
     </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
@@ -274,7 +274,7 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const auth = firebase.auth(); // 2. INIT AUTH
+        const auth = firebase.auth(); 
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
         const APP_ID = "dmg-command-centre-native";
 
@@ -288,13 +288,11 @@
         // --- WEEKLY DATA SEED ---
         const WEEKLY_DATA = {
             projects: [
-                // Production
                 { client: "Nationwide", title: "Sponsored channel + TT Video", status: "In Production", phase: "Shoot", channel: "This is Money", salesLead: "Maxine", creativeLead: "Ellie", internalDeliveryDate: "2026-01-14", notes: "Approval needed 20-24 videos today" },
                 { client: "Alzheimer's Society", title: "7x TT/IG Videos", status: "In Production", phase: "Pre-Production", channel: "DMUK, DM Sport", salesLead: "Maxine", creativeLead: "Dan Q", internalDeliveryDate: "2026-01-12", notes: "V1 asset for approval EOD today" },
                 { client: "Sunweb", title: "Headlines Video", status: "In Production", phase: "Delivery", channel: "DMUK", salesLead: "Maxine", creativeLead: "Hugo", internalDeliveryDate: "2026-01-13", notes: "Live date 13.01" },
                 { client: "Wuthering Heights", title: "Love Notes (3x)", status: "In Production", phase: "Pre-Production", channel: "DMUK", salesLead: "Maxine", creativeLead: "Hugo", internalDeliveryDate: "2026-01-14", notes: "Shoots 17th, 24th, 31st" },
                 { client: "Tesco Whoosh", title: "Investigates", status: "In Production", phase: "Client Feedback", channel: "DMUK", salesLead: "Maxine", creativeLead: "Hugo", internalDeliveryDate: "TBC", notes: "With client and PM" },
-                // Pipeline
                 { client: "Dept Culture", title: "Abu Dhabi", status: "Pitch", phase: "Response", channel: "DM Sport", salesLead: "Zach", responseRequired: "TT/IG Content", internalDeliveryDate: "2026-01-05" },
                 { client: "Ramonas", title: "Heavenly Days", status: "Pitch", phase: "Response", channel: "DMUK", salesLead: "Isobel", responseRequired: "Tiered social", internalDeliveryDate: "2026-01-09" },
                 { client: "MJ Movie", title: "Release Amp", status: "Pitch", phase: "Response", channel: "DMUK", salesLead: "Isobel", responseRequired: "TT/IG Content", internalDeliveryDate: "2026-01-09" },
@@ -308,46 +306,44 @@
             ]
         };
 
-        // --- LOAD DATA ---
+        // --- HARDENED LOAD DATA (Notion 2025-09-03) ---
         async function loadData() {
-            document.getElementById('production-list').innerHTML = '<div class="loading">Fetching Data...</div>';
+            const listElement = document.getElementById('production-list');
+            listElement.innerHTML = '<div class="loading">Syncing with Master Ledger...</div>';
             
             try {
-                // 1. FETCH STAFF FROM FIREBASE
+                // 1. Fetch Staff (Human Layer)
                 const staffSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("staff_directory").get();
                 staffList = staffSnap.docs.map(d => ({id:d.id, ...d.data()}));
                 
-                // 2. FETCH PROJECTS FROM API
+                // 2. Fetch Projects (Master Ledger via Cloud Run)
                 const res = await fetch(`${API_URL}/projects`);
-                const data = await res.json();
-                const apiProjects = data.projects || [];
+                const result = await res.json();
+                const rawProjects = result.projects || [];
 
-                // 3. FETCH NOTES FROM FIREBASE
+                // Correct Mapping: Aligns widget keys to API lowercase keys
+                projects = rawProjects.map(p => ({
+                    id: p.id,
+                    client: p.client || 'Internal', 
+                    title: p.title || 'Untitled Project',
+                    status: p.dealStage || 'Pitch',
+                    phase: p.productionWorkflowStatus || 'Pre-Production',
+                    channel: p.vertical || 'Social',
+                    salesLead: p.salesLead || 'TBC',
+                    creativeLead: p.creativeLead || 'Unassigned',
+                    delivery: p.dueDate || 'TBC',
+                    req: p.assetsNeeded ? p.assetsNeeded.join(', ') : '',
+                    notes: p.cardSummary || ''
+                }));
+
+                // 3. Fetch Notes (Human Layer)
                 const noteSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("meeting_notes").orderBy("createdAt", "desc").limit(10).get();
                 notes = noteSnap.docs.map(d => d.data());
 
-                // Process Projects
-                projects = apiProjects.map(p => ({
-                    id: p.id,
-                    client: p.Client || 'Unknown',
-                    title: p.Title || 'Untitled',
-                    status: p['DEAL STAGE'] || p.status || 'Pitch',
-                    phase: p['Production Phase'] || 'Pre-Production',
-                    channel: p.Channel || '',
-                    salesLead: p['Sales Lead'] || '',
-                    creativeLead: p['Creative Lead'] || '',
-                    delivery: p['Internal Delivery'] || p.dueDate || '',
-                    req: p['Response Required'] || '',
-                    notes: p.Notes || ''
-                }));
-
                 render();
             } catch (e) {
-                console.error("Load Error:", e);
-                // Only alert if it's a critical failure, otherwise log to console
-                if (projects.length === 0) {
-                    alert("Connection error. Ensure Cloud Run is active.");
-                }
+                console.error("Master Ledger Sync Error:", e);
+                listElement.innerHTML = '<div style="color:var(--danger); padding:20px; font-size:11px;">⚠️ Master Ledger Offline. Check Cloud Run logs.</div>';
             }
         }
 
@@ -360,7 +356,7 @@
             let prodCount = 0; let pipeCount = 0;
 
             projects.forEach(p => {
-                const isProd = ['Won', 'In Production', 'Live', 'Campaign Complete'].some(s => p.status.includes(s));
+                const isProd = ['Won', 'In Production', 'Live', 'Campaign Complete'].some(s => (p.status || '').includes(s));
                 
                 if (isProd) {
                     prodCount++;
@@ -423,7 +419,10 @@
             selectedProject = p;
             const content = document.getElementById('sidebar-content');
             
-            const staffOptions = staffList.map(s => `<option value="${s.firstName} ${s.lastName}">${s.firstName} ${s.lastName}</option>`).join('');
+            // Build Staff Dropdowns with ID tracking
+            const staffOptions = staffList.map(s => 
+                `<option value="${s.firstName} ${s.lastName}">${s.firstName} ${s.lastName}</option>`
+            ).join('');
 
             let html = `
                 <div class="sb-header">
@@ -493,6 +492,7 @@
             generatedAssets = []; 
             document.getElementById('overlay').classList.add('open');
             document.getElementById('sidebar').classList.add('open');
+            renderAssets();
         };
 
         window.closeSidebar = () => {
@@ -521,56 +521,65 @@
             `).join('');
         }
 
-        // --- SAVE LOGIC ---
+        // --- CORRECTED SAVE LOGIC (Uses IDs for Notion) ---
         window.saveChanges = async () => {
             const status = document.getElementById('edit-status').value;
             const phase = document.getElementById('edit-phase').value;
-            const sales = document.getElementById('edit-sales').value;
-            const creative = document.getElementById('edit-creative').value;
+            const salesName = document.getElementById('edit-sales').value;
+            const creativeName = document.getElementById('edit-creative').value;
 
-            // 1. If Assets generated, push to Firebase
-            if(generatedAssets.length > 0) {
-                const batch = db.batch();
-                generatedAssets.forEach(a => {
-                    const collectionName = a.type === 'Video' ? 'edit_queue' : 'design_requests';
-                    const ref = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection(collectionName).doc();
-                    batch.set(ref, {
-                        projectId: selectedProject.id,
-                        project: selectedProject.title,
-                        client: selectedProject.client,
-                        title: a.name,
-                        status: 'Not Started',
-                        priority: 'Standard',
-                        createdAt: new Date().toISOString()
-                    });
+            // LOOKUP IDs (Because Notion requires user IDs, not names)
+            const salesEntry = staffList.find(s => `${s.firstName} ${s.lastName}` === salesName);
+            const creativeEntry = staffList.find(s => `${s.firstName} ${s.lastName}` === creativeName);
+
+            try {
+                // 1. WRITE TO NOTION
+                await fetch(`${API_URL}/projects/${selectedProject.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        dealStage: status,
+                        productionWorkflowStatus: phase,
+                        salesLeadId: salesEntry?.notionId, 
+                        creativeLeadId: creativeEntry?.notionId
+                    })
                 });
-                await batch.commit();
-                alert(`Success: ${generatedAssets.length} assets pushed to production queues.`);
-            }
 
-            // 2. Update Local State
-            const idx = projects.findIndex(p => p.id === selectedProject.id);
-            if(idx > -1) {
-                projects[idx].status = status;
-                projects[idx].phase = phase;
-                projects[idx].salesLead = sales;
-                projects[idx].creativeLead = creative;
+                // 2. WRITE TO FIREBASE
+                if(generatedAssets.length > 0) {
+                    const batch = db.batch();
+                    generatedAssets.forEach(a => {
+                        const collectionName = a.type === 'Video' ? 'edit_queue' : 'design_requests';
+                        const ref = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection(collectionName).doc();
+                        batch.set(ref, {
+                            projectId: selectedProject.id,
+                            project: selectedProject.title,
+                            client: selectedProject.client,
+                            title: a.name,
+                            status: 'Not Started',
+                            createdAt: new Date().toISOString()
+                        });
+                    });
+                    await batch.commit();
+                }
+
+                alert("Master Ledger & Production Queues Updated.");
+                closeSidebar();
+                loadData(); 
+            } catch (e) {
+                console.error("Save Error:", e);
+                alert("Partial Save Error. Check network connection.");
             }
-            
-            closeSidebar();
-            render();
-        };
+        }; 
 
         // --- SEED FUNCTIONALITY ---
         window.seedWeeklyData = async () => {
             if(!confirm("⚠️ Use Weekly Meeting Text Data? This will overwrite the current view.")) return;
             
             try {
-                // Ensure we use the seed data
                 projects = WEEKLY_DATA.projects.map((p, i) => ({ id: 'seed-'+i, ...p }));
                 notes = WEEKLY_DATA.notes.map(n => ({ createdAt: new Date().toISOString(), ...n }));
                 
-                // Write notes to Firebase to persist them
                 const noteBatch = db.batch();
                 notes.forEach(n => {
                     const ref = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("meeting_notes").doc();
@@ -591,8 +600,7 @@
             return isNaN(date) ? d : date.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
         }
 
-        // --- 3. START HERE (AUTH WRAPPER) ---
-        // Only load data once we are anonymously logged in
+        // --- AUTH & INIT ---
         auth.signInAnonymously()
             .then(() => {
                 console.log("Logged in anonymously");
@@ -603,6 +611,9 @@
                 alert("Authentication failed. Data will not load.");
             });
 
+        window.openAddBriefModal = function() {
+            alert('Add Brief modal to be implemented.');
+        }
     </script>
 </body>
 </html>
