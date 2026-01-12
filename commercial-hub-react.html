@@ -164,7 +164,16 @@
             font-size: 10px; font-weight: 700; color: var(--ink-muted); 
             text-transform: uppercase; letter-spacing: 0.05em; 
         }
-        .list-container { display: flex; flex-direction: column; gap: 8px; }
+        .list-container { 
+            display: flex; flex-direction: column; gap: 8px;
+            max-height: 360px; /* Show ~6 rows then scroll */
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .list-container::-webkit-scrollbar { width: 6px; }
+        .list-container::-webkit-scrollbar-track { background: var(--border-light); border-radius: 3px; }
+        .list-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .list-container::-webkit-scrollbar-thumb:hover { background: var(--hero); }
         
         .card-row {
             display: grid; align-items: center; padding: 16px 20px; 
@@ -428,11 +437,11 @@
             letter-spacing: 0.04em; display: flex; justify-content: space-between; align-items: center;
         }
         .note-add {
-            width: 28px; height: 28px; border-radius: var(--radius-pill);
+            padding: 6px 12px; border-radius: var(--radius-pill);
             border: 1px solid var(--border); background: white;
-            color: var(--ink-secondary); font-size: 16px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.2s;
+            color: var(--ink-secondary); font-size: 10px; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; gap: 4px;
+            transition: all 0.2s; text-transform: uppercase;
         }
         .note-add:hover { border-color: var(--hero); color: var(--hero); background: var(--hero-soft); }
         .note-body { padding: 16px; max-height: 280px; overflow-y: auto; }
@@ -597,15 +606,15 @@
 
         <div class="bento">
             <div class="note-card">
-                <div class="note-head">Editorial Updates <button class="note-add" onclick="addNote('editorial')">+</button></div>
+                <div class="note-head">Editorial Updates <button class="note-add" onclick="addNote('editorial')">+ Add</button></div>
                 <div class="note-body" id="note-editorial"></div>
             </div>
             <div class="note-card">
-                <div class="note-head">Discussion Points <button class="note-add" onclick="addNote('discussion')">+</button></div>
+                <div class="note-head">Discussion Points <button class="note-add" onclick="addNote('discussion')">+ Add</button></div>
                 <div class="note-body" id="note-discussion"></div>
             </div>
             <div class="note-card">
-                <div class="note-head">Action Items <button class="note-add" onclick="addNote('action')">+</button></div>
+                <div class="note-head">Action Items <button class="note-add" onclick="addNote('action')">+ Add</button></div>
                 <div class="note-body" id="note-actions"></div>
             </div>
         </div>
@@ -984,9 +993,13 @@
         offlineBanner.innerHTML = '';
 
         try {
+            console.log('📡 Starting data load...');
+            
             // Fetch staff
+            console.log('1. Fetching staff from Firebase...');
             var staffSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("staff_directory").get();
             staffList = staffSnap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+            console.log('   ✓ Staff loaded:', staffList.length, 'entries');
             
             // Merge with OPTIONS if staff found
             if (staffList.length > 0) {
@@ -995,11 +1008,19 @@
             }
 
             // Fetch projects
+            console.log('2. Fetching projects from API:', API_URL + '/projects');
             var res = await fetch(API_URL + '/projects');
-            if (!res.ok) throw new Error("API Response not OK");
+            console.log('   Response status:', res.status, res.statusText);
+            
+            if (!res.ok) {
+                console.error('   ✗ API returned error status:', res.status);
+                throw new Error("API Response not OK: " + res.status);
+            }
             
             var result = await res.json();
+            console.log('   ✓ API response received:', result);
             var raw = result.projects || result || [];
+            console.log('   Projects array length:', raw.length);
 
             projects = raw.map(function(p) {
                 var get = function(key) { return p[key] || p[key.toLowerCase()] || ""; };
@@ -1026,11 +1047,16 @@
             render();
             showToast('Data synced from Master Ledger');
         } catch (e) {
-            console.warn("Connection Lost. Engaging Offline Mode.", e);
+            console.error("❌ Connection Lost. Error details:", e);
+            console.error("   Error name:", e.name);
+            console.error("   Error message:", e.message);
+            console.warn("   Engaging Offline Mode with backup data");
+            
+            // FALLBACK ROUTINE
             projects = BACKUP_DATA.projects;
             notes = BACKUP_DATA.notes;
             
-            offlineBanner.innerHTML = '<div class="offline-banner">⚠️ OFFLINE MODE: Showing cached data. Master Ledger unavailable.</div>';
+            offlineBanner.innerHTML = '<div class="offline-banner">⚠️ OFFLINE MODE: Showing cached data. Check console for error details.</div>';
             render();
             showToast('Using offline data', true);
         }
