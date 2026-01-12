@@ -4,36 +4,150 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Commercial Hub | DMG Command Centre</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Firebase Compat SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
         :root {
-            --hero: #21A0D8; --hero-light: #3BB5E8; --hero-soft: rgba(33, 160, 216, 0.1); --hero-glow: rgba(33, 160, 216, 0.15);
-            --success: #43B049; --success-soft: rgba(67, 176, 73, 0.1);
-            --warning: #F59E0B; --warning-soft: rgba(245, 158, 11, 0.1);
-            --danger: #EF4444; --danger-soft: rgba(239, 68, 68, 0.1);
-            --creative: #E6468B; --creative-soft: rgba(230, 70, 139, 0.1);
-            --production: #43B049; --sales: #F97316; --editorial: #E94B4B;
-            --ink: #1C1C1C; --ink-sub: #757575; --ink-muted: #9CA3AF;
-            --border: #EAECEF; --surface: #FFFFFF; --surface-alt: #F9FAFB;
-            --radius: 16px; --radius-sm: 10px;
+            --ink: #1C1C1C; --ink-sub: #757575; --ink-muted: #9CA3AF; --border: #EAECEF;
+            --surface: #FFFFFF; --surface-alt: #F9FAFB; --dmg-blue: #21A0D8;
+            --creative: #E6468B; --production: #43B049; --editorial: #E94B4B;
+            --social: #F2C316; --sales: #21A0D8; --commercial: #9333EA;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--surface); color: var(--ink); -webkit-font-smoothing: antialiased; }
-        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--surface); color: var(--ink); min-height: 100vh; }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dot-grid span { width: 6px; height: 6px; border-radius: 50%; background: var(--commercial); }
+        .dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
+        .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .app-container { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; padding: 24px; overflow-y: auto; }
+        .sidebar-panel { width: 440px; border-left: 1px solid var(--border); background: var(--surface); padding: 0; overflow: visible; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); position: fixed; right: 0; top: 0; bottom: 0; z-index: 100; }
+        .sidebar-panel.open { transform: translateX(0); box-shadow: -8px 0 32px rgba(0,0,0,0.08); overflow-y: auto; }
+        .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.2); z-index: 99; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+        .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-title { font-size: 20px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+        .header-label { font-size: 10px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn { padding: 10px 16px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; transition: all 0.2s ease; border: none; display: flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--dmg-blue); color: white; }
+        .btn-primary:hover { background: #1B8ABF; }
+        .btn-secondary { background: var(--surface-alt); border: 1px solid var(--border); color: var(--ink-sub); }
+        .btn-secondary:hover { border-color: var(--dmg-blue); color: var(--dmg-blue); }
+        .stats-bento { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .stat-label { font-size: 10px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+        .stat-value.highlight { color: var(--production); }
+        .stat-value.money { color: var(--commercial); }
+        .stat-sub { font-size: 11px; color: var(--ink-sub); margin-top: 4px; }
+        .section { margin-bottom: 32px; }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .section-title { font-size: 14px; font-weight: 800; color: var(--ink); text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 8px; }
+        .section-title .count { background: var(--surface-alt); padding: 2px 8px; border-radius: 10px; font-size: 11px; color: var(--ink-sub); font-weight: 700; }
+        .data-table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .data-table th { background: var(--surface-alt); padding: 12px 14px; text-align: left; font-size: 9px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+        .data-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: var(--surface-alt); }
+        .data-table tr { cursor: pointer; transition: background 0.15s; }
+        .project-cell { display: flex; flex-direction: column; gap: 2px; }
+        .project-title { font-weight: 700; color: var(--ink); font-size: 13px; }
+        .project-client { font-size: 11px; color: var(--ink-sub); }
+        .stage-pill { display: inline-flex; padding: 4px 10px; border-radius: 20px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+        .stage-ideation { background: #F3E8FF; color: #7C3AED; }
+        .stage-response { background: #DBEAFE; color: #2563EB; }
+        .stage-sent { background: #E0F2FE; color: #0284C7; }
+        .stage-feedback { background: #FEF3C7; color: #D97706; }
+        .stage-negotiation { background: #FEE2E2; color: #DC2626; }
+        .stage-won { background: #D1FAE5; color: #059669; }
+        .stage-lost { background: #F3F4F6; color: #6B7280; }
+        .stage-hold { background: #F3F4F6; color: #9CA3AF; }
+        .phase-preproduction { background: #EDE9FE; color: #7C3AED; }
+        .phase-shoot { background: #DBEAFE; color: #2563EB; }
+        .phase-edit { background: #FEF3C7; color: #D97706; }
+        .phase-delivery { background: #FED7AA; color: #EA580C; }
+        .phase-clientfeedback { background: #FEE2E2; color: #DC2626; }
+        .phase-live { background: #D1FAE5; color: #059669; }
+        .date-cell { font-size: 11px; color: var(--ink-sub); white-space: nowrap; }
+        .date-cell.overdue { color: var(--editorial); font-weight: 600; }
+        .date-cell.soon { color: #D97706; font-weight: 600; }
+        .team-cell { display: flex; flex-direction: column; gap: 4px; }
+        .team-row { display: flex; align-items: center; gap: 6px; }
+        .team-icon { font-size: 10px; }
+        .team-name { font-size: 11px; color: var(--ink); font-weight: 500; }
+        .team-name.unassigned { color: var(--ink-muted); font-style: italic; }
+        .money-value { font-weight: 700; color: var(--commercial); }
+        .notes-cell { max-width: 180px; font-size: 11px; color: var(--ink-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sidebar-scroll { padding: 24px; overflow-y: auto; max-height: calc(100vh - 80px); }
+        .sidebar-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        .sidebar-close { background: none; border: none; font-size: 24px; color: var(--ink-muted); cursor: pointer; padding: 4px; line-height: 1; }
+        .sidebar-close:hover { color: var(--ink); }
+        .sidebar-title { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
+        .sidebar-client { font-size: 13px; color: var(--ink-sub); }
+        .sidebar-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--surface-alt); padding: 4px; border-radius: 10px; }
+        .sidebar-tab { flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; text-align: center; cursor: pointer; transition: all 0.2s; background: transparent; border: none; color: var(--ink-sub); }
+        .sidebar-tab.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .sidebar-section { margin-bottom: 20px; }
+        .sidebar-label { font-size: 9px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .sidebar-label svg { width: 12px; height: 12px; }
+        .sidebar-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface-alt); outline: none; transition: all 0.2s; }
+        .sidebar-input:focus { border-color: var(--dmg-blue); background: var(--surface); }
+        .sidebar-textarea { min-height: 80px; resize: vertical; }
+        .sidebar-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .sidebar-select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--surface-alt); outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23757575' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+        .sidebar-select:focus { border-color: var(--dmg-blue); background-color: var(--surface); }
+        .sidebar-section { margin-bottom: 20px; position: relative; overflow: visible; }
+        .sidebar-scroll { padding: 24px; overflow-y: auto; overflow-x: visible; max-height: calc(100vh - 80px); }
+        .deliverable-field select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23757575' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; cursor: pointer; }
+        .deliverable-field select:focus { border-color: var(--dmg-blue); outline: none; }
+        .deliverable-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; overflow: visible; position: relative; }
+        .deliverables-section { background: var(--surface-alt); border-radius: 12px; padding: 16px; margin-top: 16px; overflow: visible; position: relative; }
+        .deliverables-title { font-size: 11px; font-weight: 700; color: var(--ink); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        .deliverable-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+        .deliverable-item:last-child { margin-bottom: 0; }
+        .deliverable-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .deliverable-type { font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; background: rgba(33, 160, 216, 0.1); color: var(--dmg-blue); }
+        .deliverable-remove { background: none; border: none; color: var(--ink-muted); cursor: pointer; font-size: 16px; }
+        .deliverable-remove:hover { color: var(--editorial); }
+        .deliverable-field { margin-bottom: 8px; }
+        .deliverable-field:last-child { margin-bottom: 0; }
+        .deliverable-field label { font-size: 9px; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; display: block; margin-bottom: 4px; }
+        .deliverable-field select, .deliverable-field input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-family: inherit; background: var(--surface); }
+        .add-deliverable-btn { width: 100%; padding: 10px; border: 1px dashed var(--border); border-radius: 8px; background: transparent; font-size: 11px; font-weight: 600; color: var(--ink-sub); cursor: pointer; transition: all 0.2s; margin-top: 10px; }
+        .add-deliverable-btn:hover { border-color: var(--dmg-blue); color: var(--dmg-blue); }
+        .sidebar-actions { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; background: var(--surface); position: sticky; bottom: 0; }
+        .sidebar-actions .btn { flex: 1; justify-content: center; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
+        .modal { background: var(--surface); border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .modal-overlay.open .modal { transform: translateY(0); }
+        .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 16px; font-weight: 800; color: var(--ink); }
+        .modal-close { background: none; border: none; font-size: 20px; color: var(--ink-muted); cursor: pointer; }
+        .modal-body { padding: 24px; }
+        .modal-field { margin-bottom: 16px; }
+        .modal-actions { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+        .empty-state { text-align: center; padding: 40px; color: var(--ink-muted); }
+        .sync-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: rgba(67, 176, 73, 0.1); color: var(--production); }
+        .sync-badge svg { width: 10px; height: 10px; }
     </style>
-    <script>
-        // Firebase init
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        
         const firebaseConfig = {
             apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
             authDomain: "dmg-command-centre-native.firebaseapp.com",
@@ -44,556 +158,312 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const auth = firebase.auth();
-        const APP_ID = "dmg-command-centre-native";
+        
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+        const APP_ID = 'dmg-command-centre-native';
         
-        // Sample project data (from your existing widget)
-        const SAMPLE_PROJECTS = [
-            { 
-                id: 'nationwide-1', client: 'Nationwide', title: 'Shoot/Edit/Delivery', 
-                dealStage: 'Won', projectStatus: 'In Production', channel: 'This is Money',
-                productionLead: ['Maame'], creativeLead: [],
-                dealValue: 85000
-            },
-            { 
-                id: 'alzheimers-1', client: "Alzheimer's Society", title: '7 x Videos', 
-                dealStage: 'Won', projectStatus: 'Filming', channel: 'DMUK, DM Sport',
-                productionLead: ['McDaniel'], creativeLead: ['Maame Dan'],
-                dealValue: 120000
-            },
-            {
-                id: 'tesco-whoosh-1', client: 'Tesco Whoosh', title: 'Waiting Client Feedback', 
-                dealStage: 'Won', projectStatus: 'On Hold', channel: 'DMUK',
-                productionLead: ['Maame Dan'], creativeLead: [],
-                dealValue: 45000
-            },
-            {
-                id: 'duracell-1', client: 'Duracell', title: 'World Cup Activation', 
-                dealStage: 'Brief Received', projectStatus: 'Ideation', channel: 'DM Sport',
-                productionLead: ['Isobel'], creativeLead: ['Nick'],
-                dealValue: 200000
-            },
-            {
-                id: 'trading212-1', client: 'Trading 212', title: 'Finance Education Series',
-                dealStage: 'Response Sent', projectStatus: 'Ideation', channel: 'This is Money',
-                productionLead: [], creativeLead: ['Ana'],
-                dealValue: 95000
-            },
-            {
-                id: 'ramonas-1', client: "Ramona's", title: 'Heavenly Days Out',
-                dealStage: 'Brief Received', projectStatus: 'Ideation', channel: 'DMUK',
-                productionLead: [], creativeLead: [],
-                dealValue: 35000
-            },
-            {
-                id: 'wuthering-1', client: 'Wuthering Heights', title: 'Valentine\'s Campaign',
-                dealStage: 'Won', projectStatus: 'Pre-Production', channel: 'DMUK, Spotlight',
-                productionLead: ['Hugo'], creativeLead: ['Ana'],
-                dealValue: 75000
-            },
-            {
-                id: 'sky-vegas-1', client: 'Sky Vegas', title: 'Little Wins Campaign',
-                dealStage: 'Won', projectStatus: 'In Production', channel: 'DMUK',
-                productionLead: ['Maame'], creativeLead: ['Nick'],
-                dealValue: 150000
-            }
-        ];
+        const PIPELINE_STAGES = ['Ideation', 'Response with MMM', 'Response Sent', 'Awaiting Feedback', 'Negotiation', 'Won', 'Lost', 'On Hold'];
+        const PRODUCTION_PHASES = ['Pre-Production', 'Shoot', 'Edit', 'Delivery', 'Waiting Client Feedback', 'Live'];
+        const DELIVERABLE_TYPES = ['Video Edit', 'Thumbnail', 'On-Screen Graphics', 'Deck/Presentation', 'Social Assets', 'Other'];
         
-        // Sample deliverables data
-        const SAMPLE_DELIVERABLES = [
-            // Nationwide
-            { id: 'd1', campaignId: 'nationwide-1', title: 'Video 1', status: 'Edit', format: 'Headlines', deskState: 'With Edit' },
-            { id: 'd2', campaignId: 'nationwide-1', title: 'Video 2', status: 'Edit', format: 'Headlines', deskState: 'With Edit' },
-            { id: 'd3', campaignId: 'nationwide-1', title: 'Video 3', status: 'Edit', format: 'Headlines', deskState: 'With Edit' },
-            // Alzheimer's
-            { id: 'd4', campaignId: 'alzheimers-1', title: 'V1 Video', status: 'Live', format: 'Mail Investigates', deskState: 'Live' },
-            { id: 'd5', campaignId: 'alzheimers-1', title: 'V2 Video', status: 'Review', format: 'Street Talks', deskState: 'With Review' },
-            { id: 'd6', campaignId: 'alzheimers-1', title: 'V3 Video', status: 'Review', format: 'Street Talks', deskState: 'With Review' },
-            { id: 'd7', campaignId: 'alzheimers-1', title: 'V4 Video', status: 'Review', format: 'Headlines', deskState: 'With Review' },
-            { id: 'd8', campaignId: 'alzheimers-1', title: 'V5 Video', status: 'Live', format: 'Headlines', deskState: 'Live' },
-            { id: 'd9', campaignId: 'alzheimers-1', title: 'V6 Video', status: 'In Progress', format: 'Mail Investigates', deskState: 'With Production' },
-            { id: 'd10', campaignId: 'alzheimers-1', title: 'V7 Video', status: 'Briefed', format: 'Street Talks', deskState: 'With Creative' },
-            // Tesco Whoosh
-            { id: 'd11', campaignId: 'tesco-whoosh-1', title: 'IG Reel', status: 'Review', format: 'TT/IG Video', deskState: 'With Review' },
-            { id: 'd12', campaignId: 'tesco-whoosh-1', title: 'TikTok', status: 'Review', format: 'TT/IG Video', deskState: 'With Review' },
-            // Wuthering Heights
-            { id: 'd13', campaignId: 'wuthering-1', title: 'Love Notes - Love', status: 'In Progress', format: 'Street Talks', deskState: 'With Creative' },
-            { id: 'd14', campaignId: 'wuthering-1', title: 'Love Notes - Passion', status: 'Briefed', format: 'Street Talks', deskState: 'With Creative' },
-            { id: 'd15', campaignId: 'wuthering-1', title: 'Love Notes - Friendship', status: 'Briefed', format: 'Street Talks', deskState: 'With Creative' },
-            // Sky Vegas
-            { id: 'd16', campaignId: 'sky-vegas-1', title: 'Why Small Wins Feel Big', status: 'Edit', format: 'Headlines', deskState: 'With Edit' },
-            { id: 'd17', campaignId: 'sky-vegas-1', title: 'What\'s Your Last Little Win', status: 'In Progress', format: 'Street Talks', deskState: 'With Production' },
-            { id: 'd18', campaignId: 'sky-vegas-1', title: 'Can You Create Luck', status: 'Briefed', format: 'Mail Investigates', deskState: 'With Creative' },
-            { id: 'd19', campaignId: 'sky-vegas-1', title: 'Global Little Wins', status: 'Briefed', format: 'Global Debate', deskState: 'With Creative' }
-        ];
-        
-        // Sample annotations (Sales tracking)
-        const SAMPLE_ANNOTATIONS = {
-            'nationwide-1': { status: 'In Production', notes: 'Scripts and treatments approved. Moving to V1 edit. Client very happy with direction.' },
-            'alzheimers-1': { status: 'In Production', notes: 'V2-V4 in client approval. V6 filming today. Strong engagement on V1 & V5.' },
-            'tesco-whoosh-1': { status: 'Awaiting Feedback', notes: 'Chasing client for feedback on V1. Follow up call scheduled Thursday.' },
-            'duracell-1': { status: 'Drafting Response', notes: '£200k budget, midday deadline Wed. Nick leading creative response.' },
-            'trading212-1': { status: 'Drafting Response', notes: 'Finance compliance review needed. Ana drafting creative deck.' },
-            'ramonas-1': { status: 'Brief Received', notes: 'New brief for houmous brand. Quick turnaround needed.' },
-            'wuthering-1': { status: 'In Production', notes: 'Valentine\'s timing critical. Locations confirmed for all 3 shoots.' },
-            'sky-vegas-1': { status: 'In Production', notes: 'Headlines filming complete. Street Talks scheduled for next week.' }
-        };
-    </script>
-</head>
-<body>
-    <div id="root"></div>
-    
-    <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
-        
-        const SALES_STATUSES = ['Not Started', 'Awaiting Brief', 'Brief Received', 'Drafting Response', 'Response Sent', 'Awaiting Feedback', 'In Production', 'Won', 'Lost', 'On Hold'];
-        
-        // Styles
-        const S = {
-            app: { display: 'flex', flexDirection: 'column', minHeight: '100vh' },
-            header: { padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '14px', background: 'var(--surface)', position: 'sticky', top: 0, zIndex: 100 },
-            dots: { display: 'grid', gridTemplateColumns: 'repeat(2, 6px)', gap: '3px' },
-            title: { fontSize: 15, fontWeight: 900, flex: 1, textTransform: 'uppercase', letterSpacing: '-0.02em' },
-            main: { display: 'flex', flex: 1, overflow: 'hidden' },
-            content: { flex: 1, overflowY: 'auto', padding: '20px 24px' },
-            bento: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 },
-            section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginBottom: 16, overflow: 'hidden' },
-            sectionHeader: { padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-alt)' },
-            table: { width: '100%', borderCollapse: 'collapse' },
-            th: { textAlign: 'left', padding: '10px 14px', fontSize: 8, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', background: 'var(--surface)', borderBottom: '1px solid var(--border)' },
-            td: { padding: 14, borderBottom: '1px solid var(--surface-alt)', verticalAlign: 'middle' },
-            sidebar: { width: 400, borderLeft: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column', animation: 'slideIn 0.3s ease' },
-            loading: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 12, color: 'var(--ink-muted)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' },
-            spinner: { width: 18, height: 18, border: '2px solid var(--border)', borderTopColor: 'var(--hero)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
-            empty: { padding: 30, textAlign: 'center', color: 'var(--ink-muted)', fontSize: 11, fontStyle: 'italic' }
+        const getStageClass = (stage) => {
+            const map = { 'Ideation': 'stage-ideation', 'Response with MMM': 'stage-response', 'Response Sent': 'stage-sent', 'Awaiting Feedback': 'stage-feedback', 'Negotiation': 'stage-negotiation', 'Won': 'stage-won', 'Lost': 'stage-lost', 'On Hold': 'stage-hold' };
+            return map[stage] || 'stage-ideation';
         };
         
-        // Helpers
-        const getWeekString = () => {
-            const now = new Date();
-            const monday = new Date(now);
-            monday.setDate(now.getDate() - now.getDay() + 1);
-            return 'w/c ' + monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        const getPhaseClass = (phase) => {
+            const map = { 'Pre-Production': 'phase-preproduction', 'Shoot': 'phase-shoot', 'Edit': 'phase-edit', 'Delivery': 'phase-delivery', 'Waiting Client Feedback': 'phase-clientfeedback', 'Live': 'phase-live' };
+            return map[phase] || 'phase-preproduction';
         };
         
-        const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
-        
-        const getTagType = (status) => {
-            if (!status) return 'default';
-            const s = status.toLowerCase();
-            if (s.includes('live') || s.includes('won') || s.includes('approved') || s.includes('shoot')) return 'won';
-            if (s.includes('edit') || s.includes('review') || s.includes('progress') || s.includes('production')) return 'progress';
-            if (s.includes('wait') || s.includes('hold') || s.includes('block') || s.includes('await')) return 'waiting';
-            if (s.includes('brief') || s.includes('lead') || s.includes('not started') || s.includes('ideation')) return 'brief';
-            if (s.includes('response') || s.includes('sent') || s.includes('draft')) return 'response';
-            return 'default';
+        const formatMoney = (value) => value ? '£' + Number(value).toLocaleString('en-GB') : '—';
+        const formatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—';
+        const getDateStatus = (dateStr) => {
+            if (!dateStr) return '';
+            const diff = (new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24);
+            if (diff < 0) return 'overdue';
+            if (diff <= 3) return 'soon';
+            return '';
         };
         
-        const tagColors = { won: { bg: 'var(--success-soft)', color: 'var(--success)' }, progress: { bg: 'var(--hero-soft)', color: 'var(--hero)' }, waiting: { bg: 'var(--danger-soft)', color: 'var(--danger)' }, brief: { bg: 'var(--warning-soft)', color: 'var(--warning)' }, response: { bg: 'var(--creative-soft)', color: 'var(--creative)' }, default: { bg: 'var(--surface-alt)', color: 'var(--ink-muted)' } };
-        
-        const getProgressColor = (pct) => pct >= 80 ? 'var(--success)' : pct >= 40 ? 'var(--hero)' : pct > 0 ? 'var(--warning)' : 'var(--border)';
-        
-        const calculateProgress = (dels) => {
-            if (!dels?.length) return 0;
-            const done = dels.filter(d => ['live', 'approved', 'complete'].includes((d.status || '').toLowerCase())).length;
-            return Math.round((done / dels.length) * 100);
-        };
-        
-        const timeAgo = (ts) => {
-            if (!ts) return '';
-            const secs = Math.floor((new Date() - new Date(ts)) / 1000);
-            if (secs < 60) return 'Just now';
-            if (secs < 3600) return Math.floor(secs / 60) + 'm ago';
-            if (secs < 86400) return Math.floor(secs / 3600) + 'h ago';
-            return Math.floor(secs / 86400) + 'd ago';
-        };
-        
-        const formatCurrency = (val) => {
-            if (val >= 1000000) return '£' + (val / 1000000).toFixed(1) + 'M';
-            if (val >= 1000) return '£' + Math.round(val / 1000) + 'K';
-            return '£' + Math.round(val || 0);
-        };
-        
-        // Components
-        const Dots = ({ color = 'var(--hero)' }) => (
-            <div style={S.dots}>
-                {[0,1,2,3].map(i => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: color, animation: `pulse 2.5s ease-in-out ${i * 0.2}s infinite` }} />)}
-            </div>
-        );
-        
-        const Badge = ({ type, children }) => {
-            const bg = type === 'connected' ? 'var(--success-soft)' : type === 'offline' ? 'var(--warning-soft)' : 'var(--surface-alt)';
-            const color = type === 'connected' ? 'var(--success)' : type === 'offline' ? 'var(--warning)' : 'var(--ink-sub)';
-            return <span style={{ fontSize: 9, fontWeight: 700, padding: '5px 10px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: '0.02em', background: bg, color }}>{children}</span>;
-        };
-        
-        const Btn = ({ primary, danger, small, onClick, children, disabled }) => (
-            <button disabled={disabled} onClick={onClick} style={{ padding: small ? '6px 10px' : '8px 14px', border: primary || danger ? 'none' : '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: small ? 9 : 11, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', letterSpacing: '0.02em', background: disabled ? 'var(--border)' : danger ? 'var(--danger)' : primary ? 'var(--ink)' : 'var(--surface-alt)', color: disabled ? 'var(--ink-muted)' : (primary || danger) ? 'white' : 'var(--ink)', opacity: disabled ? 0.6 : 1 }}>{children}</button>
-        );
-        
-        const Tag = ({ status }) => {
-            const t = getTagType(status);
-            const c = tagColors[t] || tagColors.default;
-            return <span style={{ display: 'inline-flex', padding: '4px 8px', borderRadius: 4, fontSize: 7, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', background: c.bg, color: c.color }}>{status || 'TBC'}</span>;
-        };
-        
-        const PersonChip = ({ name, role }) => {
-            const [hover, setHover] = useState(false);
-            if (!name) return null;
-            const bg = role === 'creative' ? 'var(--creative)' : role === 'production' ? 'var(--production)' : 'var(--sales)';
-            return (
-                <span onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px 3px 3px', background: 'var(--surface-alt)', borderRadius: 99, fontSize: 9, fontWeight: 600, margin: 2, position: 'relative' }}>
-                    <span style={{ width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 800, color: 'white', background: bg }}>{getInitials(name)}</span>
-                    {hover && <span style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', background: 'var(--ink)', color: 'white', padding: '6px 10px', borderRadius: 6, fontSize: 9, fontWeight: 600, whiteSpace: 'nowrap', zIndex: 50 }}>{name}</span>}
-                </span>
-            );
-        };
-        
-        const Progress = ({ pct }) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ height: 6, background: 'var(--surface-alt)', borderRadius: 3, overflow: 'hidden', width: 60 }}>
-                    <div style={{ height: '100%', borderRadius: 3, width: `${pct}%`, background: getProgressColor(pct), transition: 'width 0.5s ease' }} />
-                </div>
-                <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--ink-sub)', fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
-            </div>
-        );
-        
-        const Card = ({ accent, span, rowSpan, children }) => (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, display: 'flex', flexDirection: 'column', borderTop: `3px solid ${accent || 'transparent'}`, gridColumn: span ? `span ${span}` : undefined, gridRow: rowSpan ? `span ${rowSpan}` : undefined }}>{children}</div>
-        );
-        
-        // Main App
-        const CommercialHub = () => {
+        function CommercialHub() {
             const [projects, setProjects] = useState([]);
-            const [deliverables, setDeliverables] = useState([]);
             const [annotations, setAnnotations] = useState({});
-            const [selectedId, setSelectedId] = useState(null);
-            const [currentNote, setCurrentNote] = useState({ status: '', notes: '' });
-            const [hasChanges, setHasChanges] = useState(false);
-            const [isLoading, setIsLoading] = useState(true);
-            const [dataSource, setDataSource] = useState('loading'); // 'api', 'firebase', 'sample'
-            const [showModal, setShowModal] = useState(false);
-            const [saving, setSaving] = useState(false);
-            const [authReady, setAuthReady] = useState(false);
+            const [staff, setStaff] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [selectedItem, setSelectedItem] = useState(null);
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            const [sidebarTab, setSidebarTab] = useState('details');
+            const [modalOpen, setModalOpen] = useState(false);
+            const [newBrief, setNewBrief] = useState({ title: '', client: '', stage: 'Ideation', format: '', commercialOwner: '', creativeOwner: '', deadline: '', dealValue: '' });
             
-            // Auth on mount
-            useEffect(() => {
-                auth.signInAnonymously()
-                    .then(() => { console.log('Auth ready'); setAuthReady(true); })
-                    .catch(e => { console.error('Auth failed:', e); setAuthReady(true); });
-            }, []);
+            useEffect(() => { loadData(); const interval = setInterval(loadData, 60000); return () => clearInterval(interval); }, []);
             
-            // Load data - try API first, then Firebase, then sample data
-            const loadData = useCallback(async () => {
-                console.log('Loading data...');
-                
-                // Try API first
+            const loadData = async () => {
                 try {
-                    const [pRes, dRes] = await Promise.all([
-                        fetch(API_URL + '/projects'),
-                        fetch(API_URL + '/deliverables')
-                    ]);
-                    const pData = await pRes.json();
-                    const dData = await dRes.json();
+                    const res = await fetch(API_URL + '/projects');
+                    const data = await res.json();
+                    setProjects(data?.projects || []);
                     
-                    if (pData.success && pData.projects?.length > 0) {
-                        console.log('Loaded from API:', pData.projects.length, 'projects');
-                        setProjects(pData.projects);
-                        setDeliverables(dData.deliverables || []);
-                        setDataSource('api');
-                        
-                        // Still load annotations from Firebase
-                        try {
-                            const snap = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_annotations').get();
-                            const annots = {};
-                            snap.forEach(d => { annots[d.id] = d.data(); });
-                            setAnnotations(annots);
-                        } catch (e) { console.log('No annotations yet'); }
-                        
-                        setIsLoading(false);
-                        return;
-                    }
-                } catch (e) {
-                    console.log('API not available:', e.message);
-                }
-                
-                // Try Firebase projects
-                try {
-                    const projSnap = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_projects').get();
-                    if (!projSnap.empty) {
-                        const fbProjects = [];
-                        projSnap.forEach(d => fbProjects.push({ id: d.id, ...d.data() }));
-                        console.log('Loaded from Firebase:', fbProjects.length, 'projects');
-                        setProjects(fbProjects);
-                        
-                        // Load deliverables
-                        const delSnap = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_deliverables').get();
-                        const fbDels = [];
-                        delSnap.forEach(d => fbDels.push({ id: d.id, ...d.data() }));
-                        setDeliverables(fbDels);
-                        
-                        // Load annotations
-                        const annSnap = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_annotations').get();
-                        const annots = {};
-                        annSnap.forEach(d => { annots[d.id] = d.data(); });
-                        setAnnotations(annots);
-                        
-                        setDataSource('firebase');
-                        setIsLoading(false);
-                        return;
-                    }
-                } catch (e) {
-                    console.log('Firebase projects not available:', e.message);
-                }
-                
-                // Fall back to sample data
-                console.log('Using sample data');
-                setProjects(SAMPLE_PROJECTS);
-                setDeliverables(SAMPLE_DELIVERABLES);
-                setAnnotations(SAMPLE_ANNOTATIONS);
-                setDataSource('sample');
-                setIsLoading(false);
-            }, []);
-            
-            useEffect(() => {
-                if (authReady) loadData();
-            }, [authReady, loadData]);
-            
-            // Seed sample data to Firebase
-            const seedToFirebase = async () => {
-                if (!confirm('This will save all sample projects, deliverables, and annotations to Firebase. Continue?')) return;
-                setSaving(true);
-                try {
-                    // Save projects
-                    for (const p of SAMPLE_PROJECTS) {
-                        await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_projects').doc(p.id).set(p);
-                    }
-                    // Save deliverables
-                    for (const d of SAMPLE_DELIVERABLES) {
-                        await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_deliverables').doc(d.id).set(d);
-                    }
-                    // Save annotations
-                    for (const [pid, ann] of Object.entries(SAMPLE_ANNOTATIONS)) {
-                        await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_annotations').doc(pid).set(ann);
-                    }
-                    alert('Sample data saved to Firebase!');
-                    loadData();
-                } catch (e) {
-                    console.error('Seed failed:', e);
-                    alert('Error saving to Firebase: ' + e.message);
-                }
-                setSaving(false);
+                    const staffSnap = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('staff_directory').get();
+                    const staffList = [];
+                    staffSnap.forEach(doc => staffList.push({ id: doc.id, ...doc.data() }));
+                    setStaff(staffList);
+                    
+                    const annotSnap = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_annotations').get();
+                    const annots = {};
+                    annotSnap.forEach(doc => { annots[doc.id] = doc.data(); });
+                    setAnnotations(annots);
+                } catch (e) { console.error('Load error:', e); } finally { setLoading(false); }
             };
             
-            // Auto-refresh
-            useEffect(() => {
-                if (!authReady) return;
-                const interval = setInterval(() => { if (!hasChanges && !showModal) loadData(); }, 60000);
-                return () => clearInterval(interval);
-            }, [hasChanges, showModal, authReady, loadData]);
+            const editors = useMemo(() => staff.filter(s => s.team === 'Editorial' || s.role?.toLowerCase().includes('editor')), [staff]);
+            const designers = useMemo(() => staff.filter(s => s.team === 'Creative' || s.team === 'Design' || s.role?.toLowerCase().includes('design') || s.role?.toLowerCase().includes('graphic')), [staff]);
             
-            // Categorise
-            const { production, pipeline, stats } = useMemo(() => {
-                const prod = [], pipe = [];
+            const { pipelineProjects, productionProjects } = useMemo(() => {
+                const pipeline = [], production = [];
                 projects.forEach(p => {
-                    const stage = (p.dealStage || '').toLowerCase();
-                    const status = (p.projectStatus || '').toLowerCase();
-                    const dels = deliverables.filter(d => d.campaignId === p.id);
-                    const progress = calculateProgress(dels);
-                    const annot = annotations[p.id] || {};
-                    const enriched = { ...p, _dels: dels, _progress: progress, _annot: annot };
-                    
-                    if (stage.includes('won') || stage.includes('live') || stage.includes('production') || status.includes('in progress') || status.includes('filming') || status.includes('edit') || status.includes('pre-production')) {
-                        prod.push(enriched);
-                    } else if (!stage.includes('lost')) {
-                        pipe.push(enriched);
-                    }
+                    const stage = p.dealStage || p.status || 'Ideation';
+                    const annotation = annotations[p.id] || {};
+                    const merged = { ...p, ...annotation };
+                    if (merged.productionPhase || stage === 'Won' || PRODUCTION_PHASES.includes(stage)) {
+                        production.push({ ...merged, productionPhase: merged.productionPhase || 'Pre-Production' });
+                    } else if (stage !== 'Lost') { pipeline.push(merged); }
                 });
-                return { production: prod, pipeline: pipe, stats: { live: prod.length, pipeline: pipe.length, pipelineValue: pipe.reduce((s, p) => s + (p.dealValue || 0), 0), totalValue: [...prod, ...pipe].reduce((s, p) => s + (p.dealValue || 0), 0) } };
-            }, [projects, deliverables, annotations]);
+                return { pipelineProjects: pipeline, productionProjects: production };
+            }, [projects, annotations]);
             
-            const selected = useMemo(() => selectedId ? [...production, ...pipeline].find(p => p.id === selectedId) : null, [selectedId, production, pipeline]);
+            const stats = useMemo(() => ({
+                liveCampaigns: productionProjects.filter(p => p.productionPhase === 'Live').length,
+                pipelineCount: pipelineProjects.length,
+                pipelineValue: pipelineProjects.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0),
+                thisWeekDeadlines: [...pipelineProjects, ...productionProjects].filter(p => {
+                    const deadline = p.deadline || p.dueDate || p.plannedLiveDate;
+                    if (!deadline) return false;
+                    const d = new Date(deadline), now = new Date(), weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                    return d >= now && d <= weekFromNow;
+                }).length
+            }), [pipelineProjects, productionProjects]);
             
-            const selectProject = (id) => {
-                setSelectedId(id);
-                const annot = annotations[id] || {};
-                setCurrentNote({ status: annot.status || '', notes: annot.notes || '' });
-                setHasChanges(false);
+            const openSidebar = (item, type) => {
+                const annotation = annotations[item.id] || {};
+                setSelectedItem({ ...item, ...annotation, _type: type, deliverables: annotation.deliverables || [] });
+                setSidebarTab('details');
+                setSidebarOpen(true);
             };
+            const closeSidebar = () => { setSidebarOpen(false); setTimeout(() => setSelectedItem(null), 300); };
+            const updateItemField = (field, value) => { setSelectedItem(prev => ({ ...prev, [field]: value })); };
             
-            const closePanel = () => { setSelectedId(null); setCurrentNote({ status: '', notes: '' }); setHasChanges(false); };
+            const addDeliverable = () => {
+                setSelectedItem(prev => ({
+                    ...prev,
+                    deliverables: [...(prev.deliverables || []), { id: Date.now().toString(), type: 'Video Edit', title: '', editorId: '', designerId: '', status: 'Not Started' }]
+                }));
+            };
+            const updateDeliverable = (index, field, value) => {
+                setSelectedItem(prev => {
+                    const deliverables = [...prev.deliverables];
+                    deliverables[index] = { ...deliverables[index], [field]: value };
+                    return { ...prev, deliverables };
+                });
+            };
+            const removeDeliverable = (index) => { setSelectedItem(prev => ({ ...prev, deliverables: prev.deliverables.filter((_, i) => i !== index) })); };
             
-            const saveAnnotation = async () => {
-                if (!selected) return;
-                setSaving(true);
+            const saveChanges = async () => {
+                if (!selectedItem?.id) return;
                 try {
-                    await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_annotations').doc(selected.id).set({
-                        ...currentNote,
-                        projectTitle: selected.title,
-                        client: selected.client,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-                    setAnnotations(prev => ({ ...prev, [selected.id]: currentNote }));
-                    setHasChanges(false);
-                } catch (e) { console.error(e); alert('Error saving'); }
-                setSaving(false);
+                    const { id, _type, ...data } = selectedItem;
+                    await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_annotations').doc(id).set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+                    
+                    if (data.deliverables?.length > 0) {
+                        for (const del of data.deliverables) {
+                            if (del.type === 'Video Edit' && del.editorId) {
+                                const editor = staff.find(s => s.id === del.editorId);
+                                await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('edit_queue').doc(`${id}_${del.id}`).set({
+                                    title: del.title || data.title || 'Untitled', projectId: id, projectTitle: data.title, client: data.client || data['CLIENT / EXTERNAL PARTNER'],
+                                    editor: editor ? `${editor.firstName} ${editor.lastName}` : 'Unassigned', editorId: del.editorId, status: del.status || 'Not Started',
+                                    priority: data.priority || 'Medium', dueDate: data.internalDeliveryDate || data.plannedLiveDate, updatedAt: new Date().toISOString()
+                                }, { merge: true });
+                            }
+                            if (['Thumbnail', 'On-Screen Graphics', 'Deck/Presentation', 'Social Assets'].includes(del.type) && del.designerId) {
+                                const designer = staff.find(s => s.id === del.designerId);
+                                await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('design_requests').doc(`${id}_${del.id}`).set({
+                                    headline: del.title || data.title || 'Untitled', projectId: id, projectTitle: data.title, client: data.client || data['CLIENT / EXTERNAL PARTNER'],
+                                    assetType: del.type === 'Thumbnail' ? 'Thumbnail' : del.type === 'On-Screen Graphics' ? 'Swipe' : 'Other', designerId: del.designerId,
+                                    status: del.status || 'Not Started', priority: data.priority || 'Standard', deadline: data.internalDeliveryDate || data.plannedLiveDate, updatedAt: new Date().toISOString()
+                                }, { merge: true });
+                            }
+                        }
+                    }
+                    setAnnotations(prev => ({ ...prev, [id]: { ...prev[id], ...data } }));
+                    closeSidebar();
+                } catch (e) { console.error('Save error:', e); alert('Failed to save. Please try again.'); }
             };
             
-            const updateDeliverable = async (delId, field, value) => {
-                // Update local state
-                setDeliverables(prev => prev.map(d => d.id === delId ? { ...d, [field]: value } : d));
-                // Save to Firebase
+            const submitNewBrief = async () => {
                 try {
-                    await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('commercial_deliverables').doc(delId).update({ [field]: value });
-                } catch (e) { console.error('Update failed:', e); }
+                    const payload = { "TITLE": newBrief.title, "CLIENT / EXTERNAL PARTNER": newBrief.client, "DEAL STAGE": newBrief.stage, "FORMAT": newBrief.format, "COMMERCIAL OWNER": newBrief.commercialOwner, "CREATIVE LEAD(S)": newBrief.creativeOwner, "DUE DATE": newBrief.deadline, "DEAL VALUE": parseFloat(newBrief.dealValue) || null };
+                    const res = await fetch(API_URL + '/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (res.ok) { setModalOpen(false); setNewBrief({ title: '', client: '', stage: 'Ideation', format: '', commercialOwner: '', creativeOwner: '', deadline: '', dealValue: '' }); loadData(); }
+                    else throw new Error('API error');
+                } catch (e) { console.error('Submit error:', e); alert('Failed to add brief. Please try again.'); }
             };
             
-            // Render
-            if (isLoading) {
-                return <div style={S.loading}><div style={S.spinner} />Loading...</div>;
-            }
+            const getStaffName = (id) => { const s = staff.find(x => x.id === id); return s ? `${s.firstName} ${s.lastName}` : null; };
             
-            const renderLeads = (p) => {
-                const leads = [];
-                if (p.productionLead?.length) p.productionLead.forEach(l => leads.push(<PersonChip key={'p'+l} name={l} role="production" />));
-                if (p.creativeLead?.length) p.creativeLead.forEach(l => leads.push(<PersonChip key={'c'+l} name={l} role="creative" />));
-                return leads.length ? leads : <span style={{ fontSize: 10, color: 'var(--ink-sub)' }}>Unassigned</span>;
-            };
-            
-            const renderTable = (items, type) => {
-                if (!items.length) return <div style={S.empty}>No {type === 'production' ? 'live campaigns' : 'briefs in pipeline'}</div>;
-                return (
-                    <table style={S.table}>
-                        <thead><tr>
-                            <th style={S.th}>Client / Project</th>
-                            <th style={S.th}>{type === 'production' ? 'Phase' : 'Stage'}</th>
-                            <th style={S.th}>Channel</th>
-                            <th style={S.th}>Leads</th>
-                            <th style={S.th}>Progress</th>
-                            <th style={S.th}>Update</th>
-                        </tr></thead>
-                        <tbody>
-                            {items.map(p => (
-                                <tr key={p.id} onClick={() => selectProject(p.id)} style={{ cursor: 'pointer', background: selectedId === p.id ? 'var(--hero-soft)' : 'transparent' }}>
-                                    <td style={S.td}><div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2 }}>{p.client || 'TBC'}</div><div style={{ fontSize: 10, color: 'var(--ink-sub)' }}>{p.title || ''}</div></td>
-                                    <td style={S.td}><Tag status={type === 'production' ? (p.projectStatus || p.dealStage) : p.dealStage} /></td>
-                                    <td style={S.td}><span style={{ fontSize: 10, color: 'var(--ink-sub)' }}>{p.channel || '—'}</span></td>
-                                    <td style={S.td}>{renderLeads(p)}</td>
-                                    <td style={S.td}><Progress pct={p._progress} /><span style={{ fontSize: 9, color: 'var(--ink-muted)' }}>{p._dels.length} assets</span></td>
-                                    <td style={S.td}><div style={{ fontSize: 10, color: 'var(--ink-sub)', fontStyle: 'italic', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p._annot?.notes || '—'}</div></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                );
-            };
+            if (loading) return (<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '12px' }}><div className="dot-grid"><span></span><span></span><span></span><span></span></div><span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink-sub)' }}>Loading Commercial Hub...</span></div>);
             
             return (
-                <div style={S.app}>
-                    <div style={S.header}>
-                        <Dots />
-                        <h1 style={S.title}>Commercial Hub</h1>
-                        <Badge type="week">{getWeekString()}</Badge>
-                        <Badge type={dataSource === 'api' ? 'connected' : 'offline'}>
-                            {dataSource === 'api' ? '● Notion' : dataSource === 'firebase' ? '● Firebase' : '● Sample Data'}
-                        </Badge>
-                        <Btn onClick={loadData}>↻</Btn>
-                        {dataSource === 'sample' && <Btn primary onClick={seedToFirebase} disabled={saving}>{saving ? 'Saving...' : '⬆ Save to Firebase'}</Btn>}
-                    </div>
-                    
-                    <div style={S.main}>
-                        <div style={S.content}>
-                            <div style={S.bento}>
-                                <Card accent="var(--hero)">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><Dots /><span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ink-sub)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Live Campaigns</span></div>
-                                    <div style={{ fontSize: 36, fontWeight: 900, color: 'var(--hero)', fontVariantNumeric: 'tabular-nums' }}>{String(stats.live).padStart(2, '0')}</div>
-                                    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--surface-alt)', fontSize: 9, color: 'var(--ink-muted)' }}>In Production</div>
-                                </Card>
-                                <Card accent="var(--success)">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><Dots color="var(--success)" /><span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ink-sub)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Pipeline</span></div>
-                                    <div style={{ fontSize: 36, fontWeight: 900, color: 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>{String(stats.pipeline).padStart(2, '0')}</div>
-                                    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--surface-alt)', fontSize: 9, color: 'var(--ink-muted)' }}>{formatCurrency(stats.pipelineValue)} pipeline</div>
-                                </Card>
-                                <Card accent="var(--creative)" span={2}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}><Dots color="var(--creative)" /><span style={{ fontSize: 9, fontWeight: 700, color: 'var(--ink-sub)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Value</span></div>
-                                    <div style={{ fontSize: 36, fontWeight: 900, color: 'var(--creative)', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(stats.totalValue)}</div>
-                                    <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--surface-alt)', fontSize: 9, color: 'var(--ink-muted)' }}>{projects.length} total projects</div>
-                                </Card>
+                <div className="app-container">
+                    <div className="main-content" style={{ marginRight: sidebarOpen ? '440px' : '0', transition: 'margin-right 0.3s' }}>
+                        <div className="header">
+                            <div className="header-left">
+                                <div className="dot-grid"><span></span><span></span><span></span><span></span></div>
+                                <div><div className="header-label">Team Weekly Meeting</div><div className="header-title">Commercial Hub</div></div>
                             </div>
-                            
-                            <div style={S.section}>
-                                <div style={S.sectionHeader}><span style={{ fontSize: 14 }}>📹</span><span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', flex: 1 }}>Production / Live Campaigns</span><span style={{ fontSize: 9, fontWeight: 700, padding: '4px 10px', borderRadius: 99, background: 'var(--hero-soft)', color: 'var(--hero)' }}>{stats.live}</span></div>
-                                {renderTable(production, 'production')}
-                            </div>
-                            
-                            <div style={S.section}>
-                                <div style={S.sectionHeader}><span style={{ fontSize: 14 }}>📋</span><span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', flex: 1 }}>Inbound Briefs / Pipeline</span><span style={{ fontSize: 9, fontWeight: 700, padding: '4px 10px', borderRadius: 99, background: 'var(--hero-soft)', color: 'var(--hero)' }}>{stats.pipeline}</span></div>
-                                {renderTable(pipeline, 'pipeline')}
+                            <div className="header-actions">
+                                <button className="btn btn-secondary" onClick={loadData}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh</button>
+                                <button className="btn btn-primary" onClick={() => setModalOpen(true)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Brief</button>
                             </div>
                         </div>
                         
-                        {selected && (
-                            <div style={S.sidebar}>
-                                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <Dots /><span style={{ fontSize: 13, fontWeight: 800, flex: 1, textTransform: 'uppercase' }}>{selected.client}</span>
-                                    <button onClick={closePanel} style={{ width: 28, height: 28, border: 'none', background: 'var(--surface-alt)', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>✕</button>
-                                </div>
-                                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-                                    <div style={{ marginBottom: 16, padding: 14, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                                        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Project Details</div>
-                                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{selected.title}</div>
-                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}><Tag status={selected.dealStage} /><Tag status={selected.projectStatus} /></div>
-                                        <div style={{ fontSize: 10, color: 'var(--ink-sub)' }}>Channel: {selected.channel || 'TBC'}</div>
-                                        {selected.dealValue && <div style={{ fontSize: 10, color: 'var(--ink-sub)' }}>Value: {formatCurrency(selected.dealValue)}</div>}
-                                    </div>
-                                    
-                                    <div style={{ background: 'var(--hero-soft)', border: '1px solid var(--hero)', borderRadius: 'var(--radius-sm)', padding: 14, marginBottom: 16 }}>
-                                        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--hero)', textTransform: 'uppercase', marginBottom: 8 }}>Sales Tracking</div>
-                                        <select value={currentNote.status} onChange={(e) => { setCurrentNote(n => ({ ...n, status: e.target.value })); setHasChanges(true); }} style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', background: 'var(--surface)', marginBottom: 10 }}>
-                                            <option value="">Select status...</option>
-                                            {SALES_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                        </select>
-                                        <textarea value={currentNote.notes} onChange={(e) => { setCurrentNote(n => ({ ...n, notes: e.target.value })); setHasChanges(true); }} placeholder="Notes, follow-ups..." style={{ width: '100%', minHeight: 70, padding: 10, border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, fontFamily: 'inherit', resize: 'vertical' }} />
-                                    </div>
-                                    
-                                    <div>
-                                        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', marginBottom: 10 }}>Deliverables ({selected._dels.length})</div>
-                                        {selected._dels.length === 0 ? <div style={S.empty}>No deliverables yet</div> : selected._dels.map(d => (
-                                            <div key={d.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 12, marginBottom: 8 }}>
-                                                <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>{d.title}</div>
-                                                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}><Tag status={d.status} />{d.format && <Tag status={d.format} />}</div>
-                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                                    <select value={d.status || ''} onChange={(e) => updateDeliverable(d.id, 'status', e.target.value)} style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 10, fontFamily: 'inherit' }}>
-                                                        <option value="Briefed">Briefed</option>
-                                                        <option value="In Progress">In Progress</option>
-                                                        <option value="Edit">Edit</option>
-                                                        <option value="Review">Review</option>
-                                                        <option value="Approved">Approved</option>
-                                                        <option value="Live">Live</option>
-                                                    </select>
-                                                    <select value={d.deskState || ''} onChange={(e) => updateDeliverable(d.id, 'deskState', e.target.value)} style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, fontSize: 10, fontFamily: 'inherit' }}>
-                                                        <option value="With Creative">With Creative</option>
-                                                        <option value="With Design">With Design</option>
-                                                        <option value="With Production">With Production</option>
-                                                        <option value="With Edit">With Edit</option>
-                                                        <option value="With Review">With Review</option>
-                                                        <option value="Live">Live</option>
-                                                    </select>
-                                                </div>
-                                            </div>
+                        <div className="stats-bento">
+                            <div className="stat-card"><div className="stat-label">Live Campaigns</div><div className="stat-value highlight">{stats.liveCampaigns}</div><div className="stat-sub">Currently broadcasting</div></div>
+                            <div className="stat-card"><div className="stat-label">Pipeline</div><div className="stat-value">{stats.pipelineCount}</div><div className="stat-sub">Active briefs</div></div>
+                            <div className="stat-card"><div className="stat-label">Pipeline Value</div><div className="stat-value money">{formatMoney(stats.pipelineValue)}</div><div className="stat-sub">Total deal value</div></div>
+                            <div className="stat-card"><div className="stat-label">This Week</div><div className="stat-value">{stats.thisWeekDeadlines}</div><div className="stat-sub">Upcoming deadlines</div></div>
+                        </div>
+                        
+                        <div className="section">
+                            <div className="section-header">
+                                <div className="section-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>Production / Live Campaigns<span className="count">{productionProjects.length}</span></div>
+                                <span className="sync-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>Syncs to queues</span>
+                            </div>
+                            {productionProjects.length === 0 ? <div className="empty-state">No active productions</div> : (
+                                <table className="data-table">
+                                    <thead><tr><th>Client / Project</th><th>Phase</th><th>Planned Live</th><th>Client FB Due</th><th>Internal Delivery</th><th>Editor</th><th>Designer</th><th>Notes</th></tr></thead>
+                                    <tbody>
+                                        {productionProjects.map(item => {
+                                            const editorName = item.deliverables?.find(d => d.type === 'Video Edit')?.editorId ? getStaffName(item.deliverables.find(d => d.type === 'Video Edit').editorId) : null;
+                                            const designerName = item.deliverables?.find(d => ['Thumbnail', 'On-Screen Graphics'].includes(d.type))?.designerId ? getStaffName(item.deliverables.find(d => ['Thumbnail', 'On-Screen Graphics'].includes(d.type)).designerId) : null;
+                                            return (
+                                                <tr key={item.id} onClick={() => openSidebar(item, 'production')}>
+                                                    <td><div className="project-cell"><span className="project-title">{item.title || 'Untitled'}</span><span className="project-client">{item.client || item['CLIENT / EXTERNAL PARTNER'] || '—'}</span></div></td>
+                                                    <td><span className={`stage-pill ${getPhaseClass(item.productionPhase)}`}>{item.productionPhase}</span></td>
+                                                    <td><span className={`date-cell ${getDateStatus(item.plannedLiveDate)}`}>{formatDate(item.plannedLiveDate)}</span></td>
+                                                    <td><span className={`date-cell ${getDateStatus(item.clientFeedbackDue)}`}>{formatDate(item.clientFeedbackDue)}</span></td>
+                                                    <td><span className={`date-cell ${getDateStatus(item.internalDeliveryDate)}`}>{formatDate(item.internalDeliveryDate)}</span></td>
+                                                    <td><div className="team-cell"><div className="team-row"><span className="team-icon">🎬</span><span className={`team-name ${!editorName ? 'unassigned' : ''}`}>{editorName || 'Unassigned'}</span></div></div></td>
+                                                    <td><div className="team-cell"><div className="team-row"><span className="team-icon">🎨</span><span className={`team-name ${!designerName ? 'unassigned' : ''}`}>{designerName || 'Unassigned'}</span></div></div></td>
+                                                    <td><div className="notes-cell">{item.notes || '—'}</div></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                        
+                        <div className="section">
+                            <div className="section-header">
+                                <div className="section-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Inbound Briefs / Pipeline<span className="count">{pipelineProjects.length}</span></div>
+                            </div>
+                            {pipelineProjects.length === 0 ? <div className="empty-state">No briefs in pipeline</div> : (
+                                <table className="data-table">
+                                    <thead><tr><th>Client / Project</th><th>Stage</th><th>Format</th><th>Commercial Owner</th><th>Creative Owner</th><th>Deadline</th><th>Deal Value</th></tr></thead>
+                                    <tbody>
+                                        {pipelineProjects.map(item => (
+                                            <tr key={item.id} onClick={() => openSidebar(item, 'pipeline')}>
+                                                <td><div className="project-cell"><span className="project-title">{item.title || 'Untitled'}</span><span className="project-client">{item.client || item['CLIENT / EXTERNAL PARTNER'] || '—'}</span></div></td>
+                                                <td><span className={`stage-pill ${getStageClass(item.dealStage || item.status || 'Ideation')}`}>{item.dealStage || item.status || 'Ideation'}</span></td>
+                                                <td style={{ fontSize: '11px', color: 'var(--ink-sub)' }}>{item.format || item.projectType || '—'}</td>
+                                                <td style={{ fontSize: '11px', fontWeight: 600 }}>{item.commercialOwner || '—'}</td>
+                                                <td style={{ fontSize: '11px', fontWeight: 600 }}>{item.creativeOwner || '—'}</td>
+                                                <td><span className={`date-cell ${getDateStatus(item.deadline || item.dueDate)}`}>{formatDate(item.deadline || item.dueDate)}</span></td>
+                                                <td><span className="money-value">{formatMoney(item.dealValue)}</span></td>
+                                            </tr>
                                         ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} onClick={closeSidebar}></div>
+                    <div className={`sidebar-panel ${sidebarOpen ? 'open' : ''}`}>
+                        {selectedItem && (
+                            <>
+                                <div className="sidebar-scroll">
+                                    <div className="sidebar-header">
+                                        <div><div className="sidebar-title">{selectedItem.title || 'Untitled'}</div><div className="sidebar-client">{selectedItem.client || selectedItem['CLIENT / EXTERNAL PARTNER'] || 'No client'}</div></div>
+                                        <button className="sidebar-close" onClick={closeSidebar}>×</button>
                                     </div>
+                                    
+                                    {selectedItem._type === 'production' && (
+                                        <div className="sidebar-tabs">
+                                            <button className={`sidebar-tab ${sidebarTab === 'details' ? 'active' : ''}`} onClick={() => setSidebarTab('details')}>Details</button>
+                                            <button className={`sidebar-tab ${sidebarTab === 'deliverables' ? 'active' : ''}`} onClick={() => setSidebarTab('deliverables')}>Deliverables</button>
+                                        </div>
+                                    )}
+                                    
+                                    {(sidebarTab === 'details' || selectedItem._type === 'pipeline') && (
+                                        <>
+                                            {selectedItem._type === 'production' ? (
+                                                <>
+                                                    <div className="sidebar-section">
+                                                        <div className="sidebar-label">Production Phase</div>
+                                                        <select className="sidebar-select" value={selectedItem.productionPhase || ''} onChange={e => updateItemField('productionPhase', e.target.value)}>
+                                                            {PRODUCTION_PHASES.map(phase => <option key={phase} value={phase}>{phase}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div className="sidebar-section">
+                                                        <div className="sidebar-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Key Dates</div>
+                                                        <div className="sidebar-row">
+                                                            <div><label style={{ fontSize: '9px', fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: '4px' }}>PLANNED LIVE</label><input type="date" className="sidebar-input" value={selectedItem.plannedLiveDate || ''} onChange={e => updateItemField('plannedLiveDate', e.target.value)} /></div>
+                                                            <div><label style={{ fontSize: '9px', fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: '4px' }}>CLIENT FB DUE</label><input type="date" className="sidebar-input" value={selectedItem.clientFeedbackDue || ''} onChange={e => updateItemField('clientFeedbackDue', e.target.value)} /></div>
+                                                        </div>
+                                                        <div style={{ marginTop: '12px' }}><label style={{ fontSize: '9px', fontWeight: 600, color: 'var(--ink-muted)', display: 'block', marginBottom: '4px' }}>INTERNAL DELIVERY</label><input type="date" className="sidebar-input" value={selectedItem.internalDeliveryDate || ''} onChange={e => updateItemField('internalDeliveryDate', e.target.value)} /></div>
+                                                    </div>
+                                                    <div className="sidebar-section"><div className="sidebar-label">Channel</div><input type="text" className="sidebar-input" value={selectedItem.channel || ''} onChange={e => updateItemField('channel', e.target.value)} placeholder="e.g. DM UK, Mail Sport" /></div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="sidebar-section"><div className="sidebar-label">Pipeline Stage</div><select className="sidebar-select" value={selectedItem.dealStage || selectedItem.status || 'Ideation'} onChange={e => updateItemField('dealStage', e.target.value)}>{PIPELINE_STAGES.map(stage => <option key={stage} value={stage}>{stage}</option>)}</select></div>
+                                                    <div className="sidebar-section"><div className="sidebar-label">Format</div><input type="text" className="sidebar-input" value={selectedItem.format || selectedItem.projectType || ''} onChange={e => updateItemField('format', e.target.value)} placeholder="e.g. Street Talks, Mail Investigates" /></div>
+                                                    <div className="sidebar-row">
+                                                        <div className="sidebar-section"><div className="sidebar-label">Deadline</div><input type="date" className="sidebar-input" value={selectedItem.deadline || selectedItem.dueDate || ''} onChange={e => updateItemField('deadline', e.target.value)} /></div>
+                                                        <div className="sidebar-section"><div className="sidebar-label">Deal Value (£)</div><input type="number" className="sidebar-input" value={selectedItem.dealValue || ''} onChange={e => updateItemField('dealValue', e.target.value)} placeholder="0" /></div>
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div className="sidebar-row">
+                                                <div className="sidebar-section"><div className="sidebar-label">Commercial Owner</div><input type="text" className="sidebar-input" value={selectedItem.commercialOwner || ''} onChange={e => updateItemField('commercialOwner', e.target.value)} placeholder="Name" /></div>
+                                                <div className="sidebar-section"><div className="sidebar-label">Creative Owner</div><input type="text" className="sidebar-input" value={selectedItem.creativeOwner || ''} onChange={e => updateItemField('creativeOwner', e.target.value)} placeholder="Name" /></div>
+                                            </div>
+                                            <div className="sidebar-section"><div className="sidebar-label">Notes</div><textarea className="sidebar-input sidebar-textarea" value={selectedItem.notes || ''} onChange={e => updateItemField('notes', e.target.value)} placeholder="Add notes..."></textarea></div>
+                                        </>
+                                    )}
+</div><button className="modal-close" onClick={() => setModalOpen(false)}>×</button></div>
+                            <div className="modal-body">
+                                <div className="modal-field"><div className="sidebar-label">Project Title <span style={{ color: 'var(--editorial)' }}>*</span></div><input type="text" className="sidebar-input" value={newBrief.title} onChange={e => setNewBrief(prev => ({ ...prev, title: e.target.value }))} placeholder="Enter project title" /></div>
+                                <div className="modal-field"><div className="sidebar-label">Client <span style={{ color: 'var(--editorial)' }}>*</span></div><input type="text" className="sidebar-input" value={newBrief.client} onChange={e => setNewBrief(prev => ({ ...prev, client: e.target.value }))} placeholder="Client name" /></div>
+                                <div className="modal-field"><div className="sidebar-label">Pipeline Stage</div><select className="sidebar-select" value={newBrief.stage} onChange={e => setNewBrief(prev => ({ ...prev, stage: e.target.value }))}>{PIPELINE_STAGES.filter(s => s !== 'Won' && s !== 'Lost').map(stage => <option key={stage} value={stage}>{stage}</option>)}</select></div>
+                                <div className="modal-field"><div className="sidebar-label">Format</div><input type="text" className="sidebar-input" value={newBrief.format} onChange={e => setNewBrief(prev => ({ ...prev, format: e.target.value }))} placeholder="e.g. Street Talks, Headlines" /></div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div className="modal-field"><div className="sidebar-label">Commercial Owner</div><input type="text" className="sidebar-input" value={newBrief.commercialOwner} onChange={e => setNewBrief(prev => ({ ...prev, commercialOwner: e.target.value }))} placeholder="Name" /></div>
+                                    <div className="modal-field"><div className="sidebar-label">Creative Owner</div><input type="text" className="sidebar-input" value={newBrief.creativeOwner} onChange={e => setNewBrief(prev => ({ ...prev, creativeOwner: e.target.value }))} placeholder="Name" /></div>
                                 </div>
-                                <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--surface)' }}>
-                                    <Btn primary disabled={!hasChanges || saving} onClick={saveAnnotation} style={{ width: '100%' }}>{saving ? 'Saving...' : hasChanges ? 'Save Notes' : 'No Changes'}</Btn>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <div className="modal-field"><div className="sidebar-label">Deadline</div><input type="date" className="sidebar-input" value={newBrief.deadline} onChange={e => setNewBrief(prev => ({ ...prev, deadline: e.target.value }))} /></div>
+                                    <div className="modal-field"><div className="sidebar-label">Deal Value (£)</div><input type="number" className="sidebar-input" value={newBrief.dealValue} onChange={e => setNewBrief(prev => ({ ...prev, dealValue: e.target.value }))} placeholder="0" /></div>
                                 </div>
                             </div>
-                        )}
+                            <div className="modal-actions"><button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={submitNewBrief} disabled={!newBrief.title || !newBrief.client}>Add Brief</button></div>
+                        </div>
                     </div>
                 </div>
             );
-        };
+        }
         
         ReactDOM.createRoot(document.getElementById('root')).render(<CommercialHub />);
     </script>
