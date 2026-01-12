@@ -4,690 +4,706 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales Intake | DMG Command Centre</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --ink: #1C1C1C;
-            --ink-sub: #757575;
-            --ink-muted: #9CA3AF;
-            --border: #EAECEF;
-            --surface: #FFFFFF;
-            --surface-alt: #F9FAFB;
-            --dmg-blue: #21A0D8;
-            --creative: #E6468B;
-            --production: #43B049;
-            --editorial: #E94B4B;
-            --social: #F2C316;
-            --sales: #21A0D8;
+        :root { 
+            --ink: #0F172A; --ink-sub: #64748B; --ink-muted: #94A3B8; 
+            --border: #E2E8F0; --surface: #FFFFFF; --surface-alt: #F8FAFC; 
+            --dmg-blue: #21A0D8; --dmg-blue-soft: #F0F9FF; --dmg-blue-glow: rgba(33, 160, 216, 0.2);
+            --production: #10B981;
+            --radius: 20px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--surface);
-            color: var(--ink);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
-        .dot-grid span { width: 6px; height: 6px; border-radius: 50%; background: var(--sales); }
-        .dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
-        .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
-        .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
-        .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-        .container { max-width: 680px; margin: 0 auto; }
-        .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
-        .header-left { display: flex; align-items: center; gap: 10px; }
-        .header-label { font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
-        .reset-btn { font-size: 9px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; background: none; border: none; cursor: pointer; transition: color 0.2s; }
-        .reset-btn:hover { color: var(--ink); }
-        .progress { display: flex; align-items: center; gap: 6px; margin-bottom: 24px; }
-        .progress-step { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: all 0.3s ease; }
-        .progress-step.active { background: var(--sales); }
-        .progress-step.complete { background: var(--production); }
-        .progress-line { width: 24px; height: 2px; background: var(--border); border-radius: 1px; transition: background 0.3s ease; }
-        .progress-line.complete { background: var(--production); }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: transparent; color: var(--ink); min-height: 100vh; padding: 20px; -webkit-font-smoothing: antialiased; }
         
-        /* Step Card - CRITICAL: overflow visible for dropdowns */
+        .container { max-width: 700px; margin: 0 auto; position: relative; padding-bottom: 120px; }
+        
+        /* Card & Layout */
         .step-card { 
             background: var(--surface); 
             border: 1px solid var(--border); 
-            border-radius: 16px; 
-            overflow: visible; /* Changed from hidden to visible */
-            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+            border-radius: var(--radius); 
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05);
+            overflow: visible;
+            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
         }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .step-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
-        .step-number { font-size: 9px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.08em; }
-        .step-title { font-size: 18px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
-        .step-body { padding: 24px; overflow: visible; /* Allow dropdowns to overflow */ }
-        
-        .type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .type-card { border: 1px solid var(--border); border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s ease; background: var(--surface); }
-        .type-card:hover { border-color: var(--sales); transform: translateY(-2px); }
-        .type-card.selected { border-color: var(--sales); background: rgba(33, 160, 216, 0.04); }
-        .type-icon { font-size: 24px; margin-bottom: 10px; }
-        .type-label { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
-        .type-desc { font-size: 10px; color: var(--ink-sub); }
-        
-        .field { margin-bottom: 16px; }
-        .field-label { font-size: 9px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
-        .field-label .required { color: var(--editorial); }
-        .field-input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 500; font-family: inherit; background: var(--surface-alt); color: var(--ink); outline: none; transition: all 0.2s ease; }
-        .field-input:focus { border-color: var(--sales); background: var(--surface); box-shadow: 0 0 0 3px rgba(33, 160, 216, 0.1); }
-        .field-input::placeholder { color: var(--ink-muted); }
-        .field-textarea { min-height: 100px; resize: vertical; }
-        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        
-        /* Custom Select - Fixed overflow */
-        .custom-select { position: relative; z-index: 10; }
-        .select-trigger { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 500; font-family: inherit; background: var(--surface-alt); color: var(--ink); cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease; }
-        .select-trigger:hover { border-color: var(--sales); }
-        .select-trigger.open { border-color: var(--sales); background: var(--surface); box-shadow: 0 0 0 3px rgba(33, 160, 216, 0.1); border-radius: 8px 8px 0 0; }
-        .select-trigger .placeholder { color: var(--ink-muted); }
-        .select-trigger svg { width: 12px; height: 12px; transition: transform 0.2s; }
-        .select-trigger.open svg { transform: rotate(180deg); }
-        .select-dropdown { 
-            position: absolute; 
-            top: 100%; 
-            left: 0; 
-            right: 0; 
-            background: var(--surface); 
-            border: 1px solid var(--sales); 
-            border-top: none; 
-            border-radius: 0 0 8px 8px; 
-            max-height: 220px; 
-            overflow-y: auto; 
-            z-index: 1000; 
-            display: none; 
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12); 
+        .step-header { padding: 18px 32px; border-bottom: 1px solid var(--border); background: var(--surface-alt); border-radius: 20px 20px 0 0; }
+        .step-body { padding: 32px; overflow: visible; }
+        .step-label { font-size: 10px; font-weight: 800; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+        .step-title { font-size: 24px; font-weight: 900; color: var(--ink); letter-spacing: -0.03em; margin-bottom: 32px; }
+        /* Header UI */
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding: 0 8px; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 3px; }
+        .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        .header-label { font-size: 11px; font-weight: 800; color: var(--dmg-blue); text-transform: uppercase; letter-spacing: 0.05em; }
+        .reset-btn { 
+            font-size: 11px; font-weight: 700; color: var(--ink-sub); 
+            background: var(--surface); border: 1px solid var(--border); 
+            padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; 
         }
-        .select-dropdown.open { display: block; }
-        .select-option { padding: 10px 14px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
-        .select-option:hover { background: var(--surface-alt); }
-        .select-option.selected { background: rgba(33, 160, 216, 0.08); color: var(--sales); }
+        .reset-btn:hover { border-color: var(--ink-sub); color: var(--ink); }
+        /* Progress */
+        .progress { display: flex; align-items: center; gap: 8px; margin-bottom: 40px; justify-content: center; }
+        .progress-step { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: all 0.4s; }
+        .progress-step.active { background: var(--dmg-blue); transform: scale(1.3); }
+        .progress-step.complete { background: var(--production); }
+        .progress-line { width: 30px; height: 2px; background: var(--border); border-radius: 1px; }
+        .progress-line.complete { background: var(--production); }
+        /* Form Controls */
+        .field { margin-bottom: 24px; position: relative; z-index: 1; }
+        .field-label { font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: block; }
+        .field-input { 
+            width: 100%; padding: 14px 18px; border: 2px solid var(--border); border-radius: 12px; 
+            font-size: 14px; font-weight: 600; font-family: inherit; background: var(--surface-alt); 
+            color: var(--ink); outline: none; transition: all 0.2s;
+        }
+        .field-input:focus { border-color: var(--dmg-blue); background: #fff; box-shadow: 0 0 0 4px var(--dmg-blue-glow); }
+        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        /* Client Toggle */
+        .client-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+        .client-toggle-btn { flex: 1; padding: 10px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; background: var(--surface); color: var(--ink-sub); transition: all 0.2s; }
+        .client-toggle-btn.active { background: var(--dmg-blue); border-color: var(--dmg-blue); color: white; box-shadow: 0 4px 10px rgba(33,160,216,0.2); }
+        /* Custom Dropdowns */
+        .custom-select, .staff-picker { position: relative; width: 100%; z-index: 20; }
+        .select-trigger, .picker-trigger { 
+            width: 100%; padding: 14px 18px; border: 2px solid var(--border); border-radius: 12px; 
+            font-size: 13px; font-weight: 700; background: var(--surface-alt); color: var(--ink); 
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.2s;
+        }
+        .select-trigger:hover, .picker-trigger:hover { border-color: var(--dmg-blue); background: #fff; }
+        .select-trigger .placeholder { color: var(--ink-muted); font-weight: 500; }
+        .select-trigger.open, .picker-trigger.open { border-color: var(--dmg-blue); background: #fff; border-radius: 12px 12px 0 0; }
         
-        /* Client Type Toggle */
-        .client-type-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
-        .client-type-btn { flex: 1; padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; cursor: pointer; background: var(--surface); color: var(--ink-sub); transition: all 0.2s ease; }
-        .client-type-btn:hover { border-color: var(--sales); }
-        .client-type-btn.active { background: var(--sales); border-color: var(--sales); color: white; }
-        
-        /* Staff Picker */
-        .staff-picker { border: 1px solid var(--border); border-radius: 8px; overflow: visible; margin-top: 6px; position: relative; z-index: 5; }
-        .staff-picker-header { padding: 12px 14px; background: var(--surface-alt); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.15s; border-radius: 8px; }
-        .staff-picker-header:hover { background: var(--surface); }
-        .staff-picker-header.open { border-bottom: 1px solid var(--border); border-radius: 8px 8px 0 0; }
-        .staff-picker-label { font-size: 11px; font-weight: 600; color: var(--ink-sub); display: flex; align-items: center; gap: 6px; }
-        .selected-badge { background: var(--sales); color: white; font-size: 9px; padding: 2px 8px; border-radius: 10px; font-weight: 700; }
-        .staff-picker-chevron { width: 14px; height: 14px; color: var(--ink-muted); transition: transform 0.2s; }
-        .staff-picker-header.open .staff-picker-chevron { transform: rotate(180deg); }
-        .staff-picker-body { display: none; max-height: 200px; overflow-y: auto; background: var(--surface); border-radius: 0 0 8px 8px; position: absolute; left: -1px; right: -1px; top: 100%; border: 1px solid var(--border); border-top: none; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-        .staff-picker-body.open { display: block; }
-        .staff-search { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-        .staff-search input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-family: inherit; background: var(--surface); outline: none; }
-        .staff-search input:focus { border-color: var(--sales); }
-        .staff-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--surface-alt); transition: background 0.15s ease; }
-        .staff-item:last-child { border-bottom: none; }
+        .select-dropdown, .staff-picker-body { 
+            position: absolute; top: 100%; left: 0; right: 0; 
+            background: #fff; border: 2px solid var(--dmg-blue); border-top: none; 
+            border-radius: 0 0 12px 12px; max-height: 250px; overflow-y: auto; 
+            z-index: 9999; display: none; box-shadow: 0 15px 40px -10px rgba(0,0,0,0.15);
+        }
+        .select-dropdown.show, .staff-picker-body.show { display: block; animation: dropIn 0.2s ease-out; }
+        .dropdown-item { padding: 12px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 1px solid var(--surface-alt); }
+        .dropdown-item:hover { background: var(--dmg-blue-soft); color: var(--dmg-blue); padding-left: 22px; transition: all 0.1s; }
+        /* Staff Picker UI */
+        .staff-search { padding: 10px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: #fff; z-index: 10; }
+        .staff-search input { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 12px; outline: none; }
+        .staff-item { display: flex; align-items: center; gap: 12px; padding: 10px 18px; cursor: pointer; }
         .staff-item:hover { background: var(--surface-alt); }
-        .staff-item.selected { background: rgba(33, 160, 216, 0.06); }
-        .staff-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 9px; font-weight: 700; flex-shrink: 0; }
-        .staff-name { font-size: 12px; font-weight: 600; color: var(--ink); }
-        .staff-meta { font-size: 9px; color: var(--ink-muted); }
-        .staff-check { margin-left: auto; color: var(--sales); font-size: 14px; }
-        
-        /* File Upload */
-        .file-upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface-alt); }
-        .file-upload-area:hover { border-color: var(--sales); background: rgba(33, 160, 216, 0.02); }
-        .file-upload-area.dragover { border-color: var(--sales); background: rgba(33, 160, 216, 0.06); }
-        .file-upload-icon { width: 40px; height: 40px; margin: 0 auto 12px; color: var(--ink-muted); }
-        .file-upload-text { font-size: 12px; font-weight: 600; color: var(--ink-sub); margin-bottom: 4px; }
-        .file-upload-hint { font-size: 10px; color: var(--ink-muted); }
-        .file-list { margin-top: 12px; }
-        .file-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; }
-        .file-icon { width: 24px; height: 24px; background: var(--sales); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px; font-weight: 700; }
-        .file-info { flex: 1; }
-        .file-name { font-size: 11px; font-weight: 600; color: var(--ink); }
-        .file-size { font-size: 9px; color: var(--ink-muted); }
-        .file-remove { background: none; border: none; color: var(--ink-muted); cursor: pointer; font-size: 16px; padding: 4px; }
-        .file-remove:hover { color: var(--editorial); }
-        
-        /* Links */
-        .link-row { display: flex; gap: 8px; margin-bottom: 8px; }
-        .link-row input { flex: 1; }
-        .link-add-btn { padding: 0 16px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; font-weight: 600; color: var(--ink-sub); cursor: pointer; transition: all 0.15s; }
-        .link-add-btn:hover { border-color: var(--sales); color: var(--sales); }
-        .link-list { margin-top: 8px; }
-        .link-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface-alt); border-radius: 6px; margin-bottom: 6px; font-size: 11px; }
-        .link-item a { flex: 1; color: var(--sales); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .link-item button { background: none; border: none; color: var(--ink-muted); cursor: pointer; font-size: 14px; }
-        .link-item button:hover { color: var(--editorial); }
-        
-        /* Buttons - BLUE HERO */
-        .btn-row { display: flex; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
-        .btn { padding: 14px 20px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; transition: all 0.2s ease; border: none; }
-        .btn-back { background: var(--surface); border: 1px solid var(--border); color: var(--ink-sub); }
-        .btn-back:hover { background: var(--surface-alt); }
-        .btn-primary { flex: 1; background: var(--dmg-blue); color: white; }
-        .btn-primary:hover { background: #1B8ABF; }
-        .btn-submit { flex: 1; background: var(--production); color: white; }
-        .btn-submit:hover { opacity: 0.9; }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        
-        /* Review */
-        .review-card { background: var(--surface-alt); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
-        .review-title { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 16px; letter-spacing: -0.02em; }
-        .review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
-        .review-item { border-bottom: 1px solid var(--border); padding-bottom: 8px; }
-        .review-item.full-width { grid-column: 1 / -1; }
-        .review-label { font-size: 8px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
-        .review-value { font-size: 12px; font-weight: 600; color: var(--ink); }
-        .review-value.highlight { color: var(--production); }
-        
-        /* Success */
-        .success-screen { text-align: center; padding: 60px 20px; }
-        .success-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--production); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
-        .success-icon svg { stroke: white; }
-        .success-title { font-size: 24px; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
-        .success-text { font-size: 13px; color: var(--ink-sub); margin-bottom: 24px; }
-        
+        .staff-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--dmg-blue); color: white; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+        .staff-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+        .selected-badge { background: var(--dmg-blue); color: white; font-size: 10px; padding: 4px 10px; border-radius: 20px; font-weight: 800; text-transform: uppercase; }
+        /* Upload Area */
+        .file-upload-area { 
+            border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; 
+            background: var(--surface-alt); transition: all 0.2s; cursor: pointer; margin-bottom: 16px;
+        }
+        .file-upload-area:hover { border-color: var(--dmg-blue); background: var(--dmg-blue-soft); }
+        .file-upload-icon { font-size: 24px; margin-bottom: 8px; display: block; }
+        .file-upload-text { font-size: 12px; color: var(--ink-sub); font-weight: 600; }
+        .file-list { display: flex; flex-direction: column; gap: 8px; }
+        .file-item { 
+            display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; 
+            background: #fff; border: 1px solid var(--border); border-radius: 8px; 
+        }
+        .file-name { font-size: 12px; font-weight: 600; color: var(--dmg-blue); }
+        .file-remove { color: #ef4444; background: none; border: none; font-weight: 800; cursor: pointer; }
+        /* Nav Buttons */
+        .btn-row { display: flex; gap: 12px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border); }
+        .btn { 
+            padding: 16px 24px; border-radius: 12px; font-size: 13px; font-weight: 800; 
+            text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; border: none; 
+            transition: all 0.2s; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-back { background: var(--surface-alt); color: var(--ink-sub); border: 1.5px solid var(--border); }
+        .btn-back:hover { background: #fff; color: var(--ink); border-color: var(--ink-muted); }
+        .btn-primary { background: var(--dmg-blue); color: #fff; box-shadow: 0 4px 12px rgba(33, 160, 216, 0.2); }
+        .btn-primary:disabled { background: #CBD5E1; color: #F1F5F9; cursor: not-allowed; }
+        .btn-submit { background: var(--production); color: #fff; }
+        /* Add Detail section */
+        .add-detail-menu { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .add-detail-btn { 
+            padding: 10px 14px; border-radius: 10px; border: 1.5px dashed var(--dmg-blue); 
+            background: var(--dmg-blue-soft); color: var(--dmg-blue); font-size: 11px; 
+            font-weight: 800; cursor: pointer; transition: all 0.2s;
+        }
+        .add-detail-btn:hover { background: var(--dmg-blue); color: #fff; border-style: solid; }
         .hidden { display: none !important; }
-        
-        /* Z-index layering for dropdowns */
-        .field-row .custom-select:first-child { z-index: 12; }
-        .field-row .custom-select:last-child { z-index: 11; }
-        .field:nth-child(1) .custom-select { z-index: 15; }
-        .field:nth-child(2) .custom-select { z-index: 14; }
-        .field:nth-child(3) .custom-select { z-index: 13; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } }
+        @keyframes dropIn { from { opacity: 0; transform: translateY(-8px); } }
+        .loading-screen { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #eee; border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .type-card { border: 1px solid var(--border); border-radius: 16px; padding: 24px; cursor: pointer; transition: all 0.2s; background: #fff; }
+        .type-card:hover { border-color: var(--dmg-blue); transform: translateY(-4px); box-shadow: 0 12px 30px rgba(33,160,216,0.1); }
+        .type-card.selected { border-color: var(--dmg-blue); background: var(--dmg-blue-soft); border-width: 2.5px; padding: 23px; }
+        .type-icon { font-size: 32px; margin-bottom: 16px; }
+        .type-label { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+        .type-desc { font-size: 12px; color: var(--ink-sub); line-height: 1.4; }
+        .asset-entry { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; position: relative; }
+        .asset-remove { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #ef4444; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 14px; font-weight: 800; }
     </style>
 </head>
 <body>
+    <div class="loading-screen" id="loading"><div class="spinner"></div></div>
     <div class="container">
         <div class="header">
             <div class="header-left">
-                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                <span class="header-label">Sales Intake</span>
+                <div class="dot-grid">
+                    <div class="dot"></div><div class="dot"></div>
+                    <div class="dot"></div><div class="dot"></div>
+                </div>
+                <h1 class="header-label">Project Intake</h1>
             </div>
-            <button class="reset-btn" onclick="resetForm()">Reset</button>
+            <button class="reset-btn" id="resetBtn">Reset Form</button>
         </div>
-        <div class="progress" id="progress">
-            <div class="progress-step active" data-step="1"></div>
-            <div class="progress-line"></div>
-            <div class="progress-step" data-step="2"></div>
-            <div class="progress-line"></div>
-            <div class="progress-step" data-step="3"></div>
-            <div class="progress-line"></div>
-            <div class="progress-step" data-step="4"></div>
+        <div class="progress" id="progressBar">
+            <div class="progress-step active"></div><div class="progress-line"></div>
+            <div class="progress-step"></div><div class="progress-line"></div>
+            <div class="progress-step"></div><div class="progress-line"></div>
+            <div class="progress-step"></div>
         </div>
-        
-        <!-- STEP 1: Project Type -->
+        <!-- STEP 1: LOG TYPE -->
         <div class="step-card" id="step1">
-            <div class="step-header"><span class="step-number">Step 1 of 4</span></div>
             <div class="step-body">
-                <div class="step-title" style="margin-bottom: 20px;">What type of project?</div>
-                <div class="type-grid">
-                    <div class="type-card" data-type="LONG TERM CAMPAIGN" onclick="selectType(this)">
-                        <div class="type-icon">📅</div>
-                        <div class="type-label">Long Term Campaign</div>
-                        <div class="type-desc">Multi-month partnerships</div>
+                <div class="step-label">Step 1 of 4</div>
+                <div class="step-title">What are we logging today?</div>
+                <div class="type-grid" id="typeGrid"></div>
+            </div>
+        </div>
+        <!-- STEP 1B: PROJECT SELECT -->
+        <div class="step-card hidden" id="step1b">
+            <div class="step-body">
+                <div class="step-label">Step 1B of 4</div>
+                <div class="step-title">Find existing campaign</div>
+                <div class="field">
+                    <label class="field-label">Active Project Database</label>
+                    <div class="custom-select" id="projectPicker">
+                        <div class="select-trigger"><span class="placeholder">Click to assign project...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
+                        <div class="select-dropdown" id="projectList"></div>
                     </div>
-                    <div class="type-card" data-type="SHORT TERM CAMPAIGN" onclick="selectType(this)">
-                        <div class="type-icon">⚡</div>
-                        <div class="type-label">Short Term Campaign</div>
-                        <div class="type-desc">Single deliverables</div>
-                    </div>
-                    <div class="type-card" data-type="VIDEO(S) IDEAS" onclick="selectType(this)">
-                        <div class="type-icon">💡</div>
-                        <div class="type-label">Video Ideas</div>
-                        <div class="type-desc">Concepts & treatments</div>
-                    </div>
-                    <div class="type-card" data-type="DMG VENTURE" onclick="selectType(this)">
-                        <div class="type-icon">🚀</div>
-                        <div class="type-label">DMG Venture</div>
-                        <div class="type-desc">Internal originals</div>
-                    </div>
-                    <div class="type-card" data-type="OTHER" onclick="selectType(this)" style="grid-column: 1 / -1;">
-                        <div class="type-icon">📋</div>
-                        <div class="type-label">Other</div>
-                        <div class="type-desc">Miscellaneous projects</div>
-                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-back" id="back1b">Back</button>
+                    <button class="btn btn-primary" id="continue1b" disabled>Continue</button>
                 </div>
             </div>
         </div>
-        
-        <!-- STEP 2: Project Details -->
+        <!-- STEP 2: IDENTITY -->
         <div class="step-card hidden" id="step2">
-            <div class="step-header"><span class="step-number">Step 2 of 4</span></div>
             <div class="step-body">
-                <div class="step-title" style="margin-bottom: 20px;">Project details</div>
-                <div class="field">
-                    <label class="field-label">Title <span class="required">*</span></label>
-                    <input type="text" class="field-input" id="title" placeholder="e.g. Sky Vegas Little Wins 2026">
-                </div>
-                
-                <!-- Client Type Toggle -->
-                <div class="field">
-                    <label class="field-label">Client / External Partner <span class="required">*</span></label>
-                    <div class="client-type-toggle">
-                        <button type="button" class="client-type-btn active" data-client-type="existing" onclick="toggleClientType('existing')">Existing Client</button>
-                        <button type="button" class="client-type-btn" data-client-type="new" onclick="toggleClientType('new')">New Client</button>
-                    </div>
-                    <!-- Existing Client Dropdown -->
-                    <div id="existingClientField">
-                        <div class="custom-select" id="clientSelect">
-                            <div class="select-trigger" onclick="toggleSelect('clientSelect')">
-                                <span class="placeholder">Select existing client...</span>
-                                <svg viewBox="0 0 12 12"><path fill="currentColor" d="M2 4l4 4 4-4"/></svg>
-                            </div>
-                            <div class="select-dropdown" id="clientDropdown"></div>
-                        </div>
-                    </div>
-                    <!-- New Client Input -->
-                    <div id="newClientField" class="hidden">
-                        <input type="text" class="field-input" id="newClient" placeholder="Enter new client name...">
-                    </div>
-                </div>
-                
-                <div class="field-row" style="position: relative; z-index: 20;">
+                <div class="step-label">Step 2 of 4</div>
+                <div class="step-title" id="step2Title">Identity</div>
+                <div id="newProjectFields">
                     <div class="field">
-                        <label class="field-label">Deal Stage <span class="required">*</span></label>
-                        <div class="custom-select" id="dealStageSelect">
-                            <div class="select-trigger" onclick="toggleSelect('dealStageSelect')">
-                                <span class="placeholder">Select stage...</span>
-                                <svg viewBox="0 0 12 12"><path fill="currentColor" d="M2 4l4 4 4-4"/></svg>
-                            </div>
-                            <div class="select-dropdown">
-                                <div class="select-option" data-value="Prospect" onclick="selectOption('dealStageSelect', 'Prospect')">Prospect</div>
-                                <div class="select-option" data-value="Brief Received" onclick="selectOption('dealStageSelect', 'Brief Received')">Brief Received</div>
-                                <div class="select-option" data-value="Response Sent" onclick="selectOption('dealStageSelect', 'Response Sent')">Response Sent</div>
-                                <div class="select-option" data-value="Negotiation" onclick="selectOption('dealStageSelect', 'Negotiation')">Negotiation</div>
-                                <div class="select-option" data-value="Deal Agreed" onclick="selectOption('dealStageSelect', 'Deal Agreed')">Deal Agreed</div>
-                            </div>
+                        <label class="field-label">SALES LEAD(S) <span style="color:#e11d48">*</span></label>
+                        <div class="custom-select staff-picker" id="salesLeadPicker">
+                            <div class="select-trigger"><span class="placeholder">Click to assign sales lead...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
+                            <div class="staff-picker-body" id="salesLeadList"></div>
                         </div>
                     </div>
                     <div class="field">
-                        <label class="field-label">Deal Value (£)</label>
-                        <input type="number" class="field-input" id="dealValue" placeholder="0">
+                        <label class="field-label">TITLE <span style="color:#e11d48">*</span></label>
+                        <input type="text" class="field-input" id="titleInput" placeholder="Campaign or brief name...">
+                    </div>
+                    <div class="field">
+                        <label class="field-label">CLIENT / EXTERNAL PARTNER <span style="color:#e11d48">*</span></label>
+                        <div class="client-toggle" id="clientToggle">
+                            <button class="client-toggle-btn active" data-type="existing">Existing</button>
+                            <button class="client-toggle-btn" data-type="new">New</button>
+                        </div>
+                        <div id="existingClientWrap">
+                            <div class="custom-select" id="clientPicker">
+                                <div class="select-trigger"><span class="placeholder">Select client...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
+                                <div class="select-dropdown" id="clientDropdown"></div>
+                            </div>
+                        </div>
+                        <div id="newClientWrap" class="hidden">
+                            <input type="text" class="field-input" id="newClientInput" placeholder="Enter brand name...">
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">VERTICAL</label>
+                            <div class="custom-select" id="verticalPicker">
+                                <div class="select-trigger"><span class="placeholder">Assign...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
+                                <div class="select-dropdown" id="verticalList"></div>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">OWNER ROLE</label>
+                            <div class="custom-select" id="ownerPicker">
+                                <div class="select-trigger"><span class="placeholder">Assign...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
+                                <div class="select-dropdown" id="ownerList"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="field-row" style="position: relative; z-index: 10;">
-                    <div class="field">
-                        <label class="field-label">Project Outcome</label>
-                        <div class="custom-select" id="outcomeSelect">
-                            <div class="select-trigger" onclick="toggleSelect('outcomeSelect')">
-                                <span>Pending</span>
-                                <svg viewBox="0 0 12 12"><path fill="currentColor" d="M2 4l4 4 4-4"/></svg>
-                            </div>
-                            <div class="select-dropdown">
-                                <div class="select-option selected" data-value="Pending" onclick="selectOption('outcomeSelect', 'Pending')">Pending</div>
-                                <div class="select-option" data-value="Won" onclick="selectOption('outcomeSelect', 'Won')">Won</div>
-                                <div class="select-option" data-value="Lost" onclick="selectOption('outcomeSelect', 'Lost')">Lost</div>
-                                <div class="select-option" data-value="Cancelled" onclick="selectOption('outcomeSelect', 'Cancelled')">Cancelled</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label class="field-label">Priority Level</label>
-                        <div class="custom-select" id="prioritySelect">
-                            <div class="select-trigger" onclick="toggleSelect('prioritySelect')">
-                                <span>Standard</span>
-                                <svg viewBox="0 0 12 12"><path fill="currentColor" d="M2 4l4 4 4-4"/></svg>
-                            </div>
-                            <div class="select-dropdown">
-                                <div class="select-option selected" data-value="Standard" onclick="selectOption('prioritySelect', 'Standard')">Standard</div>
-                                <div class="select-option" data-value="Medium" onclick="selectOption('prioritySelect', 'Medium')">Medium</div>
-                                <div class="select-option" data-value="High" onclick="selectOption('prioritySelect', 'High')">High</div>
-                                <div class="select-option" data-value="Urgent" onclick="selectOption('prioritySelect', 'Urgent')">Urgent</div>
-                            </div>
-                        </div>
-                    </div>
+                <div id="addAssetsFields" class="hidden">
+                    <div id="assetsContainer"></div>
+                    <button class="add-detail-btn" id="addAssetBtn" style="width:100%; justify-content:center">+ Add Another Deliverable</button>
                 </div>
                 <div class="btn-row">
-                    <button class="btn btn-back" onclick="goToStep(1)">← Back</button>
-                    <button class="btn btn-primary" onclick="goToStep(3)">Continue →</button>
+                    <button class="btn btn-back" id="back2">Back</button>
+                    <button class="btn btn-primary" id="continue2">Continue</button>
                 </div>
             </div>
         </div>
-        
-        <!-- STEP 3: Team & Notes -->
+        <!-- STEP 3: COMMERCIALS -->
         <div class="step-card hidden" id="step3">
-            <div class="step-header"><span class="step-number">Step 3 of 4</span></div>
             <div class="step-body">
-                <div class="step-title" style="margin-bottom: 20px;">Team & notes</div>
-                <div class="field" style="position: relative; z-index: 30;">
-                    <label class="field-label">Sales Lead <span class="required">*</span></label>
-                    <div class="staff-picker" id="salesPicker">
-                        <div class="staff-picker-header" onclick="toggleStaffPicker('salesPicker')">
-                            <span class="staff-picker-label"><span id="salesLeadDisplay">Select sales lead...</span></span>
-                            <svg class="staff-picker-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                        </div>
-                        <div class="staff-picker-body" id="salesPickerBody">
-                            <div class="staff-search"><input type="text" placeholder="Search sales team..." oninput="filterStaff('sales', this.value)"></div>
-                            <div id="salesList"></div>
+                <div class="step-label">Step 3 of 4</div>
+                <div class="step-title">Commercials & Dates</div>
+                <div class="field-row">
+                    <div class="field">
+                        <label class="field-label">DEAL STAGE <span style="color:#e11d48">*</span></label>
+                        <div class="custom-select" id="stagePicker">
+                            <div class="select-trigger"><span class="placeholder">Select stage...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
+                            <div class="select-dropdown" id="stageList"></div>
                         </div>
                     </div>
-                </div>
-                <div class="field" style="position: relative; z-index: 20;">
-                    <label class="field-label">Creative Lead <span style="color: var(--ink-muted); font-weight: 500;">(optional)</span></label>
-                    <div class="staff-picker" id="creativePicker">
-                        <div class="staff-picker-header" onclick="toggleStaffPicker('creativePicker')">
-                            <span class="staff-picker-label"><span id="creativeLeadDisplay">Click to assign...</span></span>
-                            <svg class="staff-picker-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                        </div>
-                        <div class="staff-picker-body" id="creativePickerBody">
-                            <div class="staff-search"><input type="text" placeholder="Search creative team..." oninput="filterStaff('creative', this.value)"></div>
-                            <div id="creativeList"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="field" style="position: relative; z-index: 10;">
-                    <label class="field-label">Production Lead <span style="color: var(--ink-muted); font-weight: 500;">(optional)</span></label>
-                    <div class="staff-picker" id="productionPicker">
-                        <div class="staff-picker-header" onclick="toggleStaffPicker('productionPicker')">
-                            <span class="staff-picker-label"><span id="productionLeadDisplay">Click to assign...</span></span>
-                            <svg class="staff-picker-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                        </div>
-                        <div class="staff-picker-body" id="productionPickerBody">
-                            <div class="staff-search"><input type="text" placeholder="Search production team..." oninput="filterStaff('production', this.value)"></div>
-                            <div id="productionList"></div>
-                        </div>
+                    <div class="field">
+                        <label class="field-label">DEAL VALUE (£)</label>
+                        <input type="number" class="field-input" id="valueInput" placeholder="0">
                     </div>
                 </div>
                 <div class="field">
-                    <label class="field-label">Sales Notes</label>
-                    <textarea class="field-input field-textarea" id="salesNotes" placeholder="Add any context, client requirements, or relevant details..."></textarea>
+                    <label class="field-label">PRIORITY LEVEL</label>
+                    <div class="custom-select" id="priorityPicker">
+                        <div class="select-trigger"><span>Standard</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
+                        <div class="select-dropdown" id="priorityList"></div>
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field"><label class="field-label">(CLIENT) DUE DATE</label><input type="date" class="field-input" id="clientDate"></div>
+                    <div class="field"><label class="field-label">(INTERNAL) DUE DATE</label><input type="date" class="field-input" id="internalDate"></div>
                 </div>
                 <div class="btn-row">
-                    <button class="btn btn-back" onclick="goToStep(2)">← Back</button>
-                    <button class="btn btn-primary" onclick="goToStep(4)">Continue →</button>
+                    <button class="btn btn-back" id="back3">Back</button>
+                    <button class="btn btn-primary" id="continue3">Ownership</button>
                 </div>
             </div>
         </div>
-        
-        <!-- STEP 4: Attachments & Review -->
+        <!-- STEP 4: OWNERSHIP & ATTACHMENTS -->
         <div class="step-card hidden" id="step4">
-            <div class="step-header"><span class="step-number">Step 4 of 4</span></div>
             <div class="step-body">
-                <div class="step-title" style="margin-bottom: 20px;">Attachments & review</div>
+                <div class="step-label">Step 4 of 4</div>
+                <div class="step-title">Context & Assets</div>
+                <!-- ATTACHMENTS SECTION -->
                 <div class="field">
-                    <label class="field-label">Upload Brief / Client Assets</label>
-                    <div class="file-upload-area" id="fileDropArea" onclick="document.getElementById('fileInput').click()">
-                        <svg class="file-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-                        <div class="file-upload-text">Drop files here or click to browse</div>
-                        <div class="file-upload-hint">PDF, DOCX, PNG, JPG up to 10MB</div>
+                    <label class="field-label">Brief & Assets (PDF / Images)</label>
+                    <div class="file-upload-area" id="fileDropZone">
+                        <div class="file-upload-icon">📁</div>
+                        <div class="file-upload-text">Click or Drop files to upload</div>
                     </div>
-                    <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none" onchange="handleFileSelect(event)">
+                    <input type="file" id="fileInput" multiple style="display:none">
                     <div class="file-list" id="fileList"></div>
                 </div>
                 <div class="field">
-                    <label class="field-label">Client Asset Links</label>
-                    <div class="link-row">
-                        <input type="url" class="field-input" id="linkInput" placeholder="https://drive.google.com/...">
-                        <button class="link-add-btn" onclick="addLink()">Add</button>
+                    <label class="field-label">External Links</label>
+                    <div style="display:flex; gap:8px">
+                        <input type="url" class="field-input" id="linkInput" placeholder="https://google.doc...">
+                        <button class="add-detail-btn" id="addLinkBtn" style="white-space:nowrap">Add</button>
                     </div>
-                    <div class="link-list" id="linkList"></div>
+                    <div class="file-list" id="linkList" style="margin-top:8px"></div>
                 </div>
-                <div class="review-card">
-                    <div class="review-title" id="reviewTitle">Untitled Project</div>
-                    <div class="review-grid" id="reviewGrid"></div>
+                <div class="field">
+                    <label class="field-label">Additional Leads (Optional)</label>
+                    <div id="dynamicStaffContainer"></div>
+                    <div class="add-detail-menu">
+                        <div class="add-detail-btn" data-team="Creative">+ Creative Lead</div>
+                        <div class="add-detail-btn" data-team="Production">+ Production Lead</div>
+                        <div class="add-detail-btn" data-team="Social">+ Social Lead</div>
+                    </div>
+                </div>
+                <div class="field" style="margin-top:32px">
+                    <label class="field-label">(SALES) NOTES & CONTEXT</label>
+                    <textarea class="field-input" id="notesInput" style="min-height:100px; resize:none" placeholder="Important details or blockers..."></textarea>
                 </div>
                 <div class="btn-row">
-                    <button class="btn btn-back" onclick="goToStep(3)">← Back</button>
-                    <button class="btn btn-submit" id="submitBtn" onclick="submitProject()">Submit to Ledger ✓</button>
+                    <button class="btn btn-back" id="back4">Back</button>
+                    <button class="btn btn-submit" id="submitBtn">Sync to Ledger ✓</button>
                 </div>
             </div>
         </div>
-        
-        <!-- SUCCESS -->
+        <!-- SUCCESS SCREEN -->
         <div class="step-card hidden" id="successScreen">
-            <div class="success-screen">
-                <div class="success-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
-                <div class="success-title">Project Submitted</div>
-                <div class="success-text">Successfully added to the Master Ledger</div>
-                <button class="btn btn-primary" onclick="resetForm()" style="width: auto; padding: 14px 32px;">Submit Another</button>
+            <div class="step-body" style="text-align:center; padding:60px 40px">
+                <div style="width:72px; height:72px; border-radius:50%; background:var(--production); display:flex; align-items:center; justify-content:center; margin:0 auto 24px; color:#fff; font-size:32px">✓</div>
+                <div class="step-title" style="margin-bottom:12px">Sync Successful</div>
+                <p style="color:var(--ink-sub); font-size:14px; margin-bottom:32px">Added to the master ledger for creative takeaway.</p>
+                <button class="btn btn-primary" id="finalBtn" style="width:auto; padding:16px 40px">New Brief</button>
             </div>
         </div>
     </div>
-    
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        import { getFirestore, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
-        
-        const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app" };
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const storage = getStorage(app);
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <script>
+    (function() {
+        const CONFIG = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app" };
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
-        const TEAM_COLORS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Sales: '#21A0D8', Executive: '#1C1C1C' };
+        const APP_ID = 'dmg-command-centre-native';
+        const TEAM_COLORS = { Editorial:'#E94B4B', Creative:'#E6468B', Production:'#43B049', Social:'#F2C316', Operations:'#21A0D8', Sales:'#21A0D8' };
         
-        window.formData = { projectType: '', title: '', client: '', isNewClient: false, dealStage: '', dealValue: '', projectOutcome: 'Pending', priority: 'Standard', salesLead: null, creativeLead: null, productionLead: null, salesNotes: '', files: [], links: [] };
-        window.staff = [];
-        window.existingClients = [];
-        window.currentStep = 1;
+        let db, storage, staff = [], projects = [], clients = [];
+        let form = { mode:'new', type:'', title:'', client:'', isNewClient:false, vertical:'', owner:'', stage:'', value:'', priority:'Standard', salesLead:null, creativeLead:null, productionLead:null, socialLead:null, notes:'', selectedProject:null, assets:[], files:[], links:[] };
+        let step = 1;
         
-        async function loadStaff() {
-            try {
-                await signInAnonymously(auth);
-                const snap = await getDocs(collection(db, "artifacts", "dmg-command-centre-native", "public", "data", "staff_directory"));
-                window.staff = snap.docs.map(doc => { const d = doc.data(); return { id: doc.id, name: `${d.firstName} ${d.lastName}`, ...d }; }).sort((a, b) => a.name.localeCompare(b.name));
-                renderStaffList('sales'); renderStaffList('creative'); renderStaffList('production');
-            } catch (e) { console.error('Staff load failed:', e); }
+        async function init() {
+            firebase.initializeApp(CONFIG);
+            db = firebase.firestore();
+            storage = firebase.storage();
+            await firebase.auth().signInAnonymously();
+            await Promise.all([fetchStaff(), fetchProjects()]);
+            renderInitialUI();
+            attachListeners();
+            document.getElementById('loading').classList.add('hidden');
         }
         
-        async function loadClients() {
+        async function fetchStaff() {
+            try {
+                const snap = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('staff_directory').get();
+                staff = snap.docs.map(d => ({ id: d.id, ...d.data(), name: d.data().firstName + ' ' + d.data().lastName }));
+            } catch(e) { console.error('Staff fetch error', e); }
+        }
+        
+        async function fetchProjects() {
             try {
                 const res = await fetch(API_URL + '/projects');
                 const data = await res.json();
-                if (data.success && data.projects) {
-                    const clientSet = new Set();
-                    data.projects.forEach(p => { if (p.client) clientSet.add(p.client); });
-                    window.existingClients = Array.from(clientSet).sort();
-                    renderClientDropdown();
+                if (data.success) {
+                    projects = data.projects;
+                    const set = new Set();
+                    projects.forEach(p => p.client && set.add(p.client));
+                    clients = Array.from(set).sort();
                 }
-            } catch (e) { console.error('Clients load failed:', e); }
+            } catch(e) { console.error('Projects fetch error', e); }
         }
         
-        function renderClientDropdown() {
-            const dropdown = document.getElementById('clientDropdown');
-            dropdown.innerHTML = window.existingClients.map(c => `<div class="select-option" data-value="${c}" onclick="selectClient('${c.replace(/'/g, "\\'")}')">${c}</div>`).join('');
-        }
-        
-        window.selectClient = function(client) {
-            window.formData.client = client;
-            window.formData.isNewClient = false;
-            const container = document.getElementById('clientSelect');
-            const trigger = container.querySelector('.select-trigger');
-            trigger.innerHTML = `<span>${client}</span><svg viewBox="0 0 12 12"><path fill="currentColor" d="M2 4l4 4 4-4"/></svg>`;
-            trigger.classList.remove('open');
-            container.querySelector('.select-dropdown').classList.remove('open');
-        };
-        
-        window.toggleClientType = function(type) {
-            document.querySelectorAll('.client-type-btn').forEach(b => b.classList.toggle('active', b.dataset.clientType === type));
-            document.getElementById('existingClientField').classList.toggle('hidden', type === 'new');
-            document.getElementById('newClientField').classList.toggle('hidden', type !== 'new');
-            window.formData.isNewClient = type === 'new';
-            if (type === 'new') {
-                window.formData.client = '';
-                document.querySelector('#clientSelect .select-trigger span').textContent = 'Select existing client...';
-                document.querySelector('#clientSelect .select-trigger span').classList.add('placeholder');
-            }
-        };
-        
-        window.toggleSelect = function(id) {
-            const container = document.getElementById(id), trigger = container.querySelector('.select-trigger'), dropdown = container.querySelector('.select-dropdown'), isOpen = dropdown.classList.contains('open');
-            document.querySelectorAll('.select-dropdown.open').forEach(d => { d.classList.remove('open'); d.parentElement.querySelector('.select-trigger').classList.remove('open'); });
-            document.querySelectorAll('.staff-picker-body.open').forEach(b => { b.classList.remove('open'); b.parentElement.querySelector('.staff-picker-header').classList.remove('open'); });
-            if (!isOpen) { trigger.classList.add('open'); dropdown.classList.add('open'); }
-        };
-        
-        window.selectOption = function(selectId, value) {
-            const container = document.getElementById(selectId), trigger = container.querySelector('.select-trigger'), dropdown = container.querySelector('.select-dropdown');
-            trigger.querySelector('span').textContent = value;
-            trigger.querySelector('span').classList.remove('placeholder');
-            trigger.classList.remove('open'); dropdown.classList.remove('open');
-            if (selectId === 'dealStageSelect') { window.formData.dealStage = value; if (value === 'Deal Agreed') selectOption('outcomeSelect', 'Won'); }
-            else if (selectId === 'outcomeSelect') window.formData.projectOutcome = value;
-            else if (selectId === 'prioritySelect') window.formData.priority = value;
-            dropdown.querySelectorAll('.select-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.value === value));
-        };
-        
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.custom-select')) document.querySelectorAll('.select-dropdown.open').forEach(d => { d.classList.remove('open'); d.parentElement.querySelector('.select-trigger').classList.remove('open'); });
-            if (!e.target.closest('.staff-picker')) document.querySelectorAll('.staff-picker-body.open').forEach(b => { b.classList.remove('open'); b.parentElement.querySelector('.staff-picker-header').classList.remove('open'); });
-        });
-        
-        window.toggleStaffPicker = function(pickerId) {
-            const picker = document.getElementById(pickerId), header = picker.querySelector('.staff-picker-header'), body = picker.querySelector('.staff-picker-body'), isOpen = body.classList.contains('open');
-            document.querySelectorAll('.staff-picker-body.open').forEach(b => { b.classList.remove('open'); b.parentElement.querySelector('.staff-picker-header').classList.remove('open'); });
-            document.querySelectorAll('.select-dropdown.open').forEach(d => { d.classList.remove('open'); d.parentElement.querySelector('.select-trigger').classList.remove('open'); });
-            if (!isOpen) { header.classList.add('open'); body.classList.add('open'); }
-        };
-        
-        window.renderStaffList = function(type) {
-            const list = document.getElementById(`${type}List`), roleFilter = type.charAt(0).toUpperCase() + type.slice(1);
-            const filtered = window.staff.filter(s => s.team === roleFilter || (s.role || '').toLowerCase().includes(type)).slice(0, 10);
-            const selectedId = window.formData[`${type}Lead`]?.id;
-            list.innerHTML = filtered.length ? filtered.map(s => `<div class="staff-item ${s.id === selectedId ? 'selected' : ''}" onclick="selectStaff('${type}', '${s.id}')"><div class="staff-avatar" style="background: ${TEAM_COLORS[s.team] || '#999'}">${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}</div><div><div class="staff-name">${s.name}</div><div class="staff-meta">${s.team || ''} · ${s.role || 'Team'}</div></div>${s.id === selectedId ? '<span class="staff-check">✓</span>' : ''}</div>`).join('') : '<div class="staff-item" style="justify-content: center; color: var(--ink-muted);">No results</div>';
-        };
-        
-        window.filterStaff = function(type, search) {
-            const list = document.getElementById(`${type}List`), roleFilter = type.charAt(0).toUpperCase() + type.slice(1), searchLower = (search || '').toLowerCase();
-            const filtered = window.staff.filter(s => s.name.toLowerCase().includes(searchLower) && (s.team === roleFilter || (s.role || '').toLowerCase().includes(type))).slice(0, 10);
-            const selectedId = window.formData[`${type}Lead`]?.id;
-            list.innerHTML = filtered.length ? filtered.map(s => `<div class="staff-item ${s.id === selectedId ? 'selected' : ''}" onclick="selectStaff('${type}', '${s.id}')"><div class="staff-avatar" style="background: ${TEAM_COLORS[s.team] || '#999'}">${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}</div><div><div class="staff-name">${s.name}</div><div class="staff-meta">${s.team || ''} · ${s.role || 'Team'}</div></div>${s.id === selectedId ? '<span class="staff-check">✓</span>' : ''}</div>`).join('') : '<div class="staff-item" style="justify-content: center; color: var(--ink-muted);">No results</div>';
-        };
-        
-        window.selectStaff = function(type, id) {
-            const person = window.staff.find(s => s.id === id);
-            window.formData[`${type}Lead`] = person;
-            const display = document.getElementById(`${type}LeadDisplay`);
-            display.innerHTML = person ? `<span class="selected-badge">${person.name}</span>` : (type === 'sales' ? 'Select sales lead...' : 'Click to assign...');
-            renderStaffList(type);
-            const picker = document.getElementById(`${type}Picker`);
-            picker.querySelector('.staff-picker-header').classList.remove('open');
-            picker.querySelector('.staff-picker-body').classList.remove('open');
-        };
-        
-        window.selectType = function(el) {
-            document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
-            el.classList.add('selected');
-            window.formData.projectType = el.dataset.type;
-            setTimeout(() => goToStep(2), 150);
-        };
-        
-        window.goToStep = function(step) {
-            if (window.currentStep === 2) { 
-                window.formData.title = document.getElementById('title').value; 
-                if (window.formData.isNewClient) {
-                    window.formData.client = document.getElementById('newClient').value;
-                }
-                window.formData.dealValue = document.getElementById('dealValue').value; 
-            }
-            if (window.currentStep === 3) { window.formData.salesNotes = document.getElementById('salesNotes').value; }
-            for (let i = 1; i <= 4; i++) document.getElementById(`step${i}`).classList.toggle('hidden', i !== step);
-            document.getElementById('successScreen').classList.add('hidden');
-            document.querySelectorAll('.progress-step').forEach((el, i) => { el.classList.toggle('active', i + 1 === step); el.classList.toggle('complete', i + 1 < step); });
-            document.querySelectorAll('.progress-line').forEach((el, i) => el.classList.toggle('complete', i + 1 < step));
-            window.currentStep = step;
-            if (step === 4) buildReview();
-        };
-        
-        const dropArea = document.getElementById('fileDropArea');
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropArea.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }));
-        ['dragenter', 'dragover'].forEach(e => dropArea.addEventListener(e, () => dropArea.classList.add('dragover')));
-        ['dragleave', 'drop'].forEach(e => dropArea.addEventListener(e, () => dropArea.classList.remove('dragover')));
-        dropArea.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
-        window.handleFileSelect = function(e) { handleFiles(e.target.files); };
-        function handleFiles(files) { Array.from(files).forEach(file => { if (file.size > 10 * 1024 * 1024) { alert(`${file.name} is too large. Max 10MB.`); return; } window.formData.files.push(file); }); renderFileList(); }
-        function renderFileList() { document.getElementById('fileList').innerHTML = window.formData.files.map((file, i) => `<div class="file-item"><div class="file-icon">${file.name.split('.').pop().toUpperCase().slice(0,3)}</div><div class="file-info"><div class="file-name">${file.name}</div><div class="file-size">${(file.size / 1024).toFixed(1)} KB</div></div><button class="file-remove" onclick="removeFile(${i})">×</button></div>`).join(''); }
-        window.removeFile = function(i) { window.formData.files.splice(i, 1); renderFileList(); };
-        window.addLink = function() { const input = document.getElementById('linkInput'), url = input.value.trim(); if (url && (url.startsWith('http://') || url.startsWith('https://'))) { window.formData.links.push(url); input.value = ''; renderLinkList(); } };
-        function renderLinkList() { document.getElementById('linkList').innerHTML = window.formData.links.map((link, i) => `<div class="link-item"><a href="${link}" target="_blank">${link}</a><button onclick="removeLink(${i})">×</button></div>`).join(''); }
-        window.removeLink = function(i) { window.formData.links.splice(i, 1); renderLinkList(); };
-        
-        function buildReview() {
-            const d = window.formData;
-            document.getElementById('reviewTitle').textContent = d.title || 'Untitled Project';
-            let items = [
-                { label: 'Type', value: d.projectType || '—' },
-                { label: 'Client', value: d.client ? (d.isNewClient ? d.client + ' (new)' : d.client) : '—' },
-                { label: 'Deal Stage', value: d.dealStage || '—' },
-                { label: 'Deal Value', value: d.dealValue ? `£${parseInt(d.dealValue).toLocaleString()}` : '—', highlight: !!d.dealValue },
-                { label: 'Outcome', value: d.projectOutcome || 'Pending' },
-                { label: 'Priority', value: d.priority || 'Standard' },
-                { label: 'Sales Lead', value: d.salesLead?.name || '—' },
-                { label: 'Creative Lead', value: d.creativeLead?.name || '—' },
-                { label: 'Production Lead', value: d.productionLead?.name || '—' },
+        function renderInitialUI() {
+            const types = [
+                { id:'LONG TERM CAMPAIGN', icon:'📅', label:'Long Term', desc:'Campaigns & Series' },
+                { id:'SHORT TERM CAMPAIGN', icon:'⚡', label:'Short Term', desc:'Tactical Output' },
+                { id:'VIDEO(S) IDEAS', icon:'💡', label:'Concept', desc:'Creative Pitches' },
+                { id:'DMG VENTURE', icon:'🚀', label:'Venture', desc:'Internal Projects' },
+                { id:'ADD ASSETS', icon:'➕', label:'Add Deliverables', desc:'To Existing Campaign', full:true }
             ];
-            if (d.salesNotes) items.push({ label: 'Notes', value: d.salesNotes.slice(0, 100) + (d.salesNotes.length > 100 ? '...' : ''), fullWidth: true });
-            if (d.files.length > 0) items.push({ label: 'Files', value: `${d.files.length} attached`, fullWidth: true });
-            if (d.links.length > 0) items.push({ label: 'Links', value: `${d.links.length} added`, fullWidth: true });
-            document.getElementById('reviewGrid').innerHTML = items.map(i => `<div class="review-item ${i.fullWidth ? 'full-width' : ''}"><div class="review-label">${i.label}</div><div class="review-value ${i.highlight ? 'highlight' : ''}">${i.value}</div></div>`).join('');
+            document.getElementById('typeGrid').innerHTML = types.map(t => '<div class="type-card" data-id="' + t.id + '"' + (t.full ? ' style="grid-column:1/-1"' : '') + '><div class="type-icon">' + t.icon + '</div><div class="type-label">' + t.label + '</div><div class="type-desc">' + t.desc + '</div></div>').join('');
+            
+            populateList('stageList', ['Brief Received','Pitch Sent','Deal Agreed','Campaign Complete','Closed Lost']);
+            populateList('priorityList', ['Low','Standard','High']);
+            populateList('verticalList', ['Social','Editorial','Shows','Distribution','Commercial','Hybrid']);
+            populateList('ownerList', ['Sales-led','Editorial-led','Production-led','Social-led']);
+            populateList('projectList', projects.map(p => ({ v:p.id, l:(p.client || 'TBC') + ' — ' + p.title })));
+            populateList('clientDropdown', clients.map(c => ({ v:c, l:c })));
+            
+            renderStaffDropdown('salesLead', 'Sales');
         }
         
-        window.submitProject = async function() {
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true; btn.textContent = 'Uploading...';
-            const d = window.formData;
-            try {
-                const fileUrls = [];
-                for (const file of d.files) {
-                    const timestamp = Date.now(), safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-                    const storageRef = ref(storage, `briefs/${timestamp}_${safeName}`);
-                    await uploadBytes(storageRef, file);
-                    fileUrls.push({ name: file.name, url: await getDownloadURL(storageRef) });
+        function populateList(id, items) {
+            document.getElementById(id).innerHTML = items.map(i => '<div class="dropdown-item" data-value="' + (i.v || i) + '">' + (i.l || i) + '</div>').join('');
+        }
+        
+        function renderStaffDropdown(typeId, filterTeam, containerId) {
+            const list = containerId ? document.getElementById(containerId) : document.getElementById(typeId + 'List');
+            const filtered = staff.filter(s => s.team === filterTeam).sort((a,b) => a.name.localeCompare(b.name));
+            
+            let html = '<div class="staff-search"><input type="text" placeholder="Search team..."></div>';
+            html += filtered.map(s => 
+                '<div class="staff-item" data-id="' + s.id + '">' +
+                    '<div class="staff-avatar" style="background:' + (TEAM_COLORS[filterTeam] || '#21A0D8') + '">' + s.firstName[0] + s.lastName[0] + '</div>' +
+                    '<div class="staff-name">' + s.name + '</div>' +
+                '</div>'
+            ).join('');
+            list.innerHTML = html;
+            
+            const input = list.querySelector('input');
+            input.onclick = e => e.stopPropagation();
+            input.oninput = e => {
+                const q = e.target.value.toLowerCase();
+                list.querySelectorAll('.staff-item').forEach(item => {
+                    const person = staff.find(s => s.id === item.dataset.id);
+                    item.style.display = person && person.name.toLowerCase().includes(q) ? 'flex' : 'none';
+                });
+            };
+        }
+        
+        function attachListeners() {
+            // Dropzone
+            const drop = document.getElementById('fileDropZone');
+            const fileIn = document.getElementById('fileInput');
+            drop.onclick = () => fileIn.click();
+            fileIn.onchange = e => handleFiles(e.target.files);
+            drop.ondragover = e => { e.preventDefault(); drop.style.borderColor = 'var(--dmg-blue)'; };
+            drop.ondragleave = () => { drop.style.borderColor = 'var(--border)'; };
+            drop.ondrop = e => { e.preventDefault(); drop.style.borderColor = 'var(--border)'; handleFiles(e.dataTransfer.files); };
+            
+            // Links
+            document.getElementById('addLinkBtn').onclick = () => {
+                const input = document.getElementById('linkInput');
+                if(input.value) {
+                    form.links.push(input.value);
+                    renderLinks();
+                    input.value = '';
                 }
-                btn.textContent = 'Creating...';
+            };
+            
+            // Type selection
+            document.getElementById('typeGrid').addEventListener('click', e => {
+                const card = e.target.closest('.type-card'); if(!card) return;
+                form.type = card.dataset.id;
+                form.mode = form.type === 'ADD ASSETS' ? 'addAssets' : 'new';
+                document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                goToStep(form.mode === 'addAssets' ? '1b' : 2);
+            });
+            
+            // Client toggle
+            document.getElementById('clientToggle').addEventListener('click', e => {
+                const btn = e.target.closest('.client-toggle-btn'); if(!btn) return;
+                form.isNewClient = btn.dataset.type === 'new';
+                document.querySelectorAll('.client-toggle-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('existingClientWrap').classList.toggle('hidden', form.isNewClient);
+                document.getElementById('newClientWrap').classList.toggle('hidden', !form.isNewClient);
+            });
+            
+            // Global click handler for dropdowns
+            document.body.addEventListener('click', e => {
+                const trigger = e.target.closest('.select-trigger, .picker-trigger');
+                const menu = e.target.closest('.select-dropdown, .staff-picker-body');
+                
+                if (trigger) {
+                    const dropdown = trigger.parentElement.querySelector('.select-dropdown, .staff-picker-body');
+                    const wasOpen = dropdown.classList.contains('show');
+                    closeAll();
+                    if (!wasOpen) {
+                        dropdown.classList.add('show');
+                        trigger.classList.add('open');
+                    }
+                } else if (menu) {
+                    const item = e.target.closest('.dropdown-item') || e.target.closest('.staff-item');
+                    if (item) {
+                        const picker = menu.parentElement;
+                        const triggerSpan = picker.querySelector('.select-trigger span, .picker-trigger span');
+                        const val = item.dataset.value || item.dataset.id;
+                        const label = item.textContent.trim();
+                        
+                        if (picker.id === 'projectPicker') { 
+                            form.selectedProject = projects.find(p => p.id === val);
+                            document.getElementById('continue1b').disabled = false;
+                        }
+                        else if (picker.id === 'clientPicker') form.client = val;
+                        else if (picker.id === 'verticalPicker') form.vertical = val;
+                        else if (picker.id === 'ownerPicker') form.owner = val;
+                        else if (picker.id === 'stagePicker') form.stage = val;
+                        else if (picker.id === 'priorityPicker') form.priority = val;
+                        else if (picker.id === 'salesLeadPicker') form.salesLead = staff.find(s => s.id === val);
+                        else if (picker.dataset.type) {
+                            const key = picker.dataset.type.toLowerCase() + 'Lead';
+                            form[key] = staff.find(s => s.id === val);
+                        }
+                        
+                        if (picker.classList.contains('staff-picker')) {
+                            const person = staff.find(s => s.id === val);
+                            if (person) triggerSpan.innerHTML = '<span class="selected-badge">' + person.name + '</span>';
+                        } else {
+                            triggerSpan.textContent = label;
+                            triggerSpan.classList.remove('placeholder');
+                        }
+                        closeAll();
+                    }
+                } else { closeAll(); }
+            });
+            
+            // Dynamic staff pickers
+            document.querySelectorAll('.add-detail-btn[data-team]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const team = btn.dataset.team;
+                    if (document.getElementById('field-' + team)) return;
+                    addDetailPicker(team);
+                    btn.classList.add('hidden');
+                });
+            });
+            
+            // Navigation
+            document.getElementById('back1b').addEventListener('click', () => goToStep(1));
+            document.getElementById('continue1b').addEventListener('click', () => goToStep(2));
+            document.getElementById('back2').addEventListener('click', () => goToStep(form.mode === 'addAssets' ? '1b' : 1));
+            document.getElementById('continue2').addEventListener('click', () => goToStep(3));
+            document.getElementById('back3').addEventListener('click', () => goToStep(2));
+            document.getElementById('continue3').addEventListener('click', () => goToStep(4));
+            document.getElementById('back4').addEventListener('click', () => goToStep(3));
+            document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+            document.getElementById('finalBtn').addEventListener('click', () => location.reload());
+            document.getElementById('addAssetBtn').addEventListener('click', addAsset);
+            document.getElementById('submitBtn').addEventListener('click', submit);
+        }
+        
+        function handleFiles(files) {
+            Array.from(files).forEach(f => {
+                if(f.size > 10*1024*1024) return alert('File too large (>10MB)');
+                form.files.push(f);
+            });
+            renderFiles();
+        }
+        
+        function renderFiles() {
+            document.getElementById('fileList').innerHTML = form.files.map((f, i) => 
+                '<div class="file-item"><span class="file-name">' + f.name + '</span><button class="file-remove" onclick="window.removeFile(' + i + ')">×</button></div>'
+            ).join('');
+        }
+        window.removeFile = i => { form.files.splice(i,1); renderFiles(); };
+        
+        function renderLinks() {
+            document.getElementById('linkList').innerHTML = form.links.map((l, i) => 
+                '<div class="file-item"><span class="file-name" style="color:var(--ink-sub);overflow:hidden;text-overflow:ellipsis;max-width:300px">' + l + '</span><button class="file-remove" onclick="window.removeLink(' + i + ')">×</button></div>'
+            ).join('');
+        }
+        window.removeLink = i => { form.links.splice(i,1); renderLinks(); };
+        
+        function addDetailPicker(team) {
+            const div = document.createElement('div');
+            div.className = 'field';
+            div.id = 'field-' + team;
+            div.innerHTML = 
+                '<label class="field-label">' + team + ' Lead</label>' +
+                '<div class="custom-select staff-picker" data-type="' + team + '">' +
+                    '<div class="picker-trigger"><span class="placeholder">Assign ' + team + ' Lead...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>' +
+                    '<div class="staff-picker-body" id="' + team + 'List"></div>' +
+                '</div>';
+            document.getElementById('dynamicStaffContainer').appendChild(div);
+            renderStaffDropdown(null, team, team + 'List');
+        }
+        
+        function addAsset() {
+            const container = document.getElementById('assetsContainer');
+            const assetN = container.children.length + 1;
+            const div = document.createElement('div');
+            div.className = 'asset-entry';
+            div.innerHTML = 
+                '<button class="asset-remove">×</button>' +
+                '<div class="field"><label class="field-label">Deliverable ' + assetN + '</label><input class="field-input asset-title" placeholder="e.g. 7 x TT/IG Videos"></div>' +
+                '<div class="field-row">' +
+                    '<div class="field"><label class="field-label">Format</label><select class="field-input asset-format"><option>Headlines</option><option>Shows</option><option>TT/IG Video</option><option>Other</option></select></div>' +
+                    '<div class="field"><label class="field-label">Initial State</label><select class="field-input asset-status"><option>Briefed</option><option>In Progress</option></select></div>' +
+                '</div>';
+            container.appendChild(div);
+            div.querySelector('.asset-remove').onclick = () => div.remove();
+        }
+        
+        function closeAll() {
+            document.querySelectorAll('.select-dropdown.show, .staff-picker-body.show').forEach(m => m.classList.remove('show'));
+            document.querySelectorAll('.select-trigger.open, .picker-trigger.open').forEach(t => t.classList.remove('open'));
+        }
+        
+        function goToStep(s) {
+            ['step1','step1b','step2','step3','step4'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            const target = s === '1b' ? 'step1b' : 'step' + s;
+            document.getElementById(target).classList.remove('hidden');
+            
+            step = s === '1b' ? 1.5 : parseInt(s);
+            const num = Math.floor(step);
+            document.querySelectorAll('.progress-step').forEach((el, i) => { 
+                el.classList.toggle('active', i+1 === num); 
+                el.classList.toggle('complete', i+1 < num); 
+            });
+            document.querySelectorAll('.progress-line').forEach((el, i) => {
+                el.classList.toggle('complete', i+1 < num);
+            });
+            
+            if(s === 2) {
+                document.getElementById('step2Title').textContent = form.mode === 'addAssets' ? 'Asset Details' : 'Identity';
+                document.getElementById('newProjectFields').classList.toggle('hidden', form.mode === 'addAssets');
+                document.getElementById('addAssetsFields').classList.toggle('hidden', form.mode !== 'addAssets');
+                if(form.mode === 'addAssets' && document.getElementById('assetsContainer').children.length === 0) addAsset();
+            }
+        }
+        
+        async function submit() {
+            const btn = document.getElementById('submitBtn'); 
+            btn.disabled = true; 
+            btn.textContent = 'Uploading...';
+            
+            try {
+                // 1. Upload files to Firebase Storage
+                const fileUrls = [];
+                for (const f of form.files) {
+                    const ref = storage.ref('briefs/' + Date.now() + '_' + f.name);
+                    await ref.put(f);
+                    const url = await ref.getDownloadURL();
+                    fileUrls.push(url);
+                }
+                
+                btn.textContent = 'Syncing to Notion...';
+                
+                // 2. Build payload for Notion
                 const payload = {
-                    TITLE: d.title,
-                    "PROJECT TYPE": d.projectType,
-                    "CLIENT / EXTERNAL PARTNER": d.client,
-                    "DEAL STAGE": d.dealStage,
-                    "DEAL VALUE": parseFloat(d.dealValue) || null,
-                    "PROJECT OUTCOME": d.projectOutcome,
-                    "PRIORITY LEVEL": d.priority,
-                    "SALES LEAD(S)": d.salesLead?.name || null,
-                    "CREATIVE LEAD(S)": d.creativeLead?.name || null,
-                    "PRODUCTION LEAD(S)": d.productionLead?.name || null,
-                    "(SALES) NOTES": d.salesNotes,
-                    "BRIEF_FILES": fileUrls,
-                    "ASSET_LINKS": d.links
+                    TITLE: document.getElementById('titleInput').value || (form.selectedProject ? form.selectedProject.title : ''),
+                    "CLIENT / EXTERNAL PARTNER": form.isNewClient ? document.getElementById('newClientInput').value : (form.client || (form.selectedProject ? form.selectedProject.client : '')),
+                    "PROJECT TYPE": form.type,
+                    VERTICAL: form.vertical,
+                    "OWNER ROLE": form.owner,
+                    "DEAL STAGE": form.stage,
+                    "DEAL VALUE": parseFloat(document.getElementById('valueInput').value) || 0,
+                    "PRIORITY LEVEL": form.priority,
+                    "SALES LEAD(S)": form.salesLead ? form.salesLead.name : '',
+                    "CREATIVE LEAD(S)": form.creativeLead ? form.creativeLead.name : '',
+                    "PRODUCTION LEAD(S)": form.productionLead ? form.productionLead.name : '',
+                    "SOCIAL LEAD(S)": form.socialLead ? form.socialLead.name : '',
+                    "(SALES) NOTES": document.getElementById('notesInput').value,
+                    "(CLIENT) DUE DATE": document.getElementById('clientDate').value || null,
+                    "(INTERNAL) DUE DATE": document.getElementById('internalDate').value || null,
+                    "PROJECT STATUS": "Not started",
+                    "BRIEF": fileUrls.length > 0 ? fileUrls[0] : null, 
+                    "ASSET FILE(S)": form.links.length > 0 ? form.links.join('\n') : (fileUrls.length > 1 ? fileUrls.slice(1).join('\n') : null)
                 };
-                const res = await fetch(API_URL + '/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) { document.querySelectorAll('.step-card').forEach(c => c.classList.add('hidden')); document.getElementById('successScreen').classList.remove('hidden'); }
-                else throw new Error('API error');
-            } catch (e) { console.error('Submit failed:', e); alert('Failed to submit project. Please try again.'); btn.disabled = false; btn.textContent = 'Submit to Ledger ✓'; }
-        };
+                
+                // 3. POST to Cloud Run API → Notion
+                if(form.mode === 'addAssets') {
+                    const entries = document.querySelectorAll('.asset-entry');
+                    for(const entry of entries) {
+                        await fetch(API_URL + '/deliverables', {
+                            method: 'POST',
+                            headers: {'Content-Type':'application/json'},
+                            body: JSON.stringify({
+                                campaignId: form.selectedProject.id,
+                                title: entry.querySelector('.asset-title').value,
+                                format: entry.querySelector('.asset-format').value,
+                                status: entry.querySelector('.asset-status').value,
+                                deskState: 'With Creative'
+                            })
+                        });
+                    }
+                } else {
+                    const res = await fetch(API_URL + '/projects', { 
+                        method: 'POST', 
+                        headers: {'Content-Type':'application/json'}, 
+                        body: JSON.stringify(payload) 
+                    });
+                    if (!res.ok) throw new Error('API error');
+                }
+                
+                // 4. Success!
+                document.getElementById('step4').classList.add('hidden');
+                document.getElementById('successScreen').classList.remove('hidden');
+                
+            } catch(e) { 
+                console.error('Submit failed:', e);
+                alert('Sync Failed. Please try again.'); 
+                btn.disabled = false; 
+                btn.textContent = 'Retry'; 
+            }
+        }
         
-        window.resetForm = function() {
-            window.formData = { projectType: '', title: '', client: '', isNewClient: false, dealStage: '', dealValue: '', projectOutcome: 'Pending', priority: 'Standard', salesLead: null, creativeLead: null, productionLead: null, salesNotes: '', files: [], links: [] };
-            document.querySelectorAll('.field-input').forEach(i => i.value = '');
-            document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
-            document.querySelector('#dealStageSelect .select-trigger span').textContent = 'Select stage...';
-            document.querySelector('#dealStageSelect .select-trigger span').classList.add('placeholder');
-            document.querySelector('#outcomeSelect .select-trigger span').textContent = 'Pending';
-            document.querySelector('#prioritySelect .select-trigger span').textContent = 'Standard';
-            document.querySelector('#clientSelect .select-trigger span').textContent = 'Select existing client...';
-            document.querySelector('#clientSelect .select-trigger span').classList.add('placeholder');
-            document.getElementById('salesLeadDisplay').textContent = 'Select sales lead...';
-            document.getElementById('creativeLeadDisplay').textContent = 'Click to assign...';
-            document.getElementById('productionLeadDisplay').textContent = 'Click to assign...';
-            document.getElementById('fileList').innerHTML = '';
-            document.getElementById('linkList').innerHTML = '';
-            toggleClientType('existing');
-            renderStaffList('sales'); renderStaffList('creative'); renderStaffList('production');
-            goToStep(1);
-        };
-        
-        loadStaff();
-        loadClients();
+        init();
+    })();
     </script>
 </body>
 </html>
