@@ -3,7 +3,7 @@ const cors = require('cors');
 const { Client } = require('@notionhq/client');
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: true }));
 app.use(express.json());
 
 // Initialize Notion client
