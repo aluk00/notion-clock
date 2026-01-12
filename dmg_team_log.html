@@ -6,93 +6,385 @@
     <title>Rota Request | DMG</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root { --dmg-blue:#21a0d8;--border:#EAECEF;--ink:#1C1C1C;--ink-sub:#757575;--bg-soft:#F9FAFB;--success:#22C55E; }
+        :root { 
+            --dmg-blue: #21a0d8; 
+            --dmg-blue-light: #3bb5e8;
+            --dmg-blue-soft: rgba(33, 160, 216, 0.06); 
+            --dmg-blue-glow: rgba(33, 160, 216, 0.15);
+            --border: #E2E8F0; 
+            --ink: #0F172A; 
+            --ink-sub: #64748B; 
+            --success: #10B981; 
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: transparent; padding: 12px; color: var(--ink); }
-        .widget { background: #FFF; border: 1px solid var(--border); border-radius: 16px; max-width: 400px; overflow: hidden; }
-        .header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 2px; }
-        .dot-grid span { width: 5px; height: 5px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
-        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-        .title { font-size: 13px; font-weight: 800; flex: 1; }
-        .week-nav { display: flex; align-items: center; gap: 6px; }
-        .week-btn { width: 24px; height: 24px; border: 1px solid var(--border); background: #FFF; border-radius: 6px; font-size: 12px; cursor: pointer; color: var(--ink-sub); }
-        .week-btn:hover { border-color: var(--dmg-blue); color: var(--dmg-blue); }
-        .week-label { font-size: 10px; font-weight: 700; color: var(--ink-sub); }
-        .body { padding: 16px 20px; }
-        .field { margin-bottom: 16px; }
-        .field-label { font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 6px; }
-        .field-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; }
-        .field-input:focus { outline: none; border-color: var(--dmg-blue); }
-        .autocomplete { position: relative; }
-        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: #FFF; border: 1px solid var(--border); border-radius: 8px; max-height: 150px; overflow-y: auto; z-index: 10; display: none; }
-        .autocomplete-list.show { display: block; }
-        .autocomplete-item { padding: 10px 12px; font-size: 12px; cursor: pointer; }
-        .autocomplete-item:hover { background: var(--bg-soft); }
-        .day-grid { display: flex; flex-direction: column; gap: 8px; }
-        .day-row { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg-soft); border-radius: 8px; }
-        .day-name { font-size: 11px; font-weight: 700; width: 40px; }
-        .day-date { font-size: 10px; color: var(--ink-sub); width: 50px; }
+        body { font-family: 'Inter', sans-serif; background: transparent; padding: 12px; color: var(--ink); -webkit-font-smoothing: antialiased; }
+        
+        .widget { 
+            background: #FFF; 
+            border: 1px solid var(--dmg-blue-glow); 
+            border-radius: 20px; 
+            max-width: 400px; 
+            overflow: hidden; 
+            position: relative;
+            box-shadow: 0 10px 25px -5px rgba(33, 160, 216, 0.1);
+        }
+        
+        /* Frost Overlay */
+        #frost-overlay {
+            position: absolute; inset: 0; background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            z-index: 100; display: none; flex-direction: column; align-items: center;
+            justify-content: center; text-align: center; padding: 24px;
+        }
+        .frost-content { 
+            background: white; padding: 28px; border-radius: 24px; 
+            box-shadow: 0 20px 40px rgba(33, 160, 216, 0.15); 
+            border: 2px solid var(--dmg-blue-glow);
+            transform: translateY(0);
+            animation: bounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes bounceIn { from { opacity: 0; transform: scale(0.9) translateY(10px); } }
+        .frost-title { font-weight: 900; font-size: 17px; margin-bottom: 8px; color: var(--dmg-blue); text-transform: uppercase; letter-spacing: -0.02em; }
+        .frost-sub { font-size: 13px; color: var(--ink-sub); margin-bottom: 24px; line-height: 1.5; }
+
+        .header { 
+            padding: 18px 24px; 
+            border-bottom: 1px solid var(--dmg-blue-soft); 
+            display: flex; align-items: center; gap: 12px;
+            background: linear-gradient(to bottom, var(--dmg-blue-soft), transparent);
+        }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dot-grid span { width: 6px; height: 6px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
+        @keyframes pulse { 0%, 100% { opacity: 0.25; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
+        
+        .title { font-size: 14px; font-weight: 900; flex: 1; text-transform: uppercase; letter-spacing: -0.01em; }
+        .week-nav { display: flex; align-items: center; gap: 8px; background: white; padding: 4px 8px; border-radius: 10px; border: 1px solid var(--border); }
+        .week-btn { 
+            width: 26px; height: 26px; border: none; background: var(--dmg-blue-soft); 
+            border-radius: 6px; font-size: 14px; cursor: pointer; color: var(--dmg-blue); 
+            transition: all 0.2s; display: flex; align-items: center; justify-content: center; font-weight: 800;
+        }
+        .week-btn:hover { background: var(--dmg-blue); color: white; }
+        .week-label { font-size: 11px; font-weight: 800; color: var(--dmg-blue); font-variant-numeric: tabular-nums; }
+
+        .body { padding: 20px 24px; }
+        .field { margin-bottom: 18px; }
+        .field-label { font-size: 10px; font-weight: 800; color: var(--dmg-blue); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.05em; }
+        
+        .field-input { 
+            width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; 
+            font-size: 13px; font-weight: 500; font-family: inherit; transition: all 0.2s;
+            background: var(--dmg-blue-soft);
+        }
+        .field-input:focus { outline: none; border-color: var(--dmg-blue); background: white; box-shadow: 0 0 0 4px var(--dmg-blue-glow); }
+        
+        /* Custom Dropdown Styling */
+        .custom-select { position: relative; user-select: none; }
+        .select-trigger { 
+            padding: 10px 14px; background: white; border: 1.5px solid var(--border); 
+            border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.2s;
+        }
+        .select-trigger:hover { border-color: var(--dmg-blue); background: var(--dmg-blue-soft); }
+        .select-options { 
+            position: absolute; top: calc(100% + 6px); left: 0; right: 0; 
+            background: white; border: 1.5px solid var(--dmg-blue); border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15); z-index: 150; display: none;
+            overflow: hidden; animation: slideDown 0.2s ease-out;
+        }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } }
+        .select-options.show { display: block; }
+        .option { 
+            padding: 12px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+            display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--dmg-blue-soft);
+        }
+        .option:last-child { border-bottom: none; }
+        .option:hover { background: var(--dmg-blue-soft); color: var(--dmg-blue); }
+        .option.selected { background: var(--dmg-blue-soft); color: var(--dmg-blue); font-weight: 800; }
+
+        .day-row { 
+            display: flex; align-items: center; gap: 12px; padding: 10px 12px; 
+            background: var(--dmg-blue-soft); border-radius: 14px; margin-bottom: 8px;
+            transition: all 0.2s; border: 1px solid transparent;
+        }
+        .day-row:hover { background: white; border-color: var(--dmg-blue-glow); transform: translateX(2px); }
+        .day-name { font-size: 11px; font-weight: 900; width: 35px; text-transform: uppercase; color: var(--dmg-blue); }
+        .day-date { font-size: 10px; color: var(--ink-sub); width: 45px; font-weight: 600; }
         .day-status { flex: 1; }
-        .status-select { width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-family: inherit; background: #FFF; }
-        .footer { padding: 16px 20px; border-top: 1px solid var(--border); }
-        .submit-btn { width: 100%; padding: 12px; background: var(--dmg-blue); color: #FFF; border: none; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; }
-        .submit-btn:hover { background: #1a8fc2; }
-        .submit-btn:disabled { background: #E5E5E5; color: #999; cursor: not-allowed; }
-        .success { text-align: center; padding: 40px 20px; }
-        .success-icon { font-size: 48px; margin-bottom: 12px; }
-        .success-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
-        .success-sub { font-size: 12px; color: var(--ink-sub); }
-        .loading { display: flex; align-items: center; justify-content: center; padding: 50px; color: var(--ink-sub); font-size: 12px; }
-        .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
+
+        .footer { padding: 20px 24px; border-top: 1px solid var(--border); background: #fdfdfe; }
+        .submit-btn { 
+            width: 100%; padding: 16px; background: var(--dmg-blue); color: #FFF; border: none; 
+            border-radius: 12px; font-size: 12px; font-weight: 900; text-transform: uppercase; 
+            letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s; 
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .submit-btn:hover { background: var(--dmg-blue-light); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(33, 160, 216, 0.3); }
+        .submit-btn:active { transform: translateY(0); }
+        .submit-btn:disabled { background: #CBD5E1; color: #F1F5F9; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        /* Success State */
+        .success { text-align: center; padding: 50px 30px; }
+        .success-icon { font-size: 44px; margin-bottom: 16px; display: block; }
+
+        .autocomplete-list { 
+            position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: #FFF; 
+            border: 1.5px solid var(--dmg-blue); border-radius: 12px; max-height: 180px; 
+            overflow-y: auto; z-index: 200; display: none; 
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15); 
+        }
+        .autocomplete-list.show { display: block; }
+        .autocomplete-item { padding: 12px 14px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 1px solid var(--dmg-blue-soft); }
+        .autocomplete-item:hover { background: var(--dmg-blue-soft); color: var(--dmg-blue); }
+
+        .loading { display: flex; align-items: center; justify-content: center; padding: 60px; color: var(--dmg-blue); font-size: 13px; font-weight: 700; }
+        .spinner { width: 20px; height: 20px; border: 3px solid var(--dmg-blue-glow); border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 12px; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div id="root"></div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         
-        const app = initializeApp({apiKey:"AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",authDomain:"dmg-command-centre-native.firebaseapp.com",projectId:"dmg-command-centre-native",storageBucket:"dmg-command-centre-native.appspot.com",messagingSenderId:"223535956454",appId:"1:223535956454:web:b25e5bc69d8a4a7f209627"});
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const app = initializeApp(firebaseConfig);
         const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
         
         const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-        const STATUSES = ['Office','WFH','Shoot','Client / Travel','PTO','Leave','Abroad','Weekend'];
-        const COLORS = {Editorial:'#E94B4B',Creative:'#E6468B',Production:'#43B049',Social:'#F2C316',Operations:'#9333EA',Sales:'#F97316'};
+        const STATUSES = [
+            { id: 'Office', label: 'Office', emoji: '🏢' },
+            { id: 'WFH', label: 'WFH', emoji: '🏠' },
+            { id: 'Shoot', label: 'Shoot', emoji: '🎥' },
+            { id: 'Client / Travel', label: 'Travel', emoji: '✈️' },
+            { id: 'PTO', label: 'PTO', emoji: '🌴' },
+            { id: 'Leave', label: 'Leave', emoji: '🏥' },
+            { id: 'Abroad', label: 'Abroad', emoji: '🌍' },
+            { id: 'Weekend', label: 'Weekend', emoji: '✨' }
+        ];
         
-        let staffDirectory = [], selectedStaff = null, weekOffset = 1, schedule = {}, isLoading = true, submitted = false;
-        const root = document.getElementById('root');
-        
-        const getMonday = offset => { const d = new Date(); d.setDate(d.getDate() + (7 * offset) + (1 - d.getDay())); return d; };
+        let state = {
+            staff: [],
+            selectedStaff: null,
+            weekOffset: 1,
+            schedule: {},
+            isLoading: true,
+            submitted: false,
+            existingDocId: null,
+            isEditing: false
+        };
+
+        const getMonday = offset => { 
+            const d = new Date(); 
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            d.setDate(diff + (7 * offset));
+            d.setHours(0,0,0,0);
+            return d; 
+        };
+
         const formatDate = d => d.toLocaleDateString('en-GB', {day:'numeric',month:'short'});
         
-        const initSchedule = () => { schedule = {}; DAYS.forEach((day, i) => { schedule[day] = { status: i >= 5 ? 'Weekend' : 'Office' }; }); };
+        const initSchedule = (existing = null) => { 
+            state.schedule = {}; 
+            DAYS.forEach((day, i) => { 
+                if (existing && existing[day]) {
+                    state.schedule[day] = existing[day];
+                } else {
+                    state.schedule[day] = { status: i >= 5 ? 'Weekend' : 'Office' }; 
+                }
+            }); 
+        };
+
+        async function checkExisting() {
+            if (!state.selectedStaff) return;
+            const weekStart = getMonday(state.weekOffset).toISOString().split('T')[0];
+            
+            const q = query(
+                collection(db, "artifacts", appId, "public", "data", "rota_requests"),
+                where("staffId", "==", state.selectedStaff.id),
+                where("weekStart", "==", weekStart)
+            );
+
+            try {
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    const docData = snap.docs[0].data();
+                    state.existingDocId = snap.docs[0].id;
+                    if (!state.isEditing) {
+                        document.getElementById('frost-overlay').style.display = 'flex';
+                    }
+                    initSchedule(docData.schedule);
+                } else {
+                    state.existingDocId = null;
+                    document.getElementById('frost-overlay').style.display = 'none';
+                    initSchedule();
+                }
+                render();
+            } catch (e) { console.error("Query error", e); }
+        }
+
+        window.toggleEdit = () => {
+            state.isEditing = true;
+            document.getElementById('frost-overlay').style.display = 'none';
+            render();
+        };
+
+        window.prevWeek = () => { state.weekOffset--; state.isEditing = false; checkExisting(); };
+        window.nextWeek = () => { state.weekOffset++; state.isEditing = false; checkExisting(); };
         
+        window.selectStaff = id => { 
+            state.selectedStaff = state.staff.find(s => s.id === id); 
+            document.getElementById('staff-list').classList.remove('show'); 
+            checkExisting(); 
+        };
+
+        window.updateStatus = (day, val) => { 
+            state.schedule[day].status = val; 
+            document.querySelectorAll('.select-options').forEach(o => o.classList.remove('show'));
+            render(); 
+        };
+
+        window.submitRota = async () => {
+            const monday = getMonday(state.weekOffset);
+            const payload = {
+                staffId: state.selectedStaff.id,
+                firstName: state.selectedStaff.firstName,
+                lastName: state.selectedStaff.lastName,
+                name: state.selectedStaff.firstName + ' ' + state.selectedStaff.lastName,
+                team: state.selectedStaff.team,
+                manager: state.selectedStaff.manager || '',
+                weekStart: monday.toISOString().split('T')[0],
+                schedule: state.schedule,
+                status: 'pending',
+                type: 'Schedule',
+                reason: state.isEditing ? 'Rota updated by user' : 'Weekly rota submission',
+                startDate: monday,
+                endDate: new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000),
+                submittedAt: serverTimestamp()
+            };
+
+            try {
+                if (state.existingDocId) {
+                    await updateDoc(doc(db, "artifacts", appId, "public", "data", "rota_requests", state.existingDocId), payload);
+                } else {
+                    await addDoc(collection(db, "artifacts", appId, "public", "data", "rota_requests"), payload);
+                }
+                state.submitted = true; 
+                render();
+            } catch (e) { alert('Error: ' + e.message); }
+        };
+
         function render() {
-            if (isLoading) { root.innerHTML = '<div class="widget"><div class="loading"><div class="spinner"></div>Loading...</div></div>'; return; }
-            if (submitted) {
-                root.innerHTML = `<div class="widget"><div class="success"><div class="success-icon">✓</div><div class="success-title">Rota Submitted</div><div class="success-sub">Your rota for w/c ${formatDate(getMonday(weekOffset))} has been submitted for manager approval.</div></div></div>`;
+            const root = document.getElementById('root');
+            if (state.isLoading) { root.innerHTML = '<div class="widget"><div class="loading"><div class="spinner"></div>Loading...</div></div>'; return; }
+            
+            if (state.submitted) {
+                root.innerHTML = `
+                    <div class="widget">
+                        <div class="success">
+                            <span class="success-icon">✨</span>
+                            <div class="frost-title" style="color:var(--success)">Synced Successfully</div>
+                            <div class="frost-sub">Your rota for w/c ${formatDate(getMonday(state.weekOffset))} is now live on the dashboard.</div>
+                            <button class="submit-btn" style="background:var(--ink)" onclick="location.reload()">Send Another</button>
+                        </div>
+                    </div>`;
                 return;
             }
-            
-            const monday = getMonday(weekOffset);
-            const staffHtml = staffDirectory.map(s => `<div class="autocomplete-item" onclick="selectStaff('${s.id}')">${s.firstName} ${s.lastName} <span style="color:var(--ink-sub);font-size:10px">${s.team}</span></div>`).join('');
+
+            const monday = getMonday(state.weekOffset);
             
             const daysHtml = DAYS.map((day, i) => {
                 const d = new Date(monday); d.setDate(monday.getDate() + i);
+                const currentStatus = state.schedule[day]?.status || 'Office';
+                const statusObj = STATUSES.find(s => s.id === currentStatus);
                 const isWeekend = i >= 5;
-                const options = STATUSES.map(st => `<option value="${st}"${schedule[day].status === st ? ' selected' : ''}>${st}</option>`).join('');
-                return `<div class="day-row"><span class="day-name">${day.slice(0,3)}</span><span class="day-date">${formatDate(d)}</span><div class="day-status"><select class="status-select" onchange="updateStatus('${day}',this.value)"${isWeekend ? ' disabled' : ''}>${options}</select></div></div>`;
+
+                return `
+                    <div class="day-row">
+                        <span class="day-name">${day.slice(0,3)}</span>
+                        <span class="day-date">${formatDate(d)}</span>
+                        <div class="day-status">
+                            <div class="custom-select" id="select-${day}">
+                                <div class="select-trigger" onclick="${isWeekend ? '' : `toggleDropdown('${day}')`}" style="${isWeekend ? 'opacity:0.6; cursor:default' : ''}">
+                                    <span style="display:flex; align-items:center; gap:6px;">${statusObj.emoji} ${statusObj.label}</span>
+                                    ${isWeekend ? '' : '<span style="font-size:10px; color:var(--dmg-blue)">▾</span>'}
+                                </div>
+                                <div class="select-options" id="options-${day}">
+                                    ${STATUSES.map(st => `
+                                        <div class="option ${currentStatus === st.id ? 'selected' : ''}" onclick="updateStatus('${day}','${st.id}')">
+                                            <span>${st.emoji}</span>
+                                            <span>${st.label}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }).join('');
-            
-            root.innerHTML = `<div class="widget"><div class="header"><div class="dot-grid"><span></span><span></span><span></span><span></span></div><h2 class="title">Rota Request</h2><div class="week-nav"><button class="week-btn" onclick="prevWeek()">‹</button><span class="week-label">w/c ${formatDate(monday)}</span><button class="week-btn" onclick="nextWeek()">›</button></div></div><div class="body"><div class="field autocomplete"><label class="field-label">Your Name</label><input type="text" id="staff-search" class="field-input" placeholder="Search your name..." oninput="filterStaff(this.value)" onfocus="showList()" value="${selectedStaff ? selectedStaff.firstName + ' ' + selectedStaff.lastName : ''}"><div class="autocomplete-list" id="staff-list">${staffHtml}</div></div>${selectedStaff ? `<div class="field"><label class="field-label">Manager</label><div style="padding:10px 12px;background:var(--bg-soft);border-radius:8px;font-size:12px;font-weight:600">${selectedStaff.manager || 'Not assigned'}</div></div>` : ''}<div class="field"><label class="field-label">Schedule</label><div class="day-grid">${daysHtml}</div></div></div><div class="footer"><button class="submit-btn" onclick="submitRota()"${selectedStaff ? '' : ' disabled'}>Submit Rota Request</button></div></div>`;
+
+            root.innerHTML = `
+                <div class="widget">
+                    <div id="frost-overlay">
+                        <div class="frost-content">
+                            <div class="frost-title">Already Synced ✨</div>
+                            <div class="frost-sub">A submission for this week exists. Would you like to update it?</div>
+                            <button class="submit-btn" onclick="toggleEdit()">Update Submission</button>
+                        </div>
+                    </div>
+
+                    <div class="header">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <h2 class="title">Rota Request</h2>
+                        <div class="week-nav">
+                            <button class="week-btn" onclick="prevWeek()">‹</button>
+                            <span class="week-label">${formatDate(monday)}</span>
+                            <button class="week-btn" onclick="nextWeek()">›</button>
+                        </div>
+                    </div>
+                    <div class="body">
+                        <div class="field autocomplete" style="position:relative">
+                            <label class="field-label">Team Member</label>
+                            <input type="text" id="staff-search" class="field-input" placeholder="Start typing your name..." oninput="window.filterStaff(this.value)" onfocus="window.showList()" value="${state.selectedStaff ? state.selectedStaff.firstName + ' ' + state.selectedStaff.lastName : ''}">
+                            <div class="autocomplete-list" id="staff-list">
+                                ${state.staff.map(s => `<div class="autocomplete-item" onclick="selectStaff('${s.id}')">${s.firstName} ${s.lastName} <span style="color:var(--ink-sub);font-size:10px;font-weight:400;">(${s.team})</span></div>`).join('')}
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Weekly Schedule</label>
+                            <div class="day-grid">${daysHtml}</div>
+                        </div>
+                    </div>
+                    <div class="footer">
+                        <button class="submit-btn" onclick="submitRota()" ${state.selectedStaff ? '' : 'disabled'}>
+                            ${state.isEditing ? 'Update Rota' : 'Sync to Dashboard'}
+                        </button>
+                    </div>
+                </div>
+            `;
         }
-        
-        window.prevWeek = () => { weekOffset--; initSchedule(); render(); };
-        window.nextWeek = () => { weekOffset++; initSchedule(); render(); };
-        window.showList = () => { document.getElementById('staff-list').classList.add('show'); };
+
+        window.toggleDropdown = (day) => {
+            const el = document.getElementById(`options-${day}`);
+            const all = document.querySelectorAll('.select-options');
+            all.forEach(o => { if(o.id !== `options-${day}`) o.classList.remove('show'); });
+            el.classList.toggle('show');
+        };
+
+        window.showList = () => document.getElementById('staff-list').classList.add('show');
         window.filterStaff = val => {
             const list = document.getElementById('staff-list');
             list.querySelectorAll('.autocomplete-item').forEach(item => {
@@ -100,54 +392,28 @@
             });
             list.classList.add('show');
         };
-        window.selectStaff = id => { selectedStaff = staffDirectory.find(s => s.id === id); document.getElementById('staff-list').classList.remove('show'); render(); };
-        window.updateStatus = (day, val) => { schedule[day].status = val; };
-        
-        window.submitRota = async () => {
-            if (!selectedStaff) return;
-            const monday = getMonday(weekOffset);
-            try {
-                // Write to rota_requests (what manager dashboard reads)
-                await addDoc(collection(db, "artifacts", appId, "public", "data", "rota_requests"), {
-                    staffId: selectedStaff.id,
-                    firstName: selectedStaff.firstName,
-                    lastName: selectedStaff.lastName,
-                    name: selectedStaff.firstName + ' ' + selectedStaff.lastName,
-                    team: selectedStaff.team,
-                    manager: selectedStaff.manager || '',
-                    weekStart: monday.toISOString().split('T')[0],
-                    schedule: schedule,
-                    status: 'pending',
-                    type: 'Schedule',
-                    reason: 'Weekly rota submission',
-                    startDate: monday,
-                    endDate: new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000),
-                    submittedAt: serverTimestamp()
-                });
-                submitted = true; render();
-            } catch (e) { console.error('Submit error:', e); alert('Error submitting rota. Please try again.'); }
-        };
-        
-        document.addEventListener('click', e => {
-            if (!e.target.closest('.autocomplete')) {
-                const list = document.getElementById('staff-list');
-                if (list) list.classList.remove('show');
-            }
-        });
-        
+
         async function loadStaff() {
             try {
                 const snap = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
-                staffDirectory = []; snap.forEach(d => staffDirectory.push({ id: d.id, ...d.data() }));
-                staffDirectory.sort((a, b) => (a.firstName + a.lastName).localeCompare(b.firstName + b.lastName));
-                isLoading = false; initSchedule(); render();
-            } catch (e) { console.error('Load staff error:', e); isLoading = false; render(); }
+                state.staff = []; snap.forEach(d => state.staff.push({ id: d.id, ...d.data() }));
+                state.staff.sort((a,b) => a.firstName.localeCompare(b.firstName));
+                state.isLoading = false; initSchedule(); render();
+            } catch (e) { console.error(e); }
         }
-        
-        onAuthStateChanged(auth, user => {
-            if (user) loadStaff();
-            else signInAnonymously(auth).catch(e => { console.error('Auth failed:', e); isLoading = false; render(); });
+
+        onAuthStateChanged(auth, user => { if(user) loadStaff(); else signInAnonymously(auth); });
+
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.custom-select')) {
+                document.querySelectorAll('.select-options').forEach(o => o.classList.remove('show'));
+            }
+            if (!e.target.closest('.autocomplete')) {
+                const list = document.getElementById('staff-list');
+                if(list) list.classList.remove('show');
+            }
         });
+
     </script>
 </body>
 </html>
