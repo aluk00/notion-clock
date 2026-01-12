@@ -7,17 +7,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
     <style>
         :root {
-            --ink: #0F172A;
-            --ink-sub: #475569;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
             --ink-muted: #94A3B8;
-            --border: #F1F5F9;
+            --border: #EAECEF;
             --surface: #FFFFFF;
             --surface-alt: #F8FAFC;
             --dmg-blue: #21A0D8;
@@ -26,8 +28,9 @@
             --editorial: #E94B4B;
             --social: #F2C316;
             --commercial: #9333EA;
-            --accent: #F1F5F9;
+            --radius: 20px;
         }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: 'Inter', -apple-system, sans-serif; 
@@ -36,562 +39,239 @@
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
         }
-        
-        /* Dot Grid Animation */
+
+        /* --- UI COMPONENTS --- */
         .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
         .dot-grid span { width: 6px; height: 6px; border-radius: 50%; background: var(--dmg-blue); }
-        .dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
-        .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
-        .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
-        .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
-        
-        /* Layout */
+        .dot-grid span { animation: pulse 2.5s infinite ease-in-out; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1); } }
+
         .app-container { max-width: 1440px; margin: 0 auto; padding: 40px; }
         
-        /* Header */
         .header { 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            padding-bottom: 32px; 
-            margin-bottom: 40px; 
-            border-bottom: 1px solid var(--border); 
+            display: flex; align-items: center; justify-content: space-between; 
+            padding-bottom: 32px; margin-bottom: 40px; border-bottom: 1px solid var(--border); 
         }
-        .header-left { display: flex; align-items: center; gap: 20px; }
-        .header-label { 
-            font-size: 11px; 
-            font-weight: 800; 
-            color: var(--ink-muted); 
-            text-transform: uppercase; 
-            letter-spacing: 0.12em; 
-        }
-        .header-title { 
-            font-size: 28px; 
-            font-weight: 900; 
-            color: var(--ink); 
-            letter-spacing: -0.04em; 
-        }
-        .header-actions { display: flex; gap: 14px; }
-        
-        /* Buttons */
+
         .btn { 
-            padding: 12px 20px; 
-            border-radius: 10px; 
-            font-size: 11px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            letter-spacing: 0.06em; 
-            cursor: pointer; 
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-            border: none; 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
+            padding: 12px 20px; border-radius: 10px; font-size: 11px; font-weight: 800; 
+            text-transform: uppercase; cursor: pointer; border: none; display: flex; align-items: center; gap: 8px;
         }
-        .btn-primary { background: var(--ink); color: white; }
+        .btn-primary { background: var(--ink); color: white; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         .btn-primary:hover { background: var(--dmg-blue); transform: translateY(-2px); box-shadow: 0 10px 20px rgba(33, 160, 216, 0.2); }
-        .btn-secondary { 
-            background: var(--surface-alt); 
-            color: var(--ink-sub); 
-            border: 1px solid var(--border);
-        }
-        .btn-secondary:hover { border-color: var(--dmg-blue); color: var(--dmg-blue); }
-        
-        /* Stats Bento */
-        .stats-bento { 
-            display: grid; 
-            grid-template-columns: repeat(4, 1fr); 
-            gap: 24px; 
-            margin-bottom: 48px; 
-        }
+
         .stat-card { 
-            background: var(--surface); 
-            border: 1px solid var(--border); 
-            border-radius: 24px; 
-            padding: 28px; 
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 28px; 
+            transition: all 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
-        .stat-card:hover { 
-            transform: translateY(-4px); 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.04); 
-            border-color: var(--dmg-blue);
-        }
-        .stat-label { 
-            font-size: 10px; 
-            font-weight: 800; 
-            color: var(--ink-muted); 
-            text-transform: uppercase; 
-            letter-spacing: 0.08em; 
-            margin-bottom: 16px; 
-        }
-        .stat-value { 
-            font-size: 36px; 
-            font-weight: 900; 
-            color: var(--ink); 
-            letter-spacing: -0.03em; 
-        }
-        .stat-value.money { color: var(--ink); }
-        .stat-sub { font-size: 12px; color: var(--ink-sub); margin-top: 10px; font-weight: 500; }
-        
-        /* Sections */
-        .section { margin-bottom: 48px; }
-        .section-header { 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            margin-bottom: 20px; 
-        }
-        .section-title { 
-            font-size: 14px; 
-            font-weight: 900; 
-            color: var(--ink); 
-            text-transform: uppercase; 
-            letter-spacing: 0.1em; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-        }
-        .count { 
-            background: var(--accent); 
-            padding: 4px 12px; 
-            border-radius: 20px; 
-            font-size: 11px; 
-            color: var(--ink-sub); 
-            font-weight: 800; 
-        }
-        
-        /* Tables */
-        .table-wrapper { 
-            background: var(--surface); 
-            border: 1px solid var(--border); 
-            border-radius: 24px; 
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.01);
-        }
-        .data-table { width: 100%; border-collapse: collapse; }
-        .data-table th { 
-            background: var(--surface-alt); 
-            padding: 18px 24px; 
-            text-align: left; 
-            font-size: 10px; 
-            font-weight: 800; 
-            color: var(--ink-muted); 
-            text-transform: uppercase; 
-            letter-spacing: 0.08em; 
-            border-bottom: 1px solid var(--border); 
-        }
-        .data-table td { 
-            padding: 20px 24px; 
-            border-bottom: 1px solid var(--border); 
-            font-size: 14px; 
-            vertical-align: middle; 
-        }
-        .data-table tbody tr { cursor: pointer; transition: all 0.2s ease; }
-        .data-table tbody tr:hover td { background: var(--surface-alt); }
-        .row-expanded { background: var(--surface-alt); }
-        
-        /* Deliverables Grid (The Expandable Part) */
-        .deliverables-tray {
-            padding: 24px 40px;
-            background: #FAFAFA;
-            border-bottom: 1px solid var(--border);
-        }
-        .deliverables-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 16px;
-        }
-        .deliverable-mini-card {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            transition: transform 0.2s;
-        }
-        .deliverable-mini-card:hover { transform: scale(1.02); box-shadow: 0 10px 15px rgba(0,0,0,0.02); }
-        
-        /* Pills */
-        .stage-pill { 
-            display: inline-flex; 
-            padding: 6px 14px; 
-            border-radius: 30px; 
-            font-size: 10px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            letter-spacing: 0.04em; 
-        }
-        .stage-ideation { background: #F5F3FF; color: #7C3AED; }
-        .stage-response { background: #EFF6FF; color: #2563EB; }
-        .stage-feedback { background: #FFFBEB; color: #D97706; }
-        .stage-won { background: #ECFDF5; color: #059669; }
-        
-        .phase-pill { 
-            display: inline-flex; 
-            align-items: center;
-            gap: 8px;
-            padding: 6px 14px; 
-            border-radius: 30px; 
-            font-size: 10px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-        }
-        .phase-active { background: #F0F9FF; color: var(--dmg-blue); }
-        .dot-status { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        .stat-card:hover { transform: translateY(-4px); border-color: var(--dmg-blue); box-shadow: 0 20px 40px rgba(0,0,0,0.04); }
 
-        /* Custom Styled Inputs & Selects */
-        .sidebar-select, .sidebar-input {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 16px center;
-            padding-right: 44px !important;
-        }
-        .sidebar-input { background-image: none !important; padding-right: 14px !important; }
+        .data-table { width: 100%; border-collapse: collapse; background: white; border-radius: var(--radius); overflow: hidden; }
+        .data-table th { background: var(--surface-alt); padding: 18px 24px; text-align: left; font-size: 10px; font-weight: 800; color: var(--ink-muted); text-transform: uppercase; }
+        .data-table td { padding: 20px 24px; border-bottom: 1px solid var(--border); font-size: 14px; cursor: pointer; }
 
-        /* Sidebar */
-        .sidebar-overlay { 
-            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.3); 
-            backdrop-filter: blur(4px); z-index: 99; opacity: 0; pointer-events: none; transition: opacity 0.4s; 
-        }
-        .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+        /* --- SIDEBAR DASHBOARD (THE SLICK UI) --- */
         .sidebar-panel { 
-            width: 520px; position: fixed; right: 0; top: 0; bottom: 0; 
+            width: 540px; position: fixed; right: 0; top: 0; bottom: 0; 
             background: var(--surface); border-left: 1px solid var(--border); 
-            z-index: 100; transform: translateX(100%); 
-            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100; transform: translateX(100%); transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex; flex-direction: column;
         }
         .sidebar-panel.open { transform: translateX(0); box-shadow: -40px 0 80px rgba(15, 23, 42, 0.1); }
-        .sidebar-scroll { padding: 40px; overflow-y: auto; flex: 1; }
+        .sidebar-hero { background: var(--surface-alt); padding: 40px; border-bottom: 1px solid var(--border); }
+        .sidebar-hero h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.04em; margin: 8px 0; }
         
-        .sidebar-header { margin-bottom: 40px; }
-        .sidebar-title { font-size: 24px; font-weight: 900; color: var(--ink); letter-spacing: -0.03em; margin-bottom: 8px; }
-        .sidebar-label { 
-            font-size: 10px; font-weight: 800; color: var(--ink-muted); 
-            text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; display: block;
-        }
-        .sidebar-actions { 
-            padding: 32px 40px; border-top: 1px solid var(--border); 
-            display: flex; gap: 16px; background: var(--surface); 
-        }
+        .stepper { display: flex; justify-content: space-between; padding: 24px 40px; border-bottom: 1px solid var(--border); position: relative; }
+        .step-item { flex: 1; text-align: center; position: relative; z-index: 1; }
+        .step-dot { width: 12px; height: 12px; background: white; border: 2px solid var(--border); border-radius: 50%; margin: 0 auto 8px; }
+        .step-item.active .step-dot { border-color: var(--dmg-blue); background: var(--dmg-blue); box-shadow: 0 0 0 4px rgba(33,160,216,0.1); }
+
+        .sidebar-card { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+        .del-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; }
         
-        .toast { 
-            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); 
-            background: var(--ink); color: white; padding: 16px 32px; 
-            border-radius: 40px; font-size: 13px; font-weight: 700; 
-            z-index: 1000; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            display: flex; align-items: center; gap: 12px;
-        }
+        /* Human Layer Styles */
+        .chat-box { background: var(--surface-alt); border-radius: 12px; padding: 12px; font-size: 13px; color: var(--ink); margin-bottom: 8px; border-left: 3px solid var(--dmg-blue); }
+
+        .action-btn { background: var(--surface); border: 1px solid var(--border); padding: 8px 14px; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body>
     <div id="root"></div>
+
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-            authDomain: "dmg-command-centre-native.firebaseapp.com",
-            projectId: "dmg-command-centre-native",
-            storageBucket: "dmg-command-centre-native.firebasestorage.app",
-            messagingSenderId: "223535956454",
-            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
-        const APP_ID = 'dmg-command-centre-native';
-        
-        const CHANNELS = ['DMUK', 'DM Sport', 'Metro UK', 'This is Money', 'Mail Sport', 'TBC'];
-        const DELIVERABLE_OPTIONS = ['Sponsored Channel', '7 x TT/IG Videos', 'Video TT/IG - Headlines', 'Video TT/IG - Love Notes', 'Video TT/IG - Investigates', 'Social Content', 'TBC'];
-        const PHASES = ['Pre-Production', 'Shoot', 'Edit', 'Client Feedback', 'Live'];
+        const { useState, useEffect } = React;
 
-        // ENHANCED SEED DATA WITH SUB-DELIVERABLES
+        // Configuration
+        const API_BASE = 'https://createnotionproject-223535956454.us-central1.run.app';
+        const STAGES = ['Brief Received', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete'];
+
+        // Mock Seed (Replace with real loadData() call)
         const SEED_PRODUCTION = [
-            { 
-                id: 'prod-1', client: 'Nationwide', title: 'Sponsored Channel + TT Video', 
-                productionPhase: 'Shoot', channel: 'This is Money', deliverableType: 'Sponsored Channel', 
-                projectLead: 'Maxine', creativeLead: 'Ellie', producer: 'Sarah', 
-                internalDeliveryDate: '2026-01-20'
-            },
-            { 
-                id: 'prod-2', client: "Alzheimer's Society", title: '7 x TT/IG Videos', 
-                productionPhase: 'Pre-Production', channel: 'DMUK, DM Sport', deliverableType: '7 x TT/IG Videos', 
-                projectLead: 'Maxine', creativeLead: 'Ellie', producer: 'Sarah',
-                subDeliverables: [
-                    { id: 'sub1', title: 'Video 1: Awareness', editor: 'Dan Q', designer: 'Alex B', status: 'In Progress', due: '2026-01-15', approved: false },
-                    { id: 'sub2', title: 'Video 2: Impact', editor: 'Dan Q', designer: 'Alex B', status: 'Pre-Pro', due: '2026-01-16', approved: false },
-                    { id: 'sub3', title: 'Video 3: Research', editor: 'TBC', designer: 'Alex B', status: 'Idea', due: '2026-01-18', approved: false },
-                    { id: 'sub4', title: 'Thumbnail Pack', editor: 'N/A', designer: 'Alex B', status: 'In Progress', due: '2026-01-14', approved: true }
-                ]
-            },
-            { 
-                id: 'prod-3', client: 'Sunweb', title: 'Headlines Video', 
-                productionPhase: 'Edit', channel: 'DMUK', deliverableType: 'Video TT/IG - Headlines', 
-                projectLead: 'Maxine', creativeLead: 'Ellie', producer: 'Daniel', 
-                internalDeliveryDate: '2026-01-07' 
-            }
-        ];
-
-        const SEED_PIPELINE = [
-            { id: 'pipe-1', client: 'Department of Culture', title: 'Abu Dhabi Campaign', dealStage: 'Response with MMM', channel: 'DM Main', deliverableType: 'Social Content', commercialOwner: 'Zach' },
-            { id: 'pipe-2', client: 'Burger King', title: 'Slider Box Campaign', dealStage: 'Negotiation', channel: 'DMUK', deliverableType: 'Social Content', commercialOwner: 'Isobel' }
+            { id: 'prod-1', client: 'Nationwide', title: 'Sponsored Channel', dealStage: 'Deal Agreed', channel: 'This is Money', producer: 'Sarah', internalDeliveryDate: '2026-01-20' },
+            { id: 'prod-2', client: "Alzheimer's Society", title: '7 x TT Videos', dealStage: 'Campaign Complete', channel: 'DMUK', producer: 'Sarah', internalDeliveryDate: '2026-01-22' }
         ];
 
         function CommercialHub() {
-            const [productionProjects, setProductionProjects] = useState(SEED_PRODUCTION);
-            const [pipelineProjects, setPipelineProjects] = useState(SEED_PIPELINE);
-            const [expandedId, setExpandedId] = useState(null);
+            const [projects, setProjects] = useState(SEED_PRODUCTION);
             const [selectedItem, setSelectedItem] = useState(null);
             const [sidebarOpen, setSidebarOpen] = useState(false);
-            const [modalOpen, setModalOpen] = useState(false);
+            const [deliverables, setDeliverables] = useState([]);
+            const [loadingAssets, setLoadingAssets] = useState(false);
+            const [humanNote, setHumanNote] = useState("");
             const [toast, setToast] = useState(null);
 
-            const toggleExpand = (id, e) => {
-                e.stopPropagation();
-                setExpandedId(expandedId === id ? null : id);
+            // Deep Linking Engine
+            useEffect(() => {
+                const params = new URLSearchParams(window.location.search);
+                const projectId = params.get('project');
+                if (projectId) {
+                    const match = projects.find(p => p.id === projectId);
+                    if (match) openSidebar(match);
+                }
+            }, []);
+
+            // Sidebar Sync Engine
+            useEffect(() => {
+                if (selectedItem && sidebarOpen) {
+                    fetchAssets(selectedItem.id);
+                }
+            }, [selectedItem, sidebarOpen]);
+
+            const fetchAssets = async (id) => {
+                setLoadingAssets(true);
+                try {
+                    const res = await fetch(`${API_BASE}/projects/${id}/deliverables`);
+                    const data = await res.json();
+                    setDeliverables(data || []);
+                } catch (e) { console.error(e); }
+                setLoadingAssets(false);
             };
 
-            const openSidebar = (item, type) => {
-                setSelectedItem({ ...item, _type: type });
+            const openSidebar = (item) => {
+                setSelectedItem(item);
                 setSidebarOpen(true);
+                window.history.pushState({}, '', `?project=${item.id}`);
             };
 
-            const saveChanges = async () => {
-                if (!selectedItem) return;
-                // Simplified mock save
-                setToast('Syncing to Human Layer...');
-                setTimeout(() => {
-                    setToast(null);
-                    setSidebarOpen(false);
-                }, 1000);
+            const closeSidebar = () => {
+                setSidebarOpen(false);
+                window.history.pushState({}, '', window.location.pathname);
+            };
+
+            const copyLink = () => {
+                navigator.clipboard.writeText(window.location.href);
+                setToast("Share Link Copied!");
+                setTimeout(() => setToast(null), 2000);
             };
 
             return (
                 <div className="app-container">
+                    {/* Header */}
                     <div className="header">
-                        <div className="header-left">
+                        <div style={{display:'flex', gap:'20px', alignItems:'center'}}>
                             <div className="dot-grid"><span></span><span></span><span></span><span></span></div>
                             <div>
-                                <div className="header-label">Operational Hub / 2026</div>
-                                <div className="header-title">Commercial Hub</div>
+                                <div style={{fontSize:'11px', fontWeight:800, color:'var(--dmg-blue)', letterSpacing:'0.1em'}}>DMG COMMAND CENTRE</div>
+                                <h1 style={{fontSize:'28px', fontWeight:900, letterSpacing:'-0.04em'}}>Commercial Hub</h1>
                             </div>
                         </div>
-                        <div className="header-actions">
-                            <button className="btn btn-secondary">Refresh</button>
-                            <button className="btn btn-primary" onClick={() => setModalOpen(true)}>Add Brief</button>
+                        <button className="btn btn-primary">Refresh Data</button>
+                    </div>
+
+                    {/* Stats */}
+                    <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'24px', marginBottom:'40px'}}>
+                        <div className="stat-card">
+                            <div style={{fontSize:'10px', fontWeight:800, color:'var(--ink-muted)'}}>LIVE CAMPAIGNS</div>
+                            <div style={{fontSize:'36px', fontWeight:900}}>{projects.length}</div>
+                        </div>
+                        <div className="stat-card" style={{borderColor:'var(--dmg-blue)'}}>
+                            <div style={{fontSize:'10px', fontWeight:800, color:'var(--dmg-blue)'}}>PIPELINE VALUE</div>
+                            <div style={{fontSize:'36px', fontWeight:900}}>£240k</div>
                         </div>
                     </div>
 
-                    <div className="stats-bento">
-                        <div className="stat-card">
-                            <div className="stat-label">Live Productions</div>
-                            <div className="stat-value">04</div>
-                            <div className="stat-sub">Across 6 channels</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-label">Pipeline Vol.</div>
-                            <div className="stat-value">12</div>
-                            <div className="stat-sub">Responses in progress</div>
-                        </div>
-                        <div className="stat-card">
-                            <div className="stat-label">Forecast Value</div>
-                            <div className="stat-value">£342k</div>
-                            <div className="stat-sub">Weighted pipeline</div>
-                        </div>
-                        <div className="stat-card" style={{borderColor: 'var(--dmg-blue)'}}>
-                            <div className="stat-label">Team Capacity</div>
-                            <div className="stat-value" style={{color: 'var(--dmg-blue)'}}>82%</div>
-                            <div className="stat-sub">High utilization</div>
-                        </div>
-                    </div>
-
-                    <div className="section">
-                        <div className="section-header">
-                            <div className="section-title">Production / Active <span className="count">{productionProjects.length}</span></div>
-                        </div>
-                        <div className="table-wrapper">
-                            <table className="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Client / Project</th>
-                                        <th>Phase</th>
-                                        <th>Producer</th>
-                                        <th>Project Lead</th>
-                                        <th>Creative Lead</th>
-                                        <th>Internal DL</th>
+                    {/* Table */}
+                    <div className="table-wrapper" style={{border:'1px solid var(--border)', borderRadius:'24px', overflow:'hidden'}}>
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Client / Project</th>
+                                    <th>Stage</th>
+                                    <th>Producer</th>
+                                    <th>Internal Due</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {projects.map(p => (
+                                    <tr key={p.id} onClick={() => openSidebar(p)}>
+                                        <td><strong>{p.client}</strong><br/><span style={{fontSize:'12px', color:'var(--ink-sub)'}}>{p.title}</span></td>
+                                        <td><span className="stage-pill stage-response">{p.dealStage}</span></td>
+                                        <td>{p.producer}</td>
+                                        <td>{p.internalDeliveryDate}</td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {productionProjects.map(p => (
-                                        <React.Fragment key={p.id}>
-                                            <tr 
-                                                className={expandedId === p.id ? 'row-expanded' : ''} 
-                                                onClick={() => openSidebar(p, 'production')}
-                                            >
-                                                <td>
-                                                    <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                                                        {p.subDeliverables && (
-                                                            <div onClick={(e) => toggleExpand(p.id, e)} style={{fontSize:'18px', color: 'var(--dmg-blue)', cursor:'pointer'}}>
-                                                                {expandedId === p.id ? '−' : '+'}
-                                                            </div>
-                                                        )}
-                                                        <div>
-                                                            <div style={{fontWeight:800}}>{p.client}</div>
-                                                            <div style={{fontSize:'12px', color:'var(--ink-sub)'}}>{p.title}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span className="phase-pill phase-active">
-                                                        <span className="dot-status"></span>
-                                                        {p.productionPhase}
-                                                    </span>
-                                                </td>
-                                                <td style={{fontWeight:600}}>{p.producer || '—'}</td>
-                                                <td style={{fontWeight:600}}>{p.projectLead}</td>
-                                                <td style={{fontWeight:600}}>{p.creativeLead}</td>
-                                                <td style={{color: 'var(--ink-sub)', fontWeight:500}}>{p.internalDeliveryDate || 'TBC'}</td>
-                                            </tr>
-                                            {expandedId === p.id && p.subDeliverables && (
-                                                <tr>
-                                                    <td colSpan="6" className="deliverables-tray">
-                                                        <div className="sidebar-label" style={{marginBottom:'16px'}}>Project Assets / Deliverables Breakdown</div>
-                                                        <div className="deliverables-grid">
-                                                            {p.subDeliverables.map(sub => (
-                                                                <div key={sub.id} className="deliverable-mini-card">
-                                                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'start'}}>
-                                                                        <div style={{fontWeight:800, fontSize:'13px'}}>{sub.title}</div>
-                                                                        {sub.approved && <span style={{fontSize:'10px', background:'var(--production)', color:'white', padding:'2px 6px', borderRadius:'4px'}}>APPROVED</span>}
-                                                                    </div>
-                                                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', fontSize:'11px'}}>
-                                                                        <div><span style={{color:'var(--ink-muted)'}}>Editor:</span> <br/> <strong>{sub.editor}</strong></div>
-                                                                        <div><span style={{color:'var(--ink-muted)'}}>Designer:</span> <br/> <strong>{sub.designer}</strong></div>
-                                                                        <div><span style={{color:'var(--ink-muted)'}}>Status:</span> <br/> <strong style={{color:'var(--dmg-blue)'}}>{sub.status}</strong></div>
-                                                                        <div><span style={{color:'var(--ink-muted)'}}>Due:</span> <br/> <strong>{sub.due}</strong></div>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
 
-                    <div className="section">
-                        <div className="section-header">
-                            <div className="section-title">Sales Pipeline / Opportunities <span className="count">{pipelineProjects.length}</span></div>
-                        </div>
-                        <div className="table-wrapper">
-                            <table className="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Opportunity</th>
-                                        <th>Stage</th>
-                                        <th>Format</th>
-                                        <th>Lead</th>
-                                        <th>Channel</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pipelineProjects.map(p => (
-                                        <tr key={p.id} onClick={() => openSidebar(p, 'pipeline')}>
-                                            <td>
-                                                <div style={{fontWeight:800}}>{p.client}</div>
-                                                <div style={{fontSize:'12px', color:'var(--ink-sub)'}}>{p.title}</div>
-                                            </td>
-                                            <td><span className={`stage-pill stage-${p.dealStage.toLowerCase().split(' ')[0]}`}>{p.dealStage}</span></td>
-                                            <td style={{color:'var(--ink-sub)', fontWeight:500}}>{p.deliverableType}</td>
-                                            <td style={{fontWeight:600}}>{p.commercialOwner}</td>
-                                            <td style={{color:'var(--ink-sub)'}}>{p.channel}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* Sidebar */}
-                    <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+                    {/* Dashboard Sidebar */}
+                    <div className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.2)', zIndex:99, opacity: sidebarOpen ? 1 : 0, pointerEvents: sidebarOpen ? 'auto' : 'none'}} onClick={closeSidebar}></div>
                     <div className={`sidebar-panel ${sidebarOpen ? 'open' : ''}`}>
                         {selectedItem && (
                             <>
                                 <div className="sidebar-scroll">
-                                    <div className="sidebar-header">
-                                        <div className="header-label">{selectedItem._type} Details</div>
-                                        <div className="sidebar-title">{selectedItem.client}</div>
-                                        <div style={{color:'var(--ink-sub)', fontWeight:500}}>{selectedItem.title}</div>
-                                    </div>
-
-                                    <div style={{marginBottom:'32px'}}>
-                                        <label className="sidebar-label">Project Channel</label>
-                                        <select className="sidebar-select sidebar-input" value={selectedItem.channel} onChange={e => setSelectedItem({...selectedItem, channel: e.target.value})}>
-                                            {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                    </div>
-
-                                    <div style={{marginBottom:'32px'}}>
-                                        <label className="sidebar-label">Deliverable Type</label>
-                                        <select className="sidebar-select sidebar-input" value={selectedItem.deliverableType} onChange={e => setSelectedItem({...selectedItem, deliverableType: e.target.value})}>
-                                            {DELIVERABLE_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
-                                        </select>
-                                    </div>
-
-                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'32px'}}>
-                                        <div>
-                                            <label className="sidebar-label">Project Lead</label>
-                                            <select className="sidebar-select sidebar-input" value={selectedItem.projectLead}>
-                                                <option>Maxine</option>
-                                                <option>Daniel</option>
-                                            </select>
+                                    <div className="sidebar-hero">
+                                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px'}}>
+                                            <span style={{fontSize:'10px', fontWeight:800, color:'var(--ink-muted)'}}>PROJECT DASHBOARD</span>
+                                            <button className="action-btn" onClick={copyLink}>Share Link</button>
                                         </div>
-                                        <div>
-                                            <label className="sidebar-label">Creative Lead</label>
-                                            <select className="sidebar-select sidebar-input" value={selectedItem.creativeLead}>
-                                                <option>Ellie</option>
-                                                <option>Hugo</option>
-                                            </select>
+                                        <div style={{color:'var(--dmg-blue)', fontWeight:800, fontSize:'12px'}}>{selectedItem.client}</div>
+                                        <h1>{selectedItem.title}</h1>
+                                        <div style={{display:'flex', gap:'8px'}}>
+                                            <span style={{padding:'4px 10px', background:'white', borderRadius:'20px', fontSize:'10px', fontWeight:800, border:'1px solid var(--border)'}}>{selectedItem.channel}</span>
                                         </div>
                                     </div>
 
-                                    <div style={{marginBottom:'32px'}}>
-                                        <label className="sidebar-label">Assigned Producer</label>
-                                        <input className="sidebar-input" value={selectedItem.producer || ''} onChange={e => setSelectedItem({...selectedItem, producer: e.target.value})} placeholder="Enter name..." />
+                                    {/* Stepper */}
+                                    <div className="stepper">
+                                        {STAGES.map((s, i) => (
+                                            <div key={s} className="step-item">
+                                                <div className="step-dot"></div>
+                                                <div style={{fontSize:'8px', fontWeight:800}}>{s}</div>
+                                            </div>
+                                        ))}
                                     </div>
 
-                                    <div>
-                                        <label className="sidebar-label">Human Layer / Notes</label>
-                                        <textarea className="sidebar-input" style={{height:'120px', resize:'none', padding:'14px'}} placeholder="Add internal updates..."></textarea>
+                                    <div style={{padding:'40px'}}>
+                                        <div style={{fontSize:'10px', fontWeight:800, color:'var(--ink-muted)', marginBottom:'12px'}}>DELIVERABLES CHECKLIST (NOTION)</div>
+                                        {loadingAssets ? <p>Loading...</p> : deliverables.map(d => (
+                                            <div key={d.id} className="del-row">
+                                                <div><strong>{d.title}</strong><br/><span style={{fontSize:'10px'}}>{d.type}</span></div>
+                                                <div style={{fontSize:'10px', fontWeight:800}}>{d.status}</div>
+                                            </div>
+                                        ))}
+
+                                        <div style={{marginTop:'32px', borderTop:'1px solid var(--border)', paddingTop:'32px'}}>
+                                            <div style={{fontSize:'10px', fontWeight:800, color:'var(--ink-muted)', marginBottom:'12px'}}>HUMAN LAYER (FIREBASE NOTES)</div>
+                                            <div className="chat-box">Editorial: Waiting on final amends for the Nationwide cut.</div>
+                                            <textarea 
+                                                style={{width:'100%', border:'1px solid var(--border)', borderRadius:'12px', padding:'12px', height:'80px', fontSize:'13px'}} 
+                                                placeholder="Add team update..."
+                                            ></textarea>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="sidebar-actions">
-                                    <button className="btn btn-secondary" onClick={() => setSidebarOpen(false)}>Cancel</button>
-                                    <button className="btn btn-primary" style={{flex:2}} onClick={saveChanges}>Commit to Human Layer</button>
+                                <div style={{padding:'32px 40px', borderTop:'1px solid var(--border)', display:'flex', gap:'12px'}}>
+                                    <button className="btn btn-primary" style={{flex:1}}>Commit Changes</button>
+                                    <button className="btn" style={{background:'var(--surface-alt)'}} onClick={closeSidebar}>Close</button>
                                 </div>
                             </>
                         )}
                     </div>
-
-                    {toast && (
-                        <div className="toast">
-                            <div style={{width:'8px', height:'8px', borderRadius:'50%', background:'var(--dmg-blue)'}}></div>
-                            {toast}
-                        </div>
-                    )}
                 </div>
             );
         }
-        
+
         ReactDOM.createRoot(document.getElementById('root')).render(<CommercialHub />);
     </script>
 </body>
