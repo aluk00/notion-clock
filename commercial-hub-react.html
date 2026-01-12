@@ -257,7 +257,8 @@
         <div id="sidebar-content"></div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <script>
@@ -273,17 +274,18 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const auth = firebase.auth(); // 2. INIT AUTH
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
         const APP_ID = "dmg-command-centre-native";
 
         // --- STATE ---
         let projects = [];
-        let staffList = []; // POPULATED FROM FIREBASE
+        let staffList = []; 
         let notes = [];
         let selectedProject = null;
         let generatedAssets = [];
 
-        // --- WEEKLY DATA SEED (From your paste) ---
+        // --- WEEKLY DATA SEED ---
         const WEEKLY_DATA = {
             projects: [
                 // Production
@@ -311,7 +313,7 @@
             document.getElementById('production-list').innerHTML = '<div class="loading">Fetching Data...</div>';
             
             try {
-                // 1. FETCH STAFF FROM FIREBASE (Correct Architecture)
+                // 1. FETCH STAFF FROM FIREBASE
                 const staffSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("staff_directory").get();
                 staffList = staffSnap.docs.map(d => ({id:d.id, ...d.data()}));
                 
@@ -341,9 +343,11 @@
 
                 render();
             } catch (e) {
-                console.error(e);
-                alert("Error loading data. Using fallback for demo.");
-                // Fallback would go here
+                console.error("Load Error:", e);
+                // Only alert if it's a critical failure, otherwise log to console
+                if (projects.length === 0) {
+                    alert("Connection error. Ensure Cloud Run is active.");
+                }
             }
         }
 
@@ -419,7 +423,6 @@
             selectedProject = p;
             const content = document.getElementById('sidebar-content');
             
-            // DYNAMIC STAFF DROPDOWN GENERATOR
             const staffOptions = staffList.map(s => `<option value="${s.firstName} ${s.lastName}">${s.firstName} ${s.lastName}</option>`).join('');
 
             let html = `
@@ -487,7 +490,7 @@
                 </div>
             `;
             content.innerHTML = html;
-            generatedAssets = []; // Reset local asset list
+            generatedAssets = []; 
             document.getElementById('overlay').classList.add('open');
             document.getElementById('sidebar').classList.add('open');
         };
@@ -518,17 +521,14 @@
             `).join('');
         }
 
-        // --- SAVE LOGIC (Connecting the Ecosystem) ---
+        // --- SAVE LOGIC ---
         window.saveChanges = async () => {
             const status = document.getElementById('edit-status').value;
             const phase = document.getElementById('edit-phase').value;
             const sales = document.getElementById('edit-sales').value;
             const creative = document.getElementById('edit-creative').value;
 
-            // 1. Update Notion via Cloud Run API (Simulated endpoint)
-            // await fetch(`${API_URL}/projects/${selectedProject.id}`, { method: 'PATCH', body: ... });
-
-            // 2. If Assets generated, push to Edit/Design Queues in Firebase
+            // 1. If Assets generated, push to Firebase
             if(generatedAssets.length > 0) {
                 const batch = db.batch();
                 generatedAssets.forEach(a => {
@@ -548,7 +548,7 @@
                 alert(`Success: ${generatedAssets.length} assets pushed to production queues.`);
             }
 
-            // 3. Update Local State (for demo smoothness)
+            // 2. Update Local State
             const idx = projects.findIndex(p => p.id === selectedProject.id);
             if(idx > -1) {
                 projects[idx].status = status;
@@ -561,25 +561,28 @@
             render();
         };
 
-        // --- SEED FUNCTIONALITY (From your text) ---
+        // --- SEED FUNCTIONALITY ---
         window.seedWeeklyData = async () => {
             if(!confirm("⚠️ Use Weekly Meeting Text Data? This will overwrite the current view.")) return;
             
-            // In a real app, this would parse the TSV text you pasted. 
-            // For stability here, we use the pre-parsed JSON array "WEEKLY_DATA" defined above.
-            
-            projects = WEEKLY_DATA.projects.map((p, i) => ({ id: 'seed-'+i, ...p }));
-            notes = WEEKLY_DATA.notes.map(n => ({ createdAt: new Date().toISOString(), ...n }));
-            
-            // Push notes to Firebase so they persist
-            const noteBatch = db.batch();
-            notes.forEach(n => {
-                const ref = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("meeting_notes").doc();
-                noteBatch.set(ref, n);
-            });
-            await noteBatch.commit();
+            try {
+                // Ensure we use the seed data
+                projects = WEEKLY_DATA.projects.map((p, i) => ({ id: 'seed-'+i, ...p }));
+                notes = WEEKLY_DATA.notes.map(n => ({ createdAt: new Date().toISOString(), ...n }));
+                
+                // Write notes to Firebase to persist them
+                const noteBatch = db.batch();
+                notes.forEach(n => {
+                    const ref = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("meeting_notes").doc();
+                    noteBatch.set(ref, n);
+                });
+                await noteBatch.commit();
 
-            render();
+                render();
+            } catch(e) {
+                console.error(e);
+                alert("Failed to seed data. Check console permissions.");
+            }
         };
 
         function formatDate(d) {
@@ -588,8 +591,17 @@
             return isNaN(date) ? d : date.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
         }
 
-        // Init
-        loadData();
+        // --- 3. START HERE (AUTH WRAPPER) ---
+        // Only load data once we are anonymously logged in
+        auth.signInAnonymously()
+            .then(() => {
+                console.log("Logged in anonymously");
+                loadData();
+            })
+            .catch((error) => {
+                console.error("Auth failed", error);
+                alert("Authentication failed. Data will not load.");
+            });
 
     </script>
 </body>
