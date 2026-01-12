@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commercial Hub | DMG Command Centre</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        :root {
+            --hero: #21A0D8;
+            --hero-light: #3BB5E8;
+            --hero-soft: rgba(33, 160, 216, 0.1);
+            --hero-glow: rgba(33, 160, 216, 0.15);
+            --success: #43B049;
+            --success-soft: rgba(67, 176, 73, 0.1);
+            --warning: #F59E0B;
+            --warning-soft: rgba(245, 158, 11, 0.1);
+            --danger: #EF4444;
+            --danger-soft: rgba(239, 68, 68, 0.1);
+            --creative: #E6468B;
+            --creative-soft: rgba(230, 70, 139, 0.1);
+            --production: #43B049;
+            --sales: #F97316;
+            --editorial: #E94B4B;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --ink-muted: #9CA3AF;
+            --border: #EAECEF;
+            --surface: #FFFFFF;
+            --surface-alt: #F9FAFB;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--surface);
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
+        
+        // ═══════════════════════════════════════════════════════════════
+        // CONFIG
+        // ═══════════════════════════════════════════════════════════════
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        const APP_ID = "dmg-command-centre-native";
+        
+        const SALES_STATUSES = [
+            'Not Started', 'Awaiting Brief', 'Brief Received', 'Drafting Response',
+            'Response Sent', 'Awaiting Feedback', 'Won', 'Lost', 'On Hold'
+        ];
+        
+        // ═══════════════════════════════════════════════════════════════
+        // STYLES
+        // ═══════════════════════════════════════════════════════════════
+        const styles = {
+            app: { display: 'flex', flexDirection: 'column', minHeight: '100vh' },
+            header: {
+                padding: '16px 24px', borderBottom: '1px solid var(--border)',
+                display: 'flex', alignItems: 'center', gap: '14px',
+                background: 'var(--surface)', position: 'sticky', top: 0, zIndex: 100
+            },
+            dots: { display: 'grid', gridTemplateColumns: 'repeat(2, 6px)', gap: '3px' },
+            dot: (i, color = 'var(--hero)') => ({
+                width: 6, height: 6, borderRadius: '50%', background: color,
+                animation: `pulse 2.5s ease-in-out ${i * 0.2}s infinite`
+            }),
+            title: { fontSize: 15, fontWeight: 900, flex: 1, textTransform: 'uppercase', letterSpacing: '-0.02em' },
+            badge: (type) => ({
+                fontSize: 9, fontWeight: 700, padding: '5px 10px', borderRadius: 99,
+                textTransform: 'uppercase', letterSpacing: '0.02em',
+                background: type === 'connected' ? 'var(--success-soft)' : type === 'offline' ? 'var(--danger-soft)' : 'var(--surface-alt)',
+                color: type === 'connected' ? 'var(--success)' : type === 'offline' ? 'var(--danger)' : 'var(--ink-sub)'
+            }),
+            btn: (primary) => ({
+                padding: '8px 14px', border: primary ? 'none' : '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 700,
+                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                textTransform: 'uppercase', letterSpacing: '0.02em',
+                background: primary ? 'var(--ink)' : 'var(--surface-alt)',
+                color: primary ? 'white' : 'var(--ink)', transition: 'all 0.2s ease'
+            }),
+            main: { display: 'flex', flex: 1, overflow: 'hidden' },
+            content: { flex: 1, overflowY: 'auto', padding: '20px 24px' },
+            bento: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 },
+            card: (accent) => ({
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)', padding: 16, position: 'relative',
+                display: 'flex', flexDirection: 'column', transition: 'all 0.2s ease',
+                borderTop: `3px solid ${accent || 'transparent'}`
+            }),
+            cardLabel: { fontSize: 9, fontWeight: 700, color: 'var(--ink-sub)', textTransform: 'uppercase', letterSpacing: '0.08em' },
+            cardValue: (color) => ({ fontSize: 36, fontWeight: 900, lineHeight: 1, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em', color }),
+            cardSub: { fontSize: 9, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', marginTop: 4 },
+            cardFooter: { marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--surface-alt)', display: 'flex', justifyContent: 'space-between' },
+            section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginBottom: 16, overflow: 'hidden' },
+            sectionHeader: { padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-alt)' },
+            sectionTitle: { fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', flex: 1 },
+            sectionCount: { fontSize: 9, fontWeight: 700, padding: '4px 10px', borderRadius: 99, background: 'var(--hero-soft)', color: 'var(--hero)' },
+            table: { width: '100%', borderCollapse: 'collapse' },
+            th: { textAlign: 'left', padding: '10px 14px', fontSize: 8, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', background: 'var(--surface)', borderBottom: '1px solid var(--border)' },
+            td: { padding: 14, borderBottom: '1px solid var(--surface-alt)', verticalAlign: 'middle' },
+            row: (selected) => ({ cursor: 'pointer', transition: 'all 0.2s ease', background: selected ? 'var(--hero-soft)' : 'transparent' }),
+            cellTitle: { fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 },
+            cellSub: { fontSize: 10, color: 'var(--ink-sub)' },
+            tag: (type) => {
+                const colors = {
+                    won: { bg: 'var(--success-soft)', color: 'var(--success)' },
+                    progress: { bg: 'var(--hero-soft)', color: 'var(--hero)' },
+                    waiting: { bg: 'var(--danger-soft)', color: 'var(--danger)' },
+                    brief: { bg: 'var(--warning-soft)', color: 'var(--warning)' },
+                    response: { bg: 'var(--creative-soft)', color: 'var(--creative)' },
+                    default: { bg: 'var(--surface-alt)', color: 'var(--ink-muted)' }
+                };
+                const c = colors[type] || colors.default;
+                return { display: 'inline-flex', padding: '4px 8px', borderRadius: 4, fontSize: 7, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', background: c.bg, color: c.color };
+            },
+            sidebar: { width: 380, borderLeft: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column', animation: 'slideIn 0.3s ease' },
+            panelHeader: { padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 10 },
+            panelTitle: { fontSize: 13, fontWeight: 800, flex: 1, textTransform: 'uppercase', letterSpacing: '-0.01em' },
+            panelClose: { width: 28, height: 28, border: 'none', background: 'var(--surface-alt)', borderRadius: 6, cursor: 'pointer', fontSize: 14 },
+            panelBody: { flex: 1, overflowY: 'auto', padding: '16px 20px' },
+            panelSection: { marginBottom: 20 },
+            panelSectionTitle: { fontSize: 9, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 },
+            panelFooter: { padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--surface)' },
+            notesSection: { background: 'var(--hero-soft)', border: '1px solid var(--hero)', borderRadius: 'var(--radius-sm)', padding: 14, marginTop: 16 },
+            textarea: { width: '100%', minHeight: 80, padding: 10, border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, fontFamily: 'inherit', resize: 'vertical' },
+            select: { width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, fontWeight: 500, fontFamily: 'inherit', background: 'var(--surface)', marginBottom: 10 },
+            saveBtn: (disabled) => ({ width: '100%', padding: 12, background: disabled ? 'var(--border)' : 'var(--ink)', color: disabled ? 'var(--ink-muted)' : 'white', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', cursor: disabled ? 'not-allowed' : 'pointer' }),
+            delCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 14, marginBottom: 10 },
+            delTitle: { fontSize: 12, fontWeight: 700, flex: 1 },
+            delLink: { color: 'var(--hero)', fontSize: 9, fontWeight: 700, textDecoration: 'none', textTransform: 'uppercase' },
+            delRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid var(--surface-alt)' },
+            delRowLabel: { fontSize: 9, color: 'var(--ink-muted)', textTransform: 'uppercase', fontWeight: 600 },
+            delRowValue: { fontSize: 10, color: 'var(--ink)', fontWeight: 600 },
+            personChip: { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px 3px 3px', background: 'var(--surface-alt)', borderRadius: 99, fontSize: 9, fontWeight: 600, margin: 2, position: 'relative' },
+            personAvatar: (role) => ({ width: 18, height: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontWeight: 800, color: 'white', background: role === 'creative' ? 'var(--creative)' : role === 'production' ? 'var(--production)' : 'var(--sales)' }),
+            tooltip: { position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', background: 'var(--ink)', color: 'white', padding: '6px 10px', borderRadius: 6, fontSize: 9, fontWeight: 600, whiteSpace: 'nowrap', zIndex: 50 },
+            progressWrap: { display: 'flex', alignItems: 'center', gap: 8 },
+            progressBar: { height: 6, background: 'var(--surface-alt)', borderRadius: 3, overflow: 'hidden', width: 60 },
+            progressFill: (pct, color) => ({ height: '100%', borderRadius: 3, width: `${pct}%`, background: color, transition: 'width 0.5s ease' }),
+            progressText: { fontSize: 10, fontWeight: 800, color: 'var(--ink-sub)', fontVariantNumeric: 'tabular-nums' },
+            activityItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--surface-alt)', borderRadius: 'var(--radius-sm)', marginBottom: 8 },
+            activityBar: (color) => ({ width: 3, height: 28, borderRadius: 2, flexShrink: 0, background: color }),
+            activityTitle: { fontSize: 10, fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+            activityMeta: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 },
+            activityClient: { fontSize: 9, fontWeight: 600, color: 'var(--ink-muted)', textTransform: 'uppercase' },
+            activityTime: { fontSize: 9, fontWeight: 600, color: 'var(--ink-muted)', fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' },
+            modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, animation: 'fadeIn 0.2s ease' },
+            modal: { background: 'var(--surface)', borderRadius: 'var(--radius)', width: '100%', maxWidth: 480, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', animation: 'modalIn 0.3s ease' },
+            modalHeader: { padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 },
+            modalTitle: { fontSize: 14, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.01em', flex: 1 },
+            modalBody: { padding: 24 },
+            modalFooter: { padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 10 },
+            formGroup: { marginBottom: 16 },
+            formLabel: { display: 'block', fontSize: 10, fontWeight: 700, color: 'var(--ink-sub)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 },
+            formInput: { width: '100%', padding: '11px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' },
+            formRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
+            loading: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 12, color: 'var(--ink-muted)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' },
+            spinner: { width: 18, height: 18, border: '2px solid var(--border)', borderTopColor: 'var(--hero)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
+            empty: { padding: 30, textAlign: 'center', color: 'var(--ink-muted)', fontSize: 11, fontStyle: 'italic' }
+        };
+        
+        // ═══════════════════════════════════════════════════════════════
+        // HELPERS
+        // ═══════════════════════════════════════════════════════════════
+        const getWeekString = () => {
+            const now = new Date();
+            const monday = new Date(now);
+            monday.setDate(now.getDate() - now.getDay() + 1);
+            return 'w/c ' + monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        };
+        
+        const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+        
+        const getTagType = (status) => {
+            if (!status) return 'default';
+            const s = status.toLowerCase();
+            if (s.includes('live') || s.includes('won') || s.includes('approved') || s.includes('shoot')) return 'won';
+            if (s.includes('edit') || s.includes('review') || s.includes('progress') || s.includes('draft')) return 'progress';
+            if (s.includes('wait') || s.includes('hold') || s.includes('block') || s.includes('await')) return 'waiting';
+            if (s.includes('brief') || s.includes('lead') || s.includes('not started')) return 'brief';
+            if (s.includes('response') || s.includes('sent')) return 'response';
+            if (s.includes('lost')) return 'waiting';
+            return 'default';
+        };
+        
+        const getProgressColor = (pct) => pct >= 80 ? 'var(--success)' : pct >= 40 ? 'var(--hero)' : pct > 0 ? 'var(--warning)' : 'var(--border)';
+        
+        const calculateProgress = (dels) => {
+            if (!dels?.length) return 0;
+            const done = dels.filter(d => ['live', 'approved', 'complete'].includes((d.status || '').toLowerCase())).length;
+            return Math.round((done / dels.length) * 100);
+        };
+        
+        const timeAgo = (ts) => {
+            if (!ts) return 'Active';
+            const secs = Math.floor((new Date() - new Date(ts)) / 1000);
+            if (secs < 60) return 'Just now';
+            if (secs < 3600) return Math.floor(secs / 60) + 'm ago';
+            if (secs < 86400) return Math.floor(secs / 3600) + 'h ago';
+            return Math.floor(secs / 86400) + 'd ago';
+        };
+        
+        const formatCurrency = (val) => {
+            if (val >= 1000000) return '£' + (val / 1000000).toFixed(1) + 'M';
+            if (val >= 1000) return '£' + Math.round(val / 1000) + 'K';
+            return '£' + Math.round(val || 0);
+        };
+        
+        // ═══════════════════════════════════════════════════════════════
+        // COMPONENTS
+        // ═══════════════════════════════════════════════════════════════
+        const Dots = ({ color = 'var(--hero)' }) => (
+            <div style={styles.dots}>
+                {[0,1,2,3].map(i => <span key={i} style={styles.dot(i, color)} />)}
+            </div>
+        );
+        
+        const Tag = ({ status }) => <span style={styles.tag(getTagType(status))}>{status || 'TBC'}</span>;
+        
+        const PersonChip = ({ name, role }) => {
+            const [hover, setHover] = useState(false);
+            if (!name) return null;
+            return (
+                <span style={styles.personChip} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+                    <span style={styles.personAvatar(role)}>{getInitials(name)}</span>
+                    {hover && <span style={styles.tooltip}>{name}</span>}
+                </span>
+            );
+        };
+        
+        const Progress = ({ pct }) => (
+            <div style={styles.progressWrap}>
+                <div style={styles.progressBar}>
+                    <div style={styles.progressFill(pct, getProgressColor(pct))} />
+                </div>
+                <span style={styles.progressText}>{pct}%</span>
+            </div>
+        );
+        
+        // ═══════════════════════════════════════════════════════════════
+        // MAIN APP
+        // ═══════════════════════════════════════════════════════════════
+        const CommercialHub = () => {
+            const [projects, setProjects] = useState([]);
+            const [deliverables, setDeliverables] = useState([]);
+            const [annotations, setAnnotations] = useState({});
+            const [selectedId, setSelectedId] = useState(null);
+            const [currentNote, setCurrentNote] = useState({ status: '', notes: '' });
+            const [hasChanges, setHasChanges] = useState(false);
+            const [isLoading, setIsLoading] = useState(true);
+            const [apiConnected, setApiConnected] = useState(false);
+            const [showModal, setShowModal] = useState(false);
+            const [saving, setSaving] = useState(false);
+            
+            // Firebase refs
+            const [db, setDb] = useState(null);
+            
+            // Init Firebase
+            useEffect(() => {
+                const initFirebase = async () => {
+                    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
+                    const { getFirestore } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                    const { getAuth, signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+                    
+                    const app = initializeApp(FIREBASE_CONFIG);
+                    const firestore = getFirestore(app);
+                    const auth = getAuth(app);
+                    await signInAnonymously(auth);
+                    setDb(firestore);
+                };
+                initFirebase();
+            }, []);
+            
+            // Load data
+            const loadData = useCallback(async () => {
+                try {
+                    const [pRes, dRes] = await Promise.all([
+                        fetch(API_URL + '/projects'),
+                        fetch(API_URL + '/deliverables')
+                    ]);
+                    const pData = await pRes.json();
+                    const dData = await dRes.json();
+                    
+                    if (pData.success) {
+                        setProjects(pData.projects || []);
+                        setApiConnected(true);
+                    }
+                    if (dData.success) {
+                        setDeliverables(dData.deliverables || []);
+                    }
+                    
+                    // Load annotations from Firebase
+                    if (db) {
+                        const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                        const snap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "commercial_annotations"));
+                        const annots = {};
+                        snap.forEach(d => { annots[d.id] = d.data(); });
+                        setAnnotations(annots);
+                    }
+                    
+                    setIsLoading(false);
+                } catch (e) {
+                    console.error(e);
+                    setApiConnected(false);
+                    setIsLoading(false);
+                }
+            }, [db]);
+            
+            useEffect(() => {
+                if (db) loadData();
+            }, [db, loadData]);
+            
+            // Auto-refresh
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    if (!hasChanges && !showModal && db) loadData();
+                }, 60000);
+                return () => clearInterval(interval);
+            }, [hasChanges, showModal, db, loadData]);
+            
+            // Categorise projects
+            const { production, pipeline, stats } = useMemo(() => {
+                const prod = [], pipe = [];
+                projects.forEach(p => {
+                    const stage = (p.dealStage || '').toLowerCase();
+                    const status = (p.projectStatus || '').toLowerCase();
+                    const dels = deliverables.filter(d => d.campaignId === p.id);
+                    const progress = calculateProgress(dels);
+                    const annot = annotations[p.id] || {};
+                    const enriched = { ...p, _dels: dels, _progress: progress, _annot: annot };
+                    
+                    if (stage.includes('won') || stage.includes('live') || stage.includes('production') ||
+                        status.includes('in progress') || status.includes('filming') || status.includes('edit')) {
+                        prod.push(enriched);
+                    } else if (!stage.includes('lost')) {
+                        pipe.push(enriched);
+                    }
+                });
+                return {
+                    production: prod,
+                    pipeline: pipe,
+                    stats: {
+                        live: prod.length,
+                        pipeline: pipe.length,
+                        pipelineValue: pipe.reduce((s, p) => s + (p.dealValue || 0), 0),
+                        deliverables: deliverables.length
+                    }
+                };
+            }, [projects, deliverables, annotations]);
+            
+            // Selected project
+            const selected = useMemo(() => {
+                if (!selectedId) return null;
+                return [...production, ...pipeline].find(p => p.id === selectedId);
+            }, [selectedId, production, pipeline]);
+            
+            // Activity
+            const activity = useMemo(() => {
+                return projects
+                    .filter(p => p.lastEdited || p.lastEditedTime)
+                    .sort((a, b) => new Date(b.lastEdited || b.lastEditedTime || 0) - new Date(a.lastEdited || a.lastEditedTime || 0))
+                    .slice(0, 5);
+            }, [projects]);
+            
+            // Select project
+            const selectProject = (id) => {
+                setSelectedId(id);
+                const annot = annotations[id] || {};
+                setCurrentNote({ status: annot.status || '', notes: annot.notes || '' });
+                setHasChanges(false);
+            };
+            
+            // Close panel
+            const closePanel = () => {
+                setSelectedId(null);
+                setCurrentNote({ status: '', notes: '' });
+                setHasChanges(false);
+            };
+            
+            // Save annotation to Firebase
+            const saveAnnotation = async () => {
+                if (!selected || !db) return;
+                setSaving(true);
+                try {
+                    const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                    await setDoc(doc(db, "artifacts", APP_ID, "public", "data", "commercial_annotations", selected.id), {
+                        ...currentNote,
+                        projectTitle: selected.title,
+                        client: selected.client,
+                        updatedAt: serverTimestamp()
+                    });
+                    setAnnotations(prev => ({ ...prev, [selected.id]: currentNote }));
+                    setHasChanges(false);
+                } catch (e) {
+                    console.error(e);
+                    alert('Error saving');
+                }
+                setSaving(false);
+            };
+            
+            // Submit new project
+            const submitProject = async (e) => {
+                e.preventDefault();
+                const form = e.target;
+                const data = {
+                    client: form.client.value,
+                    title: form.title.value,
+                    dealStage: form.stage.value,
+                    dealValue: form.value.value ? parseFloat(form.value.value) : null,
+                    dueDate: form.date.value || null,
+                    notes: form.notes.value || ''
+                };
+                
+                try {
+                    const res = await fetch(API_URL + '/projects', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        setShowModal(false);
+                        loadData();
+                    } else {
+                        alert('Error creating project');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Error creating project');
+                }
+            };
+            
+            // ═══════════════════════════════════════════════════════════════
+            // RENDER
+            // ═══════════════════════════════════════════════════════════════
+            if (isLoading) {
+                return (
+                    <div style={styles.loading}>
+                        <div style={styles.spinner} />
+                        Syncing Data...
+                    </div>
+                );
+            }
+            
+            const renderLeads = (p) => {
+                const leads = [];
+                if (p.productionLead?.length) p.productionLead.forEach(l => leads.push(<PersonChip key={l} name={l} role="production" />));
+                if (p.creativeLead?.length) p.creativeLead.forEach(l => leads.push(<PersonChip key={l} name={l} role="creative" />));
+                return leads.length ? leads : <span style={styles.cellSub}>Unassigned</span>;
+            };
+            
+            const renderTable = (items, type) => {
+                if (!items.length) return <div style={styles.empty}>No {type === 'production' ? 'live campaigns' : 'briefs in pipeline'}</div>;
+                
+                return (
+                    <table style={styles.table}>
+                        <thead>
+                            <tr>
+                                <th style={styles.th}>Client / Project</th>
+                                <th style={styles.th}>{type === 'production' ? 'Phase' : 'Stage'}</th>
+                                <th style={styles.th}>Leads</th>
+                                {type === 'pipeline' && <th style={styles.th}>Sales Status</th>}
+                                <th style={styles.th}>Progress</th>
+                                <th style={styles.th}>Assets</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.map(p => (
+                                <tr key={p.id} style={styles.row(selectedId === p.id)} onClick={() => selectProject(p.id)}>
+                                    <td style={styles.td}>
+                                        <div style={styles.cellTitle}>{p.client || 'TBC'}</div>
+                                        <div style={styles.cellSub}>{p.title || ''}</div>
+                                    </td>
+                                    <td style={styles.td}>
+                                        <Tag status={type === 'production' ? (p.projectStatus || p.dealStage) : p.dealStage} />
+                                    </td>
+                                    <td style={styles.td}>{renderLeads(p)}</td>
+                                    {type === 'pipeline' && (
+                                        <td style={styles.td}>
+                                            {p._annot?.status ? <Tag status={p._annot.status} /> : <span style={styles.cellSub}>–</span>}
+                                        </td>
+                                    )}
+                                    <td style={styles.td}><Progress pct={p._progress} /></td>
+                                    <td style={styles.td}>
+                                        <span style={{ fontSize: 11, color: 'var(--ink-sub)', fontWeight: 600 }}>{p._dels.length}</span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                );
+            };
+            
+            return (
+                <div style={styles.app}>
+                    {/* Header */}
+                    <div style={styles.header}>
+                        <Dots />
+                        <h1 style={styles.title}>Commercial Hub</h1>
+                        <span style={styles.badge('week')}>{getWeekString()}</span>
+                        <span style={styles.badge(apiConnected ? 'connected' : 'offline')}>
+                            {apiConnected ? '● Connected' : '● Offline'}
+                        </span>
+                        <button style={styles.btn(false)} onClick={loadData}>↻ Refresh</button>
+                        <button style={styles.btn(true)} onClick={() => setShowModal(true)}>+ Add Project</button>
+                    </div>
+                    
+                    {/* Main */}
+                    <div style={styles.main}>
+                        <div style={styles.content}>
+                            {/* Bento Stats */}
+                            <div style={styles.bento}>
+                                <div style={styles.card('var(--hero)')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                        <Dots />
+                                        <span style={styles.cardLabel}>Live Campaigns</span>
+                                    </div>
+                                    <div style={styles.cardValue('var(--hero)')}>{String(stats.live).padStart(2, '0')}</div>
+                                    <div style={styles.cardSub}>In Production</div>
+                                    <div style={styles.cardFooter}>
+                                        <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase' }}>Total Assets</span>
+                                        <span style={{ fontSize: 10, fontWeight: 800 }}>{stats.deliverables}</span>
+                                    </div>
+                                </div>
+                                
+                                <div style={styles.card('var(--success)')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                        <Dots color="var(--success)" />
+                                        <span style={styles.cardLabel}>Pipeline</span>
+                                    </div>
+                                    <div style={styles.cardValue('var(--success)')}>{String(stats.pipeline).padStart(2, '0')}</div>
+                                    <div style={styles.cardSub}>Active Briefs</div>
+                                    <div style={styles.cardFooter}>
+                                        <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase' }}>Pipeline Value</span>
+                                        <span style={{ fontSize: 10, fontWeight: 800 }}>{formatCurrency(stats.pipelineValue)}</span>
+                                    </div>
+                                </div>
+                                
+                                <div style={{ ...styles.card('var(--ink)'), gridColumn: 'span 2', gridRow: 'span 2' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                        <Dots color="var(--ink)" />
+                                        <span style={styles.cardLabel}>Recent Activity</span>
+                                        <span style={{ marginLeft: 'auto', fontSize: 8, fontWeight: 700, color: 'var(--ink-muted)', textTransform: 'uppercase' }}>Auto-updating</span>
+                                    </div>
+                                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                                        {activity.length === 0 ? (
+                                            <div style={{ fontSize: 10, color: 'var(--ink-muted)', fontStyle: 'italic' }}>No recent activity</div>
+                                        ) : (
+                                            activity.map(a => {
+                                                const teamColor = a.primaryTeam === 'Creative' ? 'var(--creative)' : a.primaryTeam === 'Production' ? 'var(--production)' : 'var(--hero)';
+                                                return (
+                                                    <div key={a.id} style={styles.activityItem}>
+                                                        <div style={styles.activityBar(teamColor)} />
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={styles.activityTitle}>{a.title || 'Untitled'}</div>
+                                                            <div style={styles.activityMeta}>
+                                                                <span style={styles.activityClient}>{a.client || 'Internal'}</span>
+                                                                <Tag status={a.projectStatus || a.status || 'Active'} />
+                                                            </div>
+                                                        </div>
+                                                        <span style={styles.activityTime}>{timeAgo(a.lastEdited || a.lastEditedTime)}</span>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Production */}
+                            <div style={styles.section}>
+                                <div style={styles.sectionHeader}>
+                                    <span style={{ fontSize: 14 }}>📹</span>
+                                    <span style={styles.sectionTitle}>Production / Live Campaigns</span>
+                                    <span style={styles.sectionCount}>{stats.live}</span>
+                                </div>
+                                {renderTable(production, 'production')}
+                            </div>
+                            
+                            {/* Pipeline */}
+                            <div style={styles.section}>
+                                <div style={styles.sectionHeader}>
+                                    <span style={{ fontSize: 14 }}>📋</span>
+                                    <span style={styles.sectionTitle}>Inbound Briefs / Pipeline</span>
+                                    <span style={styles.sectionCount}>{stats.pipeline}</span>
+                                </div>
+                                {renderTable(pipeline, 'pipeline')}
+                            </div>
+                        </div>
+                        
+                        {/* Detail Panel */}
+                        {selected && (
+                            <div style={styles.sidebar}>
+                                <div style={styles.panelHeader}>
+                                    <Dots />
+                                    <span style={styles.panelTitle}>{selected.client || selected.title}</span>
+                                    <button style={styles.panelClose} onClick={closePanel}>✕</button>
+                                </div>
+                                <div style={styles.panelBody}>
+                                    <div style={styles.panelSection}>
+                                        <div style={styles.panelSectionTitle}>Project Details (from Notion)</div>
+                                        <div style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                                            <Tag status={selected.dealStage || selected.projectStatus} />
+                                            <span style={{ fontSize: 10, color: 'var(--ink-muted)', fontWeight: 600 }}>{selected._dels.length} deliverables</span>
+                                        </div>
+                                        <div style={{ marginBottom: 12 }}>
+                                            <div style={{ ...styles.delRowLabel, marginBottom: 6 }}>Progress</div>
+                                            <Progress pct={selected._progress} />
+                                        </div>
+                                        {selected.url && (
+                                            <a href={selected.url} target="_blank" rel="noreferrer" style={{ ...styles.delLink, display: 'inline-flex', marginBottom: 8 }}>
+                                                Open in Notion ↗
+                                            </a>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Sales Notes (Firebase) */}
+                                    <div style={styles.notesSection}>
+                                        <div style={{ ...styles.panelSectionTitle, color: 'var(--hero)', marginBottom: 8 }}>Sales Tracking (your notes)</div>
+                                        <select 
+                                            style={styles.select} 
+                                            value={currentNote.status}
+                                            onChange={(e) => { setCurrentNote(n => ({ ...n, status: e.target.value })); setHasChanges(true); }}
+                                        >
+                                            <option value="">Select status...</option>
+                                            {SALES_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                        <textarea 
+                                            style={styles.textarea}
+                                            placeholder="Add notes, follow-ups, key contacts..."
+                                            value={currentNote.notes}
+                                            onChange={(e) => { setCurrentNote(n => ({ ...n, notes: e.target.value })); setHasChanges(true); }}
+                                        />
+                                    </div>
+                                    
+                                    {/* Deliverables (Read-only) */}
+                                    <div style={{ ...styles.panelSection, marginTop: 20 }}>
+                                        <div style={styles.panelSectionTitle}>Deliverables ({selected._dels.length})</div>
+                                        {selected._dels.length === 0 ? (
+                                            <div style={styles.empty}>No deliverables linked in Notion</div>
+                                        ) : (
+                                            selected._dels.map(d => (
+                                                <div key={d.id} style={styles.delCard}>
+                                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+                                                        <span style={styles.delTitle}>{d.title || 'Untitled'}</span>
+                                                        {d.url && <a href={d.url} target="_blank" rel="noreferrer" style={styles.delLink}>View ↗</a>}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                                                        <Tag status={d.status} />
+                                                        {d.format && <span style={styles.tag('default')}>{d.format}</span>}
+                                                    </div>
+                                                    <div style={styles.delRow}>
+                                                        <span style={styles.delRowLabel}>Desk State</span>
+                                                        <span style={styles.delRowValue}>{d.deskState || 'TBC'}</span>
+                                                    </div>
+                                                    {d.assignedEditor && (
+                                                        <div style={styles.delRow}>
+                                                            <span style={styles.delRowLabel}>Editor</span>
+                                                            <span style={styles.delRowValue}>{d.assignedEditor}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                                <div style={styles.panelFooter}>
+                                    <button 
+                                        style={styles.saveBtn(!hasChanges || saving)}
+                                        onClick={saveAnnotation}
+                                        disabled={!hasChanges || saving}
+                                    >
+                                        {saving ? 'Saving...' : hasChanges ? 'Save Notes' : 'No Changes'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Add Modal */}
+                    {showModal && (
+                        <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
+                            <div style={styles.modal} onClick={e => e.stopPropagation()}>
+                                <div style={styles.modalHeader}>
+                                    <Dots />
+                                    <span style={styles.modalTitle}>Add New Project</span>
+                                    <button style={styles.panelClose} onClick={() => setShowModal(false)}>✕</button>
+                                </div>
+                                <form onSubmit={submitProject}>
+                                    <div style={styles.modalBody}>
+                                        <div style={styles.formGroup}>
+                                            <label style={styles.formLabel}>Client <span style={{ color: 'var(--danger)' }}>*</span></label>
+                                            <input name="client" style={styles.formInput} placeholder="Client name" required />
+                                        </div>
+                                        <div style={styles.formGroup}>
+                                            <label style={styles.formLabel}>Project Title <span style={{ color: 'var(--danger)' }}>*</span></label>
+                                            <input name="title" style={styles.formInput} placeholder="Brief title or campaign name" required />
+                                        </div>
+                                        <div style={styles.formRow}>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.formLabel}>Deal Stage</label>
+                                                <select name="stage" style={styles.formInput}>
+                                                    <option value="Lead">Lead</option>
+                                                    <option value="Brief Received" selected>Brief Received</option>
+                                                    <option value="Response Sent">Response Sent</option>
+                                                    <option value="Negotiation">Negotiation</option>
+                                                    <option value="Won">Won</option>
+                                                </select>
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.formLabel}>Deal Value (£)</label>
+                                                <input name="value" type="number" style={styles.formInput} placeholder="50000" />
+                                            </div>
+                                        </div>
+                                        <div style={styles.formGroup}>
+                                            <label style={styles.formLabel}>Deadline</label>
+                                            <input name="date" type="date" style={styles.formInput} />
+                                        </div>
+                                        <div style={styles.formGroup}>
+                                            <label style={styles.formLabel}>Notes</label>
+                                            <textarea name="notes" style={{ ...styles.formInput, minHeight: 70, resize: 'vertical' }} placeholder="Brief overview, key contacts..." />
+                                        </div>
+                                    </div>
+                                    <div style={styles.modalFooter}>
+                                        <button type="button" style={styles.btn(false)} onClick={() => setShowModal(false)}>Cancel</button>
+                                        <button type="submit" style={styles.btn(true)}>Create Project</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        
+        ReactDOM.createRoot(document.getElementById('root')).render(<CommercialHub />);
+    </script>
+</body>
+</html>
