@@ -3,293 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Slick Notion Clock</title>
+    <title>Slick Notion Clock | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        /* * Core Layout & Aesthetics 
-         */
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #ffffff; /* Pure white background */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-            font-family: sans-serif;
-        }
+        body { margin: 0; padding: 0; background-color: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Inter', sans-serif; }
+        .clock-container { position: relative; width: 90vmin; height: 90vmin; max-width: 500px; max-height: 500px; }
+        svg { width: 100%; height: 100%; overflow: visible; }
+        .hand { stroke-linecap: round; transform-origin: 50% 50%; }
+        .hand-smooth { transition: none; }
+        .hand-hour, .hand-minute { stroke: #38bdf8; stroke-width: 6; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.15)); }
+        .hand-second { stroke: #00e1ff; stroke-width: 2; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15)); }
+        .center-pin { fill: #ffffff; stroke: #38bdf8; stroke-width: 3; }
+        .tick { stroke: #000000; stroke-width: 2; stroke-linecap: round; }
+        .tick-major { stroke: #000000; stroke-width: 3; }
 
-        /* Container ensures the clock stays square and responsive */
-        .clock-container {
-            position: relative;
-            width: 90vmin;
-            height: 90vmin;
-            max-width: 500px;
-            max-height: 500px;
+        /* AI Assistant Styling */
+        #ai-trigger {
+            position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px;
+            background: #21A0D8; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; cursor: pointer; z-index: 10000;
+            box-shadow: 0 10px 25px rgba(33, 160, 216, 0.4);
+            transition: transform 0.2s ease;
         }
-
-        /* SVG styling */
-        svg {
-            width: 100%;
-            height: 100%;
-            overflow: visible; /* Allows shadows to spill out if added */
+        #ai-trigger:hover { transform: scale(1.1); }
+        #ai-sidebar {
+            position: fixed; top: 0; right: 0; bottom: 0; width: 380px; 
+            background: white; border-left: 1px solid #EAECEF; z-index: 10001;
+            transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; flex-direction: column;
+            box-shadow: -20px 0 60px rgba(0,0,0,0.1);
         }
-
-        /* * Hand Styling
-         */
-        .hand {
-            stroke-linecap: round;
-            transform-origin: 50% 50%;
-            transition: transform 0.05s cubic-bezier(0.4, 2.08, 0.55, 0.44); /* Subtle bounce for tick, but we use linear for sweep usually */
-        }
-
-        .hand-smooth {
-            transition: none; /* Smooth sweep for second hand */
-        }
-
-        /* Light Blue Color Palette */
-        .hand-hour, .hand-minute {
-            stroke: #38bdf8; /* Sky Blue */
-            stroke-width: 6;
-            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.15)); /* Subtle shadow for white bg */
-        }
-
-        .hand-second {
-            stroke: #00e1ff; /* Brighter Cyan/Blue for seconds */
-            stroke-width: 2;
-            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
-        }
-
-        /* Center Pin */
-        .center-pin {
-            fill: #ffffff;
-            stroke: #38bdf8;
-            stroke-width: 3;
-        }
-
-        /* Tick Markers (Subtle background details) */
-        .tick {
-            stroke: #000000; /* Black ticks */
-            stroke-width: 2;
-            stroke-linecap: round;
-        }
-        
-        .tick-major {
-            stroke: #000000; /* Black major ticks */
-            stroke-width: 3;
-        }
-
+        #ai-sidebar.open { transform: translateX(0); }
+        .ai-dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 3px; }
+        .ai-dot-grid span { width: 5px; height: 5px; background: white; border-radius: 50%; }
     </style>
 </head>
 <body>
-
     <div class="clock-container">
         <svg viewBox="0 0 200 200">
-            <!-- Clock Face Definitions -->
-            <defs>
-                <!-- Filter for a subtle glow (slick effect) -->
-                <filter id="glow">
-                    <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-                    <feMerge>
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                </filter>
-            </defs>
-
-            <!-- Ticks Group (Generated via JS for precision, but hardcoded here for reliability/simplicity) -->
-            <g id="ticks">
-                <!-- Generated by JS below to keep HTML clean -->
-            </g>
-
-            <!-- Hands -->
-            <!-- Hour Hand -->
+            <g id="ticks"></g>
             <line id="hour-hand" class="hand hand-hour" x1="100" y1="100" x2="100" y2="55" />
-            
-            <!-- Minute Hand -->
             <line id="minute-hand" class="hand hand-minute" x1="100" y1="100" x2="100" y2="30" />
-            
-            <!-- Second Hand -->
             <line id="second-hand" class="hand hand-second hand-smooth" x1="100" y1="110" x2="100" y2="25" />
-
-            <!-- Center Pin -->
             <circle class="center-pin" cx="100" cy="100" r="4" />
         </svg>
     </div>
 
+    <div id="dmg-ai-root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <script>
-        /**
-         * Clock Logic
-         */
         const hourHand = document.getElementById('hour-hand');
         const minuteHand = document.getElementById('minute-hand');
         const secondHand = document.getElementById('second-hand');
         const ticksGroup = document.getElementById('ticks');
-
-        // 1. Generate Ticks
         function generateTicks() {
-            const radius = 90; // Distance from center
-            const center = 100;
-            
+            const radius = 90; const center = 100;
             for (let i = 0; i < 60; i++) {
-                const angle = (i * 6) * (Math.PI / 180); // 6 degrees per tick
+                const angle = (i * 6) * (Math.PI / 180);
                 const isMajor = i % 5 === 0;
-                
-                // Length of tick
                 const length = isMajor ? 10 : 5;
                 const innerRadius = radius - length;
-
                 const x1 = center + radius * Math.sin(angle);
                 const y1 = center - radius * Math.cos(angle);
                 const x2 = center + innerRadius * Math.sin(angle);
                 const y2 = center - innerRadius * Math.cos(angle);
-
                 const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                line.setAttribute("x1", x1);
-                line.setAttribute("y1", y1);
-                line.setAttribute("x2", x2);
-                line.setAttribute("y2", y2);
+                line.setAttribute("x1", x1); line.setAttribute("y1", y1); line.setAttribute("x2", x2); line.setAttribute("y2", y2);
                 line.setAttribute("class", isMajor ? "tick tick-major" : "tick");
-                
                 ticksGroup.appendChild(line);
             }
         }
-
-        // 2. Update Time
         function updateClock() {
             const now = new Date();
-            
-            // Get current times
-            const seconds = now.getSeconds();
-            const minutes = now.getMinutes();
-            const hours = now.getHours();
-            const milliseconds = now.getMilliseconds();
-
-            // Calculate degrees
-            // Seconds: Smooth sweep using milliseconds
-            const secondsDegrees = ((seconds / 60) * 360) + ((milliseconds / 1000) * 6);
-            
-            // Minutes: Moves slightly with seconds
-            const minutesDegrees = ((minutes / 60) * 360) + ((seconds / 60) * 6);
-            
-            // Hours: Moves slightly with minutes
-            const hoursDegrees = ((hours % 12) / 12 * 360) + ((minutes / 60) * 30);
-
-            // Apply rotations
-            // We use JS template strings to set the rotate transform around center (100, 100)
-            secondHand.style.transform = `rotate(${secondsDegrees}deg)`;
-            minuteHand.style.transform = `rotate(${minutesDegrees}deg)`;
-            hourHand.style.transform = `rotate(${hoursDegrees}deg)`;
-
-            // Loop
+            const ms = now.getMilliseconds();
+            const s = now.getSeconds();
+            const m = now.getMinutes();
+            const h = now.getHours();
+            secondHand.style.transform = `rotate(${((s / 60) * 360) + ((ms / 1000) * 6)}deg)`;
+            minuteHand.style.transform = `rotate(${((m / 60) * 360) + ((s / 60) * 6)}deg)`;
+            hourHand.style.transform = `rotate(${((h % 12) / 12 * 360) + ((m / 60) * 30)}deg)`;
             requestAnimationFrame(updateClock);
         }
+        generateTicks(); requestAnimationFrame(updateClock);
+    </script>
 
-        // Initialize
-        generateTicks();
-        requestAnimationFrame(updateClock);
+    <script type="text/babel">
+        const Assistant = () => {
+            const [open, setOpen] = React.useState(false);
+            const [chat, setChat] = React.useState([{ role: 'ai', text: "DMG Assistant online. How can I help with New Media production?" }]);
+            
+            const askAI = async (val) => {
+                setChat(prev => [...prev, { role: 'user', text: val }]);
+                try {
+                    const res = await fetch('https://createnotionproject-223535956454.us-central1.run.app/api/v1/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ prompt: val, context: { page: "Notion Clock", url: window.location.href } })
+                    });
+                    const data = await res.json();
+                    setChat(prev => [...prev, { role: 'ai', text: data.response }]);
+                } catch (e) {
+                    setChat(prev => [...prev, { role: 'ai', text: "Connection error. Make sure Cloud Run is updated." }]);
+                }
+            };
 
+            return (
+                <React.Fragment>
+                    <div id="ai-trigger" onClick={() => setOpen(true)}>
+                        <div className="ai-dot-grid"><span></span><span></span><span></span><span></span></div>
+                    </div>
+                    <div id="ai-sidebar" className={open ? 'open' : ''}>
+                        <div style={{padding:'24px', borderBottom:'1px solid #EEE', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                            <span style={{fontSize:'10px', fontWeight:900, color:'#21A0D8', letterSpacing:'0.1em'}}>DMG NEW MEDIA ASSISTANT</span>
+                            <button onClick={() => setOpen(false)} style={{border:'none', background:'none', cursor:'pointer', fontSize:'18px'}}>✕</button>
+                        </div>
+                        <div style={{flex:1, padding:'24px', overflowY:'auto', background:'#F9FAFB'}}>
+                            {chat.map((m,i) => <div key={i} style={{marginBottom:'12px', padding:'14px', borderRadius:'14px', background: m.role==='ai'?'white':'#21A0D8', color:m.role==='ai'?'#1C1C1C':'#FFF', fontSize:'13px', border: m.role==='ai'?'1px solid #EEE':'none', boxShadow:'0 2px 5px rgba(0,0,0,0.02)'}} dangerouslySetInnerHTML={{__html: m.text}}></div>)}
+                        </div>
+                        <div style={{padding:'20px', borderTop:'1px solid #EEE'}}>
+                            <input type="text" placeholder="Check status, nudge leads..." style={{width:'100%', padding:'12px', borderRadius:'8px', border:'2px solid #EEE', outline:'none'}} onKeyDown={e => { if(e.key==='Enter'){ askAI(e.target.value); e.target.value=''; }}} />
+                        </div>
+                    </div>
+                </React.Fragment>
+            );
+        };
+        ReactDOM.createRoot(document.getElementById('dmg-ai-root')).render(<Assistant />);
     </script>
 </body>
 </html>
-<div id="dmg-ai-root"></div>
-
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<style>
-    #ai-trigger {
-        position: fixed; bottom: 20px; right: 20px; width: 60px; height: 60px;
-        background: #21A0D8; border-radius: 50%; display: flex; align-items: center; 
-        justify-content: center; cursor: pointer; z-index: 10000;
-        box-shadow: 0 10px 25px rgba(33, 160, 216, 0.4);
-        transition: transform 0.2s ease;
-    }
-    #ai-trigger:hover { transform: scale(1.1); }
-
-    #ai-sidebar {
-        position: fixed; top: 0; right: 0; bottom: 0; width: 380px; 
-        background: white; border-left: 1px solid #EAECEF; z-index: 10001;
-        transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        display: flex; flex-direction: column;
-        box-shadow: -20px 0 60px rgba(0,0,0,0.1);
-        font-family: 'Inter', sans-serif;
-    }
-    #ai-sidebar.open { transform: translateX(0); }
-</style>
-
-<script type="text/babel">
-    const Assistant = () => {
-        const [open, setOpen] = React.useState(false);
-        const [input, setInput] = React.useState('');
-        const [chat, setChat] = React.useState([{ role: 'ai', text: "DMG Assistant online." }]);
-        const [loading, setLoading] = React.useState(false);
-
-        const handleSend = async () => {
-            if(!input) return;
-            const userMsg = input;
-            setChat(prev => [...prev, { role: 'user', text: userMsg }]);
-            setInput('');
-            setLoading(true);
-
-            try {
-                const res = await fetch('https://createnotionproject-223535956454.us-central1.run.app/api/v1/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        prompt: userMsg, 
-                        context: { page: document.title, url: window.location.href } 
-                    })
-                });
-                const data = await res.json();
-                setChat(prev => [...prev, { role: 'ai', text: data.response || "Received." }]);
-            } catch (e) {
-                setChat(prev => [...prev, { role: 'ai', text: "Connection error. (Backend needs update)" }]);
-            }
-            setLoading(false);
-        };
-
-        return (
-            <React.Fragment>
-                <div id="ai-trigger" onClick={() => setOpen(true)}>
-                    <div style={{display:'grid', gridTemplateColumns:'repeat(2,5px)', gap:'3px'}}>
-                        {[...Array(4)].map((_,i) => <span key={i} style={{width:'5px', height:'5px', background:'white', borderRadius:'50%'}}></span>)}
-                    </div>
-                </div>
-
-                <div id="ai-sidebar" className={open ? 'open' : ''}>
-                    <div style={{padding:'24px', borderBottom:'1px solid #EAECEF', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                        <span style={{fontSize:'11px', fontWeight:900, color:'#21A0D8', letterSpacing:'0.05em'}}>DMG ASSISTANT</span>
-                        <button onClick={() => setOpen(false)} style={{border:'none', background:'none', cursor:'pointer', fontSize:'20px'}}>✕</button>
-                    </div>
-                    
-                    <div style={{flex:1, padding:'24px', overflowY:'auto', background:'#F9FAFB'}}>
-                        {chat.map((m,i) => (
-                            <div key={i} style={{
-                                marginBottom:'12px', padding:'14px', borderRadius:'14px', 
-                                background: m.role==='ai'?'white':'#21A0D8', 
-                                color:m.role==='ai'?'#1C1C1C':'white', 
-                                border: m.role==='ai'?'1px solid #EAECEF':'none',
-                                fontSize:'13px', lineHeight:'1.5'
-                            }}>{m.text}</div>
-                        ))}
-                        {loading && <div style={{fontSize:'12px', color:'#999', paddingLeft:'10px'}}>Thinking...</div>}
-                    </div>
-
-                    <div style={{padding:'20px', borderTop:'1px solid #EAECEF', background:'white'}}>
-                        <input 
-                            type="text" 
-                            placeholder="Ask status or add task..." 
-                            value={input}
-                            onChange={e => setInput(e.target.value)}
-                            style={{width:'100%', padding:'12px', borderRadius:'10px', border:'2px solid #EAECEF', outline:'none', fontSize:'14px'}} 
-                            onKeyDown={e => { if(e.key==='Enter'){ handleSend(); }}} 
-                        />
-                    </div>
-                </div>
-            </React.Fragment>
-        );
-    };
-    ReactDOM.createRoot(document.getElementById('dmg-ai-root')).render(<Assistant />);
-</script>
