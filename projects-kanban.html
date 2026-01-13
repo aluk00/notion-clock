@@ -587,7 +587,7 @@
     </div>
     <div class="toast" id="toast"></div>
     <script>
-        const API_URL = 'https://us-central1-dmg-command-centre-native.cloudfunctions.net/api';
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
         
         let allProjects = [];
         let currentView = 'all';
@@ -1120,6 +1120,8 @@
                         </div>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <a href="${p.url}" target="_blank" class="link-btn">Open in Notion</a>
+                            <button onclick="duplicateProject('${p.id}')" class="link-btn" style="background: var(--dmg-blue); color: white; border: none; cursor: pointer;">Duplicate</button>
+                            <button onclick="archiveProject('${p.id}')" class="link-btn" style="background: var(--editorial); color: white; border: none; cursor: pointer;">Archive</button>
                         </div>
                     </div>
 
@@ -1216,6 +1218,65 @@
         function goBack() {
             if (hasChanges && !confirm('You have unsaved changes. Discard them?')) return;
             navigate(window.location.pathname);
+        }
+
+        async function archiveProject(projectId) {
+            if (!confirm('Are you sure you want to archive this project? It will be set to "Campaign Complete".')) return;
+
+            try {
+                const res = await fetch(`${API_URL}/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dealStage: 'Campaign Complete' })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('Project archived', 'success');
+                    loadProjects();
+                    navigate(window.location.pathname);
+                } else {
+                    throw new Error(data.error || 'Archive failed');
+                }
+            } catch (e) {
+                console.error('Archive error:', e);
+                showToast('Failed to archive: ' + e.message, 'error');
+            }
+        }
+
+        async function duplicateProject(projectId) {
+            const project = allProjects.find(p => p.id === projectId);
+            if (!project) return;
+
+            if (!confirm(`Duplicate "${project.title}"?`)) return;
+
+            try {
+                const res = await fetch(`${API_URL}/projects`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: `${project.title} (Copy)`,
+                        client: project.client,
+                        dealStage: 'Brief Recieved',
+                        dealValue: project.dealValue,
+                        priority: project.priority,
+                        primaryTeam: project.primaryTeam
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('Project duplicated', 'success');
+                    loadProjects();
+                } else {
+                    throw new Error(data.error || 'Duplication failed');
+                }
+            } catch (e) {
+                console.error('Duplicate error:', e);
+                showToast('Failed to duplicate: ' + e.message, 'error');
+            }
         }
 
         // Auto-refresh every minute when on kanban view

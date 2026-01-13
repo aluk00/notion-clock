@@ -427,6 +427,7 @@
             const [selectedProjectId, setSelectedProjectId] = useState(null);
             const [productionRecord, setProductionRecord] = useState(null);
             const [selectedShoot, setSelectedShoot] = useState(null);
+            const [draggedShoot, setDraggedShoot] = useState(null);
 
             const [showInitModal, setShowInitModal] = useState(false);
             const [editingBudget, setEditingBudget] = useState(false);
@@ -487,6 +488,39 @@
             const handleOpenDesk = (projectId) => {
                 setSelectedProjectId(projectId);
                 setView('project');
+            };
+
+            const handleDragStart = (e, shoot) => {
+                setDraggedShoot(shoot);
+                e.dataTransfer.effectAllowed = 'move';
+            };
+
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            };
+
+            const handleDrop = async (e, targetDate) => {
+                e.preventDefault();
+                if (!draggedShoot) return;
+
+                const newDateStr = targetDate.toISOString().split('T')[0];
+                if ((draggedShoot.date || draggedShoot.startDateTime?.split('T')[0]) === newDateStr) {
+                    setDraggedShoot(null);
+                    return;
+                }
+
+                try {
+                    await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events").doc(draggedShoot.id).update({
+                        date: newDateStr,
+                        startDateTime: newDateStr,
+                        updatedAt: new Date().toISOString()
+                    });
+                } catch (err) {
+                    console.error('Failed to move shoot:', err);
+                    alert('Failed to move shoot');
+                }
+                setDraggedShoot(null);
             };
 
             const handleScheduleShoot = async () => {
@@ -659,25 +693,34 @@
                                 {calendarDays.map((day, i) => {
                                     const dayItems = getShootsForDate(day.date);
                                     return (
-                                        <div key={i} style={{
-                                            minHeight: 120, padding: 10, background: day.isToday ? '#F0FDF4' : 'white',
-                                            borderBottom: '1px solid #EAECEF', borderRight: '1px solid #EAECEF',
-                                            opacity: day.isOtherMonth ? 0.4 : 1
-                                        }}>
+                                        <div
+                                            key={i}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, day.date)}
+                                            style={{
+                                                minHeight: 120, padding: 10, background: day.isToday ? '#F0FDF4' : 'white',
+                                                borderBottom: '1px solid #EAECEF', borderRight: '1px solid #EAECEF',
+                                                opacity: day.isOtherMonth ? 0.4 : 1,
+                                                transition: 'background 0.2s'
+                                            }}
+                                        >
                                             <div style={{fontSize:11, fontWeight:900, color: day.isToday ? '#43B049' : '#CCC', marginBottom:6}}>
                                                 {day.date.getDate()}
                                             </div>
-                                            {/* SHOOTS - Direct onClick with no wrapper issues */}
+                                            {/* SHOOTS - Draggable */}
                                             {dayItems.map(shoot => (
-                                                <button
+                                                <div
                                                     key={shoot.id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, shoot)}
                                                     onClick={() => openShootModal(shoot)}
                                                     style={{
                                                         display:'block', width:'100%', textAlign:'left',
                                                         padding:'6px 8px', marginBottom:4,
                                                         background:'white', border:'1px solid #EAECEF',
                                                         borderLeft:'4px solid #43B049', borderRadius:8,
-                                                        cursor:'pointer', transition:'all 0.2s'
+                                                        cursor: 'grab', transition:'all 0.2s',
+                                                        opacity: draggedShoot?.id === shoot.id ? 0.5 : 1
                                                     }}
                                                 >
                                                     <div style={{fontSize:9, fontWeight:900, color:'#1C1C1C', textTransform:'uppercase', lineHeight:1.2, marginBottom:2}}>
@@ -686,7 +729,7 @@
                                                     <div style={{fontSize:7, fontWeight:700, color:'#43B049', textTransform:'uppercase'}}>
                                                         {shoot.format || 'PRODUCTION'}
                                                     </div>
-                                                </button>
+                                                </div>
                                             ))}
                                         </div>
                                     );
@@ -709,10 +752,16 @@
                                 {weekDays.map((day, i) => {
                                     const dayItems = getShootsForDate(day.date);
                                     return (
-                                        <div key={i} style={{
-                                            display:'flex', gap:24, padding:20, background:'white',
-                                            borderRadius:20, border: `1px solid ${day.isToday ? '#43B049' : '#EAECEF'}`, marginBottom:10
-                                        }}>
+                                        <div
+                                            key={i}
+                                            onDragOver={handleDragOver}
+                                            onDrop={(e) => handleDrop(e, day.date)}
+                                            style={{
+                                                display:'flex', gap:24, padding:20, background:'white',
+                                                borderRadius:20, border: `1px solid ${day.isToday ? '#43B049' : '#EAECEF'}`, marginBottom:10,
+                                                transition: 'background 0.2s'
+                                            }}
+                                        >
                                             <div style={{width:60, textAlign:'center', flexShrink:0}}>
                                                 <div style={{fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.1em', color: day.isToday ? '#43B049' : '#757575'}}>
                                                     {day.date.toLocaleDateString('en-GB', { weekday: 'short' })}
@@ -723,15 +772,18 @@
                                             </div>
                                             <div style={{flex:1}}>
                                                 {dayItems.length > 0 ? dayItems.map(shoot => (
-                                                    <button
+                                                    <div
                                                         key={shoot.id}
+                                                        draggable
+                                                        onDragStart={(e) => handleDragStart(e, shoot)}
                                                         onClick={() => openShootModal(shoot)}
                                                         style={{
                                                             display:'block', width:'100%', textAlign:'left',
                                                             padding:16, marginBottom:8,
                                                             background:'#F9FAFB', border:'none',
                                                             borderLeft:'4px solid #43B049', borderRadius:16,
-                                                            cursor:'pointer'
+                                                            cursor:'grab',
+                                                            opacity: draggedShoot?.id === shoot.id ? 0.5 : 1
                                                         }}
                                                     >
                                                         <div style={{fontWeight:900, fontSize:14, textTransform:'uppercase', letterSpacing:'-0.02em', color:'#1C1C1C'}}>
@@ -740,7 +792,7 @@
                                                         <div style={{fontSize:10, fontWeight:700, color:'#43B049', textTransform:'uppercase', marginTop:4}}>
                                                             {shoot.format || 'PRODUCTION'}
                                                         </div>
-                                                    </button>
+                                                    </div>
                                                 )) : (
                                                     <div style={{fontSize:11, fontWeight:800, color:'#DDD', textTransform:'uppercase', letterSpacing:'0.1em', padding:'16px 0'}}>
                                                         No Activity Logged

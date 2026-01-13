@@ -269,15 +269,18 @@
     window.carryOverItems = async () => {
         const pending = items.filter(i => i.status !== 'done');
         if (!pending.length) return showToast("No pending items found");
-        
+
         const tomorrow = new Date(currentViewDate); tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowKey = tomorrow.toISOString().split('T')[0];
         const batch = writeBatch(db);
         pending.forEach(i => {
             const ref = doc(collection(db, collectionPath));
-            batch.set(ref, { ...i, dateKey: tomorrow.toISOString().split('T')[0], createdAt: serverTimestamp(), id: null });
+            // Create a clean copy without the id field
+            const { id, ...itemData } = i;
+            batch.set(ref, { ...itemData, dateKey: tomorrowKey, createdAt: serverTimestamp() });
         });
         await batch.commit();
-        showToast("Pending items moved to tomorrow");
+        showToast(`${pending.length} item(s) carried over to tomorrow`);
     };
 
     window.deleteItem = async (id) => confirm('Delete item?') && await deleteDoc(doc(db, collectionPath, id));
