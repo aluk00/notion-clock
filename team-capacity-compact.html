@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; --success: #22C55E; --warning: #F59E0B; --danger: #EF4444; }
+        :root { --hero: #43B049; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; --success: #22C55E; --warning: #F59E0B; --danger: #EF4444; }
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; color: var(--ink); }
         .widget { background: #FFF; border: 1px solid var(--border); border-radius: 16px; max-width: 400px; overflow: hidden; }
@@ -26,6 +26,12 @@
         .capacity-value { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
         .capacity-percent { font-size: 28px; font-weight: 900; }
         .capacity-label { font-size: 10px; color: var(--ink-sub); text-transform: uppercase; }
+        .capacity-meta { text-align: center; font-size: 11px; color: var(--ink-sub); margin-top: -6px; }
+        .capacity-bar { height: 8px; border-radius: 999px; background: #E5E7EB; margin: 12px auto 8px; overflow: hidden; width: 100%; max-width: 240px; }
+        .capacity-bar-fill { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+        .capacity-legend { display: flex; justify-content: center; gap: 10px; font-size: 10px; color: var(--ink-sub); flex-wrap: wrap; }
+        .legend-item { display: inline-flex; align-items: center; gap: 4px; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
         .members { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 16px; }
         .member { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #FFF; }
         .empty { padding: 40px 20px; text-align: center; }
@@ -33,7 +39,7 @@
         .empty-title { font-size: 14px; font-weight: 800; margin-bottom: 6px; }
         .empty-sub { font-size: 11px; color: var(--ink-sub); }
         .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--ink-sub); font-size: 12px; }
-        .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
+        .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--hero); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -54,6 +60,7 @@
         });
         const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
         const COLORS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', 'Social Video': '#F2C316', Operations: '#9333EA', Sales: '#F97316', Design: '#8B5CF6' };
+        const HERO_COLOR = '#43B049';
         
         const params = new URLSearchParams(window.location.search);
         const teamFilter = params.get('team');
@@ -64,11 +71,13 @@
         const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
         const capacityColor = c => c > 85 ? '#EF4444' : c > 70 ? '#F59E0B' : '#22C55E';
         const capacityStatus = c => c > 85 ? 'At Capacity' : c > 70 ? 'Busy' : 'Available';
+        const normalizeTeam = value => (value || '').trim().toLowerCase();
 
         function render() {
             if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading...</div></div>`; return; }
-            const filtered = teamFilter ? staff.filter(s => s.team === teamFilter) : staff;
-            const teamColor = teamFilter ? color(teamFilter) : '#21a0d8';
+            const normalizedTeam = normalizeTeam(teamFilter);
+            const filtered = teamFilter ? staff.filter(s => normalizeTeam(s.team) === normalizedTeam) : staff;
+            const teamLabel = teamFilter || 'All Teams';
             const avgCapacity = filtered.length > 0 ? Math.round(filtered.reduce((sum, s) => sum + (s.capacity || 0), 0) / filtered.length) : 0;
             const circumference = 2 * Math.PI * 50;
             const offset = circumference - (avgCapacity / 100) * circumference;
@@ -76,8 +85,8 @@
             root.innerHTML = `
                 <div class="widget">
                     <div class="header">
-                        <div class="dot-grid"><span style="background:${teamColor}"></span><span style="background:${teamColor}"></span><span style="background:${teamColor}"></span><span style="background:${teamColor}"></span></div>
-                        <h2 class="title">${teamFilter || 'All Teams'}</h2>
+                        <div class="dot-grid"><span style="background:${HERO_COLOR}"></span><span style="background:${HERO_COLOR}"></span><span style="background:${HERO_COLOR}"></span><span style="background:${HERO_COLOR}"></span></div>
+                        <h2 class="title">${teamLabel}</h2>
                         <span class="badge" style="background:${capacityColor(avgCapacity)}20; color:${capacityColor(avgCapacity)}">${capacityStatus(avgCapacity)}</span>
                     </div>
                     ${filtered.length === 0 ? `
@@ -97,6 +106,15 @@
                                     <div class="capacity-percent" style="color:${capacityColor(avgCapacity)}">${avgCapacity}%</div>
                                     <div class="capacity-label">Capacity</div>
                                 </div>
+                            </div>
+                            <div class="capacity-meta">Average of staff capacity values.</div>
+                            <div class="capacity-bar" aria-label="Average capacity progress">
+                                <div class="capacity-bar-fill" style="background:${capacityColor(avgCapacity)}; width:${Math.min(avgCapacity, 100)}%"></div>
+                            </div>
+                            <div class="capacity-legend">
+                                <span class="legend-item"><span class="legend-dot" style="background:#22C55E"></span>0–70% Available</span>
+                                <span class="legend-item"><span class="legend-dot" style="background:#F59E0B"></span>71–85% Busy</span>
+                                <span class="legend-item"><span class="legend-dot" style="background:#EF4444"></span>86–100% At Capacity</span>
                             </div>
                             <div class="members">
                                 ${filtered.slice(0, 8).map(s => `
