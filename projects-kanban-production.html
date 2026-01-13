@@ -438,7 +438,28 @@
             border-color: var(--dmg-blue);
             box-shadow: 0 0 0 2px rgba(33, 160, 216, 0.1);
         }
-        .field-select { cursor: pointer; }
+        .field-select {
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 28px;
+        }
+        .field-select option {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 8px 10px;
+            background: var(--surface);
+            color: var(--ink);
+        }
+        .field-select option:checked {
+            background: var(--dmg-blue);
+            color: white;
+        }
 
         .field-textarea {
             font-size: 11px;
@@ -574,11 +595,14 @@
         let loading = true;
         let draggedCard = null;
 
+        // Production workflow status values from Notion API
         const columns = {
-            'With Design': { stage: 'With Design', color: '#E6468B' },
-            'Ready for Edit': { stage: 'Ready for Edit', color: '#21A0D8' },
-            'Edit Blockers': { stage: 'Edit Blockers', color: '#E94B4B' },
-            'Ready for Social': { stage: 'Ready for Social', color: '#43B049' }
+            'Not Started': { stage: 'Not Started', color: '#9CA3AF', field: 'productionWorkflowStatus' },
+            'In Production': { stage: 'In Production', color: '#21A0D8', field: 'productionWorkflowStatus' },
+            'Stakeholder Review': { stage: 'Stakeholder Review', color: '#F59E0B', field: 'productionWorkflowStatus' },
+            'Feedback / Revisions': { stage: 'Feedback / Revisions', color: '#E94B4B', field: 'productionWorkflowStatus' },
+            'Assets Approved': { stage: 'Assets Approved', color: '#43B049', field: 'productionWorkflowStatus' },
+            'Scheduled / Ready to Post': { stage: 'Scheduled / Ready to Post', color: '#E6468B', field: 'productionWorkflowStatus' }
         };
 
         const dealStageOptions = ['Brief Recieved', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete'];
@@ -652,12 +676,12 @@
                             <span class="stat"><strong>${valueStr}</strong> Pipeline</span>
                         </div>
                     </div>
-                    <div class="kanban">`;
+                    <div class="kanban" style="grid-template-columns: repeat(${Object.keys(columns).length}, 1fr);">`;
 
             Object.entries(columns).forEach(([title, config]) => {
-                const columnProjects = filtered.filter(p => p.deskState === config.stage);
+                const columnProjects = filtered.filter(p => p.productionWorkflowStatus === config.stage);
                 html += `
-                    <div class="column" data-stage="${config.stage}" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+                    <div class="column" data-stage="${config.stage}" data-field="productionWorkflowStatus" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
                         <div class="column-header">
                             <span class="column-title" style="color: ${config.color}">${title}</span>
                             <span class="column-count">${columnProjects.length}</span>
@@ -739,26 +763,30 @@
 
             const projectId = draggedCard.dataset.id;
             const newStage = column.dataset.stage;
+            const field = column.dataset.field || 'productionWorkflowStatus';
             const project = allProjects.find(p => p.id === projectId);
-            if (!project || project.deskState === newStage) return;
+            if (!project || project[field] === newStage) return;
 
-            const oldStage = project.deskState;
-            project.deskState = newStage;
+            const oldStage = project[field];
+            project[field] = newStage;
             render();
             showUpdating(true);
 
             try {
+                const updatePayload = {};
+                updatePayload[field] = newStage;
+
                 const res = await fetch(`${API_URL}/projects/${projectId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ deskState: newStage })
+                    body: JSON.stringify(updatePayload)
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.error || 'Update failed');
                 showToast(`Moved to ${newStage}`, 'success');
             } catch (err) {
                 console.error('Update failed:', err);
-                project.deskState = oldStage;
+                project[field] = oldStage;
                 render();
                 showToast('Failed to update', 'error');
             }
