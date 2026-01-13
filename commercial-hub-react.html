@@ -374,7 +374,7 @@
         try {
             const res = await fetch(`${API_URL}/projects`);
             const data = await res.json();
-            
+
             if (data.success) {
                 const rawProjects = data.projects;
                 groupedProjects = {};
@@ -382,36 +382,38 @@
                 rawProjects.forEach(p => {
                     const clientName = (p.client || 'Internal').trim();
                     const stage = p.dealStage || 'Ideation';
-                    
+
                     if (['Deal Agreed', 'Campaign Complete', 'Won'].some(k => stage.includes(k))) {
                         if (!groupedProjects[clientName]) {
-                            groupedProjects[clientName] = { 
+                            groupedProjects[clientName] = {
                                 type: 'production',
                                 client: clientName,
                                 title: p.title,
-                                status: p.productionStatus,
-                                sales: p.salesLead,
+                                status: p.productionWorkflowStatus,
+                                sales: formatPeople(p.salesLead),
                                 creative: formatPeople(p.creativeLead),
-                                dueDate: p.internalDueDate,
-                                deliverables: [], 
+                                dueDate: p.dueDate,
+                                deliverables: [],
                                 ids: [],
-                                mainId: p.id // Start with first ID found
+                                mainId: p.id,
+                                deliverableCount: p.deliverableCount || 0
                             };
                         }
-                        
+
                         const group = groupedProjects[clientName];
                         group.ids.push(p.id);
-                        if (p.deliverables?.length > 0) group.deliverables.push(...p.deliverables);
-                        
+                        // Track deliverable count from rollup
+                        if (p.deliverableCount) group.deliverableCount = (group.deliverableCount || 0) + p.deliverableCount;
+
                         // SMART STATUS UPDATE (If new row is 'higher status' than current group status)
                         const currentScore = STATUS_SCORE[group.status] || 0;
-                        const newScore = STATUS_SCORE[p.productionStatus] || 0;
-                        
+                        const newScore = STATUS_SCORE[p.productionWorkflowStatus] || 0;
+
                         if (newScore > currentScore) {
-                            group.status = p.productionStatus;
+                            group.status = p.productionWorkflowStatus;
                             group.mainId = p.id; // Make this the editable row
                         }
-                    } 
+                    }
                 });
                 render(rawProjects);
             }
@@ -443,7 +445,7 @@
                 <div>
                     <div class="cell-title">${group.client}</div>
                     <div class="cell-sub">${group.title}</div>
-                    ${group.deliverables.length > 0 ? `<div class="asset-count">📄 ${group.deliverables.length} Assets</div>` : ''}
+                    ${group.deliverableCount > 0 ? `<div class="asset-count">📄 ${group.deliverableCount} Assets</div>` : ''}
                 </div>
                 <div><span class="pill status-${getReqClass(group.status)}"><span class="dot"></span>${group.status || 'Pre-Pro'}</span></div>
                 <div class="cell-sub">${group.sales || '--'}</div>
@@ -462,9 +464,9 @@
                     div.innerHTML = `
                         <div><div class="cell-title">${p.client || 'Internal'}</div><div class="cell-sub">${p.title}</div></div>
                         <div><span class="pill status-pitch"><span class="dot"></span>${p.dealStage}</span></div>
-                        <div class="cell-sub" style="color:var(--purple); font-weight:700;">${p.assetsNeeded || '--'}</div>
-                        <div class="cell-sub">${p.salesLead || '--'}</div>
-                        <div class="cell-meta">${formatDate(p.internalDueDate)}</div>
+                        <div class="cell-sub" style="color:var(--purple); font-weight:700;">${formatAssets(p.assetsNeeded)}</div>
+                        <div class="cell-sub">${formatPeople(p.salesLead)}</div>
+                        <div class="cell-meta">${formatDate(p.dueDate)}</div>
                     `;
                     pipeMount.appendChild(div);
                 }
@@ -480,8 +482,8 @@
     }
 
     // --- SIDEBAR ---
-    window.openSidebar = (clientName) => {
-        selectedClient = groupedProjects[clientName]; 
+    window.openSidebar = async (clientName) => {
+        selectedClient = groupedProjects[clientName];
         if(!selectedClient) return;
 
         document.getElementById('sb-client').innerText = selectedClient.client;
@@ -489,17 +491,37 @@
         document.getElementById('sb-status-main').value = selectedClient.status || 'Not Started';
 
         const content = document.getElementById('sb-content');
-        
+        content.innerHTML = '<div class="loading"><div class="spinner"></div>Loading deliverables...</div>';
+
+        document.getElementById('overlay').classList.add('open');
+        document.getElementById('sidebar').classList.add('open');
+
+        // Fetch deliverables for all project IDs in this client group
+        try {
+            const allDeliverables = [];
+            for (const projectId of selectedClient.ids) {
+                const res = await fetch(`${API_URL}/deliverables/project/${projectId}`);
+                const data = await res.json();
+                if (data.success && data.deliverables) {
+                    allDeliverables.push(...data.deliverables);
+                }
+            }
+            selectedClient.deliverables = allDeliverables;
+        } catch(e) {
+            console.error("Error fetching deliverables:", e);
+            selectedClient.deliverables = [];
+        }
+
         if (selectedClient.deliverables.length === 0) {
             content.innerHTML = `<div class="loading">No Linked Assets Found for ${clientName}</div>`;
         } else {
             content.innerHTML = selectedClient.deliverables.map(d => {
-                const meta = assetMetadata[d.id] || {}; 
+                const meta = assetMetadata[d.id] || {};
                 const creatorVal = meta.creator || '';
                 const editorVal = meta.editor || '';
                 const producerVal = meta.producer || '';
                 const salesVal = meta.sales || selectedClient.sales || '';
-                
+
                 return `
                 <div class="asset-card" data-id="${d.id}">
                     <div class="asset-header">
@@ -528,8 +550,13 @@
                     </div>
 
                     <div class="grid-2">
-                        <div><label class="field-label">Shoot Date/Time</label><input class="field-input" type="text" placeholder="e.g. Thu 17th @ 2pm" value="${meta.shootTime || ''}" id="time-${d.id}"></div>
-                        <div><label class="field-label">Feedback Due</label><input class="field-input" type="date" value="${meta.feedbackDue || ''}" id="feed-${d.id}"></div>
+                        <div><label class="field-label">Shoot Date</label><input class="field-input" type="date" value="${meta.shootDate || ''}" id="shootDate-${d.id}"></div>
+                        <div><label class="field-label">Shoot Time</label><input class="field-input" type="text" placeholder="e.g. 2pm" value="${meta.shootTime || ''}" id="shootTime-${d.id}"></div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div><label class="field-label">Delivery Due</label><input class="field-input" type="date" value="${meta.deliveryDue || ''}" id="delivery-${d.id}"></div>
+                        <div><label class="field-label">Go Live Date</label><input class="field-input" type="date" value="${meta.liveDate || ''}" id="live-${d.id}"></div>
                     </div>
 
                     <div style="margin-bottom:12px;"><label class="check-pill ${meta.thumbnailReady?'checked':''}" onclick="this.classList.toggle('checked')"><input type="checkbox" id="thumb-${d.id}" ${meta.thumbnailReady?'checked':''}>Thumbnail Uploaded</label></div>
@@ -537,9 +564,6 @@
                 </div>`;
             }).join('');
         }
-
-        document.getElementById('overlay').classList.add('open');
-        document.getElementById('sidebar').classList.add('open');
     };
 
     // --- SAVE TO FIREBASE & NOTION ---
@@ -550,27 +574,74 @@
 
         const batch = db.batch();
         const collectionRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("asset_metadata");
+        const calendarRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events");
+        const editQueueRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("edit_queue");
 
         selectedClient.deliverables.forEach(d => {
             const docRef = collectionRef.doc(d.id);
             const creator = document.getElementById(`creator-${d.id}`)?.value;
-            if(!creator) return; 
+            if(!creator) return;
 
             const editor = document.getElementById(`editor-${d.id}`).value;
             const producer = document.getElementById(`prod-${d.id}`).value;
             const sales = document.getElementById(`sales-${d.id}`).value;
             const location = document.getElementById(`loc-${d.id}`).value;
-            const shootTime = document.getElementById(`time-${d.id}`).value;
-            const feedbackDue = document.getElementById(`feed-${d.id}`).value;
+            const shootDate = document.getElementById(`shootDate-${d.id}`)?.value || '';
+            const shootTime = document.getElementById(`shootTime-${d.id}`)?.value || '';
+            const deliveryDue = document.getElementById(`delivery-${d.id}`)?.value || '';
+            const liveDate = document.getElementById(`live-${d.id}`)?.value || '';
             const notes = document.getElementById(`note-${d.id}`).value;
             const thumb = document.getElementById(`thumb-${d.id}`).checked || document.getElementById(`thumb-${d.id}`).parentElement.classList.contains('checked');
+            const status = document.getElementById(`status-${d.id}`)?.value || d.status;
 
-            assetMetadata[d.id] = { creator, editor, producer, sales, location, shootTime, feedbackDue, notes, thumbnailReady: thumb };
-
-            batch.set(docRef, {
-                creator, editor, producer, sales, location, shootTime, feedbackDue, notes, thumbnailReady: thumb,
+            const metaData = {
+                creator, editor, producer, sales, location,
+                shootDate, shootTime, deliveryDue, liveDate,
+                notes, thumbnailReady: thumb, status,
+                assetTitle: d.title,
+                assetFormat: d.format,
+                clientName: selectedClient.client,
+                projectTitle: selectedClient.title,
                 updatedAt: new Date().toISOString()
-            }, { merge: true });
+            };
+
+            assetMetadata[d.id] = metaData;
+            batch.set(docRef, metaData, { merge: true });
+
+            // SYNC TO PRODUCTION CALENDAR - Creates/updates shoot event
+            if (shootDate) {
+                batch.set(calendarRef.doc(d.id), {
+                    date: shootDate,
+                    time: shootTime,
+                    title: d.title,
+                    projectTitle: selectedClient.title,
+                    clientName: selectedClient.client,
+                    format: d.format || 'Production',
+                    location: location,
+                    creator: creator,
+                    producer: producer,
+                    team: 'Production',
+                    source: 'commercial-hub',
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            }
+
+            // SYNC TO EDIT QUEUE - If editor is assigned and status is in edit phase
+            const editStatuses = ['Edit', 'Filming', 'Review'];
+            if (editor && editStatuses.some(s => status?.includes(s))) {
+                batch.set(editQueueRef.doc(d.id), {
+                    title: d.title,
+                    editor: editor,
+                    format: d.format,
+                    clientName: selectedClient.client,
+                    projectTitle: selectedClient.title,
+                    dueDate: deliveryDue,
+                    priority: deliveryDue && new Date(deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium',
+                    status: status,
+                    source: 'commercial-hub',
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            }
         });
 
         // Save Main Status to Notion (using the smart MainID)
@@ -586,7 +657,7 @@
 
         try {
             await batch.commit();
-            showToast("Updates Saved");
+            showToast("Updates Saved & Synced");
             closeSidebar();
             loadData(); // Refresh to show new status
         } catch(e) {
@@ -621,6 +692,7 @@
 
     // UTILS
     function formatPeople(val) { if(!val) return '--'; if(Array.isArray(val)) return val.map(p => p.name || p).join(', '); return val; }
+    function formatAssets(val) { if(!val) return '--'; if(Array.isArray(val)) return val.join(', '); return val; }
     function formatDate(d) { if(!d) return '--'; return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
     function getReqClass(s) { s=(s||'').toLowerCase(); return s.includes('shoot')?'shoot':s.includes('live')?'live':'pitch'; }
     function showToast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('visible'); setTimeout(()=>t.classList.remove('visible'),3000); }

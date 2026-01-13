@@ -94,6 +94,7 @@
 
         onAuthStateChanged(auth, user => {
             if (user) {
+                // Listen to edit_queue - now synced from Commercial Hub
                 onSnapshot(collection(db, "artifacts", appId, "public", "data", "edit_queue"), snap => {
                     items = []; snap.forEach(d => items.push({ id: d.id, ...d.data() }));
                     // Sort by priority: high > medium > low
@@ -101,6 +102,38 @@
                     items.sort((a, b) => (priorityOrder[a.priority?.toLowerCase()] || 2) - (priorityOrder[b.priority?.toLowerCase()] || 2));
                     loading = false; render();
                 }, e => { console.error(e); loading = false; render(); });
+
+                // Also listen to asset_metadata for additional edit tasks
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "asset_metadata"), snap => {
+                    const assets = [];
+                    snap.forEach(d => {
+                        const data = d.data();
+                        // Include assets in edit phase that have an editor assigned
+                        if (data.editor && ['Edit', 'Filming', 'Review'].includes(data.status)) {
+                            // Check if not already in edit_queue
+                            if (!items.some(i => i.id === d.id)) {
+                                assets.push({
+                                    id: d.id,
+                                    title: data.assetTitle || 'Untitled',
+                                    editor: data.editor,
+                                    format: data.assetFormat,
+                                    priority: data.deliveryDue && new Date(data.deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium',
+                                    dueDate: data.deliveryDue,
+                                    status: data.status,
+                                    clientName: data.clientName,
+                                    source: 'asset-metadata'
+                                });
+                            }
+                        }
+                    });
+                    // Merge and re-sort
+                    const editQueueIds = new Set(items.filter(i => i.source !== 'asset-metadata').map(i => i.id));
+                    const newItems = [...items.filter(i => i.source !== 'asset-metadata'), ...assets.filter(a => !editQueueIds.has(a.id))];
+                    const priorityOrder = { high: 0, medium: 1, low: 2 };
+                    newItems.sort((a, b) => (priorityOrder[a.priority?.toLowerCase()] || 2) - (priorityOrder[b.priority?.toLowerCase()] || 2));
+                    items = newItems;
+                    render();
+                }, e => console.error(e));
             } else {
                 signInAnonymously(auth).catch(e => { loading = false; render(); });
             }

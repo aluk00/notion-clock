@@ -368,11 +368,11 @@
         // Load staff and filter for designers
         const staffSnap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "staff_directory"));
         const allStaff = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        
+
         // Filter for design team members
-        designers = allStaff.filter(s => 
-            s.team === 'Creative' || 
-            s.team === 'Design' || 
+        designers = allStaff.filter(s =>
+            s.team === 'Creative' ||
+            s.team === 'Design' ||
             s.role?.toLowerCase().includes('design') ||
             s.role?.toLowerCase().includes('graphic')
         );
@@ -382,9 +382,33 @@
             designers = allStaff.slice(0, 4);
         }
 
-        // Listen to design requests
+        // Listen to design requests (quick requests)
         onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), (snap) => {
             requests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            render();
+        });
+
+        // Also listen to asset_metadata for commercial hub assets that need design work
+        onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "asset_metadata"), (snap) => {
+            const assetMeta = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Filter for assets that might need design (thumbnails, graphics)
+            const designAssets = assetMeta.filter(a =>
+                !a.thumbnailReady &&
+                a.status !== 'Live' &&
+                a.status !== 'Approved'
+            ).map(a => ({
+                id: a.id,
+                assetType: 'Thumbnail',
+                status: a.status === 'Review' ? 'Done' : (a.status === 'Edit' ? 'In Progress' : 'Not Started'),
+                designerId: null, // Unassigned from commercial hub
+                source: 'commercial-hub',
+                title: a.assetTitle || 'Asset'
+            }));
+
+            // Merge with existing requests, avoiding duplicates
+            const existingIds = new Set(requests.map(r => r.id));
+            const newAssets = designAssets.filter(a => !existingIds.has(a.id));
+            requests = [...requests.filter(r => r.source !== 'commercial-hub'), ...newAssets];
             render();
         });
     });

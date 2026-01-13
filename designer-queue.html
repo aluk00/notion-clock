@@ -214,7 +214,7 @@
     function render() {
         let items = [];
         if (currentView === 'all' || currentView === 'deliverables') {
-            const designDeliverables = deliverables.filter(d => 
+            const designDeliverables = deliverables.filter(d =>
                 (d.staticAssetsNeeded?.length > 0 || d.staticAssetCount > 0) &&
                 d.status !== 'Live' && d.status !== 'Published'
             ).map(normaliseDeliverable);
@@ -223,6 +223,13 @@
         if (currentView === 'all' || currentView === 'quick') {
             const qr = quickRequests.filter(r => r.status !== 'Done').map(normaliseQuickRequest);
             items = items.concat(qr);
+        }
+
+        // Include commercial hub design items (thumbnails needed)
+        if (currentView === 'all' && window.commercialHubDesignItems) {
+            const existingIds = new Set(items.map(i => i.id));
+            const hubItems = window.commercialHubDesignItems.filter(i => !existingIds.has(i.id));
+            items = items.concat(hubItems);
         }
 
         const urgent = items.filter(i => getPriority(i) === 'high').length;
@@ -299,8 +306,36 @@
     signInAnonymously(auth).then(async () => {
         await loadStaff();
         await loadDeliverables();
+
+        // Listen to design requests (quick requests)
         onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), (snap) => {
             quickRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            render();
+        });
+
+        // Listen to asset_metadata for commercial hub assets needing design
+        onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "asset_metadata"), (snap) => {
+            const assetMeta = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Filter for assets that need thumbnails/design
+            const designAssets = assetMeta.filter(a =>
+                !a.thumbnailReady &&
+                a.status !== 'Live' &&
+                a.status !== 'Approved'
+            ).map(a => ({
+                id: a.id,
+                source: 'commercial-hub',
+                title: a.assetTitle || 'Untitled',
+                project: a.clientName,
+                type: 'Thumbnail',
+                effort: 0.5,
+                dueDate: a.deliveryDue,
+                designer: 'Unassigned',
+                status: a.thumbnailReady ? 'Done' : (a.status === 'Edit' ? 'In Progress' : 'With Design'),
+                priority: a.deliveryDue && new Date(a.deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'Urgent' : 'Standard'
+            }));
+
+            // Inject into render cycle - these will be merged with quick requests
+            window.commercialHubDesignItems = designAssets;
             render();
         });
     });

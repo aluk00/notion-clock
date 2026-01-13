@@ -52,20 +52,56 @@
             appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
         });
         const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
-        
-        let staff = [], loading = true;
+
+        let staff = [], editQueue = [], assetMetadata = [], loading = true;
         const root = document.getElementById('root');
-        
+
         const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
         const capacityColor = c => c > 85 ? '#EF4444' : c > 70 ? '#F59E0B' : '#22C55E';
 
+        // Calculate workload per editor from edit_queue and asset_metadata
+        function calculateEditorWorkload(editorName) {
+            let taskCount = 0;
+
+            // Count from edit_queue (synced from Commercial Hub)
+            editQueue.forEach(item => {
+                if (item.editor === editorName && item.status !== 'Live' && item.status !== 'Approved') {
+                    taskCount++;
+                }
+            });
+
+            // Count from asset_metadata where editor is assigned
+            assetMetadata.forEach(asset => {
+                // Avoid double counting if already in edit_queue
+                if (asset.editor === editorName &&
+                    !editQueue.some(q => q.id === asset.id) &&
+                    asset.status !== 'Live' && asset.status !== 'Approved') {
+                    taskCount++;
+                }
+            });
+
+            return taskCount;
+        }
+
         function render() {
             if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading...</div></div>`; return; }
-            
-            // Filter to Editorial team (editors)
+
+            // Filter to Editorial team (editors) or based on edit_queue assignments
             const editors = staff.filter(s => s.team === 'Editorial' || s.role?.toLowerCase().includes('editor'));
-            const avgCapacity = editors.length > 0 ? Math.round(editors.reduce((sum, s) => sum + (s.capacity || 0), 0) / editors.length) : 0;
-            
+
+            // Calculate capacity based on actual workload
+            const editorsWithWorkload = editors.map(e => {
+                const fullName = `${e.firstName} ${e.lastName}`;
+                const taskCount = calculateEditorWorkload(fullName);
+                // Assume max 8 tasks per person = 100% capacity
+                const capacity = Math.min(Math.round((taskCount / 8) * 100), 100);
+                return { ...e, capacity, taskCount };
+            });
+
+            const avgCapacity = editorsWithWorkload.length > 0
+                ? Math.round(editorsWithWorkload.reduce((sum, s) => sum + s.capacity, 0) / editorsWithWorkload.length)
+                : 0;
+
             root.innerHTML = `
                 <div class="widget">
                     <div class="header">
@@ -73,7 +109,7 @@
                         <h2 class="title">Editor Capacity</h2>
                         <span class="badge" style="background:${capacityColor(avgCapacity)}20; color:${capacityColor(avgCapacity)}">${avgCapacity}% avg</span>
                     </div>
-                    ${editors.length === 0 ? `
+                    ${editorsWithWorkload.length === 0 ? `
                         <div class="empty">
                             <div class="empty-icon">✏️</div>
                             <div class="empty-title">No Editors Found</div>
@@ -81,17 +117,17 @@
                         </div>
                     ` : `
                         <div class="list">
-                            ${editors.map(e => `
+                            ${editorsWithWorkload.map(e => `
                                 <div class="editor">
                                     <div class="avatar" style="background: #E94B4B">${initials(e.firstName, e.lastName)}</div>
                                     <div class="editor-info">
                                         <div class="editor-name">${e.firstName} ${e.lastName}</div>
-                                        <div class="editor-role">${e.role || 'Editor'}</div>
+                                        <div class="editor-role">${e.role || 'Editor'} • ${e.taskCount} tasks</div>
                                     </div>
                                     <div class="capacity-bar">
-                                        <div class="capacity-fill" style="width:${e.capacity || 0}%; background:${capacityColor(e.capacity || 0)}"></div>
+                                        <div class="capacity-fill" style="width:${e.capacity}%; background:${capacityColor(e.capacity)}"></div>
                                     </div>
-                                    <div class="capacity-value" style="color:${capacityColor(e.capacity || 0)}">${e.capacity || 0}%</div>
+                                    <div class="capacity-value" style="color:${capacityColor(e.capacity)}">${e.capacity}%</div>
                                 </div>
                             `).join('')}
                         </div>
@@ -102,10 +138,23 @@
 
         onAuthStateChanged(auth, user => {
             if (user) {
+                // Listen to staff directory
                 onSnapshot(collection(db, "artifacts", appId, "public", "data", "staff_directory"), snap => {
                     staff = []; snap.forEach(d => staff.push({ id: d.id, ...d.data() }));
                     loading = false; render();
                 }, e => { console.error(e); loading = false; render(); });
+
+                // Listen to edit queue (synced from Commercial Hub)
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "edit_queue"), snap => {
+                    editQueue = []; snap.forEach(d => editQueue.push({ id: d.id, ...d.data() }));
+                    render();
+                }, e => console.error(e));
+
+                // Listen to asset metadata (from Commercial Hub)
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "asset_metadata"), snap => {
+                    assetMetadata = []; snap.forEach(d => assetMetadata.push({ id: d.id, ...d.data() }));
+                    render();
+                }, e => console.error(e));
             } else {
                 signInAnonymously(auth).catch(e => { loading = false; render(); });
             }
