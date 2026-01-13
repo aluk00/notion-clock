@@ -748,21 +748,46 @@
             render();
             showUpdating(true);
 
-            try {
-                const res = await fetch(`${API_URL}/projects/${projectId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ creativeWorkflowStatus: newStage })
-                });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error || 'Update failed');
-                showToast(`Moved to ${newStage}`, 'success');
-            } catch (err) {
-                console.error('Update failed:', err);
-                project.creativeWorkflowStatus = oldStage;
-                render();
-                showToast('Failed to update', 'error');
+            // Retry logic for network issues
+            const maxRetries = 3;
+            let lastError = null;
+
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    const res = await fetch(`${API_URL}/projects/${projectId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ creativeWorkflowStatus: newStage })
+                    });
+
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                        throw new Error(errorData.error || `HTTP ${res.status}`);
+                    }
+
+                    const data = await res.json();
+                    if (!data.success) throw new Error(data.error || 'Update failed');
+
+                    showToast(`Moved to ${newStage}`, 'success');
+                    showUpdating(false);
+                    return; // Success, exit the retry loop
+
+                } catch (err) {
+                    lastError = err;
+                    console.error(`Attempt ${attempt}/${maxRetries} failed:`, err);
+
+                    if (attempt < maxRetries) {
+                        // Wait before retrying (exponential backoff)
+                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    }
+                }
             }
+
+            // All retries failed
+            console.error('All update attempts failed:', lastError);
+            project.creativeWorkflowStatus = oldStage;
+            render();
+            showToast(`Failed to update: ${lastError?.message || 'Network error'}. Please try again.`, 'error');
             showUpdating(false);
         }
 

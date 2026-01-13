@@ -574,6 +574,10 @@
         .toast.visible { transform: translateX(0); }
         .toast.success { background: var(--production); color: white; }
         .toast.error { background: var(--editorial); color: white; }
+        .toast.warning { background: var(--amber); color: white; }
+
+        /* Enhanced drag feedback */
+        .column.drag-over .cards-container { background: rgba(33, 160, 216, 0.05); border-radius: 6px; }
     </style>
 </head>
 <body>
@@ -773,24 +777,49 @@
             render();
             showUpdating(true);
 
-            try {
-                const updatePayload = {};
-                updatePayload[field] = newStage;
+            // Retry logic for network issues
+            const maxRetries = 3;
+            let lastError = null;
 
-                const res = await fetch(`${API_URL}/projects/${projectId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatePayload)
-                });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.error || 'Update failed');
-                showToast(`Moved to ${newStage}`, 'success');
-            } catch (err) {
-                console.error('Update failed:', err);
-                project[field] = oldStage;
-                render();
-                showToast('Failed to update', 'error');
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    const updatePayload = {};
+                    updatePayload[field] = newStage;
+
+                    const res = await fetch(`${API_URL}/projects/${projectId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatePayload)
+                    });
+
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+                        throw new Error(errorData.error || `HTTP ${res.status}`);
+                    }
+
+                    const data = await res.json();
+                    if (!data.success) throw new Error(data.error || 'Update failed');
+
+                    showToast(`Moved to ${newStage}`, 'success');
+                    showUpdating(false);
+                    return; // Success, exit the retry loop
+
+                } catch (err) {
+                    lastError = err;
+                    console.error(`Attempt ${attempt}/${maxRetries} failed:`, err);
+
+                    if (attempt < maxRetries) {
+                        // Wait before retrying (exponential backoff)
+                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    }
+                }
             }
+
+            // All retries failed
+            console.error('All update attempts failed:', lastError);
+            project[field] = oldStage;
+            render();
+            showToast(`Failed to update: ${lastError?.message || 'Network error'}. Please try again.`, 'error');
             showUpdating(false);
         }
 
