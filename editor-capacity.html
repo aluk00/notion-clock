@@ -18,15 +18,24 @@
         .title { font-size: 13px; font-weight: 800; }
         .badge { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 99px; margin-left: auto; }
         .list { }
-        .editor { padding: 14px 20px; border-bottom: 1px solid #F5F5F5; display: flex; align-items: center; gap: 14px; }
+        .editor { padding: 14px 20px; border-bottom: 1px solid #F5F5F5; display: flex; flex-direction: column; gap: 10px; }
+        .editor-main { display: flex; align-items: center; gap: 14px; cursor: pointer; }
+        .editor-main:hover .editor-name { color: var(--editorial); }
         .editor:last-child { border-bottom: none; }
         .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #FFF; flex-shrink: 0; }
         .editor-info { flex: 1; min-width: 0; }
-        .editor-name { font-size: 13px; font-weight: 700; }
+        .editor-name { font-size: 13px; font-weight: 700; transition: color 0.15s; }
         .editor-role { font-size: 11px; color: var(--ink-sub); }
         .capacity-bar { width: 80px; height: 6px; background: #E5E5E5; border-radius: 3px; overflow: hidden; margin-right: 8px; }
         .capacity-fill { height: 100%; border-radius: 3px; }
         .capacity-value { font-size: 12px; font-weight: 800; width: 36px; text-align: right; }
+        .task-list { display: none; background: var(--bg-soft); border-radius: 8px; padding: 8px; margin-top: 4px; }
+        .task-list.expanded { display: block; }
+        .task-item { font-size: 10px; padding: 6px 8px; background: #fff; border-radius: 6px; margin-bottom: 4px; border-left: 3px solid var(--editorial); }
+        .task-item:last-child { margin-bottom: 0; }
+        .task-title { font-weight: 700; color: var(--ink); }
+        .task-meta { color: var(--ink-sub); margin-top: 2px; display: flex; gap: 8px; }
+        .task-date { font-weight: 600; padding: 1px 4px; border-radius: 3px; background: #E5E5E5; }
         .empty { padding: 50px 20px; text-align: center; }
         .empty-icon { font-size: 40px; margin-bottom: 12px; }
         .empty-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
@@ -73,11 +82,19 @@
         // Calculate workload per editor from edit_queue and asset_metadata
         function calculateEditorWorkload(editorName) {
             let taskCount = 0;
+            let tasks = [];
 
             // Count from edit_queue (synced from Commercial Hub)
             editQueue.forEach(item => {
                 if (item.editor === editorName && item.status !== 'Live' && item.status !== 'Approved') {
                     taskCount++;
+                    tasks.push({
+                        title: item.title,
+                        client: item.clientName,
+                        dueDate: item.dueDate,
+                        liveDate: item.liveDate,
+                        status: item.status
+                    });
                 }
             });
 
@@ -88,25 +105,41 @@
                     !editQueue.some(q => q.id === asset.id) &&
                     asset.status !== 'Live' && asset.status !== 'Approved') {
                     taskCount++;
+                    tasks.push({
+                        title: asset.assetTitle,
+                        client: asset.clientName,
+                        dueDate: asset.deliveryDue,
+                        liveDate: asset.liveDate || asset.plannedLiveDate,
+                        status: asset.status
+                    });
                 }
             });
 
-            return taskCount;
+            return { taskCount, tasks };
         }
 
         function render() {
             if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading...</div></div>`; return; }
 
             // Filter to Editorial team (editors) or based on edit_queue assignments
-            const editors = staff.filter(s => s.team === 'Editorial' || s.role?.toLowerCase().includes('editor'));
+            // Exclude non-editors by name (Megan, Alex are not editors)
+            const excludedNames = ['Megan', 'Alex'];
+            const editors = staff.filter(s => {
+                const fullName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+                const firstName = (s.firstName || '').trim();
+                // Exclude specific non-editors
+                if (excludedNames.includes(firstName)) return false;
+                // Include only Editorial team or roles containing 'editor'
+                return s.team === 'Editorial' || s.role?.toLowerCase().includes('editor');
+            });
 
             // Calculate capacity based on actual workload
             const editorsWithWorkload = editors.map(e => {
                 const fullName = `${e.firstName} ${e.lastName}`;
-                const taskCount = calculateEditorWorkload(fullName);
+                const { taskCount, tasks } = calculateEditorWorkload(fullName);
                 // Assume max 8 tasks per person = 100% capacity
                 const capacity = Math.min(Math.round((taskCount / 8) * 100), 100);
-                return { ...e, capacity, taskCount };
+                return { ...e, capacity, taskCount, tasks };
             });
 
             const avgCapacity = editorsWithWorkload.length > 0
@@ -128,17 +161,33 @@
                         </div>
                     ` : `
                         <div class="list">
-                            ${editorsWithWorkload.map(e => `
-                                <div class="editor">
-                                    <div class="avatar" style="background: ${getTeamColor(e.team)}">${initials(e.firstName, e.lastName)}</div>
-                                    <div class="editor-info">
-                                        <div class="editor-name">${e.firstName} ${e.lastName}</div>
-                                        <div class="editor-role">${e.role || 'Editor'} • ${e.taskCount} tasks</div>
+                            ${editorsWithWorkload.map((e, idx) => `
+                                <div class="editor" id="editor-${idx}">
+                                    <div class="editor-main" onclick="toggleTasks(${idx})">
+                                        <div class="avatar" style="background: ${getTeamColor(e.team)}">${initials(e.firstName, e.lastName)}</div>
+                                        <div class="editor-info">
+                                            <div class="editor-name">${e.firstName} ${e.lastName}</div>
+                                            <div class="editor-role">${e.role || 'Editor'} • ${e.taskCount} task${e.taskCount !== 1 ? 's' : ''}</div>
+                                        </div>
+                                        <div class="capacity-bar">
+                                            <div class="capacity-fill" style="width:${e.capacity}%; background:${capacityColor(e.capacity)}"></div>
+                                        </div>
+                                        <div class="capacity-value" style="color:${capacityColor(e.capacity)}">${e.capacity}%</div>
                                     </div>
-                                    <div class="capacity-bar">
-                                        <div class="capacity-fill" style="width:${e.capacity}%; background:${capacityColor(e.capacity)}"></div>
-                                    </div>
-                                    <div class="capacity-value" style="color:${capacityColor(e.capacity)}">${e.capacity}%</div>
+                                    ${e.tasks.length > 0 ? `
+                                        <div class="task-list" id="tasks-${idx}">
+                                            ${e.tasks.map(t => `
+                                                <div class="task-item">
+                                                    <div class="task-title">${t.title || 'Untitled'}</div>
+                                                    <div class="task-meta">
+                                                        ${t.client ? `<span>${t.client}</span>` : ''}
+                                                        ${t.dueDate ? `<span class="task-date">Due: ${new Date(t.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
+                                                        ${t.liveDate ? `<span class="task-date" style="background:#DCFCE7; color:#166534;">Live: ${new Date(t.liveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
                                 </div>
                             `).join('')}
                         </div>
@@ -146,6 +195,14 @@
                 </div>
             `;
         }
+
+        // Global toggle function for expanding task list
+        window.toggleTasks = function(idx) {
+            const taskList = document.getElementById(`tasks-${idx}`);
+            if (taskList) {
+                taskList.classList.toggle('expanded');
+            }
+        };
 
         onAuthStateChanged(auth, user => {
             if (user) {

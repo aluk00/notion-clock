@@ -348,9 +348,10 @@
 
     let groupedProjects = {}, selectedClient = null, assetMetadata = {}, currentNoteType = '';
     const TALENT = ["Mimi Yates", "Dan Quinnell", "Prashan Leigh", "Henry Williams", "Dine Mourad", "Alex Hobbs", "Kaylee Abrahams", "Ellie Beetham", "Sophia Stanford", "Kayla Brantley", "Brooklyn DeGumbia"];
-    const PRODUCERS = ["Alex Biddle", "Sophie", "Hugo", "Ellie", "Dan Q"]; 
+    const PRODUCERS = ["Alex Biddle", "Sophie", "Hugo", "Ellie", "Dan Q"];
     const SALES = ["Zach", "Isobel", "Maxine", "Daniel", "Sarah"];
     const STATUSES = ["Briefed", "Scripted", "Filming", "Edit", "Review", "Approved", "Live"];
+    const FEEDBACK_STATUSES = ["Awaiting Feedback", "Feedback Received", "Changes Requested", "Approved"];
 
     // PRIORITIZATION LOGIC
     const STATUS_SCORE = {
@@ -521,6 +522,10 @@
                 const editorVal = meta.editor || '';
                 const producerVal = meta.producer || '';
                 const salesVal = meta.sales || selectedClient.sales || '';
+                // New Notion fields from deliverables
+                const plannedLiveDate = d.plannedLiveDate || meta.plannedLiveDate || '';
+                const feedbackStatus = d.feedbackStatus || meta.feedbackStatus || '';
+                const feedbackDue = d.feedbackDue || meta.feedbackDue || '';
 
                 return `
                 <div class="asset-card" data-id="${d.id}">
@@ -555,8 +560,13 @@
                     </div>
 
                     <div class="grid-2">
-                        <div><label class="field-label">Delivery Due</label><input class="field-input" type="date" value="${meta.deliveryDue || ''}" id="delivery-${d.id}"></div>
-                        <div><label class="field-label">Go Live Date</label><input class="field-input" type="date" value="${meta.liveDate || ''}" id="live-${d.id}"></div>
+                        <div><label class="field-label">Delivery Due (Client)</label><input class="field-input" type="date" value="${meta.deliveryDue || feedbackDue || ''}" id="delivery-${d.id}"></div>
+                        <div><label class="field-label">Planned Live Date</label><input class="field-input" type="date" value="${plannedLiveDate || meta.liveDate || ''}" id="live-${d.id}"></div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div><label class="field-label">Feedback Status</label><select class="field-select" id="feedbackStatus-${d.id}"><option value="">Select...</option>${FEEDBACK_STATUSES.map(fs => `<option ${fs===feedbackStatus?'selected':''}>${fs}</option>`).join('')}</select></div>
+                        <div><label class="field-label">Feedback Due Date</label><input class="field-input" type="date" value="${feedbackDue || ''}" id="feedbackDue-${d.id}"></div>
                     </div>
 
                     <div style="margin-bottom:12px;"><label class="check-pill ${meta.thumbnailReady?'checked':''}" onclick="this.classList.toggle('checked')"><input type="checkbox" id="thumb-${d.id}" ${meta.thumbnailReady?'checked':''}>Thumbnail Uploaded</label></div>
@@ -576,6 +586,10 @@
         const collectionRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("asset_metadata");
         const calendarRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events");
         const editQueueRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("edit_queue");
+        const designerQueueRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("designer_queue");
+
+        // Track Notion updates to make
+        const notionUpdates = [];
 
         selectedClient.deliverables.forEach(d => {
             const docRef = collectionRef.doc(d.id);
@@ -590,13 +604,17 @@
             const shootTime = document.getElementById(`shootTime-${d.id}`)?.value || '';
             const deliveryDue = document.getElementById(`delivery-${d.id}`)?.value || '';
             const liveDate = document.getElementById(`live-${d.id}`)?.value || '';
+            const feedbackStatus = document.getElementById(`feedbackStatus-${d.id}`)?.value || '';
+            const feedbackDue = document.getElementById(`feedbackDue-${d.id}`)?.value || '';
             const notes = document.getElementById(`note-${d.id}`).value;
             const thumb = document.getElementById(`thumb-${d.id}`).checked || document.getElementById(`thumb-${d.id}`).parentElement.classList.contains('checked');
             const status = document.getElementById(`status-${d.id}`)?.value || d.status;
 
             const metaData = {
                 creator, editor, producer, sales, location,
-                shootDate, shootTime, deliveryDue, liveDate,
+                shootDate, shootTime, deliveryDue,
+                liveDate, plannedLiveDate: liveDate,
+                feedbackStatus, feedbackDue,
                 notes, thumbnailReady: thumb, status,
                 assetTitle: d.title,
                 assetFormat: d.format,
@@ -607,6 +625,14 @@
 
             assetMetadata[d.id] = metaData;
             batch.set(docRef, metaData, { merge: true });
+
+            // SYNC TO NOTION - Update deliverable with new fields
+            notionUpdates.push({
+                id: d.id,
+                liveDate: liveDate,
+                feedbackDue: feedbackDue,
+                feedbackStatus: feedbackStatus
+            });
 
             // SYNC TO PRODUCTION CALENDAR - Creates/updates shoot event
             if (shootDate) {
@@ -636,8 +662,27 @@
                     clientName: selectedClient.client,
                     projectTitle: selectedClient.title,
                     dueDate: deliveryDue,
+                    liveDate: liveDate,
+                    feedbackDue: feedbackDue,
+                    feedbackStatus: feedbackStatus,
                     priority: deliveryDue && new Date(deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium',
                     status: status,
+                    source: 'commercial-hub',
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            }
+
+            // SYNC TO DESIGNER QUEUE - If thumbnail not ready
+            if (!thumb && status !== 'Live' && status !== 'Approved') {
+                batch.set(designerQueueRef.doc(d.id), {
+                    title: d.title,
+                    assetType: 'Thumbnail',
+                    clientName: selectedClient.client,
+                    projectTitle: selectedClient.title,
+                    dueDate: deliveryDue,
+                    liveDate: liveDate,
+                    status: status === 'Edit' ? 'In Progress' : 'With Design',
+                    priority: deliveryDue && new Date(deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'Urgent' : 'Standard',
                     source: 'commercial-hub',
                     updatedAt: new Date().toISOString()
                 }, { merge: true });
@@ -655,9 +700,26 @@
              } catch(e) { console.error("Notion status update failed", e); }
         }
 
+        // Sync individual deliverable updates to Notion
+        for (const update of notionUpdates) {
+            if (update.liveDate || update.feedbackDue || update.feedbackStatus) {
+                try {
+                    await fetch(`${API_URL}/deliverables/${update.id}`, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            liveDate: update.liveDate || null,
+                            feedbackDue: update.feedbackDue || null,
+                            feedbackStatus: update.feedbackStatus || null
+                        })
+                    });
+                } catch(e) { console.error("Notion deliverable update failed", e); }
+            }
+        }
+
         try {
             await batch.commit();
-            showToast("Updates Saved & Synced");
+            showToast("Updates Saved & Synced to Notion");
             closeSidebar();
             loadData(); // Refresh to show new status
         } catch(e) {

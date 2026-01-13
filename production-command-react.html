@@ -64,6 +64,106 @@
             return 'gray';
         };
 
+        // DeliverablesList Component - shows deliverables from Notion with edit capability
+        const DeliverablesList = ({ projectId }) => {
+            const [deliverables, setDeliverables] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [editingId, setEditingId] = useState(null);
+            const [editValues, setEditValues] = useState({});
+            const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+            useEffect(() => {
+                if (!projectId) { setDeliverables([]); setLoading(false); return; }
+                const loadDeliverables = async () => {
+                    try {
+                        const res = await fetch(`${API_URL}/deliverables/project/${projectId}`);
+                        const data = await res.json();
+                        setDeliverables(data.deliverables || []);
+                    } catch (e) { console.error(e); }
+                    setLoading(false);
+                };
+                loadDeliverables();
+            }, [projectId]);
+
+            const handleEdit = (d) => {
+                setEditingId(d.id);
+                setEditValues({
+                    liveDate: d.plannedLiveDate || '',
+                    feedbackDue: d.feedbackDue || '',
+                    feedbackStatus: d.feedbackStatus || ''
+                });
+            };
+
+            const handleSave = async (id) => {
+                try {
+                    await fetch(`${API_URL}/deliverables/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(editValues)
+                    });
+                    // Update local state
+                    setDeliverables(prev => prev.map(d => d.id === id ? {
+                        ...d,
+                        plannedLiveDate: editValues.liveDate,
+                        feedbackDue: editValues.feedbackDue,
+                        feedbackStatus: editValues.feedbackStatus
+                    } : d));
+                    setEditingId(null);
+                } catch (e) { console.error(e); alert('Failed to save'); }
+            };
+
+            if (loading) return <div style={{padding:20, textAlign:'center', color:'#757575', fontSize:10}}>Loading deliverables...</div>;
+            if (!deliverables.length) return <div style={{padding:20, textAlign:'center', color:'#757575', fontSize:10}}>No deliverables linked</div>;
+
+            return (
+                <div style={{maxHeight:300, overflowY:'auto'}}>
+                    {deliverables.map(d => (
+                        <div key={d.id} style={{padding:12, background:'#F9FAFB', borderRadius:12, marginBottom:8, borderLeft:`4px solid ${d.status === 'Live' ? '#43B049' : d.status === 'Review' ? '#F59E0B' : '#E5E7EB'}`}}>
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8}}>
+                                <div>
+                                    <div style={{fontSize:12, fontWeight:800, textTransform:'uppercase'}}>{d.title}</div>
+                                    <div style={{fontSize:9, color:'#757575', marginTop:2}}>{d.format || 'Asset'} • {d.status || 'Pending'}</div>
+                                </div>
+                                {editingId === d.id ? (
+                                    <button onClick={() => handleSave(d.id)} style={{padding:'4px 10px', background:'#43B049', color:'white', border:'none', borderRadius:6, fontSize:9, fontWeight:700, cursor:'pointer'}}>Save</button>
+                                ) : (
+                                    <button onClick={() => handleEdit(d)} style={{padding:'4px 10px', background:'white', border:'1px solid #EAECEF', borderRadius:6, fontSize:9, fontWeight:700, cursor:'pointer'}}>Edit</button>
+                                )}
+                            </div>
+                            {editingId === d.id ? (
+                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:8}}>
+                                    <div>
+                                        <div style={{fontSize:8, fontWeight:700, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Live Date</div>
+                                        <input type="date" value={editValues.liveDate} onChange={e => setEditValues({...editValues, liveDate: e.target.value})} style={{width:'100%', padding:'6px 8px', border:'1px solid #EAECEF', borderRadius:6, fontSize:10}}/>
+                                    </div>
+                                    <div>
+                                        <div style={{fontSize:8, fontWeight:700, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Feedback Due</div>
+                                        <input type="date" value={editValues.feedbackDue} onChange={e => setEditValues({...editValues, feedbackDue: e.target.value})} style={{width:'100%', padding:'6px 8px', border:'1px solid #EAECEF', borderRadius:6, fontSize:10}}/>
+                                    </div>
+                                    <div style={{gridColumn:'span 2'}}>
+                                        <div style={{fontSize:8, fontWeight:700, color:'#757575', textTransform:'uppercase', marginBottom:4}}>Feedback Status</div>
+                                        <select value={editValues.feedbackStatus} onChange={e => setEditValues({...editValues, feedbackStatus: e.target.value})} style={{width:'100%', padding:'6px 8px', border:'1px solid #EAECEF', borderRadius:6, fontSize:10}}>
+                                            <option value="">Select...</option>
+                                            <option value="Awaiting Feedback">Awaiting Feedback</option>
+                                            <option value="Feedback Received">Feedback Received</option>
+                                            <option value="Changes Requested">Changes Requested</option>
+                                            <option value="Approved">Approved</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+                                    {d.plannedLiveDate && <span style={{fontSize:9, padding:'3px 8px', background:'#DCFCE7', color:'#166534', borderRadius:4, fontWeight:600}}>Live: {new Date(d.plannedLiveDate).toLocaleDateString('en-GB', {day:'numeric', month:'short'})}</span>}
+                                    {d.feedbackDue && <span style={{fontSize:9, padding:'3px 8px', background:'#DBEAFE', color:'#1E40AF', borderRadius:4, fontWeight:600}}>Feedback: {new Date(d.feedbackDue).toLocaleDateString('en-GB', {day:'numeric', month:'short'})}</span>}
+                                    {d.feedbackStatus && <span style={{fontSize:9, padding:'3px 8px', background:'#FEF3C7', color:'#92400E', borderRadius:4, fontWeight:600}}>{d.feedbackStatus}</span>}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
         const DotGrid = () => (
             <div style={{display:'grid', gridTemplateColumns:'repeat(2, 6px)', gap:3, width:14, height:14}}>
                 {[0,1,2,3].map(i => (
@@ -730,6 +830,39 @@
                                                     <input id="recAmt" type="number" placeholder="£" style={{width:80, padding:'10px 12px', background:'white', border:'1px solid #EAECEF', borderRadius:10, fontSize:11, fontWeight:600}}/>
                                                 </div>
                                                 <button onClick={handleAddReceipt} style={{width:'100%', padding:'12px', background:'#1C1C1C', color:'white', border:'none', borderRadius:10, fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Add Expense</button>
+                                            </div>
+                                            {/* Key Dates */}
+                                            <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20, marginTop:16}}>
+                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
+                                                    <span style={{width:20, height:20, background:'#21A0D8', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>4</span>
+                                                    <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase'}}>Key Dates</span>
+                                                </div>
+                                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                                                    <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                                        <div style={{fontSize:9, fontWeight:800, color:'#21A0D8', textTransform:'uppercase', marginBottom:4}}>Client Due</div>
+                                                        <div style={{fontSize:13, fontWeight:800}}>{selectedProject?.dueDate ? new Date(selectedProject.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
+                                                    </div>
+                                                    <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                                        <div style={{fontSize:9, fontWeight:800, color:'#43B049', textTransform:'uppercase', marginBottom:4}}>Go Live</div>
+                                                        <div style={{fontSize:13, fontWeight:800}}>{selectedProject?.liveDate ? new Date(selectedProject.liveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
+                                                    </div>
+                                                    <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                                        <div style={{fontSize:9, fontWeight:800, color:'#F59E0B', textTransform:'uppercase', marginBottom:4}}>Internal Due</div>
+                                                        <div style={{fontSize:13, fontWeight:800}}>{selectedProject?.internalDueDate ? new Date(selectedProject.internalDueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
+                                                    </div>
+                                                    <div style={{padding:14, background:'#F9FAFB', borderRadius:12}}>
+                                                        <div style={{fontSize:9, fontWeight:800, color:'#E6468B', textTransform:'uppercase', marginBottom:4}}>Shoot Date</div>
+                                                        <div style={{fontSize:13, fontWeight:800}}>{selectedProject?.shootDate ? new Date(selectedProject.shootDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {/* Deliverables Overview */}
+                                            <div style={{background:'white', border:'1px solid #EAECEF', borderRadius:20, padding:20, marginTop:16}}>
+                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
+                                                    <span style={{width:20, height:20, background:'#E6468B', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>5</span>
+                                                    <span style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase'}}>Deliverables</span>
+                                                </div>
+                                                <DeliverablesList projectId={selectedProjectId} />
                                             </div>
                                         </div>
                                         {/* Right */}

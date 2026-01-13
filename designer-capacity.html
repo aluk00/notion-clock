@@ -122,6 +122,7 @@
             align-items: center;
             gap: 12px;
             margin-bottom: 14px;
+            cursor: pointer;
         }
 
         .member-avatar {
@@ -138,7 +139,8 @@
         }
 
         .member-info { flex: 1; }
-        .member-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+        .member-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; transition: color 0.15s; }
+        .member-card:hover .member-name { color: var(--production); }
         .member-role { font-size: 10px; font-weight: 600; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.03em; }
 
         .member-status {
@@ -176,6 +178,27 @@
 
         .tasks-count { font-weight: 600; color: var(--ink); }
         .tasks-detail { color: var(--ink-light); }
+
+        .task-list {
+            display: none;
+            background: var(--surface-alt);
+            border-radius: 8px;
+            padding: 8px;
+            margin-top: 10px;
+        }
+        .task-list.expanded { display: block; }
+        .task-item {
+            font-size: 10px;
+            padding: 6px 8px;
+            background: var(--surface);
+            border-radius: 6px;
+            margin-bottom: 4px;
+            border-left: 3px solid var(--production);
+        }
+        .task-item:last-child { margin-bottom: 0; }
+        .task-title { font-weight: 700; color: var(--ink); }
+        .task-meta { color: var(--ink-light); margin-top: 2px; display: flex; gap: 8px; }
+        .task-date { font-weight: 600; padding: 1px 4px; border-radius: 3px; background: #E5E5E5; }
 
         .footer {
             margin-top: 20px;
@@ -281,8 +304,10 @@
     function render() {
         // Calculate workload per designer based on assigned tasks
         const workload = {};
+        const tasksByDesigner = {};
         designers.forEach(d => {
             workload[d.id] = { tasks: 0, hours: 0 };
+            tasksByDesigner[d.id] = [];
         });
 
         // Only count tasks that are In Progress or Not Started and assigned to a designer
@@ -291,6 +316,13 @@
                 const effort = EFFORT[r.assetType] || 1;
                 workload[r.designerId].tasks++;
                 workload[r.designerId].hours += effort;
+                tasksByDesigner[r.designerId].push({
+                    title: r.headline || r.title || 'Untitled',
+                    type: r.assetType,
+                    dueDate: r.deadline,
+                    liveDate: r.liveDate,
+                    status: r.status
+                });
             }
         });
 
@@ -329,15 +361,16 @@
             </div>
 
             <div class="team-grid">
-                ${designers.map(d => {
+                ${designers.map((d, idx) => {
                     const w = workload[d.id];
+                    const tasks = tasksByDesigner[d.id] || [];
                     const status = getCapacityStatus(w.hours);
                     const pct = Math.min((w.hours / MAX_HOURS) * 100, 100);
                     const name = `${d.firstName} ${d.lastName}`;
-                    
+
                     return `
-                        <div class="member-card">
-                            <div class="member-top">
+                        <div class="member-card" id="designer-${idx}">
+                            <div class="member-top" onclick="toggleDesignerTasks(${idx})">
                                 <div class="member-avatar">${getInitials(name)}</div>
                                 <div class="member-info">
                                     <div class="member-name">${name}</div>
@@ -352,6 +385,20 @@
                                 <span class="tasks-count">${w.tasks} task${w.tasks !== 1 ? 's' : ''}</span>
                                 <span class="tasks-detail">${w.hours.toFixed(1)}h / ${MAX_HOURS}h</span>
                             </div>
+                            ${tasks.length > 0 ? `
+                                <div class="task-list" id="designer-tasks-${idx}">
+                                    ${tasks.map(t => `
+                                        <div class="task-item">
+                                            <div class="task-title">${t.title}</div>
+                                            <div class="task-meta">
+                                                ${t.type ? `<span>${t.type}</span>` : ''}
+                                                ${t.dueDate ? `<span class="task-date">Due: ${new Date(t.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
+                                                ${t.liveDate ? `<span class="task-date" style="background:#DCFCE7; color:#166534;">Live: ${new Date(t.liveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
                         </div>
                     `;
                 }).join('')}
@@ -363,6 +410,14 @@
             </div>
         `;
     }
+
+    // Global toggle function for expanding task list
+    window.toggleDesignerTasks = function(idx) {
+        const taskList = document.getElementById(`designer-tasks-${idx}`);
+        if (taskList) {
+            taskList.classList.toggle('expanded');
+        }
+    };
 
     signInAnonymously(auth).then(async () => {
         // Load staff and filter for designers

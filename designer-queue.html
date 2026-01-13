@@ -74,10 +74,12 @@
         .card-title { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.4; margin-bottom: 6px; }
         .card-project { font-size: 10px; color: var(--ink-light); margin-bottom: 10px; }
 
-        .card-meta { display: flex; align-items: center; gap: 8px; }
+        .card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .card-due { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: var(--surface); }
         .card-due.overdue { background: rgba(239, 68, 68, 0.1); color: var(--urgent); }
         .card-due.soon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .card-live { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .card-client-due { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(33, 160, 216, 0.1); color: #21A0D8; }
         .card-designer { font-size: 10px; color: var(--ink-light); margin-left: auto; }
 
         .empty { text-align: center; padding: 40px 20px; color: var(--ink-light); font-size: 11px; font-weight: 500; }
@@ -201,6 +203,9 @@
             type: (d.staticAssetsNeeded && d.staticAssetsNeeded[0]) || (d.assetsNeeded && d.assetsNeeded[0]) || 'Graphic',
             effort: d.designEffort || 0,
             dueDate: d.dueDate,
+            liveDate: d.liveDate || d.goLiveDate || d.plannedLiveDate || '',
+            clientDueDate: d.clientDueDate || d.deliveryDue || d.feedbackDue || '',
+            feedbackStatus: d.feedbackStatus || '',
             designer: d.graphicDesigner || d.assignedCreative || 'Unassigned',
             status: status,
             priority: d.priorityLevel || d.priority || 'Standard'
@@ -216,6 +221,8 @@
             type: r.assetType || 'Asset',
             effort: ({ Thumbnail: 0.5, Headline: 0.5, Swipe: 1, Deck: 2, Template: 1.5 }[r.assetType] || 1),
             dueDate: r.deadline,
+            liveDate: r.liveDate || r.goLiveDate || '',
+            clientDueDate: r.clientDueDate || r.deliveryDue || '',
             designer: staff[r.designerId] || 'Unassigned',
             status: r.status || 'Not Started',
             priority: r.priority || 'Standard'
@@ -282,6 +289,9 @@
                                     ${item.project ? `<div class="card-project">${item.project}</div>` : ''}
                                     <div class="card-meta">
                                         ${item.dueDate ? `<span class="card-due ${overdue ? 'overdue' : (soon ? 'soon' : '')}">${formatDate(item.dueDate)}</span>` : ''}
+                                        ${item.clientDueDate ? `<span class="card-client-due">Client: ${formatDate(item.clientDueDate)}</span>` : ''}
+                                        ${item.liveDate ? `<span class="card-live">Live: ${formatDate(item.liveDate)}</span>` : ''}
+                                        ${item.feedbackStatus ? `<span style="font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(139, 92, 246, 0.1); color: #7C3AED;">${item.feedbackStatus}</span>` : ''}
                                         <span class="card-designer">${item.designer}</span>
                                     </div>
                                 </div>
@@ -340,6 +350,9 @@
                 type: 'Thumbnail',
                 effort: 0.5,
                 dueDate: a.deliveryDue,
+                liveDate: a.liveDate || a.plannedLiveDate,
+                clientDueDate: a.feedbackDue || a.deliveryDue,
+                feedbackStatus: a.feedbackStatus,
                 designer: 'Unassigned',
                 status: a.thumbnailReady ? 'Done' : (a.status === 'Edit' ? 'In Progress' : 'With Design'),
                 priority: a.deliveryDue && new Date(a.deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'Urgent' : 'Standard'
