@@ -139,7 +139,7 @@
         }
         .sidebar.open { 
             transform: translateX(0); 
-            box-shadow: -10px 0 40px rgba(0,0,0,0.1);
+            box-shadow: none;
         }
 
         .sb-header { padding: 24px 32px; background: var(--white); border-bottom: 1px solid var(--border); }
@@ -386,7 +386,7 @@
         db = firebase.firestore();
     } catch(e) { console.error(e); }
 
-    let groupedProjects = {}, selectedClient = null, assetMetadata = {}, currentNoteType = '';
+    let groupedProjects = {}, selectedClient = null, assetMetadata = {}, currentNoteType = '', projects = [];
     const TALENT = ["Mimi Yates", "Dan Quinnell", "Prashan Leigh", "Henry Williams", "Dine Mourad", "Alex Hobbs", "Kaylee Abrahams", "Ellie Beetham", "Sophia Stanford", "Kayla Brantley", "Brooklyn DeGumbia"];
     const PRODUCERS = ["Alex Biddle", "Sophie", "Hugo", "Ellie", "Dan Q"];
     const SALES = ["Zach", "Isobel", "Maxine", "Daniel", "Sarah"];
@@ -420,6 +420,7 @@
 
             if (data.success) {
                 const rawProjects = data.projects;
+                projects = rawProjects;
                 groupedProjects = {};
 
                 rawProjects.forEach(p => {
@@ -631,7 +632,8 @@
 
     // --- SAVE TO FIREBASE & NOTION ---
     window.saveAllAssetData = async () => {
-        if(!selectedClient || !db) return;
+        if(!selectedClient) return;
+        const hasDb = Boolean(db);
         
         // 1. UI Loading State
         const btn = document.querySelector('.sb-actions .btn-primary');
@@ -639,18 +641,18 @@
         btn.innerText = "Saving...";
         btn.disabled = true;
 
-        const batch = db.batch();
-        const collectionRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("asset_metadata");
-        const calendarRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events");
-        const editQueueRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("edit_queue");
-        const designerQueueRef = db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("designer_queue");
+        const batch = hasDb ? db.batch() : null;
+        const collectionRef = hasDb ? db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("asset_metadata") : null;
+        const calendarRef = hasDb ? db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events") : null;
+        const editQueueRef = hasDb ? db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("edit_queue") : null;
+        const designerQueueRef = hasDb ? db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("designer_queue") : null;
 
         // 2. Prepare Notion Updates
         const notionUpdates = [];
 
         // 3. Process Deliverables (Firebase Metadata)
         selectedClient.deliverables.forEach(d => {
-            const docRef = collectionRef.doc(d.id);
+            const docRef = hasDb ? collectionRef.doc(d.id) : null;
             const creator = document.getElementById(`creator-${d.id}`)?.value;
             if(!creator) return; 
 
@@ -682,7 +684,9 @@
             d.status = meta.status; 
 
             // Add to Firebase Batch
-            batch.set(docRef, meta, { merge: true });
+            if (hasDb) {
+                batch.set(docRef, meta, { merge: true });
+            }
 
             // Queue Notion Update
             notionUpdates.push({
@@ -693,7 +697,7 @@
             });
 
             // Calendar Sync
-            if (meta.shootDate) {
+            if (hasDb && meta.shootDate) {
                 batch.set(calendarRef.doc(d.id), {
                     date: meta.shootDate, time: meta.shootTime, title: d.title,
                     projectTitle: selectedClient.title, clientName: selectedClient.client,
@@ -705,7 +709,7 @@
             
             // Edit Queue Sync
             const editStatuses = ['Edit', 'Filming', 'Review'];
-            if (meta.editor && editStatuses.some(s => meta.status?.includes(s))) {
+            if (hasDb && meta.editor && editStatuses.some(s => meta.status?.includes(s))) {
                 batch.set(editQueueRef.doc(d.id), {
                     title: d.title, editor: meta.editor, format: d.format,
                     clientName: selectedClient.client, projectTitle: selectedClient.title,
@@ -717,7 +721,7 @@
             }
             
             // Design Queue Sync
-            if (!meta.thumbnailReady && meta.status !== 'Live' && meta.status !== 'Approved') {
+            if (hasDb && !meta.thumbnailReady && meta.status !== 'Live' && meta.status !== 'Approved') {
                 batch.set(designerQueueRef.doc(d.id), {
                     title: d.title, assetType: 'Thumbnail',
                     clientName: selectedClient.client, projectTitle: selectedClient.title,
@@ -759,7 +763,9 @@
             }
 
             // Commit Firebase Batch
-            await batch.commit();
+            if (hasDb) {
+                await batch.commit();
+            }
             
             // Show Success
             const toast = document.getElementById('toast');
