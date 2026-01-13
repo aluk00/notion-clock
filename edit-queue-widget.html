@@ -40,24 +40,32 @@
 </head>
 <body>
     <div id="root"></div>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script>
-        firebase.initializeApp({
-            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-            authDomain: "dmg-command-centre-native.firebaseapp.com",
-            projectId: "dmg-command-centre-native",
-            storageBucket: "dmg-command-centre-native.appspot.com",
-            messagingSenderId: "223535956454",
-            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-        });
-        
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const appId = "dmg-command-centre-native";
+        const API_URL = 'https://us-central1-dmg-command-centre-native.cloudfunctions.net/api';
+
         let items = [];
         const root = document.getElementById('root');
+
+        // Edit queue statuses
+        const editStatuses = ['In Progress', 'In Production', 'In Edit', 'Not Started', 'To Be Briefed'];
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+            if (diff < 0) return `${Math.abs(diff)}d overdue`;
+            if (diff === 0) return 'Today';
+            if (diff === 1) return 'Tomorrow';
+            return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        }
+
+        function getPriorityClass(priority) {
+            const p = (priority || 'low').toLowerCase();
+            if (p === 'high' || p === 'urgent') return 'priority-high';
+            if (p === 'medium') return 'priority-medium';
+            return 'priority-low';
+        }
 
         function render() {
             root.innerHTML = `
@@ -71,20 +79,19 @@
                         <div class="empty">
                             <div class="empty-icon">🎬</div>
                             <div class="empty-title">Queue Empty</div>
-                            <div class="empty-sub">No edits pending. Add items to the edit_queue collection in Firebase.</div>
+                            <div class="empty-sub">No deliverables currently in the edit queue.</div>
                         </div>
                     ` : `
                         <div class="list">
                             ${items.map(function(item) {
-                                var priorityClass = 'priority-' + (item.priority || 'low').toLowerCase();
                                 return `
                                     <div class="item" onclick="window.open('${item.url || '#'}', '_blank')">
                                         <div class="item-icon">🎬</div>
                                         <div class="item-info">
                                             <div class="item-title">${item.title || 'Untitled Edit'}</div>
-                                            <div class="item-sub">${item.editor || 'Unassigned'} • ${item.duration || '0:00'}</div>
+                                            <div class="item-sub">${item.status || 'Pending'} • ${formatDate(item.dueDate)}</div>
                                         </div>
-                                        <span class="item-priority ${priorityClass}">${item.priority || 'Low'}</span>
+                                        <span class="item-priority ${getPriorityClass(item.priority)}">${item.priority || 'Low'}</span>
                                     </div>
                                 `;
                             }).join('')}
@@ -94,34 +101,54 @@
             `;
         }
 
-        function loadData() {
+        async function loadData() {
             root.innerHTML = '<div class="widget"><div class="loading"><div class="spinner"></div>Loading...</div></div>';
-            
-            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('edit_queue')
-                .onSnapshot(function(snapshot) {
-                    items = [];
-                    snapshot.forEach(function(doc) {
-                        items.push(Object.assign({ id: doc.id }, doc.data()));
-                    });
-                    var priorityOrder = { high: 0, medium: 1, low: 2 };
-                    items.sort(function(a, b) {
-                        return (priorityOrder[(a.priority || 'low').toLowerCase()] || 2) - (priorityOrder[(b.priority || 'low').toLowerCase()] || 2);
-                    });
-                    render();
-                }, function(error) {
-                    console.error('Firestore error:', error);
-                    items = [];
-                    render();
+
+            try {
+                // Fetch deliverables from API
+                const res = await fetch(`${API_URL}/deliverables`);
+                const data = await res.json();
+                const deliverables = data?.deliverables || [];
+
+                // Filter for deliverables in edit queue (In Progress, In Edit, etc.)
+                items = deliverables.filter(d =>
+                    editStatuses.includes(d.status) ||
+                    editStatuses.includes(d.deskState) ||
+                    (d.editorEffort && d.editorEffort > 0 && d.status !== 'Live' && d.status !== 'Published')
+                ).map(d => ({
+                    id: d.id,
+                    title: d.title,
+                    url: d.url,
+                    status: d.status || d.deskState || 'Pending',
+                    dueDate: d.dueDate,
+                    priority: d.priority || 'Medium',
+                    editorEffort: d.editorEffort || 0
+                }));
+
+                // Sort by priority then due date
+                const priorityOrder = { high: 0, urgent: 0, medium: 1, low: 2 };
+                items.sort((a, b) => {
+                    const pA = priorityOrder[(a.priority || 'low').toLowerCase()] || 2;
+                    const pB = priorityOrder[(b.priority || 'low').toLowerCase()] || 2;
+                    if (pA !== pB) return pA - pB;
+                    if (!a.dueDate) return 1;
+                    if (!b.dueDate) return -1;
+                    return new Date(a.dueDate) - new Date(b.dueDate);
                 });
+
+                render();
+            } catch (error) {
+                console.error('Load failed:', error);
+                items = [];
+                render();
+            }
         }
 
-        auth.signInAnonymously().then(function() {
-            loadData();
-        }).catch(function(error) {
-            console.error('Auth error:', error);
-            items = [];
-            render();
-        });
+        // Load data on page load
+        loadData();
+
+        // Auto-refresh every 2 minutes
+        setInterval(loadData, 120000);
     </script>
 </body>
 </html>

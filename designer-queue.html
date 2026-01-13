@@ -177,22 +177,33 @@
     }
 
     function normaliseDeliverable(d) {
+        // Normalize status based on actual Notion field values
         let status = 'With Design';
-        if (d.deskState === 'With Design' || d.productionStatus === 'Not Started') status = 'With Design';
-        else if (d.deskState === 'In Design' || d.productionStatus === 'In Progress') status = 'In Progress';
-        else if (d.deskState === 'Design Complete' || d.productionStatus === 'Ready for Review') status = 'Ready for Review';
+        const deskState = d.deskState || '';
+        const productionStatus = d.productionStatus || d.status || '';
+
+        // Map various status values to columns
+        if (deskState === 'With Design' || productionStatus === 'Not Started' || productionStatus === 'To Be Briefed') {
+            status = 'With Design';
+        } else if (deskState === 'In Design' || productionStatus === 'In Progress' || productionStatus === 'In Production') {
+            status = 'In Progress';
+        } else if (deskState === 'Design Complete' || productionStatus === 'Ready for Review' || productionStatus === 'Stakeholder Review' || productionStatus === 'Internal Review') {
+            status = 'Ready for Review';
+        } else if (productionStatus === 'Assets Approved' || productionStatus === 'Complete' || productionStatus === 'Live') {
+            status = 'Ready for Review';
+        }
 
         return {
             id: d.id,
             source: 'notion',
             title: d.title || 'Untitled',
             project: d.projectTitle || d.project || '',
-            type: d.staticAssetsNeeded?.[0] || 'Graphic',
+            type: (d.staticAssetsNeeded && d.staticAssetsNeeded[0]) || (d.assetsNeeded && d.assetsNeeded[0]) || 'Graphic',
             effort: d.designEffort || 0,
             dueDate: d.dueDate,
-            designer: d.graphicDesigner || 'Unassigned',
+            designer: d.graphicDesigner || d.assignedCreative || 'Unassigned',
             status: status,
-            priority: d.priorityLevel || 'Standard'
+            priority: d.priorityLevel || d.priority || 'Standard'
         };
     }
 

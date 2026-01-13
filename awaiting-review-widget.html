@@ -37,33 +37,24 @@
 </head>
 <body>
     <div id="root"></div>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script>
-        firebase.initializeApp({
-            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-            authDomain: "dmg-command-centre-native.firebaseapp.com",
-            projectId: "dmg-command-centre-native",
-            storageBucket: "dmg-command-centre-native.appspot.com",
-            messagingSenderId: "223535956454",
-            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-        });
-        
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        const appId = "dmg-command-centre-native";
+        const API_URL = 'https://us-central1-dmg-command-centre-native.cloudfunctions.net/api';
+
         let items = [];
         const root = document.getElementById('root');
 
-        function timeAgo(date) {
-            if (!date) return '';
-            const d = date.toDate ? date.toDate() : new Date(date);
-            const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-            if (diff < 60) return 'Just now';
-            if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-            if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
-            return Math.floor(diff/86400) + 'd ago';
+        // Review statuses that indicate awaiting review
+        const reviewStatuses = ['Stakeholder Review', 'Internal Review', 'Feedback / Revisions'];
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+            if (diff < 0) return `${Math.abs(diff)}d overdue`;
+            if (diff === 0) return 'Today';
+            if (diff === 1) return 'Tomorrow';
+            return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
         }
 
         function render() {
@@ -78,7 +69,7 @@
                         <div class="empty">
                             <div class="empty-icon">✅</div>
                             <div class="empty-title">All Clear</div>
-                            <div class="empty-sub">No items waiting for review. Add items to the review_queue collection.</div>
+                            <div class="empty-sub">No projects or deliverables awaiting review.</div>
                         </div>
                     ` : `
                         <div class="list">
@@ -88,9 +79,9 @@
                                         <div class="item-icon">📝</div>
                                         <div class="item-info">
                                             <div class="item-title">${item.title || 'Untitled'}</div>
-                                            <div class="item-sub">${item.type || 'Review'} • ${item.submittedBy || 'Unknown'}</div>
+                                            <div class="item-sub">${item.type || 'Review'} • ${item.status || 'Pending'}</div>
                                         </div>
-                                        <div class="item-time">${timeAgo(item.submittedAt)}</div>
+                                        <div class="item-time">${formatDate(item.dueDate)}</div>
                                     </div>
                                 `;
                             }).join('')}
@@ -100,35 +91,68 @@
             `;
         }
 
-        function loadData() {
+        async function loadData() {
             root.innerHTML = '<div class="widget"><div class="loading"><div class="spinner"></div>Loading...</div></div>';
-            
-            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('review_queue')
-                .onSnapshot(function(snapshot) {
-                    items = [];
-                    snapshot.forEach(function(doc) {
-                        items.push(Object.assign({ id: doc.id }, doc.data()));
-                    });
-                    items.sort(function(a, b) {
-                        var aTime = a.submittedAt && a.submittedAt.toDate ? a.submittedAt.toDate() : new Date(0);
-                        var bTime = b.submittedAt && b.submittedAt.toDate ? b.submittedAt.toDate() : new Date(0);
-                        return bTime - aTime;
-                    });
-                    render();
-                }, function(error) {
-                    console.error('Firestore error:', error);
-                    items = [];
-                    render();
+
+            try {
+                // Fetch projects in review status
+                const projectsRes = await fetch(`${API_URL}/projects`);
+                const projectsData = await projectsRes.json();
+                const projects = projectsData?.projects || [];
+
+                // Filter for projects awaiting review in any workflow
+                const reviewProjects = projects.filter(p =>
+                    reviewStatuses.includes(p.creativeWorkflowStatus) ||
+                    reviewStatuses.includes(p.productionWorkflowStatus) ||
+                    reviewStatuses.includes(p.socialWorkflowStatus)
+                ).map(p => ({
+                    id: p.id,
+                    title: p.title,
+                    url: p.url,
+                    type: 'Project',
+                    status: p.creativeWorkflowStatus || p.productionWorkflowStatus || p.socialWorkflowStatus,
+                    dueDate: p.dueDate || p.clientDueDate
+                }));
+
+                // Fetch deliverables in review status
+                const deliverablesRes = await fetch(`${API_URL}/deliverables`);
+                const deliverablesData = await deliverablesRes.json();
+                const deliverables = deliverablesData?.deliverables || [];
+
+                const reviewDeliverables = deliverables.filter(d =>
+                    reviewStatuses.includes(d.status) ||
+                    reviewStatuses.includes(d.deskState)
+                ).map(d => ({
+                    id: d.id,
+                    title: d.title,
+                    url: d.url,
+                    type: 'Deliverable',
+                    status: d.status || d.deskState,
+                    dueDate: d.dueDate
+                }));
+
+                items = [...reviewProjects, ...reviewDeliverables];
+
+                // Sort by due date
+                items.sort((a, b) => {
+                    if (!a.dueDate) return 1;
+                    if (!b.dueDate) return -1;
+                    return new Date(a.dueDate) - new Date(b.dueDate);
                 });
+
+                render();
+            } catch (error) {
+                console.error('Load failed:', error);
+                items = [];
+                render();
+            }
         }
 
-        auth.signInAnonymously().then(function() {
-            loadData();
-        }).catch(function(error) {
-            console.error('Auth error:', error);
-            items = [];
-            render();
-        });
+        // Load data on page load
+        loadData();
+
+        // Auto-refresh every 2 minutes
+        setInterval(loadData, 120000);
     </script>
 </body>
 </html>
