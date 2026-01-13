@@ -367,20 +367,19 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-        if(db) firebase.auth().signInAnonymously().then(loadData).catch(loadData);
-        else loadData();
+        loadData();
+        if (db && firebase.auth) {
+            firebase.auth().signInAnonymously().catch((e) => console.warn("Auth failed, read-only mode:", e));
+        }
     });
 
     async function loadData() {
         try {
-            console.log('Fetching from:', `${API_URL}/projects`);
             const res = await fetch(`${API_URL}/projects`);
             const data = await res.json();
-            console.log('API response:', data);
 
             if (data.success) {
                 const rawProjects = data.projects;
-                console.log('Total projects received:', rawProjects.length);
                 groupedProjects = {};
 
                 rawProjects.forEach(p => {
@@ -424,10 +423,10 @@
                         }
                     }
                 });
-                console.log('Grouped production projects:', Object.keys(groupedProjects).length);
                 render(rawProjects);
             } else {
                 console.error('API returned success:false', data.error);
+                document.getElementById('production-list').innerHTML = `<div class="loading" style="color:var(--danger)">Error Loading Data</div>`;
             }
 
             if(db) {
@@ -435,7 +434,10 @@
                 snap.forEach(doc => assetMetadata[doc.id] = doc.data());
                 loadNotes();
             }
-        } catch (e) { console.error("Load Error:", e); }
+        } catch (e) {
+            console.error("Load Error:", e);
+            document.getElementById('production-list').innerHTML = `<div class="loading" style="color:var(--danger)">Error Loading Data</div>`;
+        }
     }
 
     function render(rawProjects) {
@@ -772,19 +774,25 @@
     
     // NOTE MODALS
     async function loadNotes() {
-        const snap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("meeting_notes").orderBy("createdAt", "desc").limit(10).get();
-        const notes = snap.docs.map(d => d.data());
-        ['editorial','discussion','action'].forEach(t => {
-            const mount = document.getElementById(`note-${t}`);
-            const filtered = notes.filter(n => (n.type||'').toLowerCase().includes(t));
-            mount.innerHTML = filtered.map(n => `
-                <div class="note-item">
-                    ${t === 'editorial' ? `<span class="note-label">${n.channel || 'DMUK'}</span>` : ''}
-                    ${t === 'discussion' ? `<span class="note-label">By: ${n.raisedBy || 'Staff'}</span>` : ''}
-                    <span style="color:var(--ink)">${n.update || n.text || n.outcome || 'No detail'}</span>
-                </div>
-            `).join('') || '<div class="note-item" style="color:var(--ink-sub);text-align:center;">No notes</div>';
-        });
+        if (!db) return;
+        try {
+            const snap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("meeting_notes").orderBy("createdAt", "desc").limit(10).get();
+            const notes = snap.docs.map(d => d.data());
+            ['editorial','discussion','action'].forEach(t => {
+                const mount = document.getElementById(`note-${t}`);
+                if (!mount) return;
+                const filtered = notes.filter(n => (n.type||'').toLowerCase().includes(t));
+                mount.innerHTML = filtered.map(n => `
+                    <div class="note-item">
+                        ${t === 'editorial' ? `<span class="note-label">${n.channel || 'DMUK'}</span>` : ''}
+                        ${t === 'discussion' ? `<span class="note-label">By: ${n.raisedBy || 'Staff'}</span>` : ''}
+                        <span style="color:var(--ink)">${n.update || n.text || n.outcome || 'No detail'}</span>
+                    </div>
+                `).join('') || '<div class="note-item" style="color:var(--ink-sub);text-align:center;">No notes</div>';
+            });
+        } catch(e) {
+            console.log("Notes load error (likely permissions)", e);
+        }
     }
     window.openNoteModal = (t) => { currentNoteType=t; document.getElementById('modal-note-title').textContent=t.toUpperCase(); document.getElementById('modal-note-body').innerHTML = t==='editorial'?`<div class="field"><label class="field-label">Channel</label><input class="field-input" id="n-channel"></div><div class="field"><label class="field-label">Update</label><textarea class="notes-area" id="n-content"></textarea></div>`:t==='discussion'?`<div class="field"><label class="field-label">Raised By</label><input class="field-input" id="n-raised"></div><div class="field"><label class="field-label">Topic</label><input class="field-input" id="n-topic"></div>`:`<div class="field"><label class="field-label">Owner</label><input class="field-input" id="n-owner"></div><div class="field"><label class="field-label">Task</label><textarea class="notes-area" id="n-task"></textarea></div>`; document.getElementById('modal-note').classList.add('open'); }
     window.saveNote = async () => {

@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Rundown Calendar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            editorial: '#E94B4B',
+            production: '#43B049',
+            sales: '#21A0D8',
+            social: '#F59E0B',
+            creative: '#E6468B',
+            ink: '#1C1C1C',
+            'ink-sub': '#757575',
+            'bg-soft': '#F9FAFB',
+            border: '#EAECEF',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: transparent;
+      font-family: 'Inter', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #E5E7EB;
+      border-radius: 20px;
+    }
+  </style>
+</head>
+<body class="text-ink">
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+      authDomain: "dmg-command-centre-native.firebaseapp.com",
+      projectId: "dmg-command-centre-native",
+      storageBucket: "dmg-command-centre-native.firebasestorage.app",
+      messagingSenderId: "223535956454",
+      appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+    };
+
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+    const auth = firebase.auth();
+
+    const APP_ID = "dmg-command-centre-native";
+    const COLLECTION_PATH = `artifacts/${APP_ID}/public/data/daily_rundowns`;
+    const STAFF_PATH = `artifacts/${APP_ID}/public/data/staff_directory`;
+    const DESIGN_REQ_PATH = `artifacts/${APP_ID}/public/data/design_requests`;
+    const EDIT_QUEUE_PATH = `artifacts/${APP_ID}/public/data/edit_queue`;
+
+    const authenticate = () => auth.signInAnonymously();
+
+    const fetchRundownItems = async (startDate, endDate) => {
+      try {
+        const snapshot = await db
+          .collection(COLLECTION_PATH)
+          .where("dateKey", ">=", startDate)
+          .where("dateKey", "<=", endDate)
+          .get();
+
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return items.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+      } catch (error) {
+        console.error("Error fetching rundown items:", error);
+        return [];
+      }
+    };
+
+    const fetchStaff = async () => {
+      try {
+        const snapshot = await db.collection(STAFF_PATH).get();
+        const staff = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.name || 'Unknown',
+            firstName: data.firstName,
+            lastName: data.lastName,
+            role: data.role,
+            team: data.team
+          };
+        });
+
+        if (staff.length > 0) return staff;
+
+        return [
+          { id: '1', name: 'Mimi', role: 'Editor', team: 'Editorial' },
+          { id: '2', name: 'Dan', role: 'Editor', team: 'Editorial' },
+          { id: '3', name: 'Prashan', role: 'Editor', team: 'Editorial' },
+          { id: '4', name: 'Henry', role: 'Editor', team: 'Editorial' },
+          { id: '5', name: 'Dine', role: 'Designer', team: 'Creative' },
+          { id: '6', name: 'Alex', role: 'Producer', team: 'Production' },
+          { id: '7', name: 'Kaylee', role: 'Designer', team: 'Creative' },
+          { id: '8', name: 'Ellie', role: 'Designer', team: 'Creative' }
+        ];
+      } catch (error) {
+        console.warn("Could not fetch staff directory, using fallback.", error);
+        return [];
+      }
+    };
+
+    const syncToEcosystem = async (id, item) => {
+      try {
+        if (item.thumbnailStatus === 'needed') {
+          await db.collection(DESIGN_REQ_PATH).doc(`rundown-${id}`).set({
+            headline: item.title,
+            assetType: 'Thumbnail',
+            status: 'Not Started',
+            priority: 'Standard',
+            deadline: item.dateKey,
+            liveDate: item.plannedLiveDate || null,
+            designerId: item.designerId || null,
+            source: 'Rundown',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+
+        if (item.editor && item.status !== 'done') {
+          await db.collection(EDIT_QUEUE_PATH).doc(`rundown-${id}`).set({
+            title: item.title,
+            editor: item.editor,
+            status: item.status === 'pending' ? 'In Progress' : 'To Do',
+            priority: 'Medium',
+            dueDate: item.dateKey,
+            liveDate: item.plannedLiveDate || null,
+            source: 'Rundown',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+      } catch (error) {
+        console.warn("Ecosystem sync warning:", error);
+      }
+    };
+
+    const updateRundownItem = async (id, data) => {
+      try {
+        await db.collection(COLLECTION_PATH).doc(id).update(data);
+        await syncToEcosystem(id, data);
+      } catch (error) {
+        console.error("Error updating item:", error);
+        throw error;
+      }
+    };
+
+    const deleteRundownItem = async (id) => {
+      try {
+        await db.collection(COLLECTION_PATH).doc(id).delete();
+        try {
+          await db.collection(DESIGN_REQ_PATH).doc(`rundown-${id}`).delete();
+          await db.collection(EDIT_QUEUE_PATH).doc(`rundown-${id}`).delete();
+        } catch (error) {
+          console.warn("Cleanup warning:", error);
+        }
+      } catch (error) {
+        console.error("Error deleting item:", error);
+        throw error;
+      }
+    };
+
+    const uploadRundownAttachment = async (file, itemId) => {
+      try {
+        const fileRef = storage.ref().child(`rundown_attachments/${itemId}/${file.name}`);
+        await fileRef.put(file);
+        return await fileRef.getDownloadURL();
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        throw error;
+      }
+    };
+
+    const DotGrid = () => (
+      <div className="grid grid-cols-2 gap-[2px] w-[12px]">
+        {[0, 1, 2, 3].map((i) => (
+          <span
+            key={i}
+            className="w-[5px] h-[5px] rounded-full bg-editorial animate-pulse"
+            style={{ animationDelay: `${i * 0.3}s` }}
+          />
+        ))}
+      </div>
+    );
+
+    const Select = ({ label, value, options, onChange, placeholder = "Select...", className = "" }) => {
+      const [isOpen, setIsOpen] = useState(false);
+      const containerRef = useRef(null);
+      const selectedOption = options.find(opt => opt.value === value);
+
+      useEffect(() => {
+        const handleClickOutside = (event) => {
+          if (containerRef.current && !containerRef.current.contains(event.target)) {
+            setIsOpen(false);
+          }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+      }, []);
+
+      return (
+        <div className={`relative ${className}`} ref={containerRef}>
+          <label className="block text-[10px] font-bold uppercase text-ink-sub mb-1.5 tracking-wide">{label}</label>
+          <button
+            type="button"
+            onClick={() => setIsOpen(!isOpen)}
+            className={`w-full text-left text-xs font-semibold border rounded-lg px-3 py-2.5 flex items-center justify-between transition-all duration-200 
+              ${isOpen ? 'border-editorial ring-1 ring-editorial/20 shadow-sm' : 'border-gray-200 hover:border-gray-300'}
+              bg-white`}
+          >
+            <span className={!selectedOption ? "text-gray-400" : "text-ink"}>
+              {selectedOption ? selectedOption.label : placeholder}
+            </span>
+            <span className="text-gray-400 text-[10px]">▼</span>
+          </button>
+
+          {isOpen && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+              <div className="py-1">
+                {options.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium hover:bg-gray-50 flex items-center justify-between group
+                      ${option.value === value ? 'bg-editorial/5 text-editorial' : 'text-ink'}`}
+                  >
+                    <span>{option.label}</span>
+                    {option.value === value && <span className="text-editorial">✓</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const VERTICAL_STYLES = {
+      SPORT: 'bg-green-100 text-green-700',
+      UK: 'bg-blue-100 text-blue-600',
+      RESPAWN: 'bg-purple-100 text-purple-600',
+      MAIN: 'bg-gray-100 text-gray-800',
+      MONEY: 'bg-yellow-100 text-yellow-700',
+      SPOTLIGHT: 'bg-pink-100 text-pink-600'
+    };
+
+    const STATUS_ICONS = {
+      done: '✓',
+      pending: '◔',
+      blocked: '!',
+      '': ''
+    };
+
+    const STATUS_STYLES = {
+      done: 'bg-green-500 border-green-500 text-white',
+      pending: 'bg-yellow-500 border-yellow-500 text-white',
+      blocked: 'bg-red-500 border-red-500 text-white',
+      '': 'border-gray-200'
+    };
+
+    const RundownCard = ({ item, onClick }) => {
+      const verticalClass = VERTICAL_STYLES[item.vertical] || 'bg-gray-100 text-gray-600';
+      const statusClass = STATUS_STYLES[item.status || ''] || 'border-gray-200';
+      const statusIcon = STATUS_ICONS[item.status || ''] || '';
+
+      const hasThumbnailIssue = item.thumbnailStatus === 'needed';
+      const hasPDF = !!item.pdfUrl;
+      const hasLink = !!item.liveLink;
+      const hasNotes = !!item.notes;
+
+      return (
+        <div
+          onClick={() => onClick(item)}
+          className="p-2 bg-white rounded-lg border border-border shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] transition-all duration-200 flex gap-2 group cursor-pointer relative"
+        >
+          <div className={`w-[14px] h-[14px] mt-[2px] rounded-full border-[1.5px] flex items-center justify-center text-[8px] flex-shrink-0 ${statusClass}`}>
+            {statusIcon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap gap-1 mb-1 items-center">
+              <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded ${verticalClass} tracking-wide`}>
+                {item.vertical}
+              </span>
+              {item.creator && (
+                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">
+                  {item.creator}
+                </span>
+              )}
+              {item.editor && (
+                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+                  ED: {item.editor}
+                </span>
+              )}
+              {item.designer && (
+                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-pink-50 text-pink-600 border border-pink-100">
+                  DES: {item.designer}
+                </span>
+              )}
+              {hasThumbnailIssue && (
+                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-orange-100 text-orange-600 border border-orange-200 animate-pulse">
+                  Thumb Needed
+                </span>
+              )}
+            </div>
+            <div className="text-[10px] font-semibold text-ink leading-snug break-words mb-1">
+              {item.title}
+            </div>
+
+            {(hasPDF || hasLink || hasNotes) && (
+              <div className="flex gap-2 pt-1 border-t border-gray-50">
+                {hasLink && <span title="Live Link" className="text-[9px] text-blue-500">🔗 Live</span>}
+                {hasPDF && <span title="PDF Attached" className="text-[9px] text-red-500">📄 PDF</span>}
+                {hasNotes && <span title="Has Notes" className="text-[9px] text-gray-400">📝 Notes</span>}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    const EditModal = ({ item, isOpen, onClose, onSave, onDelete }) => {
+      const [formData, setFormData] = useState({});
+      const [loading, setLoading] = useState(false);
+      const [uploading, setUploading] = useState(false);
+      const [staff, setStaff] = useState([]);
+      const fileInputRef = useRef(null);
+
+      useEffect(() => {
+        const loadStaff = async () => {
+          const data = await fetchStaff();
+          setStaff(data);
+        };
+        loadStaff();
+      }, []);
+
+      const { editors, designers, creators } = useMemo(() => {
+        const editors = [{ value: '', label: 'Unassigned' }];
+        const designers = [{ value: '', label: 'Unassigned' }];
+        const creators = [{ value: '', label: 'Unassigned' }];
+
+        staff.forEach(s => {
+          const role = (s.role || '').toLowerCase();
+          const team = (s.team || '').toLowerCase();
+          const name = s.name;
+          const firstName = (s.firstName || '').toLowerCase();
+
+          const isEditor = (team === 'editorial' || role.includes('editor')) && !['alex', 'megan'].includes(firstName);
+          const isDesigner = team === 'creative' || team === 'design' || role.includes('design') || role.includes('graphic');
+
+          const option = { value: s.id, label: name };
+
+          if (isEditor) editors.push(option);
+          if (isDesigner) designers.push(option);
+          creators.push(option);
+        });
+
+        return { editors, designers, creators };
+      }, [staff]);
+
+      useEffect(() => {
+        if (item) {
+          setFormData({
+            title: item.title,
+            section: item.section,
+            vertical: item.vertical,
+            creator: item.creator || '',
+            creatorId: item.creatorId || '',
+            editor: item.editor || '',
+            editorId: item.editorId || '',
+            designer: item.designer || '',
+            designerId: item.designerId || '',
+            status: item.status || '',
+            dateKey: item.dateKey,
+            plannedLiveDate: item.plannedLiveDate || '',
+            liveLink: item.liveLink || '',
+            thumbnailStatus: item.thumbnailStatus || 'n/a',
+            notes: item.notes || '',
+            pdfUrl: item.pdfUrl || '',
+            pdfName: item.pdfName || ''
+          });
+        }
+      }, [item]);
+
+      if (!isOpen) return null;
+
+      const handleChange = (name, value) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+      };
+
+      const handleStaffChange = (role, id) => {
+        const member = staff.find(s => s.id === id);
+        const name = member ? member.name : '';
+        setFormData(prev => ({
+          ...prev,
+          [role]: name,
+          [`${role}Id`]: id
+        }));
+      };
+
+      const handleInputChange = (event) => {
+        const { name, value } = event.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+      };
+
+      const handleFileUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+          const url = await uploadRundownAttachment(file, item.id);
+          setFormData(prev => ({
+            ...prev,
+            pdfUrl: url,
+            pdfName: file.name
+          }));
+        } catch (error) {
+          alert("Failed to upload PDF. Please try again.");
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      const handleSave = async () => {
+        setLoading(true);
+        try {
+          await onSave(item.id, formData);
+          onClose();
+        } catch (error) {
+          console.error(error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleDelete = async () => {
+        if (confirm('Are you sure you want to delete this item?')) {
+          setLoading(true);
+          try {
+            await onDelete(item.id);
+            onClose();
+          } catch (error) {
+            console.error(error);
+          } finally {
+            setLoading(false);
+          }
+        }
+      };
+
+      const SECTIONS = [
+        { value: 'FILMING', label: 'FILMING' },
+        { value: 'INTERNAL', label: 'INTERNAL' },
+        { value: 'EXTERNAL', label: 'EXTERNAL' },
+        { value: 'GOING LIVE', label: 'GOING LIVE' }
+      ];
+
+      const VERTICALS = [
+        { value: 'SPORT', label: 'SPORT' },
+        { value: 'UK', label: 'UK' },
+        { value: 'RESPAWN', label: 'RESPAWN' },
+        { value: 'MAIN', label: 'MAIN' },
+        { value: 'MONEY', label: 'MONEY' },
+        { value: 'SPOTLIGHT', label: 'SPOTLIGHT' }
+      ];
+
+      const STATUSES = [
+        { value: '', label: 'No Status' },
+        { value: 'pending', label: 'Pending (In Progress)' },
+        { value: 'done', label: 'Done (Approved)' },
+        { value: 'blocked', label: 'Blocked (Needs Attention)' }
+      ];
+
+      const THUMBNAIL_STATUSES = [
+        { value: 'n/a', label: 'Not Required' },
+        { value: 'needed', label: 'Thumbnail Needed' },
+        { value: 'done', label: 'Thumbnail Ready' }
+      ];
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 transition-all">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+              <div>
+                <h2 className="text-sm font-extrabold uppercase tracking-widest text-ink">Edit Item</h2>
+                <p className="text-[10px] text-ink-sub mt-0.5 font-medium">Update details for ecosystem synchronisation</p>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-ink transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-ink-sub mb-1.5 tracking-wide">Content Title</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title || ''}
+                      onChange={handleInputChange}
+                      className="w-full text-sm font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all placeholder:text-gray-300"
+                      placeholder="e.g. Manchester United Match Analysis"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Select
+                      label="Vertical"
+                      value={formData.vertical || ''}
+                      options={VERTICALS}
+                      onChange={(val) => handleChange('vertical', val)}
+                    />
+                    <Select
+                      label="Rundown Section"
+                      value={formData.section || ''}
+                      options={SECTIONS}
+                      onChange={(val) => handleChange('section', val)}
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 bg-bg-soft rounded-lg border border-dashed border-gray-200 space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-editorial"></span>
+                    <h3 className="text-[10px] font-bold uppercase text-ink tracking-widest">Team Assignment</h3>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <Select
+                      label="Creator"
+                      value={formData.creatorId || ''}
+                      options={creators}
+                      onChange={(id) => handleStaffChange('creator', id)}
+                    />
+                    <Select
+                      label="Editor"
+                      value={formData.editorId || ''}
+                      options={editors}
+                      onChange={(id) => handleStaffChange('editor', id)}
+                    />
+                    <Select
+                      label="Designer"
+                      value={formData.designerId || ''}
+                      options={designers}
+                      onChange={(id) => handleStaffChange('designer', id)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Select
+                    label="Status"
+                    value={formData.status || ''}
+                    options={STATUSES}
+                    onChange={(val) => handleChange('status', val)}
+                  />
+                  <Select
+                    label="Thumbnail"
+                    value={formData.thumbnailStatus || 'n/a'}
+                    options={THUMBNAIL_STATUSES}
+                    onChange={(val) => handleChange('thumbnailStatus', val)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-ink-sub mb-1.5 tracking-wide">Planned Live Date</label>
+                    <input
+                      type="date"
+                      name="plannedLiveDate"
+                      value={formData.plannedLiveDate || ''}
+                      onChange={handleInputChange}
+                      className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-ink-sub mb-1.5 tracking-wide">Live Link</label>
+                    <input
+                      type="url"
+                      name="liveLink"
+                      value={formData.liveLink || ''}
+                      onChange={handleInputChange}
+                      className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all"
+                      placeholder="https://"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-ink-sub mb-1.5 tracking-wide">Notes</label>
+                  <textarea
+                    name="notes"
+                    value={formData.notes || ''}
+                    onChange={handleInputChange}
+                    className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all min-h-[90px]"
+                    placeholder="Add any context, edits, or blockers..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-ink-sub tracking-wide">PDF Attachment</label>
+                      {formData.pdfName ? (
+                        <p className="text-xs text-ink mt-1">{formData.pdfName}</p>
+                      ) : (
+                        <p className="text-xs text-ink-sub mt-1">Optional: attach brief or PDF</p>
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-[11px] font-semibold px-3 py-2 rounded-lg border border-gray-200 hover:border-gray-300"
+                    >
+                      {uploading ? 'Uploading...' : 'Upload'}
+                    </button>
+                  </div>
+                  {formData.pdfUrl && (
+                    <a
+                      href={formData.pdfUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-blue-600 underline"
+                    >
+                      View PDF
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between">
+              <button
+                onClick={handleDelete}
+                className="text-[11px] font-bold uppercase text-red-500 hover:text-red-600"
+                disabled={loading}
+              >
+                Delete
+              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-[11px] font-bold uppercase border border-gray-200 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={loading}
+                  className="px-4 py-2 text-[11px] font-bold uppercase bg-editorial text-white rounded-lg"
+                >
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    const getWeekStart = (date) => {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(d.setDate(diff));
+    };
+
+    const getWeekDates = (start) => {
+      return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        return d;
+      });
+    };
+
+    const formatDateKey = (date) => date.toISOString().split('T')[0];
+
+    const App = () => {
+      const [currentWeekStart, setCurrentWeekStart] = useState(getWeekStart(new Date()));
+      const [weekData, setWeekData] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [selectedItem, setSelectedItem] = useState(null);
+      const [isModalOpen, setIsModalOpen] = useState(false);
+
+      const loadData = useCallback(async () => {
+        setLoading(true);
+        try {
+          await authenticate();
+
+          const dates = getWeekDates(currentWeekStart);
+          const startKey = formatDateKey(dates[0]);
+          const endKey = formatDateKey(dates[6]);
+
+          const items = await fetchRundownItems(startKey, endKey);
+
+          const data = dates.map(date => {
+            const key = formatDateKey(date);
+            return {
+              date,
+              dateKey: key,
+              items: items.filter(i => i.dateKey === key)
+            };
+          });
+
+          setWeekData(data);
+        } catch (error) {
+          console.error("Failed to load data", error);
+        } finally {
+          setLoading(false);
+        }
+      }, [currentWeekStart]);
+
+      useEffect(() => {
+        loadData();
+      }, [loadData]);
+
+      const handlePrevWeek = () => {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() - 7);
+        setCurrentWeekStart(d);
+      };
+
+      const handleNextWeek = () => {
+        const d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + 7);
+        setCurrentWeekStart(d);
+      };
+
+      const handleToday = () => {
+        setCurrentWeekStart(getWeekStart(new Date()));
+      };
+
+      const formatWeekLabel = () => {
+        const dates = getWeekDates(currentWeekStart);
+        const start = dates[0];
+        const end = dates[6];
+        const startMonth = start.toLocaleDateString('en-GB', { month: 'short' });
+        const endMonth = end.toLocaleDateString('en-GB', { month: 'short' });
+
+        if (startMonth === endMonth) {
+          return `${start.getDate()} - ${end.getDate()} ${startMonth}`;
+        }
+        return `${start.getDate()} ${startMonth} - ${end.getDate()} ${endMonth}`;
+      };
+
+      const isToday = (date) => formatDateKey(date) === formatDateKey(new Date());
+
+      const handleCardClick = (item) => {
+        setSelectedItem(item);
+        setIsModalOpen(true);
+      };
+
+      const handleSave = async (id, data) => {
+        await updateRundownItem(id, data);
+        loadData();
+      };
+
+      const handleDelete = async (id) => {
+        await deleteRundownItem(id);
+        loadData();
+      };
+
+      return (
+        <div className="p-4 font-sans text-ink">
+          <div className="bg-white rounded-2xl border border-border overflow-hidden max-w-[1400px] mx-auto transition-all duration-300 hover:shadow-xl">
+            <div className="px-4 py-3 border-b border-border flex items-center gap-4 bg-white sticky top-0 z-10">
+              <DotGrid />
+              <h1 className="flex-1 text-[13px] font-extrabold tracking-tight uppercase text-ink">
+                Editorial Production Calendar <span className="text-editorial mx-2">•</span> {formatWeekLabel()}
+              </h1>
+
+              <div className="flex gap-1">
+                <button
+                  onClick={handlePrevWeek}
+                  className="px-2.5 py-1.5 text-[10px] font-bold bg-bg-soft hover:bg-editorial hover:text-white rounded-md transition-colors"
+                >
+                  ←
+                </button>
+                <button
+                  onClick={handleToday}
+                  className="px-3 py-1.5 text-[10px] font-bold bg-bg-soft hover:bg-editorial hover:text-white rounded-md transition-colors"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={handleNextWeek}
+                  className="px-2.5 py-1.5 text-[10px] font-bold bg-bg-soft hover:bg-editorial hover:text-white rounded-md transition-colors"
+                >
+                  →
+                </button>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="min-h-[400px] flex flex-col items-center justify-center gap-4 text-ink-sub">
+                <DotGrid />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Syncing Ecosystem...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                {weekData.map((day, i) => (
+                  <div key={day.dateKey} className="min-h-[200px] md:min-h-[600px] flex flex-col">
+                    <div className={`p-3 text-center border-b border-gray-50 transition-colors ${isToday(day.date) ? 'bg-editorial/5' : 'bg-bg-soft'}`}>
+                      <div className="text-[9px] font-bold uppercase text-ink-sub tracking-widest mb-0.5">
+                        {WEEKDAYS[i]}
+                      </div>
+                      <div className={`text-lg font-black ${isToday(day.date) ? 'text-editorial' : 'text-ink'}`}>
+                        {day.date.getDate()}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 p-2 bg-white flex flex-col gap-2">
+                      {day.items.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-start pt-8 opacity-20 hover:opacity-40 transition-opacity">
+                          <div className="w-1 h-8 bg-gray-300 rounded-full mb-2"></div>
+                          <span className="text-[8px] font-bold uppercase">No Items</span>
+                        </div>
+                      ) : (
+                        day.items.map((item) => (
+                          <RundownCard
+                            key={item.id}
+                            item={item}
+                            onClick={handleCardClick}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {selectedItem && (
+            <EditModal
+              item={selectedItem}
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              onSave={handleSave}
+              onDelete={handleDelete}
+            />
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
