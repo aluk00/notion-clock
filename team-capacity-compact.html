@@ -71,21 +71,41 @@
         const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
         const capacityColor = c => c > 85 ? '#EF4444' : c > 70 ? '#F59E0B' : '#22C55E';
         const capacityStatus = c => c > 85 ? 'At Capacity' : c > 70 ? 'Busy' : 'Available';
-        const normalizeTeam = value => (value || '').trim().toLowerCase();
+        const normalizeTeam = value => (value || '')
+            .toLowerCase()
+            .replace(/team/g, '')
+            .replace(/&/g, 'and')
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim();
+
+        const matchesTeam = (member, filter) => {
+            if (!filter) return true;
+            const normalizedFilter = normalizeTeam(filter);
+            if (!normalizedFilter) return true;
+            const normalizedTeam = normalizeTeam(member.team);
+            const role = (member.role || '').toLowerCase();
+
+            if (normalizedTeam === normalizedFilter) return true;
+            if (normalizedTeam && (normalizedTeam.includes(normalizedFilter) || normalizedFilter.includes(normalizedTeam))) return true;
+            if (normalizedFilter === 'design') {
+                return normalizedTeam === 'creative' || role.includes('design') || role.includes('graphic');
+            }
+            return false;
+        };
 
         function render() {
             if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading...</div></div>`; return; }
-            const normalizedTeam = normalizeTeam(teamFilter);
-            const filtered = teamFilter ? staff.filter(s => normalizeTeam(s.team) === normalizedTeam) : staff;
+            const filtered = staff.filter(member => matchesTeam(member, teamFilter));
             const teamLabel = teamFilter || 'All Teams';
             const avgCapacity = filtered.length > 0 ? Math.round(filtered.reduce((sum, s) => sum + (s.capacity || 0), 0) / filtered.length) : 0;
             const circumference = 2 * Math.PI * 50;
             const offset = circumference - (avgCapacity / 100) * circumference;
+            const accentColor = filtered.length > 0 ? capacityColor(avgCapacity) : HERO_COLOR;
             
             root.innerHTML = `
                 <div class="widget">
                     <div class="header">
-                        <div class="dot-grid"><span style="background:${HERO_COLOR}"></span><span style="background:${HERO_COLOR}"></span><span style="background:${HERO_COLOR}"></span><span style="background:${HERO_COLOR}"></span></div>
+                        <div class="dot-grid"><span style="background:${accentColor}"></span><span style="background:${accentColor}"></span><span style="background:${accentColor}"></span><span style="background:${accentColor}"></span></div>
                         <h2 class="title">${teamLabel}</h2>
                         <span class="badge" style="background:${capacityColor(avgCapacity)}20; color:${capacityColor(avgCapacity)}">${capacityStatus(avgCapacity)}</span>
                     </div>
@@ -118,7 +138,7 @@
                             </div>
                             <div class="members">
                                 ${filtered.slice(0, 8).map(s => `
-                                    <div class="member" style="background:${teamFilter ? HERO_COLOR : color(s.team)}" title="${s.firstName} ${s.lastName}: ${s.capacity || 0}%">
+                                    <div class="member" style="background:${teamFilter ? accentColor : color(s.team)}" title="${s.firstName} ${s.lastName}: ${s.capacity || 0}%">
                                         ${initials(s.firstName, s.lastName)}
                                     </div>
                                 `).join('')}
