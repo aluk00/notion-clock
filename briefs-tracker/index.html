@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Briefs | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root { 
+            --brand: #E6468B; /* Creative Pink */
+            --brand-soft: rgba(230, 70, 139, 0.08); 
+            --brand-glow: rgba(230, 70, 139, 0.2);
+            --border: #E5E7EB; 
+            --ink: #1C1C1C; 
+            --ink-sub: #6B7280; 
+            --success: #43B049; /* Production Green */
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --surface: #FFFFFF;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: transparent; 
+            padding: 12px; 
+            color: var(--ink); 
+            -webkit-font-smoothing: antialiased; 
+        }
+        
+        .widget { 
+            background: var(--surface); 
+            border: 1.5px solid var(--border); 
+            border-radius: 20px; 
+            max-width: 420px; 
+            overflow: hidden; 
+            position: relative;
+            box-shadow: 0 12px 30px -5px rgba(230, 70, 139, 0.1);
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        /* HEADER */
+        .header { 
+            padding: 18px 24px; 
+            border-bottom: 1px solid var(--border); 
+            display: flex; align-items: center; justify-content: space-between;
+            background: linear-gradient(to bottom, var(--brand-soft), white);
+            flex-shrink: 0;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--brand); animation: pulse 2.5s infinite ease-in-out; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        .dot:nth-child(4) { animation-delay: 0.6s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        
+        .title { font-size: 14px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; color: var(--brand); }
+        .view-badge { background: var(--brand); color: white; font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700; text-transform: uppercase; }
+
+        .header-actions { display: flex; gap: 8px; }
+        .icon-btn { 
+            background: white; border: 1px solid var(--border); border-radius: 8px; 
+            width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: var(--ink-sub); transition: 0.2s; 
+        }
+        .icon-btn:hover { color: var(--brand); border-color: var(--brand); }
+        .icon-btn.active { background: var(--brand); color: white; border-color: var(--brand); }
+
+        /* BODY */
+        .list-container { flex: 1; overflow-y: auto; padding: 0; background: #FAFAFA; }
+        
+        .brief-item { 
+            padding: 16px 24px; 
+            background: #fff; 
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .brief-item:hover { background: #FFF0F5; padding-left: 28px; }
+        .brief-item::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+            background: var(--brand); transition: 0.2s;
+        }
+        .brief-item:hover::before { width: 4px; }
+
+        .row-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+        .client-name { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.05em; }
+        .due-pill { 
+            font-size: 9px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; 
+        }
+        .due-urgent { background: #FEF2F2; color: var(--danger); }
+        .due-soon { background: #FFFBEB; color: var(--warning); }
+        .due-normal { background: #F1F5F9; color: var(--ink-sub); }
+
+        .project-title { font-size: 13px; font-weight: 700; color: var(--ink); line-height: 1.4; margin-bottom: 8px; }
+        
+        .row-btm { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .meta-group { display: flex; gap: 8px; align-items: center; }
+
+        .status-badge { 
+            font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #F3F4F6; color: var(--ink-sub);
+        }
+
+        .link-indicator { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; }
+        .link-indicator.notion { color: var(--success); }
+        .link-indicator.firebase { color: var(--brand); }
+        .link-indicator.empty { color: var(--ink-sub); opacity: 0.5; font-weight: 500; }
+
+        .icon { width: 12px; height: 12px; }
+
+        /* MODAL */
+        .modal-overlay {
+            position: absolute; inset: 0; background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            z-index: 50; display: none; align-items: flex-end; /* Sheet style */
+        }
+        .modal-overlay.show { display: flex; }
+
+        .modal-sheet {
+            background: #fff; width: 100%; border-radius: 24px 24px 0 0;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+            border: 1px solid var(--border); border-bottom: none;
+            padding: 24px; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .sheet-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+        .sheet-title { font-size: 16px; font-weight: 900; color: var(--ink); line-height: 1.3; }
+        .sheet-sub { font-size: 11px; color: var(--ink-sub); margin-top: 4px; font-weight: 500; }
+        .close-btn { background: none; border: none; font-size: 24px; color: var(--ink-sub); cursor: pointer; padding: 0; line-height: 1; }
+
+        .section-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 12px; letter-spacing: 0.05em; }
+
+        .notion-link-card {
+            background: #F0FDF4; border: 1px solid #BBF7D0; padding: 12px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
+            color: var(--success); text-decoration: none; font-size: 12px; font-weight: 700;
+        }
+        .notion-link-card:hover { background: #DCFCE7; }
+
+        .input-group { margin-bottom: 24px; }
+        .url-input { 
+            width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 12px;
+            font-family: inherit; font-size: 13px; color: var(--ink); outline: none; transition: 0.2s;
+            background: #FAFAFA;
+        }
+        .url-input:focus { border-color: var(--brand); background: white; }
+
+        .actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: 12px; }
+        .btn { padding: 14px; border-radius: 12px; font-size: 12px; font-weight: 800; border: none; cursor: pointer; text-transform: uppercase; letter-spacing: 0.02em; }
+        .btn-ghost { background: #F3F4F6; color: var(--ink); }
+        .btn-primary { background: var(--brand); color: #fff; box-shadow: 0 4px 12px rgba(230, 70, 139, 0.3); }
+        .btn-primary:hover { background: #d63d7e; transform: translateY(-1px); }
+        .btn-complete { background: var(--success); color: white; margin-top: 12px; width: 100%; }
+        
+        .visit-link { 
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin-bottom: 20px; text-decoration: none; 
+            padding: 12px; border: 1px dashed var(--brand); border-radius: 12px;
+            color: var(--brand); font-size: 11px; font-weight: 700; 
+            background: var(--brand-soft);
+        }
+        .visit-link:hover { background: #fff; border-style: solid; }
+
+        .loading-state { display: flex; justify-content: center; align-items: center; height: 100%; color: var(--brand); font-weight: 700; font-size: 12px; text-transform: uppercase; }
+        .spinner { width: 18px; height: 18px; border: 2px solid var(--brand-soft); border-top-color: var(--brand); border-radius: 50%; animation: spin 1s linear infinite; margin-right: 10px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--ink-sub); }
+        .empty-emoji { font-size: 32px; margin-bottom: 12px; display: block; opacity: 0.5; }
+
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+
+    <div class="widget">
+        <div class="header">
+            <div class="header-left">
+                <div class="dot-grid"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                <div>
+                    <div class="title">Creative Queue</div>
+                    <div class="view-badge" id="view-badge">Upcoming</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" onclick="toggleArchive(false)" id="btn-active" title="Active Briefs">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                </button>
+                <button class="icon-btn" onclick="toggleArchive(true)" id="btn-archive" title="Archive / Past">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="list-container" id="list">
+            <div class="loading-state"><div class="spinner"></div>Syncing Notion...</div>
+        </div>
+
+        <!-- MODAL -->
+        <div class="modal-overlay" id="modal">
+            <div class="modal-sheet">
+                <div class="sheet-header">
+                    <div>
+                        <div class="sheet-title" id="modal-title">Project Name</div>
+                        <div class="sheet-sub" id="modal-client">Client Name</div>
+                    </div>
+                    <button class="close-btn" onclick="closeModal()">×</button>
+                </div>
+                
+                <div id="modal-content">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        const APP_ID = 'dmg-command-centre-native';
+
+        // INIT FIREBASE
+        firebase.initializeApp(FIREBASE_CONFIG);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        // STATE
+        let allProjects = [];
+        let briefLinks = {}; // Map of ID -> URL
+        let activeProject = null;
+        let showArchive = false; // false = Upcoming, true = Archive/Past
+
+        // AUTH & BOOTSTRAP
+        auth.signInAnonymously().then(() => {
+            init();
+        }).catch(e => console.error("Auth Error", e));
+
+        async function init() {
+            const listEl = document.getElementById('list');
+            listEl.innerHTML = '<div class="loading-state"><div class="spinner"></div>Syncing Notion...</div>';
+
+            try {
+                // 1. Fetch Notion Projects (Master Ledger)
+                const res = await fetch(`${API_URL}/projects`);
+                const data = await res.json();
+                
+                const rawProjects = data.projects || [];
+                
+                // 2. Fetch Firebase Links (Operational Overlay)
+                const linksSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("brief_links").get();
+                briefLinks = {};
+                linksSnap.forEach(doc => {
+                    briefLinks[doc.id] = doc.data().url;
+                });
+
+                // 3. Process Data
+                allProjects = rawProjects.map(p => {
+                    // Fallback Logic for dates: Client Due > Internal > Live > Shoot
+                    const bestDate = p.dueDate || p.internalDueDate || p.liveDate || p.shootDate || null;
+                    
+                    return {
+                        ...p,
+                        hasLink: !!briefLinks[p.id],
+                        linkUrl: briefLinks[p.id] || null,
+                        notionResponse: p.creative_link || p.response_url || p.public_url || null, 
+                        // Store the resolved date
+                        effectiveDate: bestDate,
+                        dueStatus: getDueStatus(bestDate)
+                    };
+                }).sort((a, b) => {
+                    // Sort by Effective Date
+                    const dateA = new Date(a.effectiveDate || '2099-01-01');
+                    const dateB = new Date(b.effectiveDate || '2099-01-01');
+                    return dateA - dateB;
+                });
+
+                render();
+
+            } catch (e) {
+                console.error(e);
+                listEl.innerHTML = '<div class="empty-state" style="color:var(--danger)">Connection Error. Check Console.</div>';
+            }
+        }
+
+        function toggleArchive(viewArchive) {
+            showArchive = viewArchive;
+            render();
+        }
+
+        function render() {
+            const listEl = document.getElementById('list');
+            const badgeEl = document.getElementById('view-badge');
+            
+            // Update UI state
+            badgeEl.innerText = showArchive ? 'Archive / Past' : 'Upcoming';
+            document.getElementById('btn-active').classList.toggle('active', !showArchive);
+            document.getElementById('btn-archive').classList.toggle('active', showArchive);
+
+            const now = new Date();
+            now.setHours(0,0,0,0);
+
+            // Filter
+            const visibleProjects = allProjects.filter(p => {
+                const stage = (p.dealStage || '').toLowerCase();
+                const isComplete = stage.includes('complete') || stage.includes('live') || stage.includes('closed') || stage.includes('declined') || stage.includes('lost');
+                
+                const effectiveDate = p.effectiveDate ? new Date(p.effectiveDate) : null;
+                // If no date, treat as Active if not complete
+                const isPast = effectiveDate && effectiveDate < now;
+
+                if (showArchive) {
+                    return isComplete || isPast;
+                } else {
+                    return !isComplete && (!isPast || (effectiveDate && effectiveDate.toDateString() === now.toDateString()));
+                }
+            });
+
+            if (visibleProjects.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <span class="empty-emoji">${showArchive ? '🗄️' : '✨'}</span>
+                        ${showArchive ? 'Archive is empty.' : 'You\'re all caught up! No upcoming briefs.'}
+                    </div>`;
+                return;
+            }
+
+            listEl.innerHTML = visibleProjects.map(p => `
+                <div class="brief-item" onclick="openModal('${p.id}')">
+                    <div class="row-top">
+                        <span class="client-name">${p.client || 'Internal'}</span>
+                        <span class="due-pill ${p.dueStatus.class}">${p.dueStatus.text}</span>
+                    </div>
+                    <div class="project-title">${p.title}</div>
+                    <div class="row-btm">
+                        <div class="meta-group">
+                             <span class="status-badge">${p.dealStage}</span>
+                        </div>
+                        <div class="meta-group">
+                            ${p.notionResponse ? `
+                                <div class="link-indicator notion">
+                                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                    Notion
+                                </div>
+                            ` : ''}
+                            <div class="link-indicator ${p.hasLink ? 'firebase' : 'empty'}">
+                                ${p.hasLink 
+                                    ? `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Deck` 
+                                    : `+ Upload`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // MODAL LOGIC
+        window.openModal = (id) => {
+            activeProject = allProjects.find(p => p.id === id);
+            document.getElementById('modal-title').innerText = activeProject.title;
+            document.getElementById('modal-client').innerText = activeProject.client || 'Internal Project';
+            
+            const existingLink = briefLinks[id] || '';
+            const isEdit = !!existingLink;
+
+            const modalContent = document.getElementById('modal-content');
+            modalContent.innerHTML = `
+                ${activeProject.notionResponse ? `
+                     <div class="section-label">Existing Notion Response</div>
+                     <a href="${activeProject.notionResponse}" target="_blank" class="notion-link-card">
+                        <span>View Creative Response</span>
+                        <span>↗</span>
+                     </a>
+                ` : ''}
+
+                <div class="section-label">Your Deck / Response</div>
+                ${isEdit ? `
+                    <a href="${existingLink}" target="_blank" class="visit-link">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        Open Linked Deck
+                    </a>
+                ` : ''}
+
+                <div class="input-group">
+                    <input type="url" id="link-input" class="url-input" placeholder="Paste Drive / Slides / PDF Link..." value="${existingLink}">
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+                    <button class="btn btn-primary" onclick="saveLink()">
+                        ${isEdit ? 'Update Link' : 'Save Link'}
+                    </button>
+                </div>
+
+                ${!showArchive ? `
+                    <button class="btn btn-complete" onclick="markComplete()">
+                        ✓ Mark as Complete (Archive)
+                    </button>
+                ` : ''}
+            `;
+
+            document.getElementById('modal').classList.add('show');
+            if(!isEdit) document.getElementById('link-input').focus();
+        };
+
+        window.closeModal = () => {
+            document.getElementById('modal').classList.remove('show');
+            activeProject = null;
+        };
+
+        window.saveLink = async () => {
+            if (!activeProject) return;
+            const url = document.getElementById('link-input').value;
+            const btn = document.querySelector('.btn-primary');
+            
+            if (!url) return;
+
+            btn.innerText = "Saving...";
+            
+            try {
+                // WRITE TO FIREBASE (Human Layer)
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("brief_links").doc(activeProject.id).set({
+                    url: url,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    projectTitle: activeProject.title,
+                    client: activeProject.client
+                });
+
+                // Update Local State Optimistically
+                briefLinks[activeProject.id] = url;
+                const pIndex = allProjects.findIndex(p => p.id === activeProject.id);
+                if (pIndex > -1) {
+                    allProjects[pIndex].hasLink = true;
+                    allProjects[pIndex].linkUrl = url;
+                }
+
+                closeModal();
+                render(); 
+            } catch (e) {
+                console.error("Save failed", e);
+                alert("Could not save link.");
+                btn.innerText = "Error";
+            }
+        };
+
+        window.markComplete = async () => {
+            if (!activeProject) return;
+            if (!confirm("Are you sure? This will move the project to 'Campaign Complete' and archive it.")) return;
+
+            const btn = document.querySelector('.btn-complete');
+            btn.innerText = "Updating Notion...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/projects/${activeProject.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dealStage: 'Campaign Complete' })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    // Update local state
+                    const pIndex = allProjects.findIndex(p => p.id === activeProject.id);
+                    if (pIndex > -1) {
+                        allProjects[pIndex].dealStage = 'Campaign Complete';
+                    }
+                    closeModal();
+                    render(); // Will filter it out of Upcoming
+                } else {
+                    throw new Error(data.error || 'Update failed');
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Failed to update status.");
+                btn.innerText = "Error";
+            }
+        };
+
+        // UTILS
+        function getDueStatus(dateStr) {
+            if (!dateStr) return { text: 'No Date', class: 'due-normal' };
+            const due = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            const diffTime = due - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+            if (diffDays < 0) return { text: `${Math.abs(diffDays)}d Overdue`, class: 'due-urgent' };
+            if (diffDays === 0) return { text: 'Due Today', class: 'due-urgent' };
+            if (diffDays === 1) return { text: 'Tomorrow', class: 'due-soon' };
+            if (diffDays <= 7) return { text: `Due in ${diffDays}d`, class: 'due-soon' };
+            
+            return { text: due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), class: 'due-normal' };
+        }
+
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
