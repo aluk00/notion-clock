@@ -60,7 +60,7 @@
 
         function render() {
             if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading queue...</div></div>`; return; }
-            
+
             root.innerHTML = `
                 <div class="widget">
                     <div class="header">
@@ -76,16 +76,29 @@
                         </div>
                     ` : `
                         <div class="list">
-                            ${items.map(item => `
+                            ${items.map(item => {
+                                const dueDate = item.dueDate || item.deliveryDue || item.internalDueDate || '';
+                                const liveDate = item.liveDate || item.goLiveDate || item.plannedLiveDate || '';
+                                const clientDue = item.clientDueDate || item.feedbackDue || item.dueDate || '';
+                                const feedbackStatus = item.feedbackStatus || '';
+                                const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+                                const isOverdue = (d) => d && new Date(d) < new Date();
+                                const isDueSoon = (d) => { if (!d) return false; const diff = (new Date(d) - new Date()) / (1000*60*60*24); return diff >= 0 && diff <= 2; };
+                                return `
                                 <div class="item" onclick="window.open('${item.url || '#'}', '_blank')">
                                     <div class="item-icon">🎬</div>
                                     <div class="item-info">
                                         <div class="item-title">${item.title || 'Untitled Edit'}</div>
-                                        <div class="item-sub">${item.editor || 'Unassigned'} • ${item.duration || '0:00'}</div>
+                                        <div class="item-sub">${item.editor || 'Unassigned'} • ${item.clientName || item.projectTitle || 'Project'}</div>
+                                        <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
+                                            ${clientDue ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: ${isOverdue(clientDue) ? '#FEE2E2' : isDueSoon(clientDue) ? '#FEF3C7' : '#E5E5E5'}; color: ${isOverdue(clientDue) ? '#B91C1C' : isDueSoon(clientDue) ? '#B45309' : '#525252'};">Client: ${formatDate(clientDue)}</span>` : ''}
+                                            ${liveDate ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #DCFCE7; color: #166534;">Live: ${formatDate(liveDate)}</span>` : ''}
+                                            ${feedbackStatus ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #DBEAFE; color: #1E40AF;">${feedbackStatus}</span>` : ''}
+                                        </div>
                                     </div>
                                     <span class="item-priority priority-${(item.priority || 'low').toLowerCase()}">${item.priority || 'Low'}</span>
                                 </div>
-                            `).join('')}
+                            `}).join('')}
                         </div>
                     `}
                 </div>
@@ -119,8 +132,12 @@
                                     format: data.assetFormat,
                                     priority: data.deliveryDue && new Date(data.deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium',
                                     dueDate: data.deliveryDue,
+                                    liveDate: data.liveDate || data.plannedLiveDate,
+                                    feedbackDue: data.feedbackDue,
+                                    feedbackStatus: data.feedbackStatus,
                                     status: data.status,
                                     clientName: data.clientName,
+                                    projectTitle: data.projectTitle,
                                     source: 'asset-metadata'
                                 });
                             }
