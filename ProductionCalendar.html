@@ -209,8 +209,8 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         
-        // Notion API
-        const API_URL = 'https://dmg-notion-api-xxxxxxxxxx-ew.a.run.app';
+        // Notion API - Using correct Cloud Run API endpoint
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
         
         const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         
@@ -255,25 +255,38 @@
             
             const fetchShoots = async () => {
                 try {
-                    // Try Notion API for deliverables/shoots
-                    const res = await fetch(`${API_URL}/deliverables`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        // Filter for shoots or items with dates
-                        const items = (data.deliverables || []).filter(d => d.dueDate || d.shootDate);
-                        setShoots(items);
+                    // PRIMARY SOURCE: Firebase shoot_calendar_events (synced from Commercial Hub)
+                    const snap = await db.collection('artifacts/dmg-command-centre-native/public/data/shoot_calendar_events')
+                        .get();
+                    const firebaseShoots = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                    // SECONDARY SOURCE: Try Notion API for deliverables with shoot dates
+                    let notionShoots = [];
+                    try {
+                        const res = await fetch(`${API_URL}/deliverables`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            // Filter for items with shoot dates that aren't already in Firebase
+                            const firebaseIds = new Set(firebaseShoots.map(s => s.id));
+                            notionShoots = (data.deliverables || [])
+                                .filter(d => (d.dueDate || d.shootDate) && !firebaseIds.has(d.id))
+                                .map(d => ({
+                                    id: d.id,
+                                    title: d.title,
+                                    date: d.shootDate || d.dueDate,
+                                    format: d.format || 'Deliverable',
+                                    team: 'Production',
+                                    source: 'notion'
+                                }));
+                        }
+                    } catch (err) {
+                        console.log('Notion API unavailable, using Firebase only');
                     }
+
+                    // Merge both sources, Firebase takes priority
+                    setShoots([...firebaseShoots, ...notionShoots]);
                 } catch (err) {
                     console.error(err);
-                    // Fallback: try Firebase shoots collection
-                    try {
-                        const snap = await db.collection('artifacts/dmg-command-centre-native/public/data/shoots')
-                            .orderBy('date', 'asc')
-                            .get();
-                        setShoots(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                    } catch (e) {
-                        console.error(e);
-                    }
                 } finally {
                     setLoading(false);
                 }
