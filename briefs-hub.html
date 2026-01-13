@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Briefs Hub | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --hero-blue: #21A0D8;
+            --creative-pink: #E6468B;
+            --production-green: #43B049;
+            --warning: #F59E0B;
+            --danger: #E94B4B;
+            --ink: #111827;
+            --ink-sub: #6B7280;
+            --border: #EAECEF;
+            --surface: #FFFFFF;
+            --page: #F6F8FB;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--page);
+            padding: 20px;
+            color: var(--ink);
+        }
+
+        .widget {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: 0 12px 30px rgba(17, 24, 39, 0.08);
+            max-width: 620px;
+            margin: 0 auto;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 640px;
+        }
+
+        .header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(180deg, rgba(33, 160, 216, 0.08), #fff);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--hero-blue);
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        .dot:nth-child(4) { animation-delay: 0.6s; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--ink-sub);
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--hero-blue);
+            color: #fff;
+            border-color: var(--hero-blue);
+        }
+
+        .tab-body {
+            flex: 1;
+            display: none;
+            padding: 16px 20px 20px;
+            background: #FAFBFC;
+            overflow-y: auto;
+        }
+
+        .tab-body.active {
+            display: block;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .add-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--hero-blue);
+            color: #fff;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .add-btn:hover { background: #198fcb; transform: scale(1.05); }
+
+        .briefs-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .brief-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--creative-pink);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+
+        .brief-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px rgba(17, 24, 39, 0.08);
+            border-color: #DDE2E8;
+        }
+
+        .brief-item.overdue { border-left-color: var(--danger); }
+        .brief-item.today { border-left-color: #F97316; }
+
+        .brief-date {
+            text-align: center;
+            min-width: 44px;
+        }
+
+        .brief-day { font-size: 18px; font-weight: 700; color: var(--ink); line-height: 1; }
+        .brief-month { font-size: 10px; font-weight: 500; color: var(--ink-sub); text-transform: uppercase; }
+
+        .brief-content { flex: 1; min-width: 0; }
+        .brief-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .brief-meta {
+            font-size: 12px;
+            color: var(--ink-sub);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brief-client { color: var(--hero-blue); font-weight: 600; }
+
+        .brief-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .action-btn.link { background: #EBF5FF; color: #2563EB; }
+        .action-btn.link:hover { background: #DBEAFE; }
+        .action-btn.link.has-link { background: #D1FAE5; color: #059669; }
+        .action-btn.edit { background: #F3F4F6; color: #111827; }
+        .action-btn.edit:hover { background: #E5E7EB; }
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-overdue { background: #FEE2E2; color: #DC2626; }
+        .status-today { background: #FED7AA; color: #C2410C; }
+        .status-upcoming { background: #E0E7FF; color: #4338CA; }
+
+        .rule-card {
+            margin-top: 16px;
+            border: 1px dashed #DDE2E8;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 11px;
+            color: #4B5563;
+            background: #F9FAFB;
+        }
+
+        .rule-title {
+            font-weight: 700;
+            font-size: 11px;
+            color: #111827;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .rule-columns {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .rule-columns ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .rule-columns li {
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .empty-text {
+            font-size: 13px;
+            color: #888;
+            line-height: 1.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 48px;
+            color: #666;
+        }
+
+        .tracker-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .tracker-item {
+            padding: 14px 18px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .tracker-item:last-child { border-bottom: none; }
+        .tracker-item:hover { background: #FFF0F5; padding-left: 22px; }
+        .tracker-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: var(--creative-pink);
+            transition: 0.2s;
+        }
+
+        .tracker-item:hover::before { width: 4px; }
+
+        .row-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+        .client-name { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.05em; }
+        .due-pill { font-size: 9px; font-weight: 800; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; }
+        .due-urgent { background: #FEF2F2; color: #EF4444; }
+        .due-soon { background: #FFFBEB; color: var(--warning); }
+        .due-normal { background: #F1F5F9; color: var(--ink-sub); }
+
+        .project-title { font-size: 13px; font-weight: 700; color: var(--ink); line-height: 1.4; margin-bottom: 8px; }
+
+        .row-btm { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .meta-group { display: flex; gap: 8px; align-items: center; }
+
+        .status-badge.tracker { font-size: 9px; background: #F3F4F6; color: var(--ink-sub); }
+
+        .link-indicator { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; }
+        .link-indicator.notion { color: var(--production-green); }
+        .link-indicator.firebase { color: var(--creative-pink); }
+        .link-indicator.empty { color: var(--ink-sub); opacity: 0.5; font-weight: 500; }
+        .icon { width: 12px; height: 12px; }
+
+        .tracker-header-actions { display: flex; gap: 8px; }
+        .icon-btn {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--ink-sub);
+            transition: 0.2s;
+        }
+
+        .icon-btn:hover { color: var(--creative-pink); border-color: var(--creative-pink); }
+        .icon-btn.active { background: var(--creative-pink); color: #fff; border-color: var(--creative-pink); }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 420px;
+            transform: translateY(20px);
+            transition: transform 0.2s;
+        }
+
+        .modal-overlay.active .modal { transform: translateY(0); }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #f0f0f0;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 500; color: #333; margin-bottom: 6px; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--hero-blue); }
+
+        .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+        }
+        .btn-primary { background: var(--hero-blue); color: #fff; }
+        .btn-secondary { background: #f0f0f0; color: #333; }
+
+        .sheet-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: flex-end;
+            z-index: 1100;
+        }
+
+        .sheet-modal.show { display: flex; }
+
+        .modal-sheet {
+            background: #fff;
+            width: 100%;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            padding: 24px;
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+
+        .sheet-title { font-size: 16px; font-weight: 900; color: var(--ink); line-height: 1.3; }
+        .sheet-sub { font-size: 11px; color: var(--ink-sub); margin-top: 4px; font-weight: 500; }
+        .close-btn { background: none; border: none; font-size: 24px; color: var(--ink-sub); cursor: pointer; padding: 0; line-height: 1; }
+
+        .section-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 12px; letter-spacing: 0.05em; }
+
+        .notion-link-card {
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            color: var(--production-green);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .notion-link-card:hover { background: #DCFCE7; }
+
+        .input-group { margin-bottom: 24px; }
+        .url-input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 13px;
+            color: var(--ink);
+            outline: none;
+            transition: 0.2s;
+            background: #FAFAFA;
+        }
+
+        .url-input:focus { border-color: var(--creative-pink); background: white; }
+
+        .actions { display: grid; grid-template-columns: 1fr 1.5fr; gap: 12px; }
+        .btn-ghost { background: #F3F4F6; color: var(--ink); }
+        .btn-primary-dark {
+            background: var(--creative-pink);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(230, 70, 139, 0.3);
+        }
+        .btn-primary-dark:hover { background: #d63d7e; transform: translateY(-1px); }
+        .btn-complete { background: var(--production-green); color: white; margin-top: 12px; width: 100%; }
+
+        .visit-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            text-decoration: none;
+            padding: 12px;
+            border: 1px dashed var(--creative-pink);
+            border-radius: 12px;
+            color: var(--creative-pink);
+            font-size: 11px;
+            font-weight: 700;
+            background: rgba(230, 70, 139, 0.08);
+        }
+        .visit-link:hover { background: #fff; border-style: solid; }
+
+        .loading-state {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: var(--creative-pink);
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(230, 70, 139, 0.2);
+            border-top-color: var(--creative-pink);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="widget">
+        <div class="header">
+            <div class="header-left">
+                <div class="dot-grid">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+                <div>
+                    <div class="title">Briefs Hub</div>
+                    <div style="font-size: 12px; color: var(--ink-sub);">Notion + Firebase overlay</div>
+                </div>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="due">Briefs Due</button>
+                <button class="tab-btn" data-tab="tracker">Creative Tracker</button>
+            </div>
+        </div>
+
+        <div class="tab-body active" id="tab-due">
+            <div class="section-header">
+                <div class="section-title">Upcoming deadlines</div>
+                <button class="add-btn" onclick="openAddModal()" aria-label="Add brief">+</button>
+            </div>
+            <div id="due-content">
+                <div class="loading">Loading briefs...</div>
+            </div>
+            <div class="rule-card">
+                <div class="rule-title">Allowed vs Forbidden</div>
+                <div class="rule-columns">
+                    <div>
+                        <strong>Allowed</strong>
+                        <ul>
+                            <li>POST /v1/data_sources/:data_source_id/query</li>
+                            <li>Create: parent.type = data_source_id</li>
+                            <li>Update: pages.update(...)</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <strong>Forbidden</strong>
+                        <ul>
+                            <li>.../databases/:id/query</li>
+                            <li>Create: parent.database_id</li>
+                            <li>Relation writes via database_id</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-body" id="tab-tracker">
+            <div class="section-header">
+                <div class="section-title">Creative queue</div>
+                <div class="tracker-header-actions">
+                    <button class="icon-btn active" onclick="toggleArchive(false)" id="btn-active" title="Active Briefs">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    </button>
+                    <button class="icon-btn" onclick="toggleArchive(true)" id="btn-archive" title="Archive / Past">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="tracker-list">
+                <div class="loading-state"><div class="spinner"></div>Syncing Notion...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="due-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="due-modal-title">Add Brief</div>
+                <button class="modal-close" onclick="closeDueModal()">×</button>
+            </div>
+            <form id="briefForm">
+                <input type="hidden" id="briefId">
+                <div class="form-group">
+                    <label>Brief Title *</label>
+                    <input type="text" id="briefTitleInput" placeholder="e.g. Sky Vegas Q1 Campaign" required>
+                </div>
+                <div class="form-group">
+                    <label>Client / Brand</label>
+                    <input type="text" id="briefClient" placeholder="e.g. Sky Vegas">
+                </div>
+                <div class="form-group">
+                    <label>Due Date *</label>
+                    <input type="date" id="briefDueDate" required>
+                </div>
+                <div class="form-group">
+                    <label>PDF / Deck Link</label>
+                    <input type="url" id="briefLink" placeholder="Paste a PDF or deck link">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="briefStatus">
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="review">In Review</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeDueModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Brief</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="sheet-modal" id="tracker-modal">
+        <div class="modal-sheet">
+            <div class="sheet-header">
+                <div>
+                    <div class="sheet-title" id="tracker-modal-title">Project Name</div>
+                    <div class="sheet-sub" id="tracker-modal-client">Client Name</div>
+                </div>
+                <button class="close-btn" onclick="closeTrackerModal()">×</button>
+            </div>
+            <div id="tracker-modal-content"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+        const APP_ID = "dmg-command-centre-native";
+        const BRIEFS_COLLECTION = `artifacts/${APP_ID}/public/data/briefs_due`;
+
+        firebase.initializeApp(FIREBASE_CONFIG);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        let briefs = [];
+        let allProjects = [];
+        let briefLinks = {};
+        let activeProject = null;
+        let showArchive = false;
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(tab => tab.classList.remove('active'));
+                document.querySelectorAll('.tab-body').forEach(tab => tab.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+            });
+        });
+
+        auth.signInAnonymously().then(() => {
+            loadDueBriefs();
+            initTracker();
+        }).catch(e => {
+            console.error("Auth Error", e);
+            loadDueBriefs();
+            initTracker();
+        });
+
+        function isToday(date) {
+            const today = new Date();
+            return date.toDateString() === today.toDateString();
+        }
+
+        function isOverdue(date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return date < today;
+        }
+
+        function formatDate(date) {
+            return {
+                day: date.getDate(),
+                month: date.toLocaleDateString('en-GB', { month: 'short' })
+            };
+        }
+
+        function getStatusBadge(dueDate) {
+            if (isOverdue(dueDate)) {
+                return '<span class="status-badge status-overdue">Overdue</span>';
+            }
+            if (isToday(dueDate)) {
+                return '<span class="status-badge status-today">Today</span>';
+            }
+            return '<span class="status-badge status-upcoming">Upcoming</span>';
+        }
+
+        function getItemClass(dueDate) {
+            if (isOverdue(dueDate)) return 'brief-item overdue';
+            if (isToday(dueDate)) return 'brief-item today';
+            return 'brief-item';
+        }
+
+        async function loadDueBriefs() {
+            const content = document.getElementById('due-content');
+
+            try {
+                const snapshot = await db.collection(BRIEFS_COLLECTION)
+                    .orderBy('dueDate', 'asc')
+                    .get();
+
+                briefs = [];
+                snapshot.forEach(doc => {
+                    briefs.push({ id: doc.id, ...doc.data() });
+                });
+
+                renderDueBriefs();
+            } catch (error) {
+                console.error('Error loading briefs:', error);
+                try {
+                    const snapshot = await db.collection(BRIEFS_COLLECTION).get();
+                    briefs = [];
+                    snapshot.forEach(doc => {
+                        briefs.push({ id: doc.id, ...doc.data() });
+                    });
+                    briefs.sort((a, b) => {
+                        const dateA = a.dueDate?.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
+                        const dateB = b.dueDate?.toDate ? b.dueDate.toDate() : new Date(b.dueDate);
+                        return dateA - dateB;
+                    });
+                    renderDueBriefs();
+                } catch (fallbackError) {
+                    console.error('Fallback also failed:', fallbackError);
+                    content.innerHTML = '<div class="loading">Unable to load briefs.</div>';
+                }
+            }
+        }
+
+        function renderDueBriefs() {
+            const content = document.getElementById('due-content');
+            const activeBriefs = briefs.filter(b => b.status !== 'completed');
+
+            if (activeBriefs.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-title">No Briefs Due</div>
+                        <div class="empty-text">Click the + button to add a brief</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = activeBriefs.map(brief => {
+                const dueDate = brief.dueDate?.toDate ? brief.dueDate.toDate() : new Date(brief.dueDate);
+                const { day, month } = formatDate(dueDate);
+                const hasLink = brief.deckLink || brief.link;
+
+                return `
+                    <div class="${getItemClass(dueDate)}" onclick="handleBriefClick('${brief.id}')">
+                        <div class="brief-date">
+                            <div class="brief-day">${day}</div>
+                            <div class="brief-month">${month}</div>
+                        </div>
+                        <div class="brief-content">
+                            <div class="brief-title">${brief.title || 'Untitled Brief'}</div>
+                            <div class="brief-meta">
+                                ${brief.client ? `<span class="brief-client">${brief.client}</span>` : ''}
+                                ${getStatusBadge(dueDate)}
+                            </div>
+                        </div>
+                        <div class="brief-actions">
+                            <button class="action-btn link ${hasLink ? 'has-link' : ''}" onclick="event.stopPropagation(); openBriefLink('${brief.id}')" title="${hasLink ? 'Open deck' : 'Add deck link'}">
+                                ${hasLink ? '📎' : '🔗'}
+                            </button>
+                            <button class="action-btn edit" onclick="event.stopPropagation(); openBrief('${brief.id}')" title="Edit brief">✏️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            content.innerHTML = `<div class="briefs-list">${html}</div>`;
+        }
+
+        function openAddModal() {
+            document.getElementById('due-modal-title').textContent = 'Add Brief';
+            document.getElementById('briefForm').reset();
+            document.getElementById('briefId').value = '';
+            document.getElementById('briefDueDate').valueAsDate = new Date();
+            document.getElementById('due-modal').classList.add('active');
+        }
+
+        function openBrief(id) {
+            const brief = briefs.find(b => b.id === id);
+            if (!brief) return;
+
+            document.getElementById('due-modal-title').textContent = 'Edit Brief';
+            document.getElementById('briefId').value = id;
+            document.getElementById('briefTitleInput').value = brief.title || '';
+            document.getElementById('briefClient').value = brief.client || '';
+            document.getElementById('briefLink').value = brief.deckLink || brief.link || '';
+            document.getElementById('briefStatus').value = brief.status || 'pending';
+
+            const dueDate = brief.dueDate?.toDate ? brief.dueDate.toDate() : new Date(brief.dueDate);
+            document.getElementById('briefDueDate').valueAsDate = dueDate;
+
+            document.getElementById('due-modal').classList.add('active');
+        }
+
+        function handleBriefClick(id) {
+            const brief = briefs.find(b => b.id === id);
+            if (!brief) return;
+            const link = brief.deckLink || brief.link;
+            if (link) {
+                window.open(link, '_blank');
+                return;
+            }
+            openBrief(id);
+        }
+
+        function openBriefLink(id) {
+            const brief = briefs.find(b => b.id === id);
+            if (!brief) return;
+
+            const link = brief.deckLink || brief.link;
+            if (link) {
+                window.open(link, '_blank');
+            } else {
+                openBrief(id);
+            }
+        }
+
+        function closeDueModal() {
+            document.getElementById('due-modal').classList.remove('active');
+        }
+
+        document.getElementById('briefForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById('briefId').value;
+            const data = {
+                title: document.getElementById('briefTitleInput').value.trim(),
+                client: document.getElementById('briefClient').value.trim(),
+                dueDate: new Date(document.getElementById('briefDueDate').value),
+                deckLink: document.getElementById('briefLink').value.trim(),
+                status: document.getElementById('briefStatus').value,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                if (id) {
+                    await db.collection(BRIEFS_COLLECTION).doc(id).update(data);
+                } else {
+                    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                    await db.collection(BRIEFS_COLLECTION).add(data);
+                }
+
+                closeDueModal();
+                loadDueBriefs();
+            } catch (error) {
+                console.error('Error saving brief:', error);
+                alert('Failed to save brief. Check console for details.');
+            }
+        });
+
+        document.getElementById('due-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'due-modal') closeDueModal();
+        });
+
+        async function initTracker() {
+            const listEl = document.getElementById('tracker-list');
+            listEl.innerHTML = '<div class="loading-state"><div class="spinner"></div>Syncing Notion...</div>';
+
+            try {
+                const res = await fetch(`${API_URL}/projects`);
+                const data = await res.json();
+
+                const rawProjects = data.projects || [];
+
+                const linksSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("brief_links").get();
+                briefLinks = {};
+                linksSnap.forEach(doc => {
+                    briefLinks[doc.id] = doc.data().url;
+                });
+
+                allProjects = rawProjects.map(p => {
+                    const bestDate = p.dueDate || p.internalDueDate || p.liveDate || p.shootDate || null;
+
+                    return {
+                        ...p,
+                        hasLink: !!briefLinks[p.id],
+                        linkUrl: briefLinks[p.id] || null,
+                        notionResponse: p.creative_link || p.response_url || p.public_url || null,
+                        effectiveDate: bestDate,
+                        dueStatus: getDueStatus(bestDate)
+                    };
+                }).sort((a, b) => {
+                    const dateA = new Date(a.effectiveDate || '2099-01-01');
+                    const dateB = new Date(b.effectiveDate || '2099-01-01');
+                    return dateA - dateB;
+                });
+
+                renderTracker();
+
+            } catch (e) {
+                console.error(e);
+                listEl.innerHTML = '<div class="empty-state" style="color:var(--danger)">Connection Error. Check Console.</div>';
+            }
+        }
+
+        function toggleArchive(viewArchive) {
+            showArchive = viewArchive;
+            renderTracker();
+        }
+
+        function renderTracker() {
+            const listEl = document.getElementById('tracker-list');
+
+            document.getElementById('btn-active').classList.toggle('active', !showArchive);
+            document.getElementById('btn-archive').classList.toggle('active', showArchive);
+
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+
+            const visibleProjects = allProjects.filter(p => {
+                const stage = (p.dealStage || '').toLowerCase();
+                const isComplete = stage.includes('complete') || stage.includes('live') || stage.includes('closed') || stage.includes('declined') || stage.includes('lost');
+
+                const effectiveDate = p.effectiveDate ? new Date(p.effectiveDate) : null;
+                const isPast = effectiveDate && effectiveDate < now;
+
+                if (showArchive) {
+                    return isComplete || isPast;
+                }
+                return !isComplete && (!isPast || (effectiveDate && effectiveDate.toDateString() === now.toDateString()));
+            });
+
+            if (visibleProjects.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <span class="empty-icon">${showArchive ? '🗄️' : '✨'}</span>
+                        ${showArchive ? 'Archive is empty.' : 'You\'re all caught up! No upcoming briefs.'}
+                    </div>`;
+                return;
+            }
+
+            listEl.innerHTML = `
+                <div class="tracker-list">
+                    ${visibleProjects.map(p => `
+                        <div class="tracker-item" onclick="openTrackerModal('${p.id}')">
+                            <div class="row-top">
+                                <span class="client-name">${p.client || 'Internal'}</span>
+                                <span class="due-pill ${p.dueStatus.class}">${p.dueStatus.text}</span>
+                            </div>
+                            <div class="project-title">${p.title}</div>
+                            <div class="row-btm">
+                                <div class="meta-group">
+                                    <span class="status-badge tracker">${p.dealStage}</span>
+                                </div>
+                                <div class="meta-group">
+                                    ${p.notionResponse ? `
+                                        <div class="link-indicator notion">
+                                            <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                            Notion
+                                        </div>
+                                    ` : ''}
+                                    <div class="link-indicator ${p.hasLink ? 'firebase' : 'empty'}">
+                                        ${p.hasLink
+                                            ? `<svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Deck`
+                                            : `+ Upload`
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function openTrackerModal(id) {
+            activeProject = allProjects.find(p => p.id === id);
+            if (!activeProject) return;
+
+            document.getElementById('tracker-modal-title').innerText = activeProject.title;
+            document.getElementById('tracker-modal-client').innerText = activeProject.client || 'Internal Project';
+
+            const existingLink = briefLinks[id] || '';
+            const isEdit = !!existingLink;
+
+            const modalContent = document.getElementById('tracker-modal-content');
+            modalContent.innerHTML = `
+                ${activeProject.notionResponse ? `
+                    <div class="section-label">Existing Notion Response</div>
+                    <a href="${activeProject.notionResponse}" target="_blank" class="notion-link-card">
+                        <span>View Creative Response</span>
+                        <span>↗</span>
+                    </a>
+                ` : ''}
+
+                <div class="section-label">Your Deck / Response</div>
+                ${isEdit ? `
+                    <a href="${existingLink}" target="_blank" class="visit-link">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        Open Linked Deck
+                    </a>
+                ` : ''}
+
+                <div class="input-group">
+                    <input type="url" id="link-input" class="url-input" placeholder="Paste Drive / Slides / PDF Link..." value="${existingLink}">
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-ghost" onclick="closeTrackerModal()">Close</button>
+                    <button class="btn btn-primary-dark" onclick="saveLink()">
+                        ${isEdit ? 'Update Link' : 'Save Link'}
+                    </button>
+                </div>
+
+                ${!showArchive ? `
+                    <button class="btn btn-complete" onclick="markComplete()">
+                        ✓ Mark as Complete (Archive)
+                    </button>
+                ` : ''}
+            `;
+
+            document.getElementById('tracker-modal').classList.add('show');
+            if (!isEdit) document.getElementById('link-input').focus();
+        }
+
+        function closeTrackerModal() {
+            document.getElementById('tracker-modal').classList.remove('show');
+            activeProject = null;
+        }
+
+        async function saveLink() {
+            if (!activeProject) return;
+            const url = document.getElementById('link-input').value;
+            const btn = document.querySelector('.btn-primary-dark');
+
+            if (!url) return;
+
+            btn.innerText = "Saving...";
+
+            try {
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("brief_links").doc(activeProject.id).set({
+                    url: url,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    projectTitle: activeProject.title,
+                    client: activeProject.client
+                });
+
+                briefLinks[activeProject.id] = url;
+                const pIndex = allProjects.findIndex(p => p.id === activeProject.id);
+                if (pIndex > -1) {
+                    allProjects[pIndex].hasLink = true;
+                    allProjects[pIndex].linkUrl = url;
+                }
+
+                closeTrackerModal();
+                renderTracker();
+            } catch (e) {
+                console.error("Save failed", e);
+                alert("Could not save link.");
+                btn.innerText = "Error";
+            }
+        }
+
+        async function markComplete() {
+            if (!activeProject) return;
+            if (!confirm("Are you sure? This will move the project to 'Campaign Complete' and archive it.")) return;
+
+            const btn = document.querySelector('.btn-complete');
+            btn.innerText = "Updating Notion...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}/projects/${activeProject.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dealStage: 'Campaign Complete' })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    const pIndex = allProjects.findIndex(p => p.id === activeProject.id);
+                    if (pIndex > -1) {
+                        allProjects[pIndex].dealStage = 'Campaign Complete';
+                    }
+                    closeTrackerModal();
+                    renderTracker();
+                } else {
+                    throw new Error(data.error || 'Update failed');
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Failed to update status.");
+                btn.innerText = "Error";
+            }
+        }
+
+        function getDueStatus(dateStr) {
+            if (!dateStr) return { text: 'No Date', class: 'due-normal' };
+            const due = new Date(dateStr);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const diffTime = due - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) return { text: `${Math.abs(diffDays)}d Overdue`, class: 'due-urgent' };
+            if (diffDays === 0) return { text: 'Due Today', class: 'due-urgent' };
+            if (diffDays === 1) return { text: 'Tomorrow', class: 'due-soon' };
+            if (diffDays <= 7) return { text: `Due in ${diffDays}d`, class: 'due-soon' };
+
+            return { text: due.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), class: 'due-normal' };
+        }
+    </script>
+</body>
+</html>
