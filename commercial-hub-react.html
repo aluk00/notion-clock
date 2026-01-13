@@ -373,18 +373,26 @@
 
     async function loadData() {
         try {
+            console.log('Fetching from:', `${API_URL}/projects`);
             const res = await fetch(`${API_URL}/projects`);
             const data = await res.json();
+            console.log('API response:', data);
 
             if (data.success) {
                 const rawProjects = data.projects;
+                console.log('Total projects received:', rawProjects.length);
                 groupedProjects = {};
 
                 rawProjects.forEach(p => {
                     const clientName = (p.client || 'Internal').trim();
                     const stage = p.dealStage || 'Ideation';
 
-                    if (['Deal Agreed', 'Campaign Complete', 'Won'].some(k => stage.includes(k))) {
+                    // More flexible matching for production projects
+                    const isProduction = ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed', 'Complete'].some(k =>
+                        stage.toLowerCase().includes(k.toLowerCase())
+                    );
+
+                    if (isProduction) {
                         if (!groupedProjects[clientName]) {
                             groupedProjects[clientName] = {
                                 type: 'production',
@@ -416,7 +424,10 @@
                         }
                     }
                 });
+                console.log('Grouped production projects:', Object.keys(groupedProjects).length);
                 render(rawProjects);
+            } else {
+                console.error('API returned success:false', data.error);
             }
 
             if(db) {

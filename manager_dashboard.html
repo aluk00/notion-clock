@@ -107,8 +107,9 @@
         const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
         const COLORS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#9333EA', Sales: '#F97316', Design: '#8B5CF6' };
         const TEAMS = ['Editorial', 'Creative', 'Production', 'Social', 'Operations', 'Sales', 'Design'];
-        
-        let staff = [], rotaRequests = [], activeTab = 'overview', loading = true;
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+        let staff = [], rotaRequests = [], projects = [], activeTab = 'overview', loading = true;
         const root = document.getElementById('root');
         const toastEl = document.getElementById('toast');
         
@@ -245,7 +246,7 @@
         function renderRotaRequests() {
             const pending = rotaRequests.filter(r => r.status === 'pending');
             const processed = rotaRequests.filter(r => r.status !== 'pending');
-            
+
             return `
                 <div class="card">
                     <div class="card-header">
@@ -278,7 +279,7 @@
                         </div>
                     `}
                 </div>
-                
+
                 ${processed.length > 0 ? `
                     <div class="card">
                         <div class="card-header">
@@ -301,6 +302,95 @@
             `;
         }
 
+        function renderProjects() {
+            const activeProjects = projects.filter(p =>
+                p.dealStage && ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed'].some(k =>
+                    p.dealStage.toLowerCase().includes(k.toLowerCase())
+                )
+            );
+
+            const creatorsStaff = staff.filter(s => {
+                const role = (s.role || '').toLowerCase();
+                const team = (s.team || '').toLowerCase();
+                return team === 'editorial' || role.includes('creator') || role.includes('talent');
+            });
+
+            const editorsStaff = staff.filter(s => {
+                const role = (s.role || '').toLowerCase();
+                const team = (s.team || '').toLowerCase();
+                return role.includes('editor') || team === 'editorial';
+            });
+
+            const productionStaff = staff.filter(s => {
+                const team = (s.team || '').toLowerCase();
+                return team === 'production' || team === 'creative';
+            });
+
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Project Assignments</h2>
+                        <span style="font-size:12px; color:var(--ink-sub);">${activeProjects.length} active projects</span>
+                    </div>
+                    ${activeProjects.length === 0 ? `
+                        <div class="empty">
+                            <div class="empty-icon">📋</div>
+                            <div class="empty-title">No Active Projects</div>
+                            <div class="empty-sub">Projects will appear here once they reach "Deal Agreed" status.</div>
+                        </div>
+                    ` : `
+                        <div style="padding:16px;">
+                            ${activeProjects.map(p => {
+                                const currentCreative = p.creativeLead?.[0]?.name || p.creativeLead || '';
+                                const currentProduction = p.productionLead?.[0]?.name || p.productionLead || '';
+                                const currentSales = p.salesLead?.[0]?.name || p.salesLead || '';
+
+                                return `
+                                <div style="border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; background: var(--bg-soft);">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                        <div>
+                                            <div style="font-size: 14px; font-weight: 800; text-transform: uppercase;">${p.client || 'Internal'}</div>
+                                            <div style="font-size: 12px; color: var(--ink-sub); margin-top: 2px;">${p.title || 'Untitled Project'}</div>
+                                        </div>
+                                        <span style="font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: ${p.dealStage?.includes('Complete') ? '#DCFCE7' : '#DBEAFE'}; color: ${p.dealStage?.includes('Complete') ? '#166534' : '#1D4ED8'};">
+                                            ${p.dealStage || 'In Progress'}
+                                        </span>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                                        <div>
+                                            <label style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 4px;">Creative Lead</label>
+                                            <select class="project-assign-select" data-project="${p.id}" data-role="creativeLead" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 11px; background: white;">
+                                                <option value="">Unassigned</option>
+                                                ${productionStaff.map(s => `<option value="${s.id}" ${(currentCreative && currentCreative.includes(s.firstName)) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 4px;">Production Lead</label>
+                                            <select class="project-assign-select" data-project="${p.id}" data-role="productionLead" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 11px; background: white;">
+                                                <option value="">Unassigned</option>
+                                                ${productionStaff.map(s => `<option value="${s.id}" ${(currentProduction && currentProduction.includes(s.firstName)) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 4px;">Editor</label>
+                                            <select class="project-assign-select" data-project="${p.id}" data-role="editor" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 11px; background: white;">
+                                                <option value="">Unassigned</option>
+                                                ${editorsStaff.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName || ''}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 12px; text-align: right;">
+                                        <button class="btn btn-primary btn-sm" onclick="window.saveProjectAssignment('${p.id}')">Save Assignment</button>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
         function render() {
             const pendingCount = rotaRequests.filter(r => r.status === 'pending').length;
             
@@ -317,14 +407,19 @@
                 <div class="tabs">
                     <button class="tab ${activeTab === 'overview' ? 'active' : ''}" onclick="window.setTab('overview')">Overview</button>
                     <button class="tab ${activeTab === 'capacity' ? 'active' : ''}" onclick="window.setTab('capacity')">Capacity</button>
+                    <button class="tab ${activeTab === 'projects' ? 'active' : ''}" onclick="window.setTab('projects')">
+                        Project Assignments
+                        ${projects.filter(p => !p.creativeLead || !p.productionLead).length > 0 ? `<span class="count">${projects.filter(p => !p.creativeLead || !p.productionLead).length}</span>` : ''}
+                    </button>
                     <button class="tab ${activeTab === 'rota' ? 'active' : ''}" onclick="window.setTab('rota')">
                         Rota Requests
                         ${pendingCount > 0 ? `<span class="count">${pendingCount}</span>` : ''}
                     </button>
                 </div>
-                
+
                 ${activeTab === 'overview' ? renderOverview() : ''}
                 ${activeTab === 'capacity' ? renderCapacity() : ''}
+                ${activeTab === 'projects' ? renderProjects() : ''}
                 ${activeTab === 'rota' ? renderRotaRequests() : ''}
             `;
         }
@@ -368,6 +463,55 @@
             }
         };
 
+        window.saveProjectAssignment = async (projectId) => {
+            const selects = document.querySelectorAll(`.project-assign-select[data-project="${projectId}"]`);
+            const updates = {};
+
+            selects.forEach(select => {
+                const role = select.dataset.role;
+                const staffId = select.value;
+                if (staffId) {
+                    const staffMember = staff.find(s => s.id === staffId);
+                    if (staffMember) {
+                        // Store assignment in Firebase for reference
+                        updates[role] = `${staffMember.firstName} ${staffMember.lastName || ''}`.trim();
+                        updates[`${role}Id`] = staffId;
+                    }
+                }
+            });
+
+            if (Object.keys(updates).length === 0) {
+                showToast('No assignments to save', 'error');
+                return;
+            }
+
+            try {
+                // Save to Firebase project assignments collection
+                await db.collection("artifacts").doc(appId).collection("public").doc("data").collection("project_assignments").doc(projectId).set({
+                    ...updates,
+                    projectId,
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+
+                showToast('Assignment saved!');
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            }
+        };
+
+        async function loadProjects() {
+            try {
+                const res = await fetch(`${API_URL}/projects`);
+                const data = await res.json();
+                if (data.success) {
+                    projects = data.projects || [];
+                    render();
+                }
+            } catch (e) {
+                console.error('Failed to load projects:', e);
+            }
+        }
+
         // Real-time listeners
         onAuthStateChanged(auth, user => {
             if (user) {
@@ -379,7 +523,7 @@
                     loading = false;
                     render();
                 });
-                
+
                 // Listen to rota requests
                 onSnapshot(rotaRef(), snap => {
                     rotaRequests = [];
@@ -391,6 +535,9 @@
                     });
                     render();
                 });
+
+                // Load projects from API
+                loadProjects();
             } else {
                 signInAnonymously(auth);
             }
