@@ -20,7 +20,7 @@ const MagicPenWidget = ({ onAnalyze }: { onAnalyze: (data: any) => void }) => {
     setLoading(true);
     try {
       // ⚠️ REPLACE WITH YOUR ACTUAL KEY
-      const genAI = new GoogleGenerativeAI("YOUR_GEMINI_API_KEY"); 
+      const genAI = new GoogleGenerativeAI("AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY"); 
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const prompt = `
