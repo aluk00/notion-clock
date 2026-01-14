@@ -7,9 +7,9 @@ import { auth, db, COLLECTION_PATH } from './services/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, orderBy, limit } from 'firebase/firestore';
 import { Project, RundownData, SECTIONS_CONFIG } from './types';
-import { GoogleGenerativeAI } from "@google/generative-ai"; // 1. Added Import
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// --- 2. MAGIC PEN COMPONENT (Converted to JSX) ---
+// --- 🪄 MAGIC PEN COMPONENT ---
 const MagicPenWidget = ({ onAnalyze }: { onAnalyze: (data: any) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState("");
@@ -18,8 +18,9 @@ const MagicPenWidget = ({ onAnalyze }: { onAnalyze: (data: any) => void }) => {
   const handleMagic = async () => {
     if (!text.trim()) return;
     setLoading(true);
+
     try {
-      // ⚠️ REPLACE WITH YOUR ACTUAL KEY
+      // ⚠️ REPLACE THIS WITH YOUR ACTUAL API KEY
       const genAI = new GoogleGenerativeAI("AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY"); 
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -64,7 +65,7 @@ const MagicPenWidget = ({ onAnalyze }: { onAnalyze: (data: any) => void }) => {
       {isOpen && (
         <div className="bg-white p-4 rounded-2xl shadow-2xl border border-gray-100 w-80 mb-2 transition-all">
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-xs font-black text-[#21A0D8] uppercase tracking-widest">Assistant</h3>
+            <h3 className="text-xs font-black text-[#21A0D8] uppercase tracking-widest">Update Assistant</h3>
             <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-red-500">✕</button>
           </div>
           <textarea
@@ -87,6 +88,7 @@ const MagicPenWidget = ({ onAnalyze }: { onAnalyze: (data: any) => void }) => {
         onClick={() => setIsOpen(!isOpen)}
         className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 ${isOpen ? 'bg-gray-100' : 'bg-[#21A0D8] text-white'}`}
       >
+        {/* Pen Icon */}
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 19l7-7 3 3-7 7-3-3z" />
             <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
@@ -279,7 +281,7 @@ const App: React.FC = () => {
         }
     };
 
-    // --- 3. Added AI Update Handler ---
+    // --- 🤖 AI LOGIC CONNECTED HERE ---
     const handleAIUpdate = (aiData: any[]) => {
         setRundown(prev => {
             const updatedSections = prev.sections.map(section => {
