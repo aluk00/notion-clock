@@ -39,10 +39,47 @@ function parseProperty(prop) {
 }
 
 // ============================================
+// HELPER: Resolve Notion property types
+// ============================================
+let projectPropertyTypeCache = null;
+let projectPropertyTypeCacheAt = 0;
+const PROPERTY_TYPE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function getProjectPropertyTypes() {
+    if (!PROJECTS_DB) return {};
+
+    const now = Date.now();
+    if (projectPropertyTypeCache && (now - projectPropertyTypeCacheAt) < PROPERTY_TYPE_CACHE_TTL_MS) {
+        return projectPropertyTypeCache;
+    }
+
+    try {
+        const response = await notion.databases.retrieve({ database_id: PROJECTS_DB });
+        const types = Object.entries(response.properties || {}).reduce((acc, [name, property]) => {
+            acc[name] = property.type;
+            return acc;
+        }, {});
+        projectPropertyTypeCache = types;
+        projectPropertyTypeCacheAt = now;
+        return types;
+    } catch (error) {
+        console.error('Error fetching project property types:', error);
+        return projectPropertyTypeCache || {};
+    }
+}
+
+function buildStatusProperty(value, propertyType) {
+    if (!value) return null;
+    if (propertyType === 'select') return { select: { name: value } };
+    return { status: { name: value } };
+}
+
+// ============================================
 // HELPER: Build Project properties for Notion
 // ============================================
-function buildProjectProperties(data) {
+async function buildProjectProperties(data) {
     const props = {};
+    const propertyTypes = await getProjectPropertyTypes();
     
     if (data.title) {
         props['TITLE'] = { title: [{ text: { content: data.title } }] };
@@ -75,13 +112,22 @@ function buildProjectProperties(data) {
         props['DEAL STAGE'] = { select: { name: data.dealStage } };
     }
     if (data.creativeWorkflowStatus) {
-        props['CREATIVE WORKFLOW STATUS'] = { status: { name: data.creativeWorkflowStatus } };
+        props['CREATIVE WORKFLOW STATUS'] = buildStatusProperty(
+            data.creativeWorkflowStatus,
+            propertyTypes['CREATIVE WORKFLOW STATUS']
+        );
     }
     if (data.productionWorkflowStatus) {
-        props['PRODUCTION WORKFLOW STATUS'] = { status: { name: data.productionWorkflowStatus } };
+        props['PRODUCTION WORKFLOW STATUS'] = buildStatusProperty(
+            data.productionWorkflowStatus,
+            propertyTypes['PRODUCTION WORKFLOW STATUS']
+        );
     }
     if (data.socialWorkflowStatus) {
-        props['SOCIAL WORKFLOW STATUS'] = { status: { name: data.socialWorkflowStatus } };
+        props['SOCIAL WORKFLOW STATUS'] = buildStatusProperty(
+            data.socialWorkflowStatus,
+            propertyTypes['SOCIAL WORKFLOW STATUS']
+        );
     }
     if (data.primaryTeam && Array.isArray(data.primaryTeam)) {
         props['PRIMARY TEAM'] = { multi_select: data.primaryTeam.map(t => ({ name: t })) };
@@ -266,7 +312,7 @@ app.get('/projects', async (req, res) => {
 app.patch('/projects/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const properties = buildProjectProperties(req.body);
+        const properties = await buildProjectProperties(req.body);
         
         if (Object.keys(properties).length === 0) {
             return res.status(400).json({ success: false, error: 'No valid properties to update' });
@@ -289,7 +335,7 @@ app.patch('/projects/:id', async (req, res) => {
 // ============================================
 app.post('/projects', async (req, res) => {
     try {
-        const properties = buildProjectProperties(req.body);
+        const properties = await buildProjectProperties(req.body);
         
         if (!properties['TITLE']) {
             return res.status(400).json({ success: false, error: 'Title is required' });
