@@ -7,6 +7,95 @@ import { auth, db, COLLECTION_PATH } from './services/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc, orderBy, limit } from 'firebase/firestore';
 import { Project, RundownData, SECTIONS_CONFIG } from './types';
+import { GoogleGenerativeAI } from "@google/generative-ai"; // 1. Added Import
+
+// --- 2. MAGIC PEN COMPONENT (Converted to JSX) ---
+const MagicPenWidget = ({ onAnalyze }: { onAnalyze: (data: any) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleMagic = async () => {
+    if (!text.trim()) return;
+    setLoading(true);
+    try {
+      // ⚠️ REPLACE WITH YOUR ACTUAL KEY
+      const genAI = new GoogleGenerativeAI("YOUR_GEMINI_API_KEY"); 
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const prompt = `
+        You are a project assistant. Convert these messy notes into a structured JSON array for a status report.
+        Valid Section IDs: "completed", "pending", "live", "media", "partnerships", "internal", "coming_up".
+        
+        Notes: "${text}"
+
+        Output ONLY JSON in this format:
+        [
+          {
+            "sectionId": "pending",
+            "items": [
+              {
+                "projectName": "Project Title",
+                "statusNote": "Current status",
+                "link": "url here if found",
+                "bullets": ["detail 1", "detail 2"]
+              }
+            ]
+          }
+        ]
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const jsonText = response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+      onAnalyze(JSON.parse(jsonText));
+      setIsOpen(false);
+      setText("");
+    } catch (error) {
+      console.error(error);
+      alert("Error parsing notes. Check console.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+      {isOpen && (
+        <div className="bg-white p-4 rounded-2xl shadow-2xl border border-gray-100 w-80 mb-2 transition-all">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-xs font-black text-[#21A0D8] uppercase tracking-widest">Assistant</h3>
+            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-red-500">✕</button>
+          </div>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="w-full h-32 p-3 text-xs bg-gray-50 border border-gray-200 rounded-lg outline-none resize-none mb-3 focus:ring-1 focus:ring-[#21A0D8]"
+            placeholder="Input drips and drops of notes..."
+          />
+          <button
+            onClick={handleMagic}
+            disabled={loading}
+            className="w-full py-2 bg-[#1C1C1C] text-white rounded-lg text-xs font-bold hover:bg-[#21A0D8] transition-colors"
+          >
+            {loading ? "Processing..." : "Format Updates"}
+          </button>
+        </div>
+      )}
+      
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 ${isOpen ? 'bg-gray-100' : 'bg-[#21A0D8] text-white'}`}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 19l7-7 3 3-7 7-3-3z" />
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+            <path d="M2 2l7.586 7.586" />
+        </svg>
+      </button>
+    </div>
+  );
+};
 
 // Hardcoded data for Ground Zero EOD
 const HARDCODED_EOD: Partial<RundownData> = {
@@ -188,6 +277,29 @@ const App: React.FC = () => {
             console.error(e);
             showToast("Failed to carry over", 'error');
         }
+    };
+
+    // --- 3. Added AI Update Handler ---
+    const handleAIUpdate = (aiData: any[]) => {
+        setRundown(prev => {
+            const updatedSections = prev.sections.map(section => {
+                const aiMatch = aiData.find((s: any) => s.sectionId === section.id);
+                if (aiMatch) {
+                    const newItems = aiMatch.items.map((item: any) => ({
+                        id: crypto.randomUUID(),
+                        projectId: '',
+                        projectName: item.projectName || 'Untitled',
+                        statusNote: item.statusNote || '',
+                        link: item.link || '',
+                        bullets: (item.bullets || []).map((b: string) => ({ id: crypto.randomUUID(), text: b }))
+                    }));
+                    return { ...section, items: [...section.items, ...newItems] };
+                }
+                return section;
+            });
+            return { ...prev, sections: updatedSections };
+        });
+        showToast("Updates added from notes");
     };
 
     const updateSection = (updatedSection: any) => {
@@ -398,6 +510,9 @@ const App: React.FC = () => {
 
             </div>
             
+            {/* 4. MAGIC PEN WIDGET RENDERED HERE */}
+            <MagicPenWidget onAnalyze={handleAIUpdate} />
+
             <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full bg-[#1C1C1C] text-white text-xs font-bold shadow-2xl transition-all duration-300 z-50 flex items-center gap-3 ${toast ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
                  <span className={`w-2 h-2 rounded-full ${toast?.type === 'error' ? 'bg-red-500' : 'bg-[#43B049]'}`}></span>
                  {toast?.msg}
