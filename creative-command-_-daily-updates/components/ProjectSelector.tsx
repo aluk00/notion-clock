@@ -40,7 +40,7 @@ export const ProjectSelector: React.FC<Props> = ({ projects, value, onChange }) 
         <div className="relative w-full" ref={containerRef}>
             <input
                 type="text"
-                className="w-full text-sm font-bold text-[#1C1C1C] border border-gray-200 rounded-lg px-3 py-2 focus:border-[#21A0D8] focus:ring-1 focus:ring-[#21A0D8] outline-none transition-all placeholder:text-gray-400"
+                className="w-full text-sm font-bold text-[#1C1C1C] border border-gray-200 rounded-lg px-3 py-2 focus:border-[#E6468B] focus:ring-1 focus:ring-[#E6468B] outline-none transition-all placeholder:text-gray-400"
                 placeholder="Project Name..."
                 value={isOpen ? query : value}
                 onChange={(e) => {
@@ -59,7 +59,7 @@ export const ProjectSelector: React.FC<Props> = ({ projects, value, onChange }) 
                     {filtered.map((p) => (
                         <div
                             key={p.id}
-                            className="px-3 py-2 cursor-pointer hover:bg-blue-50 transition-colors flex justify-between items-center group"
+                            className="px-3 py-2 cursor-pointer hover:bg-pink-50 transition-colors flex justify-between items-center group"
                             onMouseDown={() => handleSelect(p)}
                         >
                             <span className="text-xs font-bold text-gray-800">{p.name}</span>
@@ -71,7 +71,7 @@ export const ProjectSelector: React.FC<Props> = ({ projects, value, onChange }) 
                         </div>
                     ))}
                     <div 
-                         className="px-3 py-2 cursor-pointer hover:bg-blue-50 transition-colors border-t border-gray-100"
+                         className="px-3 py-2 cursor-pointer hover:bg-pink-50 transition-colors border-t border-gray-100"
                          onMouseDown={() => { onChange(query); setIsOpen(false); }}
                     >
                         <span className="text-xs italic text-gray-500">Use "{query}"</span>

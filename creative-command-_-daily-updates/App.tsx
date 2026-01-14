@@ -427,18 +427,18 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <DotGrid />
                         <span className="text-xs font-black tracking-widest uppercase text-gray-800">
-                            Status<span className="text-[#21A0D8]">Report</span>
+                            Status<span className="text-[#E6468B]">Report</span>
                         </span>
                         
-                        <div className="hidden md:flex items-center bg-blue-50/50 rounded-lg p-1 ml-6 border border-[#21A0D8]/20">
+                        <div className="hidden md:flex items-center bg-pink-50/50 rounded-lg p-1 ml-6 border border-[#E6468B]/20">
                             {['Morning', 'Midday', 'EOD'].map((s) => (
                                 <button
                                     key={s}
                                     onClick={() => setSession(s as any)}
                                     className={`px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all ${
                                         session === s 
-                                        ? 'bg-[#21A0D8] text-white shadow-sm' 
-                                        : 'text-[#21A0D8]/60 hover:text-[#21A0D8]'
+                                        ? 'bg-[#E6468B] text-white shadow-sm' 
+                                        : 'text-[#E6468B]/60 hover:text-[#E6468B]'
                                     }`}
                                 >
                                     {s}
@@ -450,7 +450,7 @@ const App: React.FC = () => {
                     <div className="flex gap-2">
                          <button 
                             onClick={handleCarryOver} 
-                            className="px-3 py-1.5 text-[10px] font-bold text-[#21A0D8] border border-[#21A0D8]/30 rounded-md hover:bg-blue-50 transition-colors"
+                            className="px-3 py-1.5 text-[10px] font-bold text-[#E6468B] border border-[#E6468B]/30 rounded-md hover:bg-pink-50 transition-colors"
                         >
                             ↺ Carry Over
                         </button>
@@ -463,7 +463,7 @@ const App: React.FC = () => {
                         </button>
                         <button 
                             onClick={handleCopy}
-                            className="px-4 py-1.5 bg-[#21A0D8] text-white rounded-md text-[10px] font-bold hover:bg-[#1C8AB6] transition-all shadow-sm flex items-center gap-2"
+                            className="px-4 py-1.5 bg-[#E6468B] text-white rounded-md text-[10px] font-bold hover:bg-[#D13F7C] transition-all shadow-sm flex items-center gap-2"
                         >
                             <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                             Copy Slack
@@ -476,7 +476,7 @@ const App: React.FC = () => {
                 <div className="lg:col-span-7 space-y-8">
                     <div className="flex items-center justify-between mb-2">
                         <h2 className="text-2xl font-black text-[#1C1C1C]">Today's Updates</h2>
-                        <span className="text-[10px] font-bold text-[#21A0D8] uppercase tracking-widest bg-blue-50 px-3 py-1 rounded-full border border-[#21A0D8]/20">
+                        <span className="text-[10px] font-bold text-[#E6468B] uppercase tracking-widest bg-pink-50 px-3 py-1 rounded-full border border-[#E6468B]/20">
                             {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
                         </span>
                     </div>
@@ -492,10 +492,10 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="lg:col-span-5 sticky top-24">
-                    <div className="bg-white border border-[#21A0D8]/20 rounded-xl overflow-hidden shadow-xl shadow-[#21A0D8]/5">
-                        <div className="bg-gradient-to-r from-blue-50 to-white border-b border-[#21A0D8]/10 px-4 py-3 flex items-center justify-between">
-                            <h3 className="text-xs font-bold text-[#21A0D8] uppercase tracking-widest flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-[#21A0D8]"></span>
+                    <div className="bg-white border border-[#E6468B]/20 rounded-xl overflow-hidden shadow-xl shadow-[#E6468B]/5">
+                        <div className="bg-gradient-to-r from-pink-50 to-white border-b border-[#E6468B]/10 px-4 py-3 flex items-center justify-between">
+                            <h3 className="text-xs font-bold text-[#E6468B] uppercase tracking-widest flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-[#E6468B]"></span>
                                 Live Preview
                             </h3>
                             <div className="flex gap-1.5 opacity-50">
