@@ -63,14 +63,14 @@ export const SectionEditor: React.FC<Props> = ({ section, projects, onUpdate }) 
     };
 
     return (
-        <div className="bg-white border border-[#21A0D8]/20 rounded-xl p-6 shadow-sm transition-all hover:shadow-md hover:border-[#21A0D8]/40 hover:shadow-[#21A0D8]/5">
-            <div className="flex items-center justify-between mb-5 pb-4 border-b border-[#21A0D8]/10">
+        <div className="bg-white border border-[#E6468B]/20 rounded-xl p-6 shadow-sm transition-all hover:shadow-md hover:border-[#E6468B]/40 hover:shadow-[#E6468B]/5">
+            <div className="flex items-center justify-between mb-5 pb-4 border-b border-[#E6468B]/10">
                 <h3 className="text-[11px] font-bold text-[#1C1C1C] uppercase tracking-widest flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#21A0D8]"></span>
+                    <span className="w-2 h-2 rounded-full bg-[#E6468B]"></span>
                     {section.title}
                 </h3>
                 {section.items.length > 0 && (
-                     <span className="bg-blue-50 text-[#21A0D8] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#21A0D8]/10">
+                     <span className="bg-pink-50 text-[#E6468B] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#E6468B]/10">
                         {section.items.length}
                     </span>
                 )}
@@ -78,7 +78,7 @@ export const SectionEditor: React.FC<Props> = ({ section, projects, onUpdate }) 
 
             <div className="space-y-4">
                 {section.items.map((item) => (
-                    <div key={item.id} className="relative group bg-white rounded-lg border border-[#21A0D8]/10 p-4 hover:border-[#21A0D8]/40 transition-colors shadow-sm">
+                    <div key={item.id} className="relative group bg-white rounded-lg border border-[#E6468B]/10 p-4 hover:border-[#E6468B]/40 transition-colors shadow-sm">
                         <button 
                             onClick={() => removeItem(item.id)}
                             className="absolute right-3 top-3 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
@@ -104,7 +104,7 @@ export const SectionEditor: React.FC<Props> = ({ section, projects, onUpdate }) 
                             <div className="col-span-1">
                                 <input 
                                     type="text" 
-                                    className="w-full text-xs font-medium text-gray-700 bg-transparent border-b border-gray-200 py-2 focus:border-[#21A0D8] outline-none placeholder:text-gray-400"
+                                    className="w-full text-xs font-medium text-gray-700 bg-transparent border-b border-gray-200 py-2 focus:border-[#E6468B] outline-none placeholder:text-gray-400"
                                     placeholder="Status (e.g. Brief Coming Soon)"
                                     value={item.statusNote}
                                     onChange={(e) => updateItem(item.id, 'statusNote', e.target.value)}
@@ -115,7 +115,7 @@ export const SectionEditor: React.FC<Props> = ({ section, projects, onUpdate }) 
                         <div className="mb-3 relative group/link">
                             <input 
                                 type="text" 
-                                className="w-full text-[10px] text-[#21A0D8] bg-blue-50/30 rounded px-2 py-1.5 border border-transparent focus:border-[#21A0D8]/30 focus:bg-white outline-none placeholder:text-gray-300 pr-7"
+                                className="w-full text-[10px] text-[#E6468B] bg-pink-50/30 rounded px-2 py-1.5 border border-transparent focus:border-[#E6468B]/30 focus:bg-white outline-none placeholder:text-gray-300 pr-7"
                                 placeholder="Paste link here..."
                                 value={item.link}
                                 onChange={(e) => updateItem(item.id, 'link', e.target.value)}
@@ -131,10 +131,10 @@ export const SectionEditor: React.FC<Props> = ({ section, projects, onUpdate }) 
                             )}
                         </div>
 
-                        <div className="space-y-2 pl-3 border-l-2 border-[#21A0D8]/10">
+                        <div className="space-y-2 pl-3 border-l-2 border-[#E6468B]/10">
                             {item.bullets.map((bullet) => (
                                 <div key={bullet.id} className="flex items-start gap-2 group/bullet">
-                                    <span className="text-[#21A0D8] text-[10px] mt-1.5 font-bold">•</span>
+                                    <span className="text-[#E6468B] text-[10px] mt-1.5 font-bold">•</span>
                                     <input 
                                         type="text"
                                         className="flex-1 text-[11px] text-gray-600 bg-transparent border-none focus:ring-0 p-1 placeholder:text-gray-300 leading-tight"
@@ -161,7 +161,7 @@ export const SectionEditor: React.FC<Props> = ({ section, projects, onUpdate }) 
                             ))}
                             <button 
                                 onClick={() => addBullet(item.id)}
-                                className="text-[10px] font-bold text-[#21A0D8]/60 hover:text-[#21A0D8] uppercase tracking-wider flex items-center gap-1 mt-2 pl-1 transition-colors"
+                                className="text-[10px] font-bold text-[#E6468B]/60 hover:text-[#E6468B] uppercase tracking-wider flex items-center gap-1 mt-2 pl-1 transition-colors"
                             >
                                 + Point
                             </button>
@@ -172,7 +172,7 @@ export const SectionEditor: React.FC<Props> = ({ section, projects, onUpdate }) 
 
             <button 
                 onClick={addItem}
-                className="mt-5 w-full py-2 border border-dashed border-[#21A0D8]/30 rounded-lg text-[10px] font-bold text-[#21A0D8] hover:border-[#21A0D8] hover:bg-blue-50/30 transition-all uppercase tracking-wider"
+                className="mt-5 w-full py-2 border border-dashed border-[#E6468B]/30 rounded-lg text-[10px] font-bold text-[#E6468B] hover:border-[#E6468B] hover:bg-pink-50/30 transition-all uppercase tracking-wider"
             >
                 + Add Project
             </button>

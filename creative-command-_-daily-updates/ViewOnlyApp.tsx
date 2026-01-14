@@ -121,7 +121,7 @@ const ViewOnlyApp: React.FC = () => {
           <div className="flex items-center gap-4">
             <DotGrid />
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#21A0D8]">Creative Command</p>
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#E6468B]">Creative Command</p>
               <h1 className="text-3xl font-black">Daily Snapshot</h1>
               <p className="text-sm text-slate-500">View-only overview for leadership check-ins.</p>
             </div>
@@ -232,7 +232,7 @@ const ViewOnlyApp: React.FC = () => {
                               href={item.link}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[11px] font-bold uppercase tracking-widest text-[#21A0D8]"
+                              className="text-[11px] font-bold uppercase tracking-widest text-[#E6468B]"
                             >
                               Link
                             </a>
