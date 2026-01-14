@@ -116,6 +116,17 @@ const ViewOnlyApp: React.FC = () => {
             <DotGrid />
           </div>
           <div className="flex flex-wrap items-center gap-3">
+      <div className="max-w-[1500px] mx-auto px-8 py-10">
+        <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4">
+            <DotGrid />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#21A0D8]">Creative Command</p>
+              <h1 className="text-3xl font-black">Daily Snapshot</h1>
+              <p className="text-sm text-slate-500">View-only overview for leadership check-ins.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
               <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Date</p>
               <p className="text-sm font-semibold text-slate-700">{formatDate(new Date())}</p>

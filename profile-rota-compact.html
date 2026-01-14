@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Schedule | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21a0d8;
+            --dmg-blue-light: #e8f6fc;
+            --dmg-blue-soft: rgba(33, 160, 216, 0.08);
+            --dmg-blue-glow: rgba(33, 160, 216, 0.2);
+            --border: #E5E7EB;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --st-office: #2E7D32;
+            --st-wfh: #F9A825;
+            --st-shoot: #2196F3;
+            --st-leave: #F44336;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: transparent; padding: 12px; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 340px;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 2px; }
+        .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        .title { font-size: 11px; font-weight: 900; flex: 1; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); }
+        .week-label { font-size: 9px; font-weight: 600; color: var(--ink-sub); }
+
+        .body { padding: 12px 18px; }
+
+        .schedule-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid #F5F5F5;
+        }
+        .schedule-row:last-child { border-bottom: none; }
+
+        .day-name {
+            font-size: 10px;
+            font-weight: 800;
+            width: 32px;
+            color: var(--ink);
+            text-transform: uppercase;
+        }
+        .day-date {
+            font-size: 9px;
+            color: var(--ink-sub);
+            width: 40px;
+            font-weight: 500;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            flex: 1;
+        }
+        .status-pill.office { background: rgba(46, 125, 50, 0.1); color: var(--st-office); }
+        .status-pill.remote { background: rgba(249, 158, 37, 0.1); color: var(--st-wfh); }
+        .status-pill.shoot { background: rgba(33, 150, 243, 0.1); color: var(--st-shoot); }
+        .status-pill.client { background: rgba(33, 150, 243, 0.1); color: var(--st-shoot); }
+        .status-pill.leave { background: rgba(244, 67, 54, 0.1); color: var(--st-leave); }
+        .status-pill.weekend { background: #F5F5F5; color: #9E9E9E; }
+
+        .today-marker {
+            background: var(--dmg-blue-soft);
+            border-left: 3px solid var(--dmg-blue);
+            margin: 0 -18px;
+            padding: 8px 18px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 24px;
+            color: var(--ink-sub);
+            font-size: 11px;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            color: var(--ink-sub);
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--dmg-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
+
+        const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+        const STATUS_CONFIG = {
+            'In Building': { emoji: '🏢', label: 'In Building', class: 'office' },
+            'Remote': { emoji: '🏠', label: 'Remote', class: 'remote' },
+            'Off-Site (Shoot)': { emoji: '🎥', label: 'Shoot', class: 'shoot' },
+            'Off-Site (Client)': { emoji: '🤝', label: 'Client', class: 'client' },
+            'On Leave': { emoji: '🌴', label: 'Leave', class: 'leave' },
+            'Weekend': { emoji: '✨', label: 'Weekend', class: 'weekend' }
+        };
+
+        let state = {
+            isLoading: true,
+            schedule: null,
+            currentUser: null
+        };
+
+        const getMonday = () => {
+            const d = new Date();
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            d.setDate(diff);
+            d.setHours(0,0,0,0);
+            return d;
+        };
+
+        const formatDate = d => d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+        const formatShortDate = d => d.toLocaleDateString('en-GB', {day:'numeric', month:'short'}).split(' ')[0];
+
+        function render() {
+            const root = document.getElementById('root');
+
+            if (state.isLoading) {
+                root.innerHTML = '<div class="widget"><div class="loading"><div class="spinner"></div>Loading...</div></div>';
+                return;
+            }
+
+            const monday = getMonday();
+            const today = new Date();
+            const todayDayIndex = (today.getDay() + 6) % 7; // Convert Sun=0 to Mon=0
+
+            let scheduleHtml = '';
+
+            if (state.schedule) {
+                scheduleHtml = DAYS.map((day, i) => {
+                    const d = new Date(monday);
+                    d.setDate(monday.getDate() + i);
+
+                    const scheduleData = Array.isArray(state.schedule)
+                        ? state.schedule[i]
+                        : state.schedule[day];
+
+                    const statusId = scheduleData?.status || (i >= 5 ? 'Weekend' : 'In Building');
+                    const config = STATUS_CONFIG[statusId] || STATUS_CONFIG['In Building'];
+                    const isToday = i === todayDayIndex;
+
+                    return `
+                        <div class="schedule-row ${isToday ? 'today-marker' : ''}">
+                            <span class="day-name">${day.slice(0,3)}</span>
+                            <span class="day-date">${formatShortDate(d)}</span>
+                            <div class="status-pill ${config.class}">
+                                <span>${config.emoji}</span>
+                                <span>${config.label}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                scheduleHtml = `
+                    <div class="empty-state">
+                        No schedule submitted for this week.<br>
+                        <span style="margin-top:8px; display:block;">Use the Rota widget to submit.</span>
+                    </div>
+                `;
+            }
+
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="header">
+                        <div class="dot-grid"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <h2 class="title">My Schedule</h2>
+                        <span class="week-label">w/c ${formatDate(monday)}</span>
+                    </div>
+                    <div class="body">
+                        ${scheduleHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadSchedule(userId) {
+            const monday = getMonday();
+            const weekStart = monday.toISOString().split('T')[0];
+
+            try {
+                const q = query(
+                    collection(db, "artifacts", appId, "public", "data", "rota_requests"),
+                    where("staffId", "==", userId),
+                    where("weekStart", "==", weekStart)
+                );
+
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    const data = snap.docs[0].data();
+                    state.schedule = data.schedule;
+                }
+            } catch (e) {
+                console.error("Schedule load error:", e);
+            }
+
+            state.isLoading = false;
+            render();
+        }
+
+        async function resolveIdentity(authUser) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramId = urlParams.get('id');
+
+            if (paramId) {
+                try {
+                    const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", paramId);
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        state.currentUser = { id: snap.id, ...snap.data() };
+                        await loadSchedule(state.currentUser.id);
+                        return;
+                    }
+                } catch (e) { console.log('Param lookup failed:', e); }
+            }
+
+            if (authUser && authUser.email && !authUser.isAnonymous) {
+                try {
+                    const q = query(
+                        collection(db, "artifacts", appId, "public", "data", "staff_directory"),
+                        where("email", "==", authUser.email)
+                    );
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        state.currentUser = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                        await loadSchedule(state.currentUser.id);
+                        return;
+                    }
+                } catch (e) { console.log('Email lookup failed:', e); }
+            }
+
+            // No user identified
+            state.isLoading = false;
+            render();
+        }
+
+        onAuthStateChanged(auth, user => {
+            if(user) resolveIdentity(user);
+            else signInAnonymously(auth);
+        });
+    </script>
+</body>
+</html>

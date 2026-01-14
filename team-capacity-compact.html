@@ -41,10 +41,41 @@
         .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--ink-sub); font-size: 12px; }
         .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--hero); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Modal Styles */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #FFF; border-radius: 16px; max-width: 500px; width: 90%; max-height: 85vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+        .modal-avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #FFF; flex-shrink: 0; }
+        .modal-info { flex: 1; }
+        .modal-name { font-size: 16px; font-weight: 800; }
+        .modal-role { font-size: 11px; color: var(--ink-sub); margin-top: 2px; }
+        .modal-close { width: 32px; height: 32px; border: none; background: var(--bg-soft); border-radius: 50%; cursor: pointer; font-size: 16px; color: var(--ink-sub); }
+        .modal-close:hover { background: #E5E5E5; }
+        .modal-body { padding: 16px 20px; overflow-y: auto; max-height: calc(85vh - 160px); }
+        .modal-stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        .modal-stat { background: var(--bg-soft); padding: 12px; border-radius: 10px; text-align: center; }
+        .modal-stat-value { font-size: 22px; font-weight: 900; }
+        .modal-stat-label { font-size: 9px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; margin-top: 2px; }
+        .modal-section-title { font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .modal-section-count { background: var(--success); color: #FFF; padding: 2px 6px; border-radius: 8px; font-size: 9px; }
+        .modal-project { background: var(--bg-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px; border-left: 3px solid var(--success); }
+        .modal-project:last-child { margin-bottom: 0; }
+        .modal-project-title { font-size: 12px; font-weight: 700; color: var(--ink); }
+        .modal-project-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+        .modal-tag { font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #E5E5E5; color: var(--ink-sub); }
+        .modal-tag.client { background: #DBEAFE; color: #1E40AF; }
+        .modal-tag.due { background: #FEF3C7; color: #92400E; }
+        .modal-tag.status { background: rgba(34, 197, 94, 0.1); color: #16A34A; }
+        .modal-empty { text-align: center; padding: 24px; color: var(--ink-sub); font-size: 11px; }
     </style>
 </head>
 <body>
     <div id="root"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal" id="modal"></div>
+    </div>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -61,10 +92,10 @@
         const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
         const COLORS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', 'Social Video': '#F2C316', Operations: '#9333EA', Sales: '#F97316', Design: '#8B5CF6' };
         const HERO_COLOR = '#43B049';
-        
+
         const params = new URLSearchParams(window.location.search);
         const teamFilter = params.get('team');
-        let staff = [], loading = true;
+        let staff = [], editQueue = [], designRequests = [], assetMetadata = [], loading = true;
         const root = document.getElementById('root');
         
         const color = t => COLORS[t] || '#21a0d8';
@@ -137,11 +168,20 @@
                                 <span class="legend-item"><span class="legend-dot" style="background:#EF4444"></span>86–100% At Capacity</span>
                             </div>
                             <div class="members">
-                                ${filtered.slice(0, 8).map(s => `
-                                    <div class="member" style="background:${teamFilter ? accentColor : color(s.team)}" title="${s.firstName} ${s.lastName}: ${s.capacity || 0}%">
+                                ${filtered.slice(0, 8).map(s => {
+                                    const memberData = JSON.stringify({
+                                        id: s.id,
+                                        firstName: s.firstName,
+                                        lastName: s.lastName,
+                                        role: s.role,
+                                        team: s.team,
+                                        capacity: s.capacity || 0
+                                    }).replace(/"/g, '&quot;');
+                                    return `
+                                    <div class="member" style="background:${teamFilter ? accentColor : color(s.team)}; cursor:pointer;" title="${s.firstName} ${s.lastName}: ${s.capacity || 0}%" onclick="openMemberModal(${memberData})">
                                         ${initials(s.firstName, s.lastName)}
-                                    </div>
-                                `).join('')}
+                                    </div>`;
+                                }).join('')}
                                 ${filtered.length > 8 ? `<div class="member" style="background:#999">+${filtered.length - 8}</div>` : ''}
                             </div>
                         </div>
@@ -150,12 +190,135 @@
             `;
         }
 
+        // Get projects for a team member
+        function getProjectsForMember(member) {
+            const fullName = `${member.firstName} ${member.lastName}`;
+            const projects = [];
+
+            // From edit queue (for editors/production)
+            editQueue.forEach(item => {
+                if (item.editor === fullName && item.status !== 'Live' && item.status !== 'Approved') {
+                    projects.push({
+                        title: item.title,
+                        client: item.clientName,
+                        dueDate: item.dueDate,
+                        status: item.status,
+                        type: 'Edit'
+                    });
+                }
+            });
+
+            // From design requests (for designers)
+            designRequests.forEach(item => {
+                if (item.designerName === fullName && item.status !== 'Done') {
+                    projects.push({
+                        title: item.headline || item.title,
+                        assetType: item.assetType,
+                        dueDate: item.deadline,
+                        status: item.status,
+                        type: 'Design'
+                    });
+                }
+            });
+
+            // From asset metadata
+            assetMetadata.forEach(asset => {
+                if ((asset.editor === fullName || asset.designer === fullName) &&
+                    asset.status !== 'Live' && asset.status !== 'Approved') {
+                    if (!projects.some(p => p.title === asset.assetTitle)) {
+                        projects.push({
+                            title: asset.assetTitle,
+                            client: asset.clientName,
+                            dueDate: asset.deliveryDue,
+                            status: asset.status,
+                            type: 'Asset'
+                        });
+                    }
+                }
+            });
+
+            return projects;
+        }
+
+        // Close modal
+        window.closeModal = function() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        };
+
+        // Open member detail modal
+        window.openMemberModal = function(memberData) {
+            const modal = document.getElementById('modal');
+            const projects = getProjectsForMember(memberData);
+            const accentColor = color(memberData.team);
+
+            modal.innerHTML = `
+                <div class="modal-header">
+                    <div class="modal-avatar" style="background: ${accentColor}">${initials(memberData.firstName, memberData.lastName)}</div>
+                    <div class="modal-info">
+                        <div class="modal-name">${memberData.firstName} ${memberData.lastName}</div>
+                        <div class="modal-role">${memberData.role || memberData.team || 'Team Member'}</div>
+                    </div>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-stat-grid">
+                        <div class="modal-stat">
+                            <div class="modal-stat-value" style="color:${capacityColor(memberData.capacity)}">${memberData.capacity}%</div>
+                            <div class="modal-stat-label">Capacity</div>
+                        </div>
+                        <div class="modal-stat">
+                            <div class="modal-stat-value">${projects.length}</div>
+                            <div class="modal-stat-label">Active Projects</div>
+                        </div>
+                    </div>
+
+                    <div class="modal-section-title">
+                        Tagged Projects & Deliverables
+                        <span class="modal-section-count" style="background:${accentColor}">${projects.length}</span>
+                    </div>
+                    ${projects.length === 0 ?
+                        '<div class="modal-empty">No active projects or deliverables assigned</div>' :
+                        projects.map(p => `
+                            <div class="modal-project" style="border-color:${accentColor}">
+                                <div class="modal-project-title">${p.title || 'Untitled'}</div>
+                                <div class="modal-project-meta">
+                                    ${p.client ? `<span class="modal-tag client">${p.client}</span>` : ''}
+                                    ${p.type ? `<span class="modal-tag">${p.type}</span>` : ''}
+                                    ${p.assetType ? `<span class="modal-tag">${p.assetType}</span>` : ''}
+                                    ${p.status ? `<span class="modal-tag status">${p.status}</span>` : ''}
+                                    ${p.dueDate ? `<span class="modal-tag due">Due: ${new Date(p.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
+                                </div>
+                            </div>
+                        `).join('')
+                    }
+                </div>
+            `;
+
+            document.getElementById('modalOverlay').classList.add('active');
+        };
+
         onAuthStateChanged(auth, user => {
             if (user) {
+                // Listen to staff directory
                 onSnapshot(collection(db, "artifacts", appId, "public", "data", "staff_directory"), snap => {
                     staff = []; snap.forEach(d => staff.push({ id: d.id, ...d.data() }));
                     loading = false; render();
                 }, e => { console.error(e); loading = false; render(); });
+
+                // Listen to edit queue for project assignments
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "edit_queue"), snap => {
+                    editQueue = []; snap.forEach(d => editQueue.push({ id: d.id, ...d.data() }));
+                }, e => console.error(e));
+
+                // Listen to design requests
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "design_requests"), snap => {
+                    designRequests = []; snap.forEach(d => designRequests.push({ id: d.id, ...d.data() }));
+                }, e => console.error(e));
+
+                // Listen to asset metadata
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "asset_metadata"), snap => {
+                    assetMetadata = []; snap.forEach(d => assetMetadata.push({ id: d.id, ...d.data() }));
+                }, e => console.error(e));
             } else {
                 signInAnonymously(auth).catch(e => { loading = false; render(); });
             }
