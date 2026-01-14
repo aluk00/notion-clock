@@ -240,6 +240,50 @@
             text-transform: uppercase;
             letter-spacing: 0.1em;
         }
+
+        /* Modal Styles */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: #FFF; border-radius: 16px; max-width: 600px; width: 90%; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
+        .modal-avatar { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #FFF; flex-shrink: 0; }
+        .modal-info { flex: 1; }
+        .modal-name { font-size: 18px; font-weight: 800; }
+        .modal-role { font-size: 12px; color: var(--ink-light); margin-top: 2px; }
+        .modal-capacity { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+        .modal-bar { width: 120px; height: 8px; background: var(--surface-alt); border-radius: 4px; overflow: hidden; }
+        .modal-bar-fill { height: 100%; border-radius: 4px; }
+        .modal-percent { font-size: 14px; font-weight: 800; }
+        .modal-close { width: 36px; height: 36px; border: none; background: var(--surface-alt); border-radius: 50%; cursor: pointer; font-size: 18px; color: var(--ink-light); }
+        .modal-close:hover { background: var(--border); }
+        .modal-body { padding: 20px; overflow-y: auto; max-height: calc(90vh - 200px); }
+        .modal-section { margin-bottom: 20px; }
+        .modal-section:last-child { margin-bottom: 0; }
+        .modal-section-title { font-size: 11px; font-weight: 700; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .modal-section-count { background: var(--production); color: #FFF; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
+        .modal-task { background: var(--surface-alt); border-radius: 10px; padding: 12px; margin-bottom: 8px; border-left: 3px solid var(--production); }
+        .modal-task:last-child { margin-bottom: 0; }
+        .modal-task-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+        .modal-task-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+        .modal-tag { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--border); color: var(--ink-light); }
+        .modal-tag.type { background: rgba(139, 92, 246, 0.1); color: #7C3AED; }
+        .modal-tag.due { background: #FEF3C7; color: #92400E; }
+        .modal-tag.live { background: #DCFCE7; color: #166534; }
+        .modal-tag.status { background: rgba(67, 176, 73, 0.1); color: var(--production); }
+        .modal-empty { text-align: center; padding: 30px; color: var(--ink-light); font-size: 12px; }
+
+        /* Assign Project Section */
+        .assign-section { background: var(--surface-alt); border-radius: 10px; padding: 14px; }
+        .assign-title { font-size: 11px; font-weight: 700; color: var(--ink-light); margin-bottom: 10px; text-transform: uppercase; }
+        .assign-select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 500; background: var(--surface); cursor: pointer; }
+        .assign-select:focus { outline: none; border-color: var(--production); }
+        .assign-btn { margin-top: 10px; width: 100%; padding: 10px; background: var(--production); color: #FFF; border: none; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .assign-btn:hover { opacity: 0.9; }
+        .assign-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--ink); color: #FFF; padding: 12px 24px; border-radius: 50px; font-size: 12px; font-weight: 600; z-index: 2000; transition: transform 0.3s; }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { background: var(--full); }
+        .toast.success { background: var(--production); }
     </style>
 </head>
 <body>
@@ -256,9 +300,14 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal" id="modal"></div>
+    </div>
+    <div class="toast" id="toast"></div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, getDocs, doc, setDoc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -289,6 +338,8 @@
 
     let designers = [];
     let requests = [];
+    let dailyRundowns = [];
+    let currentDesigner = null;
 
     function getInitials(name) {
         return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -300,6 +351,169 @@
         if (pct < 80) return 'busy';
         return 'full';
     }
+
+    function getCapacityColor(status) {
+        if (status === 'available') return '#10B981';
+        if (status === 'busy') return '#F59E0B';
+        return '#EF4444';
+    }
+
+    // Show toast notification
+    function showToast(message, type = '') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `toast show ${type}`;
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // Close modal
+    window.closeModal = function() {
+        document.getElementById('modalOverlay').classList.remove('active');
+        currentDesigner = null;
+    };
+
+    // Get available projects for designers
+    function getAvailableProjects() {
+        const projects = [];
+        // From design requests (unassigned)
+        requests.forEach(item => {
+            if (!item.designerId && item.status !== 'Done') {
+                projects.push({
+                    id: item.id,
+                    title: item.headline || item.title || 'Untitled',
+                    source: 'design_requests',
+                    assetType: item.assetType,
+                    deadline: item.deadline
+                });
+            }
+        });
+        // From daily rundowns that need design work
+        dailyRundowns.forEach(item => {
+            if (item.thumbnailStatus === 'needed') {
+                projects.push({
+                    id: item.id,
+                    title: item.title,
+                    source: 'daily_rundown',
+                    assetType: 'Thumbnail',
+                    vertical: item.vertical,
+                    creator: item.creator
+                });
+            }
+        });
+        return projects;
+    }
+
+    // Assign project to designer
+    window.assignProject = async function() {
+        const select = document.getElementById('assignSelect');
+        const projectData = JSON.parse(select.value || 'null');
+        if (!projectData || !currentDesigner) return;
+
+        const btn = document.querySelector('.assign-btn');
+        btn.disabled = true;
+        btn.textContent = 'Assigning...';
+
+        try {
+            if (projectData.source === 'design_requests') {
+                // Update existing design_requests item
+                await setDoc(doc(db, "artifacts", APP_ID, "public", "data", "design_requests", projectData.id), {
+                    designerId: currentDesigner.id,
+                    designerName: `${currentDesigner.firstName} ${currentDesigner.lastName}`,
+                    assignedAt: serverTimestamp()
+                }, { merge: true });
+            } else if (projectData.source === 'daily_rundown') {
+                // Create a new design request from daily rundown
+                await addDoc(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), {
+                    title: projectData.title,
+                    headline: projectData.title,
+                    designerId: currentDesigner.id,
+                    designerName: `${currentDesigner.firstName} ${currentDesigner.lastName}`,
+                    sourceType: 'daily_rundown',
+                    sourceId: projectData.id,
+                    assetType: projectData.assetType || 'Thumbnail',
+                    vertical: projectData.vertical,
+                    creator: projectData.creator,
+                    status: 'In Progress',
+                    assignedAt: serverTimestamp()
+                });
+            }
+
+            showToast(`Assigned to ${currentDesigner.firstName}`, 'success');
+            closeModal();
+        } catch (error) {
+            console.error('Assignment error:', error);
+            showToast('Failed to assign: ' + error.message, 'error');
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Assign to Designer';
+    };
+
+    // Open designer detail modal
+    window.openDesignerModal = function(designerData) {
+        currentDesigner = designerData;
+        const modal = document.getElementById('modal');
+        const availableProjects = getAvailableProjects();
+
+        const status = getCapacityStatus(designerData.hours);
+        const pct = Math.min((designerData.hours / MAX_HOURS) * 100, 100);
+
+        modal.innerHTML = `
+            <div class="modal-header">
+                <div class="modal-avatar" style="background: #43B049">${getInitials(`${designerData.firstName} ${designerData.lastName}`)}</div>
+                <div class="modal-info">
+                    <div class="modal-name">${designerData.firstName} ${designerData.lastName}</div>
+                    <div class="modal-role">${designerData.role || 'Designer'} • ${designerData.team || 'Creative'}</div>
+                    <div class="modal-capacity">
+                        <div class="modal-bar">
+                            <div class="modal-bar-fill" style="width:${pct}%; background:${getCapacityColor(status)}"></div>
+                        </div>
+                        <span class="modal-percent" style="color:${getCapacityColor(status)}">${Math.round(pct)}%</span>
+                        <span style="font-size: 11px; color: var(--ink-light);">${designerData.tasks} tasks • ${designerData.hours.toFixed(1)}h</span>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <div class="modal-section-title">
+                        Current Assignments
+                        <span class="modal-section-count">${designerData.taskList.length}</span>
+                    </div>
+                    ${designerData.taskList.length === 0 ?
+                        '<div class="modal-empty">No active tasks assigned</div>' :
+                        designerData.taskList.map(t => `
+                            <div class="modal-task">
+                                <div class="modal-task-title">${t.title || 'Untitled'}</div>
+                                <div class="modal-task-meta">
+                                    ${t.type ? `<span class="modal-tag type">${t.type}</span>` : ''}
+                                    ${t.status ? `<span class="modal-tag status">${t.status}</span>` : ''}
+                                    ${t.dueDate ? `<span class="modal-tag due">Due: ${new Date(t.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
+                                    ${t.liveDate ? `<span class="modal-tag live">Live: ${new Date(t.liveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
+                                </div>
+                            </div>
+                        `).join('')
+                    }
+                </div>
+
+                <div class="modal-section">
+                    <div class="assign-section">
+                        <div class="assign-title">Assign New Project</div>
+                        <select class="assign-select" id="assignSelect">
+                            <option value="">Select a project to assign...</option>
+                            ${availableProjects.length === 0 ? '<option disabled>No unassigned projects available</option>' : ''}
+                            ${availableProjects.map(p => `
+                                <option value='${JSON.stringify(p).replace(/'/g, "&#39;")}'>${p.title}${p.assetType ? ` (${p.assetType})` : ''}${p.source === 'daily_rundown' ? ' [Rundown]' : ''}</option>
+                            `).join('')}
+                        </select>
+                        <button class="assign-btn" onclick="assignProject()" ${availableProjects.length === 0 ? 'disabled' : ''}>Assign to Designer</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('modalOverlay').classList.add('active');
+    };
 
     function render() {
         // Calculate workload per designer based on assigned tasks
@@ -368,9 +582,21 @@
                     const pct = Math.min((w.hours / MAX_HOURS) * 100, 100);
                     const name = `${d.firstName} ${d.lastName}`;
 
+                    // Create serializable data for modal
+                    const designerData = JSON.stringify({
+                        id: d.id,
+                        firstName: d.firstName,
+                        lastName: d.lastName,
+                        role: d.role,
+                        team: d.team,
+                        tasks: w.tasks,
+                        hours: w.hours,
+                        taskList: tasks
+                    }).replace(/"/g, '&quot;');
+
                     return `
                         <div class="member-card" id="designer-${idx}">
-                            <div class="member-top" onclick="toggleDesignerTasks(${idx})">
+                            <div class="member-top" onclick="openDesignerModal(${designerData})">
                                 <div class="member-avatar">${getInitials(name)}</div>
                                 <div class="member-info">
                                     <div class="member-name">${name}</div>
@@ -385,20 +611,6 @@
                                 <span class="tasks-count">${w.tasks} task${w.tasks !== 1 ? 's' : ''}</span>
                                 <span class="tasks-detail">${w.hours.toFixed(1)}h / ${MAX_HOURS}h</span>
                             </div>
-                            ${tasks.length > 0 ? `
-                                <div class="task-list" id="designer-tasks-${idx}">
-                                    ${tasks.map(t => `
-                                        <div class="task-item">
-                                            <div class="task-title">${t.title}</div>
-                                            <div class="task-meta">
-                                                ${t.type ? `<span>${t.type}</span>` : ''}
-                                                ${t.dueDate ? `<span class="task-date">Due: ${new Date(t.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
-                                                ${t.liveDate ? `<span class="task-date" style="background:#DCFCE7; color:#166534;">Live: ${new Date(t.liveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
                         </div>
                     `;
                 }).join('')}
@@ -410,14 +622,6 @@
             </div>
         `;
     }
-
-    // Global toggle function for expanding task list
-    window.toggleDesignerTasks = function(idx) {
-        const taskList = document.getElementById(`designer-tasks-${idx}`);
-        if (taskList) {
-            taskList.classList.toggle('expanded');
-        }
-    };
 
     signInAnonymously(auth).then(async () => {
         // Load staff and filter for designers
@@ -441,6 +645,11 @@
         onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), (snap) => {
             requests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             render();
+        });
+
+        // Listen to daily rundowns for assignment capability
+        onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "daily_rundowns"), (snap) => {
+            dailyRundowns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         });
 
         // Also listen to asset_metadata for commercial hub assets that need design work
