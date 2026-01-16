@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Actions | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-pink: #E6468B;
+            --dmg-blue: #21a0d8;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+            --success: #10B981;
+            --warning: #F59E0B;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            padding: 12px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 380px;
+            overflow: hidden;
+        }
+        .header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
+        }
+        .dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--dmg-pink);
+        }
+        .title {
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .body { padding: 16px; }
+
+        .section-label {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--ink-sub);
+            margin-bottom: 10px;
+            margin-top: 16px;
+        }
+        .section-label:first-child { margin-top: 0; }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .action-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px 12px;
+            background: var(--bg-soft);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+        .action-btn:hover {
+            border-color: var(--dmg-pink);
+            background: #FFF5F8;
+            transform: translateY(-2px);
+        }
+        .action-btn.workday:hover {
+            border-color: #F97316;
+            background: #FFF7ED;
+        }
+
+        .action-icon {
+            font-size: 24px;
+            line-height: 1;
+        }
+        .action-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            color: var(--ink);
+        }
+        .action-badge {
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #F97316;
+            color: #FFF;
+        }
+
+        .action-btn.full-width {
+            grid-column: 1 / -1;
+            flex-direction: row;
+            justify-content: flex-start;
+            padding: 14px 16px;
+        }
+        .action-btn.full-width .action-icon {
+            font-size: 20px;
+        }
+        .action-btn.full-width .action-label {
+            flex: 1;
+            text-align: left;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 16px 0;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--bg-soft);
+            border-radius: 8px;
+            font-size: 11px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        .status-dot.pending { background: var(--warning); }
+        .status-text { flex: 1; color: var(--ink-sub); }
+        .status-value { font-weight: 700; color: var(--ink); }
+
+        .not-signed-in {
+            text-align: center;
+            padding: 24px;
+            color: var(--ink-sub);
+            font-size: 12px;
+        }
+        .not-signed-in a {
+            color: var(--dmg-pink);
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="widget" id="root">
+        <!-- Content rendered by JS -->
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        const STORAGE_KEY = 'dmg_profile_session';
+        const REMEMBER_KEY = 'dmg_profile_remember';
+
+        // Workday Slack app deep link (opens Workday in Slack)
+        const WORKDAY_SLACK_LINK = 'slack://app?team=T0XXXXXXX&id=A0XXXXXXX'; // Update with actual IDs
+        // Fallback to web Slack if deep link doesn't work
+        const WORKDAY_SLACK_WEB = 'https://dmg-media.slack.com/app_redirect?app=workday';
+
+        let state = {
+            currentUser: null,
+            isLoading: true,
+            pendingRequests: 0
+        };
+
+        const root = document.getElementById('root');
+
+        function openWorkdayAction(action) {
+            // Try to open Slack app, fallback to web
+            const slackUrl = `https://dmg-media.slack.com/app_redirect?app=workday&tab=messages`;
+            window.open(slackUrl, '_blank');
+        }
+
+        function render() {
+            if (state.isLoading) {
+                root.innerHTML = `
+                    <div class="header">
+                        <div class="dot-grid"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <h2 class="title">Quick Actions</h2>
+                    </div>
+                    <div class="body" style="text-align: center; padding: 30px;">
+                        <div style="color: var(--ink-sub); font-size: 12px;">Loading...</div>
+                    </div>
+                `;
+                return;
+            }
+
+            if (!state.currentUser) {
+                root.innerHTML = `
+                    <div class="header">
+                        <div class="dot-grid"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <h2 class="title">Quick Actions</h2>
+                    </div>
+                    <div class="body">
+                        <div class="not-signed-in">
+                            <a href="profile-login.html">Sign in</a> to access quick actions
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            const firstName = (state.currentUser.name || state.currentUser.Name || 'User').split(' ')[0];
+
+            root.innerHTML = `
+                <div class="header">
+                    <div class="dot-grid"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                    <h2 class="title">Quick Actions</h2>
+                </div>
+                <div class="body">
+                    <div class="section-label">Schedule & Attendance</div>
+                    <div class="actions-grid">
+                        <a href="rota-submission.html" class="action-btn">
+                            <span class="action-icon">📅</span>
+                            <span class="action-label">Submit Rota</span>
+                        </a>
+                        <a href="profile-rota-compact.html" class="action-btn">
+                            <span class="action-icon">👀</span>
+                            <span class="action-label">View Schedule</span>
+                        </a>
+                    </div>
+
+                    <div class="section-label">Time Off <span class="action-badge">Workday</span></div>
+                    <div class="actions-grid">
+                        <button class="action-btn workday" onclick="window.openWorkday('request')">
+                            <span class="action-icon">🏖️</span>
+                            <span class="action-label">Request Leave</span>
+                        </button>
+                        <button class="action-btn workday" onclick="window.openWorkday('balance')">
+                            <span class="action-icon">📊</span>
+                            <span class="action-label">Leave Balance</span>
+                        </button>
+                    </div>
+
+                    <button class="action-btn workday full-width" onclick="window.openWorkday('all')" style="margin-top: 10px;">
+                        <span class="action-icon">📱</span>
+                        <span class="action-label">Open Workday in Slack</span>
+                        <span style="font-size: 16px;">→</span>
+                    </button>
+
+                    <div class="divider"></div>
+
+                    <div class="section-label">Quick Links</div>
+                    <div class="actions-grid">
+                        <a href="https://dmg-media.slack.com" target="_blank" class="action-btn">
+                            <span class="action-icon">💬</span>
+                            <span class="action-label">Open Slack</span>
+                        </a>
+                        <a href="https://outlook.office.com/calendar" target="_blank" class="action-btn">
+                            <span class="action-icon">📆</span>
+                            <span class="action-label">Outlook Calendar</span>
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openWorkday = function(action) {
+            // Opens Workday in Slack - the Workday bot will show the relevant UI
+            const slackUrl = 'https://dmg-media.slack.com/app_redirect?app=workday';
+            window.open(slackUrl, '_blank');
+        };
+
+        async function resolveIdentity(authUser) {
+            const remembered = localStorage.getItem(REMEMBER_KEY);
+            const session = localStorage.getItem(STORAGE_KEY);
+
+            if (remembered && session) {
+                try {
+                    const sessionData = JSON.parse(session);
+                    if (sessionData.staffId) {
+                        const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", sessionData.staffId);
+                        const snap = await getDoc(docRef);
+                        if (snap.exists()) {
+                            state.currentUser = { id: snap.id, ...snap.data() };
+                            state.isLoading = false;
+                            render();
+                            return;
+                        }
+                    }
+                } catch (e) { console.log('Session lookup failed:', e); }
+            }
+
+            // URL param fallback
+            const paramId = new URLSearchParams(window.location.search).get('id');
+            if (paramId) {
+                try {
+                    const snap = await getDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", paramId));
+                    if (snap.exists()) {
+                        state.currentUser = { id: snap.id, ...snap.data() };
+                    }
+                } catch (e) {}
+            }
+
+            state.isLoading = false;
+            render();
+        }
+
+        // Listen for login/logout
+        window.addEventListener('message', (e) => {
+            if (e.data?.type === 'DMG_PROFILE_LOGIN') {
+                state.currentUser = { id: e.data.staffId, ...e.data.staffMember };
+                render();
+            } else if (e.data?.type === 'DMG_PROFILE_LOGOUT') {
+                state.currentUser = null;
+                render();
+            }
+        });
+
+        onAuthStateChanged(auth, user => {
+            if (user) resolveIdentity(user);
+            else signInAnonymously(auth);
+        });
+    </script>
+</body>
+</html>
