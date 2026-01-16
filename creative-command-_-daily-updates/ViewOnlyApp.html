@@ -4,48 +4,332 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Daily Snapshot</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --hero-blue: #21A0D8;
-            --surface: #FFFFFF;
-            --surface-alt: #F8FAFC;
-            --border: #E5E7EB;
             --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --ink-muted: #9CA3AF;
+            --border: #EAECEF;
+            --surface: #FFFFFF;
+            --surface-alt: #F9FAFB;
+            --dmg-blue: #21A0D8;
+            --amber: #F59E0B;
+            --emerald: #10B981;
+            --sky: #0EA5E9;
+            --purple: #8B5CF6;
+            --rose: #F43F5E;
+            --indigo: #6366F1;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--surface-alt);
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--surface);
             color: var(--ink);
             -webkit-font-smoothing: antialiased;
-            padding: 16px;
         }
-        .dot-pulse { animation: pulse 2s ease-in-out infinite; }
-        .dot-pulse-2 { animation: pulse 2s ease-in-out 0.3s infinite; }
-        .dot-pulse-3 { animation: pulse 2s ease-in-out 0.6s infinite; }
-        .dot-pulse-4 { animation: pulse 2s ease-in-out 0.9s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        /* Loading */
+        .loading-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            gap: 10px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+        }
+        .dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
+        .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        .loading-text {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Main Container */
+        .container {
+            padding: 12px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .header-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .meta-item {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-muted);
+        }
+        .meta-item strong {
+            color: var(--ink);
+            font-weight: 700;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .stat-badge .num {
+            font-size: 14px;
+            font-weight: 800;
+        }
+        .stat-total { background: var(--surface-alt); color: var(--ink); }
+        .stat-live { background: rgba(16, 185, 129, 0.1); color: var(--emerald); }
+        .stat-pending { background: rgba(245, 158, 11, 0.1); color: var(--amber); }
+        .stat-completed { background: rgba(14, 165, 233, 0.1); color: var(--sky); }
+
+        /* Focus Row */
+        .focus-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: thin;
+        }
+        .focus-row::-webkit-scrollbar { height: 4px; }
+        .focus-row::-webkit-scrollbar-track { background: transparent; }
+        .focus-row::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .focus-chip {
+            flex-shrink: 0;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+        .focus-chip:hover {
+            border-color: #D1D5DB;
+            background: var(--surface-alt);
+        }
+        .focus-chip .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .focus-chip .name {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink);
+            white-space: nowrap;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .focus-chip .tag {
+            font-size: 8px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* Section Label */
+        .section-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        /* Sections Grid */
+        .sections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 8px;
+        }
+        @media (min-width: 800px) {
+            .sections-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        /* Section Card */
+        .section-card {
+            background: var(--surface-alt);
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 80px;
+        }
+        .section-card.pending { background: rgba(245, 158, 11, 0.08); }
+        .section-card.live { background: rgba(16, 185, 129, 0.08); }
+        .section-card.completed { background: rgba(14, 165, 233, 0.08); }
+        .section-card.media { background: rgba(139, 92, 246, 0.08); }
+        .section-card.partnerships { background: rgba(244, 63, 94, 0.08); }
+        .section-card.internal { background: var(--surface-alt); }
+        .section-card.coming_up { background: rgba(99, 102, 241, 0.08); }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .section-title {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--ink);
+        }
+        .section-count {
+            font-size: 8px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            background: var(--surface);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Item */
+        .item {
+            background: var(--surface);
+            border-radius: 5px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+        }
+        .item:last-child { margin-bottom: 0; }
+        .item-name {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink);
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .item-note {
+            font-size: 9px;
+            color: var(--ink-muted);
+            margin-top: 2px;
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .item-link {
+            display: inline-block;
+            font-size: 8px;
+            font-weight: 700;
+            color: var(--dmg-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-top: 3px;
+            text-decoration: none;
+        }
+        .item-link:hover { text-decoration: underline; }
+
+        /* Empty/Error States */
+        .empty-state, .error-state {
+            text-align: center;
+            padding: 24px 16px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .empty-state {
+            background: var(--surface-alt);
+            color: var(--ink-muted);
+            border: 1px dashed var(--border);
+        }
+        .error-state {
+            background: rgba(244, 63, 94, 0.08);
+            color: var(--rose);
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+
+        /* Fallback Banner */
+        .fallback-banner {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--amber);
+            margin-bottom: 12px;
+        }
+
+        /* More Items */
+        .more-items {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-align: center;
+            padding: 4px;
+        }
     </style>
 </head>
 <body>
     <div id="root">
-        <div class="text-[#1C1C1C]">
-            <div class="mx-auto max-w-[1200px] rounded-3xl border border-slate-200 bg-white shadow-sm">
-                <div class="flex flex-col items-center gap-3 px-6 py-10">
-                    <div class="grid grid-cols-2 gap-[3px]">
-                        <span class="w-[6px] h-[6px] rounded-full bg-[#21A0D8] dot-pulse"></span>
-                        <span class="w-[6px] h-[6px] rounded-full bg-[#21A0D8] dot-pulse-2"></span>
-                        <span class="w-[6px] h-[6px] rounded-full bg-[#21A0D8] dot-pulse-3"></span>
-                        <span class="w-[6px] h-[6px] rounded-full bg-[#21A0D8] dot-pulse-4"></span>
-                    </div>
-                    <p class="text-sm text-slate-500">Loading today's update...</p>
-                </div>
-            </div>
+        <div class="loading-screen">
+            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+            <span class="loading-text">Loading today's update...</span>
         </div>
     </div>
 
@@ -70,22 +354,20 @@
 
     const highlightOrder = ['pending', 'live', 'completed', 'media', 'partnerships', 'internal', 'coming_up'];
 
-    const cardStyles = {
-        pending: 'border-amber-200 bg-amber-50/40',
-        live: 'border-emerald-200 bg-emerald-50/40',
-        completed: 'border-sky-200 bg-sky-50/40',
-        media: 'border-purple-200 bg-purple-50/40',
-        partnerships: 'border-rose-200 bg-rose-50/40',
-        internal: 'border-gray-200 bg-gray-50/50',
-        coming_up: 'border-indigo-200 bg-indigo-50/40'
+    const sectionColors = {
+        pending: '#F59E0B',
+        live: '#10B981',
+        completed: '#0EA5E9',
+        media: '#8B5CF6',
+        partnerships: '#F43F5E',
+        internal: '#9CA3AF',
+        coming_up: '#6366F1'
     };
 
-    const getSectionTone = (sectionId) => cardStyles[sectionId] || 'border-slate-200 bg-white';
-
     const formatDate = (date) => date.toLocaleDateString('en-GB', {
-        weekday: 'long',
+        weekday: 'short',
         day: 'numeric',
-        month: 'long'
+        month: 'short'
     });
 
     const formatTime = (iso) => {
@@ -136,53 +418,35 @@
 
     function renderEmpty() {
         document.getElementById('root').innerHTML = `
-            <div class="text-[#1C1C1C]">
-                <div class="mx-auto max-w-[1200px] rounded-3xl border border-slate-200 bg-white shadow-sm">
-                    <div class="px-6 py-8">
-                        ${renderHeader(null)}
-                        <div class="mt-16 rounded-2xl border border-dashed border-slate-200 bg-white px-8 py-10 text-center text-slate-500">
-                            No updates have been posted yet.
-                        </div>
-                    </div>
-                </div>
+            <div class="container">
+                ${renderHeader(null)}
+                <div class="empty-state">No updates have been posted yet.</div>
             </div>
         `;
     }
 
     function renderError() {
         document.getElementById('root').innerHTML = `
-            <div class="text-[#1C1C1C]">
-                <div class="mx-auto max-w-[1200px] rounded-3xl border border-slate-200 bg-white shadow-sm">
-                    <div class="px-6 py-8">
-                        ${renderHeader(null)}
-                        <div class="mt-16 rounded-2xl border border-red-200 bg-red-50 px-8 py-10 text-center text-red-600">
-                            Unable to load the daily update right now.
-                        </div>
-                    </div>
-                </div>
+            <div class="container">
+                ${renderHeader(null)}
+                <div class="error-state">Unable to load the daily update right now.</div>
             </div>
         `;
     }
 
-    // MODIFIED: Header text removed, only stats remain
     function renderHeader(rundown) {
         return `
-            <header class="flex flex-col gap-6 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-end">
-                <div class="flex flex-wrap items-center gap-4">
-                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Date</p>
-                        <p class="text-sm font-semibold text-slate-700">${formatDate(new Date())}</p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Session</p>
-                        <p class="text-sm font-semibold text-slate-700">${escapeHtml(rundown?.session) || 'Latest'}</p>
-                    </div>
-                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Last Updated</p>
-                        <p class="text-sm font-semibold text-slate-700">${formatTime(rundown?.lastModified)}</p>
-                    </div>
+            <div class="header">
+                <div class="header-left">
+                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                    <span class="header-label">Daily Snapshot</span>
                 </div>
-            </header>
+                <div class="header-meta">
+                    <span class="meta-item"><strong>${formatDate(new Date())}</strong></span>
+                    <span class="meta-item">Session: <strong>${escapeHtml(rundown?.session) || 'Latest'}</strong></span>
+                    <span class="meta-item">Updated: <strong>${formatTime(rundown?.lastModified)}</strong></span>
+                </div>
+            </div>
         `;
     }
 
@@ -205,103 +469,78 @@
         const focusItems = rundown.sections
             .filter(section => focusSectionIds.has(section.id))
             .flatMap(section => section.items.map(item => ({ ...item, sectionId: section.id })))
-            .slice(0, 6);
+            .slice(0, 8);
 
         const fallbackBanner = isFallback ? `
-            <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            <div class="fallback-banner">
                 Showing the most recent update from ${escapeHtml(rundown.date)}.
             </div>
         ` : '';
 
         document.getElementById('root').innerHTML = `
-            <div class="text-[#1C1C1C]">
-                <div class="mx-auto max-w-[1200px] rounded-3xl border border-slate-200 bg-white shadow-sm">
-                    <div class="px-6 py-8">
-                        ${renderHeader(rundown)}
-                        ${fallbackBanner}
-                        <main class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12">
-                            <section class="lg:col-span-4 space-y-6">
-                                <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                                    <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">At a glance</p>
-                                    <div class="mt-4 grid grid-cols-2 gap-4">
-                                        <div class="rounded-2xl bg-slate-50 p-4">
-                                            <p class="text-3xl font-black text-slate-800">${total}</p>
-                                            <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Total items</p>
-                                        </div>
-                                        <div class="rounded-2xl bg-emerald-50 p-4">
-                                            <p class="text-3xl font-black text-emerald-600">${live}</p>
-                                            <p class="text-xs font-semibold uppercase tracking-widest text-emerald-600/70">Live projects</p>
-                                        </div>
-                                        <div class="rounded-2xl bg-amber-50 p-4">
-                                            <p class="text-3xl font-black text-amber-600">${pending}</p>
-                                            <p class="text-xs font-semibold uppercase tracking-widest text-amber-600/70">In progress</p>
-                                        </div>
-                                        <div class="rounded-2xl bg-sky-50 p-4">
-                                            <p class="text-3xl font-black text-sky-600">${completed}</p>
-                                            <p class="text-xs font-semibold uppercase tracking-widest text-sky-600/70">Completed</p>
-                                        </div>
-                                    </div>
-                                </div>
+            <div class="container">
+                ${renderHeader(rundown)}
+                ${fallbackBanner}
 
-                                <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                                    <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Key focus</p>
-                                    <div class="mt-4 space-y-3">
-                                        ${focusItems.length === 0 ? `
-                                            <p class="text-sm text-slate-500">No priority items shared yet.</p>
-                                        ` : focusItems.map(item => `
-                                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                                <div class="flex items-center justify-between">
-                                                    <p class="text-sm font-semibold text-slate-700">${escapeHtml(item.projectName) || 'Untitled'}</p>
-                                                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                                                        ${escapeHtml(item.sectionId.replace('_', ' '))}
-                                                    </span>
-                                                </div>
-                                                ${item.statusNote ? `<p class="mt-1 text-xs text-slate-500">${escapeHtml(item.statusNote)}</p>` : ''}
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                            </section>
+                <!-- Stats Row -->
+                <div class="stats-row">
+                    <div class="stat-badge stat-total">
+                        <span class="num">${total}</span>
+                        <span>Total</span>
+                    </div>
+                    <div class="stat-badge stat-live">
+                        <span class="num">${live}</span>
+                        <span>Live</span>
+                    </div>
+                    <div class="stat-badge stat-pending">
+                        <span class="num">${pending}</span>
+                        <span>In Progress</span>
+                    </div>
+                    <div class="stat-badge stat-completed">
+                        <span class="num">${completed}</span>
+                        <span>Done</span>
+                    </div>
+                </div>
 
-                            <section class="lg:col-span-8 grid grid-cols-1 gap-5 md:grid-cols-2">
-                                ${sections.map(section => `
-                                    <div class="rounded-3xl border p-5 shadow-sm ${getSectionTone(section.id)}">
-                                        <div class="flex items-center justify-between">
-                                            <h2 class="text-sm font-black uppercase tracking-[0.2em] text-slate-700">
-                                                ${escapeHtml(section.title)}
-                                            </h2>
-                                            <span class="text-xs font-semibold text-slate-500">${section.items.length} items</span>
-                                        </div>
-                                        <div class="mt-4 space-y-4">
-                                            ${section.items.map(item => `
-                                                <div class="rounded-2xl border border-white/80 bg-white/70 p-4">
-                                                    <div class="flex flex-wrap items-center justify-between gap-2">
-                                                        <p class="text-sm font-semibold text-slate-800">${escapeHtml(item.projectName) || 'Untitled'}</p>
-                                                        ${item.link ? `
-                                                            <a href="${escapeHtml(item.link)}" target="_blank" rel="noreferrer" class="text-[11px] font-bold uppercase tracking-widest text-[#21A0D8]">
-                                                                Link
-                                                            </a>
-                                                        ` : ''}
-                                                    </div>
-                                                    ${item.statusNote ? `<p class="mt-1 text-xs text-slate-500">${escapeHtml(item.statusNote)}</p>` : ''}
-                                                    ${item.bullets && item.bullets.length > 0 ? `
-                                                        <ul class="mt-2 space-y-1 text-xs text-slate-500">
-                                                            ${item.bullets.map(bullet => `
-                                                                <li class="flex items-start gap-2">
-                                                                    <span class="mt-1 h-1.5 w-1.5 rounded-full bg-slate-400 flex-shrink-0"></span>
-                                                                    <span>${escapeHtml(bullet.text)}</span>
-                                                                </li>
-                                                            `).join('')}
-                                                        </ul>
-                                                    ` : ''}
-                                                </div>
-                                            `).join('')}
-                                        </div>
+                <!-- Key Focus -->
+                ${focusItems.length > 0 ? `
+                    <div class="section-label">Key Focus</div>
+                    <div class="focus-row">
+                        ${focusItems.map(item => `
+                            <div class="focus-chip">
+                                <span class="dot" style="background: ${sectionColors[item.sectionId] || '#9CA3AF'}"></span>
+                                <span class="name">${escapeHtml(item.projectName) || 'Untitled'}</span>
+                                <span class="tag">${escapeHtml(item.sectionId.replace('_', ' '))}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+
+                <!-- Sections Grid -->
+                <div class="section-label" style="margin-top: 4px;">All Updates</div>
+                <div class="sections-grid">
+                    ${sections.map(section => {
+                        const maxItems = 3;
+                        const visibleItems = section.items.slice(0, maxItems);
+                        const moreCount = section.items.length - maxItems;
+
+                        return `
+                            <div class="section-card ${section.id}">
+                                <div class="section-header">
+                                    <span class="section-title" style="color: ${sectionColors[section.id] || '#1C1C1C'}">${escapeHtml(section.title)}</span>
+                                    <span class="section-count">${section.items.length}</span>
+                                </div>
+                                ${visibleItems.map(item => `
+                                    <div class="item">
+                                        <div class="item-name">${escapeHtml(item.projectName) || 'Untitled'}</div>
+                                        ${item.statusNote ? `<div class="item-note">${escapeHtml(item.statusNote)}</div>` : ''}
+                                        ${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noreferrer" class="item-link">Link →</a>` : ''}
                                     </div>
                                 `).join('')}
-                            </section>
-                        </main>
-                    </div>
+                                ${moreCount > 0 ? `<div class="more-items">+${moreCount} more</div>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
