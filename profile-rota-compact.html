@@ -254,6 +254,28 @@
         }
 
         async function resolveIdentity(authUser) {
+            // 1. First check localStorage session (from profile-login widget)
+            const STORAGE_KEY = 'dmg_profile_session';
+            const REMEMBER_KEY = 'dmg_profile_remember';
+            const remembered = localStorage.getItem(REMEMBER_KEY);
+            const session = localStorage.getItem(STORAGE_KEY);
+
+            if (remembered && session) {
+                try {
+                    const sessionData = JSON.parse(session);
+                    if (sessionData.staffId) {
+                        const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", sessionData.staffId);
+                        const snap = await getDoc(docRef);
+                        if (snap.exists()) {
+                            state.currentUser = { id: snap.id, ...snap.data() };
+                            await loadSchedule(state.currentUser.id);
+                            return;
+                        }
+                    }
+                } catch (e) { console.log('Session lookup failed:', e); }
+            }
+
+            // 2. Then try URL param
             const urlParams = new URLSearchParams(window.location.search);
             const paramId = urlParams.get('id');
 
@@ -269,6 +291,7 @@
                 } catch (e) { console.log('Param lookup failed:', e); }
             }
 
+            // 3. Finally try Firebase auth email (for future SSO)
             if (authUser && authUser.email && !authUser.isAnonymous) {
                 try {
                     const q = query(
@@ -288,6 +311,21 @@
             state.isLoading = false;
             render();
         }
+
+        // Listen for login/logout events from profile-login widget
+        window.addEventListener('message', async (e) => {
+            if (e.data?.type === 'DMG_PROFILE_LOGIN') {
+                state.currentUser = { id: e.data.staffId, ...e.data.staffMember };
+                state.isLoading = true;
+                render();
+                await loadSchedule(state.currentUser.id);
+            } else if (e.data?.type === 'DMG_PROFILE_LOGOUT') {
+                state.currentUser = null;
+                state.schedule = null;
+                state.isLoading = false;
+                render();
+            }
+        });
 
         onAuthStateChanged(auth, user => {
             if(user) resolveIdentity(user);

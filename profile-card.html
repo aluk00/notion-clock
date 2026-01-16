@@ -277,7 +277,44 @@
             `;
         }
 
+        function parseStaffData(data) {
+            // Normalize staff data from various field names
+            const name = data.name || data.Name || 'Unknown User';
+            const nameParts = name.split(' ');
+            return {
+                firstName: nameParts[0] || 'User',
+                lastName: nameParts.slice(1).join(' ') || '',
+                role: data.role || data.Role || 'Team Member',
+                team: data.team || data.Team || 'Team',
+                manager: data.manager || data.Manager || data.managerName || '',
+                isManager: data.isManager || data.Is_Manager || false
+            };
+        }
+
         async function resolveIdentity(authUser) {
+            // 1. First check localStorage session (from profile-login widget)
+            const STORAGE_KEY = 'dmg_profile_session';
+            const REMEMBER_KEY = 'dmg_profile_remember';
+            const remembered = localStorage.getItem(REMEMBER_KEY);
+            const session = localStorage.getItem(STORAGE_KEY);
+
+            if (remembered && session) {
+                try {
+                    const sessionData = JSON.parse(session);
+                    if (sessionData.staffId) {
+                        const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", sessionData.staffId);
+                        const snap = await getDoc(docRef);
+                        if (snap.exists()) {
+                            currentUser = { id: snap.id, ...parseStaffData(snap.data()) };
+                            isDemo = false;
+                            render();
+                            return;
+                        }
+                    }
+                } catch (e) { console.log('Session lookup failed:', e); }
+            }
+
+            // 2. Then try URL param
             const urlParams = new URLSearchParams(window.location.search);
             const paramId = urlParams.get('id');
 
@@ -286,16 +323,15 @@
                     const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", paramId);
                     const snap = await getDoc(docRef);
                     if (snap.exists()) {
-                        currentUser = { id: snap.id, ...snap.data() };
+                        currentUser = { id: snap.id, ...parseStaffData(snap.data()) };
                         isDemo = false;
                         render();
                         return;
                     }
-                } catch (e) {
-                    console.log('Param lookup failed:', e);
-                }
+                } catch (e) { console.log('Param lookup failed:', e); }
             }
 
+            // 3. Finally try Firebase auth email (for future SSO)
             if (authUser && authUser.email && !authUser.isAnonymous) {
                 try {
                     const q = query(
@@ -304,20 +340,32 @@
                     );
                     const snap = await getDocs(q);
                     if (!snap.empty) {
-                        currentUser = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                        currentUser = { id: snap.docs[0].id, ...parseStaffData(snap.docs[0].data()) };
                         isDemo = false;
                         render();
                         return;
                     }
-                } catch (e) {
-                    console.log('Email lookup failed:', e);
-                }
+                } catch (e) { console.log('Email lookup failed:', e); }
             }
 
             currentUser = DEMO_USER;
             isDemo = true;
             render();
         }
+
+        // Listen for login/logout events from profile-login widget
+        window.addEventListener('message', (e) => {
+            if (e.data?.type === 'DMG_PROFILE_LOGIN') {
+                currentUser = parseStaffData(e.data.staffMember);
+                currentUser.id = e.data.staffId;
+                isDemo = false;
+                render();
+            } else if (e.data?.type === 'DMG_PROFILE_LOGOUT') {
+                currentUser = DEMO_USER;
+                isDemo = true;
+                render();
+            }
+        });
 
         onAuthStateChanged(auth, (user) => {
             if (user) {

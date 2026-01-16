@@ -233,6 +233,31 @@
         }
 
         async function resolveIdentity(authUser) {
+            // 1. First check if logged in via profile-login widget (localStorage session)
+            const STORAGE_KEY = 'dmg_profile_session';
+            const REMEMBER_KEY = 'dmg_profile_remember';
+            const remembered = localStorage.getItem(REMEMBER_KEY);
+            const session = localStorage.getItem(STORAGE_KEY);
+
+            if (remembered && session) {
+                try {
+                    const sessionData = JSON.parse(session);
+                    if (sessionData.staffId) {
+                        const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", sessionData.staffId);
+                        const snap = await getDoc(docRef);
+                        if (snap.exists()) {
+                            const data = snap.data();
+                            const fullName = data.name || data.Name || 'User';
+                            user = { id: snap.id, ...data, firstName: fullName.split(' ')[0] };
+                            loading = false;
+                            render();
+                            return;
+                        }
+                    }
+                } catch (e) { console.log('Session lookup failed:', e); }
+            }
+
+            // 2. Then try URL param
             const urlParams = new URLSearchParams(window.location.search);
             const paramId = urlParams.get('id');
 
@@ -240,21 +265,42 @@
                 try {
                     const docRef = doc(db, "artifacts", appId, "public", "data", "staff_directory", paramId);
                     const snap = await getDoc(docRef);
-                    if (snap.exists()) user = { id: snap.id, ...snap.data() };
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        const fullName = data.name || data.Name || 'User';
+                        user = { id: snap.id, ...data, firstName: fullName.split(' ')[0] };
+                    }
                 } catch (e) { console.log('Param lookup failed:', e); }
             }
 
+            // 3. Finally try Firebase auth email (for future SSO)
             if (!user && authUser?.email && !authUser.isAnonymous) {
                 try {
                     const q = query(collection(db, "artifacts", appId, "public", "data", "staff_directory"), where("email", "==", authUser.email));
                     const snap = await getDocs(q);
-                    if (!snap.empty) user = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                    if (!snap.empty) {
+                        const data = snap.docs[0].data();
+                        const fullName = data.name || data.Name || 'User';
+                        user = { id: snap.docs[0].id, ...data, firstName: fullName.split(' ')[0] };
+                    }
                 } catch (e) { console.log('Email lookup failed:', e); }
             }
 
             loading = false;
             render();
         }
+
+        // Listen for login/logout events from profile-login widget
+        window.addEventListener('message', (e) => {
+            if (e.data?.type === 'DMG_PROFILE_LOGIN') {
+                const fullName = e.data.staffMember?.name || e.data.staffMember?.Name || 'User';
+                user = { ...e.data.staffMember, firstName: fullName.split(' ')[0] };
+                render();
+            } else if (e.data?.type === 'DMG_PROFILE_LOGOUT') {
+                user = null;
+                render();
+            }
+        });
 
         onAuthStateChanged(auth, (authUser) => {
             if (authUser) resolveIdentity(authUser);

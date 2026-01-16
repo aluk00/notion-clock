@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Login | DMG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-pink: #E6468B;
+            --dmg-blue: #21a0d8;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+            --success: #10B981;
+            --error: #EF4444;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            margin: 0;
+            padding: 16px;
+            color: var(--ink);
+        }
+        .widget {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            max-width: 360px;
+            overflow: hidden;
+        }
+        .widget-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
+        }
+        .dot-grid span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--dmg-pink);
+        }
+        .widget-title {
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0;
+        }
+        .content {
+            padding: 24px 20px;
+        }
+        .step-indicator {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: all 0.3s;
+        }
+        .step-dot.active { background: var(--dmg-pink); }
+        .step-dot.done { background: var(--success); }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            margin-bottom: 8px;
+            display: block;
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--dmg-pink);
+        }
+        .input-field.error {
+            border-color: var(--error);
+        }
+        .input-field::placeholder { color: #CCC; }
+
+        .pin-inputs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .pin-digit {
+            width: 52px;
+            height: 60px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .pin-digit:focus {
+            outline: none;
+            border-color: var(--dmg-pink);
+            background: #FFF5F8;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: var(--dmg-pink);
+            color: #FFF;
+        }
+        .btn-primary:hover { background: #d13d7d; transform: translateY(-1px); }
+        .btn-primary:disabled {
+            background: #E0E0E0;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: transparent;
+            color: var(--ink-sub);
+            border: 2px solid var(--border);
+            margin-top: 10px;
+        }
+        .btn-secondary:hover { border-color: var(--ink-sub); }
+
+        .message {
+            font-size: 13px;
+            color: var(--ink-sub);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .message strong { color: var(--ink); }
+
+        .status-message {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .status-message.error {
+            display: block;
+            background: #FEF2F2;
+            color: var(--error);
+            border: 1px solid #FECACA;
+        }
+        .status-message.success {
+            display: block;
+            background: #ECFDF5;
+            color: var(--success);
+            border: 1px solid #A7F3D0;
+        }
+        .status-message.info {
+            display: block;
+            background: #EFF6FF;
+            color: var(--dmg-blue);
+            border: 1px solid #BFDBFE;
+        }
+
+        .logged-in-state {
+            text-align: center;
+            padding: 20px 0;
+        }
+        .avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--dmg-pink);
+            color: #FFF;
+            font-size: 24px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+        .welcome-name {
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .welcome-role {
+            font-size: 12px;
+            color: var(--ink-sub);
+            margin-bottom: 20px;
+        }
+        .team-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 20px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            font-size: 12px;
+            color: var(--ink-sub);
+        }
+        .remember-me input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--dmg-pink);
+        }
+
+        .help-text {
+            font-size: 11px;
+            color: var(--ink-sub);
+            text-align: center;
+            margin-top: 16px;
+        }
+        .help-text a {
+            color: var(--dmg-pink);
+            text-decoration: none;
+        }
+        .help-text a:hover { text-decoration: underline; }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #FFF;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="widget" id="widget">
+        <!-- Content rendered by JS -->
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
+
+        // Storage keys
+        const STORAGE_KEY = 'dmg_profile_session';
+        const REMEMBER_KEY = 'dmg_profile_remember';
+
+        // Make.com webhook URL - you'll set this up
+        const MAKECOM_WEBHOOK = 'YOUR_MAKECOM_WEBHOOK_URL';
+
+        // Team colors
+        const TEAM_COLORS = {
+            'Creative': '#E6468B',
+            'Production': '#8B5CF6',
+            'Editorial': '#F59E0B',
+            'Operations': '#10B981',
+            'Sales': '#3B82F6',
+            'Social': '#EC4899',
+            'default': '#6B7280'
+        };
+
+        // State
+        let state = {
+            step: 'check', // check, email, pin-sent, pin-entry, logged-in
+            email: '',
+            staffMember: null,
+            error: null,
+            loading: false,
+            isNewUser: false
+        };
+
+        const widget = document.getElementById('widget');
+
+        // Check if already logged in
+        async function checkExistingSession() {
+            const remembered = localStorage.getItem(REMEMBER_KEY);
+            const session = localStorage.getItem(STORAGE_KEY);
+
+            if (remembered && session) {
+                try {
+                    const sessionData = JSON.parse(session);
+                    if (sessionData.staffId && sessionData.email) {
+                        // Verify session is still valid
+                        const staffDoc = await getDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", sessionData.staffId));
+                        if (staffDoc.exists()) {
+                            state.staffMember = { id: staffDoc.id, ...staffDoc.data() };
+                            state.email = sessionData.email;
+                            state.step = 'logged-in';
+                            render();
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.log('Session invalid, starting fresh');
+                }
+            }
+
+            state.step = 'email';
+            render();
+        }
+
+        // Find staff member by email
+        async function findStaffByEmail(email) {
+            const staffRef = collection(db, "artifacts", appId, "public", "data", "staff_directory");
+            const snapshot = await getDocs(staffRef);
+
+            for (const docSnap of snapshot.docs) {
+                const data = docSnap.data();
+                // Check various email fields
+                if (data.email?.toLowerCase() === email.toLowerCase() ||
+                    data.Email?.toLowerCase() === email.toLowerCase() ||
+                    data.workEmail?.toLowerCase() === email.toLowerCase()) {
+                    return { id: docSnap.id, ...data };
+                }
+            }
+            return null;
+        }
+
+        // Generate a 4-digit PIN
+        function generatePIN() {
+            return Math.floor(1000 + Math.random() * 9000).toString();
+        }
+
+        // Handle email submission
+        async function handleEmailSubmit() {
+            const emailInput = document.getElementById('email-input');
+            const email = emailInput?.value?.trim()?.toLowerCase();
+
+            if (!email || !email.includes('@')) {
+                state.error = 'Please enter a valid email address';
+                render();
+                return;
+            }
+
+            state.loading = true;
+            state.error = null;
+            state.email = email;
+            render();
+
+            try {
+                // Find staff member
+                const staff = await findStaffByEmail(email);
+
+                if (!staff) {
+                    state.error = "We couldn't find you in the staff directory. Check your email or contact your manager.";
+                    state.loading = false;
+                    render();
+                    return;
+                }
+
+                state.staffMember = staff;
+
+                // Check if they already have a PIN
+                const pinDoc = await getDoc(doc(db, "artifacts", appId, "public", "data", "profile_pins", staff.id));
+
+                if (pinDoc.exists()) {
+                    // Existing user - go to PIN entry
+                    state.isNewUser = false;
+                    state.step = 'pin-entry';
+                } else {
+                    // New user - generate PIN and send via Make.com
+                    state.isNewUser = true;
+                    const pin = generatePIN();
+
+                    // Store PIN in Firebase
+                    await setDoc(doc(db, "artifacts", appId, "public", "data", "profile_pins", staff.id), {
+                        pin: pin,
+                        email: email,
+                        createdAt: new Date().toISOString(),
+                        staffName: staff.name || staff.Name || 'Unknown'
+                    });
+
+                    // Call Make.com webhook to send PIN via Slack
+                    try {
+                        await fetch(MAKECOM_WEBHOOK, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            mode: 'no-cors',
+                            body: JSON.stringify({
+                                action: 'send_pin',
+                                email: email,
+                                pin: pin,
+                                staffId: staff.id,
+                                staffName: staff.name || staff.Name,
+                                slackId: staff.slackId || staff.slack_id || null
+                            })
+                        });
+                    } catch (e) {
+                        console.log('Make.com webhook call attempted');
+                    }
+
+                    state.step = 'pin-sent';
+                }
+
+                state.loading = false;
+                render();
+
+            } catch (e) {
+                console.error('Error:', e);
+                state.error = 'Something went wrong. Please try again.';
+                state.loading = false;
+                render();
+            }
+        }
+
+        // Handle PIN verification
+        async function handlePINSubmit() {
+            const pinInputs = document.querySelectorAll('.pin-digit');
+            const pin = Array.from(pinInputs).map(i => i.value).join('');
+
+            if (pin.length !== 4) {
+                state.error = 'Please enter all 4 digits';
+                render();
+                return;
+            }
+
+            state.loading = true;
+            state.error = null;
+            render();
+
+            try {
+                const pinDoc = await getDoc(doc(db, "artifacts", appId, "public", "data", "profile_pins", state.staffMember.id));
+
+                if (!pinDoc.exists()) {
+                    state.error = 'No PIN found. Please start over.';
+                    state.step = 'email';
+                    state.loading = false;
+                    render();
+                    return;
+                }
+
+                const storedPIN = pinDoc.data().pin;
+
+                if (pin !== storedPIN) {
+                    state.error = 'Incorrect PIN. Please try again.';
+                    state.loading = false;
+                    render();
+                    // Clear PIN inputs
+                    setTimeout(() => {
+                        const inputs = document.querySelectorAll('.pin-digit');
+                        inputs.forEach(i => i.value = '');
+                        inputs[0]?.focus();
+                    }, 100);
+                    return;
+                }
+
+                // PIN correct - save session
+                const rememberMe = document.getElementById('remember-me')?.checked;
+
+                const sessionData = {
+                    staffId: state.staffMember.id,
+                    email: state.email,
+                    loginAt: new Date().toISOString()
+                };
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData));
+
+                if (rememberMe) {
+                    localStorage.setItem(REMEMBER_KEY, 'true');
+                }
+
+                // Notify other widgets of login
+                window.postMessage({
+                    type: 'DMG_PROFILE_LOGIN',
+                    staffId: state.staffMember.id,
+                    staffMember: state.staffMember
+                }, '*');
+
+                state.step = 'logged-in';
+                state.loading = false;
+                render();
+
+            } catch (e) {
+                console.error('Error:', e);
+                state.error = 'Something went wrong. Please try again.';
+                state.loading = false;
+                render();
+            }
+        }
+
+        // Handle logout
+        function handleLogout() {
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(REMEMBER_KEY);
+            state = {
+                step: 'email',
+                email: '',
+                staffMember: null,
+                error: null,
+                loading: false,
+                isNewUser: false
+            };
+
+            window.postMessage({ type: 'DMG_PROFILE_LOGOUT' }, '*');
+            render();
+        }
+
+        // Handle "Resend PIN"
+        async function handleResendPIN() {
+            state.loading = true;
+            state.error = null;
+            render();
+
+            try {
+                const pin = generatePIN();
+
+                await setDoc(doc(db, "artifacts", appId, "public", "data", "profile_pins", state.staffMember.id), {
+                    pin: pin,
+                    email: state.email,
+                    createdAt: new Date().toISOString(),
+                    staffName: state.staffMember.name || state.staffMember.Name || 'Unknown'
+                });
+
+                try {
+                    await fetch(MAKECOM_WEBHOOK, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        mode: 'no-cors',
+                        body: JSON.stringify({
+                            action: 'send_pin',
+                            email: state.email,
+                            pin: pin,
+                            staffId: state.staffMember.id,
+                            staffName: state.staffMember.name || state.staffMember.Name,
+                            slackId: state.staffMember.slackId || state.staffMember.slack_id || null
+                        })
+                    });
+                } catch (e) {
+                    console.log('Make.com webhook call attempted');
+                }
+
+                state.step = 'pin-sent';
+                state.loading = false;
+                render();
+
+            } catch (e) {
+                state.error = 'Failed to resend PIN. Try again.';
+                state.loading = false;
+                render();
+            }
+        }
+
+        // PIN input auto-advance
+        function setupPINInputs() {
+            const inputs = document.querySelectorAll('.pin-digit');
+            inputs.forEach((input, idx) => {
+                input.addEventListener('input', (e) => {
+                    const val = e.target.value;
+                    if (val && idx < inputs.length - 1) {
+                        inputs[idx + 1].focus();
+                    }
+                    if (val && idx === inputs.length - 1) {
+                        // All digits entered - auto submit
+                        setTimeout(handlePINSubmit, 100);
+                    }
+                });
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+                        inputs[idx - 1].focus();
+                    }
+                });
+            });
+            inputs[0]?.focus();
+        }
+
+        // Get initials from name
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        // Get team color
+        function getTeamColor(team) {
+            return TEAM_COLORS[team] || TEAM_COLORS.default;
+        }
+
+        // Render
+        function render() {
+            const staffName = state.staffMember?.name || state.staffMember?.Name || 'Unknown';
+            const staffTeam = state.staffMember?.team || state.staffMember?.Team || 'Team';
+            const staffRole = state.staffMember?.role || state.staffMember?.Role || 'Role';
+
+            let content = '';
+
+            switch (state.step) {
+                case 'check':
+                    content = `
+                        <div class="widget-header">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="widget-title">Profile</h2>
+                        </div>
+                        <div class="content" style="text-align: center; padding: 40px 20px;">
+                            <div class="loading" style="width: 24px; height: 24px; border-color: var(--dmg-pink); border-top-color: transparent;"></div>
+                            <p style="margin-top: 12px; font-size: 12px; color: var(--ink-sub);">Loading...</p>
+                        </div>
+                    `;
+                    break;
+
+                case 'email':
+                    content = `
+                        <div class="widget-header">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="widget-title">Sign In</h2>
+                        </div>
+                        <div class="content">
+                            <div class="step-indicator">
+                                <div class="step-dot active"></div>
+                                <div class="step-dot"></div>
+                            </div>
+
+                            <p class="message">
+                                Enter your <strong>work email</strong> to access your personalised profile.
+                            </p>
+
+                            ${state.error ? `<div class="status-message error">${state.error}</div>` : ''}
+
+                            <div class="form-group">
+                                <label class="label">Work Email</label>
+                                <input type="email"
+                                       id="email-input"
+                                       class="input-field ${state.error ? 'error' : ''}"
+                                       placeholder="you@dmgmedia.co.uk"
+                                       value="${state.email}"
+                                       ${state.loading ? 'disabled' : ''}
+                                       onkeydown="if(event.key==='Enter') window.handleEmailSubmit()">
+                            </div>
+
+                            <button class="btn btn-primary" onclick="window.handleEmailSubmit()" ${state.loading ? 'disabled' : ''}>
+                                ${state.loading ? '<span class="loading"></span>Finding you...' : 'Continue'}
+                            </button>
+
+                            <p class="help-text">
+                                First time? We'll send a PIN to your Slack.
+                            </p>
+                        </div>
+                    `;
+                    break;
+
+                case 'pin-sent':
+                    content = `
+                        <div class="widget-header">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="widget-title">Check Slack</h2>
+                        </div>
+                        <div class="content">
+                            <div class="step-indicator">
+                                <div class="step-dot done"></div>
+                                <div class="step-dot active"></div>
+                            </div>
+
+                            <div class="status-message success">
+                                PIN sent to your Slack DMs!
+                            </div>
+
+                            <p class="message">
+                                Hi <strong>${staffName.split(' ')[0]}</strong>! We've sent a 4-digit PIN to your Slack. Enter it below to continue.
+                            </p>
+
+                            ${state.error ? `<div class="status-message error">${state.error}</div>` : ''}
+
+                            <div class="form-group">
+                                <label class="label">Enter PIN</label>
+                                <div class="pin-inputs">
+                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                </div>
+                            </div>
+
+                            <label class="remember-me">
+                                <input type="checkbox" id="remember-me" checked>
+                                <span>Remember me on this device</span>
+                            </label>
+
+                            <button class="btn btn-primary" onclick="window.handlePINSubmit()" ${state.loading ? 'disabled' : ''} style="margin-top: 16px;">
+                                ${state.loading ? '<span class="loading"></span>Verifying...' : 'Sign In'}
+                            </button>
+
+                            <p class="help-text">
+                                Didn't get it? <a href="#" onclick="window.handleResendPIN(); return false;">Resend PIN</a>
+                            </p>
+                        </div>
+                    `;
+                    setTimeout(setupPINInputs, 50);
+                    break;
+
+                case 'pin-entry':
+                    content = `
+                        <div class="widget-header">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="widget-title">Welcome Back</h2>
+                        </div>
+                        <div class="content">
+                            <p class="message">
+                                Hi <strong>${staffName.split(' ')[0]}</strong>! Enter your PIN to continue.
+                            </p>
+
+                            ${state.error ? `<div class="status-message error">${state.error}</div>` : ''}
+
+                            <div class="form-group">
+                                <label class="label">Your PIN</label>
+                                <div class="pin-inputs">
+                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                </div>
+                            </div>
+
+                            <label class="remember-me">
+                                <input type="checkbox" id="remember-me" checked>
+                                <span>Remember me on this device</span>
+                            </label>
+
+                            <button class="btn btn-primary" onclick="window.handlePINSubmit()" ${state.loading ? 'disabled' : ''} style="margin-top: 16px;">
+                                ${state.loading ? '<span class="loading"></span>Verifying...' : 'Sign In'}
+                            </button>
+
+                            <p class="help-text">
+                                Forgot PIN? <a href="#" onclick="window.handleResendPIN(); return false;">Send a new one</a>
+                            </p>
+                        </div>
+                    `;
+                    setTimeout(setupPINInputs, 50);
+                    break;
+
+                case 'logged-in':
+                    const teamColor = getTeamColor(staffTeam);
+                    content = `
+                        <div class="widget-header">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="widget-title">Your Profile</h2>
+                        </div>
+                        <div class="content">
+                            <div class="logged-in-state">
+                                <div class="avatar" style="background: ${teamColor};">
+                                    ${getInitials(staffName)}
+                                </div>
+                                <div class="welcome-name">${staffName}</div>
+                                <div class="welcome-role">${staffRole}</div>
+                                <span class="team-badge" style="background: ${teamColor}15; color: ${teamColor};">
+                                    ${staffTeam}
+                                </span>
+                            </div>
+
+                            <div class="status-message success">
+                                You're signed in! Your widgets will now show your personal data.
+                            </div>
+
+                            <button class="btn btn-secondary" onclick="window.handleLogout()">
+                                Sign Out
+                            </button>
+                        </div>
+                    `;
+                    break;
+            }
+
+            widget.innerHTML = content;
+        }
+
+        // Expose functions to window
+        window.handleEmailSubmit = handleEmailSubmit;
+        window.handlePINSubmit = handlePINSubmit;
+        window.handleResendPIN = handleResendPIN;
+        window.handleLogout = handleLogout;
+
+        // Initialize
+        signInAnonymously(auth).then(() => {
+            checkExistingSession();
+        });
+    </script>
+</body>
+</html>
