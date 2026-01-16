@@ -303,8 +303,9 @@
         const STORAGE_KEY = 'dmg_profile_session';
         const REMEMBER_KEY = 'dmg_profile_remember';
 
-        // Make.com webhook URL - you'll set this up
-        const MAKECOM_WEBHOOK = 'YOUR_MAKECOM_WEBHOOK_URL';
+        // Optional webhook URL for sending PIN via Slack/etc
+        // Leave empty to just show PIN on screen
+        const WEBHOOK_URL = '';
 
         // Team colors
         const TEAM_COLORS = {
@@ -319,12 +320,13 @@
 
         // State
         let state = {
-            step: 'check', // check, email, pin-sent, pin-entry, logged-in
+            step: 'check', // check, email, pin-created, pin-entry, logged-in
             email: '',
             staffMember: null,
             error: null,
             loading: false,
-            isNewUser: false
+            isNewUser: false,
+            newPIN: null  // Store PIN temporarily to show on screen
         };
 
         const widget = document.getElementById('widget');
@@ -416,7 +418,7 @@
                     state.isNewUser = false;
                     state.step = 'pin-entry';
                 } else {
-                    // New user - generate PIN and send via Make.com
+                    // New user - generate PIN and show on screen
                     state.isNewUser = true;
                     const pin = generatePIN();
 
@@ -428,26 +430,31 @@
                         staffName: staff.name || staff.Name || 'Unknown'
                     });
 
-                    // Call Make.com webhook to send PIN via Slack
-                    try {
-                        await fetch(MAKECOM_WEBHOOK, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            mode: 'no-cors',
-                            body: JSON.stringify({
-                                action: 'send_pin',
-                                email: email,
-                                pin: pin,
-                                staffId: staff.id,
-                                staffName: staff.name || staff.Name,
-                                slackId: staff.slackId || staff.slack_id || null
-                            })
-                        });
-                    } catch (e) {
-                        console.log('Make.com webhook call attempted');
+                    // Store PIN in state to show on screen
+                    state.newPIN = pin;
+
+                    // Optionally send via webhook if configured
+                    if (WEBHOOK_URL) {
+                        try {
+                            await fetch(WEBHOOK_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                mode: 'no-cors',
+                                body: JSON.stringify({
+                                    action: 'send_pin',
+                                    email: email,
+                                    pin: pin,
+                                    staffId: staff.id,
+                                    staffName: staff.name || staff.Name,
+                                    slackId: staff.slackId || staff.slack_id || null
+                                })
+                            });
+                        } catch (e) {
+                            console.log('Webhook call attempted');
+                        }
                     }
 
-                    state.step = 'pin-sent';
+                    state.step = 'pin-created';
                 }
 
                 state.loading = false;
@@ -546,15 +553,16 @@
                 staffMember: null,
                 error: null,
                 loading: false,
-                isNewUser: false
+                isNewUser: false,
+                newPIN: null
             };
 
             window.postMessage({ type: 'DMG_PROFILE_LOGOUT' }, '*');
             render();
         }
 
-        // Handle "Resend PIN"
-        async function handleResendPIN() {
+        // Handle "Reset PIN" - generates new PIN and shows it
+        async function handleResetPIN() {
             state.loading = true;
             state.error = null;
             render();
@@ -569,30 +577,13 @@
                     staffName: state.staffMember.name || state.staffMember.Name || 'Unknown'
                 });
 
-                try {
-                    await fetch(MAKECOM_WEBHOOK, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        mode: 'no-cors',
-                        body: JSON.stringify({
-                            action: 'send_pin',
-                            email: state.email,
-                            pin: pin,
-                            staffId: state.staffMember.id,
-                            staffName: state.staffMember.name || state.staffMember.Name,
-                            slackId: state.staffMember.slackId || state.staffMember.slack_id || null
-                        })
-                    });
-                } catch (e) {
-                    console.log('Make.com webhook call attempted');
-                }
-
-                state.step = 'pin-sent';
+                state.newPIN = pin;
+                state.step = 'pin-created';
                 state.loading = false;
                 render();
 
             } catch (e) {
-                state.error = 'Failed to resend PIN. Try again.';
+                state.error = 'Failed to reset PIN. Try again.';
                 state.loading = false;
                 render();
             }
@@ -688,59 +679,43 @@
                             </button>
 
                             <p class="help-text">
-                                First time? We'll send a PIN to your Slack.
+                                First time? We'll create a PIN for you.
                             </p>
                         </div>
                     `;
                     break;
 
-                case 'pin-sent':
+                case 'pin-created':
                     content = `
                         <div class="widget-header">
                             <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                            <h2 class="widget-title">Check Slack</h2>
+                            <h2 class="widget-title">Your PIN</h2>
                         </div>
-                        <div class="content">
-                            <div class="step-indicator">
+                        <div class="content" style="text-align: center;">
+                            <div class="step-indicator" style="justify-content: center;">
                                 <div class="step-dot done"></div>
                                 <div class="step-dot active"></div>
                             </div>
 
-                            <div class="status-message success">
-                                PIN sent to your Slack DMs!
-                            </div>
-
                             <p class="message">
-                                Hi <strong>${staffName.split(' ')[0]}</strong>! We've sent a 4-digit PIN to your Slack. Enter it below to continue.
+                                Hi <strong>${staffName.split(' ')[0]}</strong>! Here's your PIN:
                             </p>
 
-                            ${state.error ? `<div class="status-message error">${state.error}</div>` : ''}
-
-                            <div class="form-group">
-                                <label class="label">Enter PIN</label>
-                                <div class="pin-inputs">
-                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                                    <input type="text" class="pin-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                            <div style="background: var(--bg-soft); border: 2px dashed var(--dmg-pink); border-radius: 12px; padding: 20px; margin: 20px 0;">
+                                <div style="font-size: 36px; font-weight: 900; letter-spacing: 12px; color: var(--dmg-pink);">
+                                    ${state.newPIN}
                                 </div>
                             </div>
 
-                            <label class="remember-me">
-                                <input type="checkbox" id="remember-me" checked>
-                                <span>Remember me on this device</span>
-                            </label>
+                            <div class="status-message info" style="text-align: left;">
+                                📸 <strong>Save this PIN!</strong> Screenshot it or write it down. You'll need it to sign in.
+                            </div>
 
-                            <button class="btn btn-primary" onclick="window.handlePINSubmit()" ${state.loading ? 'disabled' : ''} style="margin-top: 16px;">
-                                ${state.loading ? '<span class="loading"></span>Verifying...' : 'Sign In'}
+                            <button class="btn btn-primary" onclick="window.handlePINConfirmed()" style="margin-top: 16px;">
+                                Got it, Continue
                             </button>
-
-                            <p class="help-text">
-                                Didn't get it? <a href="#" onclick="window.handleResendPIN(); return false;">Resend PIN</a>
-                            </p>
                         </div>
                     `;
-                    setTimeout(setupPINInputs, 50);
                     break;
 
                 case 'pin-entry':
@@ -776,7 +751,7 @@
                             </button>
 
                             <p class="help-text">
-                                Forgot PIN? <a href="#" onclick="window.handleResendPIN(); return false;">Send a new one</a>
+                                Forgot PIN? <a href="#" onclick="window.handleResetPIN(); return false;">Get a new one</a>
                             </p>
                         </div>
                     `;
@@ -817,10 +792,18 @@
             widget.innerHTML = content;
         }
 
+        // Handle "Got it" after seeing PIN
+        function handlePINConfirmed() {
+            state.step = 'pin-entry';
+            state.newPIN = null;
+            render();
+        }
+
         // Expose functions to window
         window.handleEmailSubmit = handleEmailSubmit;
         window.handlePINSubmit = handlePINSubmit;
-        window.handleResendPIN = handleResendPIN;
+        window.handleResetPIN = handleResetPIN;
+        window.handlePINConfirmed = handlePINConfirmed;
         window.handleLogout = handleLogout;
 
         // Initialize
