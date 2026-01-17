@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Rundown | Editorial (Notion)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --editorial: #E94B4B;
+            --v-sport: #43B049; --v-uk: #21A0D8; --v-respawn: #8B5CF6; --v-main: #1C1C1C; --v-money: #F59E0B; --v-spotlight: #E6468B;
+            --done: #10B981; --pending: #F59E0B; --blocked: #EF4444;
+            --ink: #1C1C1C; --ink-light: #6B7280; --border: #E5E7EB; --surface: #FFFFFF; --surface-alt: #F9FAFB;
+            --radius: 12px; --radius-sm: 8px; --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--surface); color: var(--ink); padding: 32px; -webkit-font-smoothing: antialiased; }
+
+        /* Top Bar & Date Nav */
+        .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+        .top-left { display: flex; align-items: center; gap: 20px; }
+        .dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 4px; }
+        .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--editorial); }
+
+        .date-nav { display: flex; align-items: center; gap: 12px; background: var(--surface-alt); padding: 6px 12px; border-radius: 50px; border: 1px solid var(--border); }
+        .date-btn { background: none; border: none; cursor: pointer; color: var(--ink-light); padding: 4px; display: flex; align-items: center; transition: var(--transition); }
+        .date-btn:hover { color: var(--ink); }
+        .date-label { font-size: 13px; font-weight: 800; color: var(--ink); min-width: 140px; text-align: center; }
+
+        .actions { display: flex; gap: 10px; }
+        .btn { padding: 10px 18px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; border: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 8px; }
+        .btn:hover { border-color: var(--ink); background: var(--surface-alt); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--ink); color: white; border-color: var(--ink); }
+
+        /* Layout */
+        .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+        .column { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 16px; min-height: 500px; transition: background 0.2s; }
+        .column.drag-over { background: var(--surface-alt); border: 2px dashed var(--editorial); }
+
+        .column-header { display: flex; align-items: center; gap: 8px; }
+        .column-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--editorial); }
+        .column-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); }
+        .column-count { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--ink-light); background: var(--surface-alt); padding: 2px 8px; border-radius: 10px; }
+
+        /* Designed Dropdowns */
+        .quick-add { display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; border-bottom: 1px dashed var(--border); }
+        .dropdown-row { display: flex; gap: 8px; }
+
+        .custom-select { position: relative; flex: 1; }
+        .select-trigger {
+            padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 11px; font-weight: 700; cursor: pointer; background: var(--surface);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .select-trigger:hover { border-color: var(--ink-light); }
+        .select-trigger::after { content: '↓'; font-size: 10px; opacity: 0.4; }
+
+        .select-options {
+            position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border);
+            border-radius: var(--radius-sm); margin-top: 4px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            display: none; max-height: 200px; overflow-y: auto;
+        }
+        .select-options.show { display: block; }
+        .option { padding: 8px 12px; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.1s; }
+        .option:hover { background: var(--surface-alt); color: var(--editorial); }
+
+        .styled-input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; outline: none; transition: var(--transition); }
+        .styled-input:focus { border-color: var(--ink); }
+
+        /* Cards */
+        .items { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+        .item {
+            background: white; border: 1px solid var(--border); padding: 14px; border-radius: var(--radius-sm);
+            display: flex; gap: 12px; cursor: grab; transition: all 0.2s ease; user-select: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .item:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-color: var(--ink-light); }
+        .item.dragging { opacity: 0.4; cursor: grabbing; border: 1px dashed var(--ink); }
+
+        .item-status { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 9px; flex-shrink: 0; margin-top: 2px; cursor: pointer; color: transparent; }
+        .item-status.done { background: var(--done); border-color: var(--done); color: white; }
+        .item-status.pending { background: var(--pending); border-color: var(--pending); color: white; }
+        .item-status.blocked { background: var(--blocked); border-color: var(--blocked); color: white; }
+
+        .item-content { flex: 1; min-width: 0; }
+        .item-meta { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+        .tag { font-size: 9px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+        .tag-creator { background: #F3F4F6; color: var(--ink-light); }
+
+        .item-vertical.sport { background: rgba(67, 176, 73, 0.1); color: var(--v-sport); }
+        .item-vertical.uk { background: rgba(33, 160, 216, 0.1); color: var(--v-uk); }
+        .item-vertical.respawn { background: rgba(139, 92, 246, 0.1); color: var(--v-respawn); }
+        .item-vertical.main { background: rgba(28, 28, 28, 0.1); color: var(--v-main); }
+        .item-vertical.money { background: rgba(245, 158, 11, 0.1); color: var(--v-money); }
+        .item-vertical.spotlight { background: rgba(230, 70, 139, 0.1); color: var(--v-spotlight); }
+
+        .item-title { font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--ink); }
+        .item-delete { opacity: 0; border: none; background: none; color: var(--blocked); cursor: pointer; font-size: 16px; margin-left: 8px; transition: opacity 0.2s; }
+        .item:hover .item-delete { opacity: 1; }
+
+        .empty { text-align: center; padding: 40px 0; color: var(--ink-light); font-size: 11px; font-weight: 500; font-style: italic; }
+        .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: white; padding: 12px 24px; border-radius: 50px; font-size: 12px; font-weight: 700; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 1000; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        /* Loading state */
+        .loading { text-align: center; padding: 40px 0; color: var(--ink-light); font-size: 11px; }
+        .loading::after { content: '...'; animation: dots 1.5s infinite; }
+        @keyframes dots { 0%, 20% { content: '.'; } 40% { content: '..'; } 60%, 100% { content: '...'; } }
+
+        /* Notion badge */
+        .notion-badge { font-size: 10px; color: var(--ink-light); display: flex; align-items: center; gap: 4px; }
+        .notion-badge svg { width: 12px; height: 12px; }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="top-left">
+            <div class="dots"><span></span><span></span><span></span><span></span></div>
+            <div class="date-nav">
+                <button class="date-btn" onclick="changeDate(-1)">←</button>
+                <span class="date-label" id="dateLabel">Loading...</span>
+                <button class="date-btn" onclick="changeDate(1)">→</button>
+            </div>
+            <div class="notion-badge">
+                <svg viewBox="0 0 100 100" fill="currentColor"><path d="M6.017 4.313l55.333-4.087c6.797-.583 8.543-.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277-1.553 6.807-6.99 7.193L24.467 99.967c-4.08.193-6.023-.39-8.16-3.113L3.3 79.94c-2.333-3.113-3.3-5.443-3.3-8.167V11.113c0-3.497 1.553-6.413 6.017-6.8z" fill-rule="evenodd"/></svg>
+                Notion Sync
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn" id="carryOverBtn" onclick="carryOverItems()">
+                Carry Over Pending
+            </button>
+            <button class="btn btn-primary" onclick="copyForSlack()">
+                Copy for Slack
+            </button>
+        </div>
+    </div>
+
+    <div class="columns" id="columns"></div>
+    <div class="toast" id="toast">Update Successful</div>
+
+<script>
+    // Notion API configuration
+    const API_BASE = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+    const SECTIONS = ['FILMING', 'INTERNAL', 'EXTERNAL', 'GOING LIVE'];
+    const VERTICALS = ['SPORT', 'UK', 'RESPAWN', 'MAIN', 'MONEY', 'SPOTLIGHT'];
+    const CREATORS = ['Mimi', 'Dan', 'Prashan', 'Henry', 'Dine', 'Alex', 'Kaylee', 'Ellie', 'Sophia', 'Kayla', 'Brooklyn'];
+    const STATUS_ICONS = { done: '✓', pending: '◔', blocked: '!' };
+
+    let items = [];
+    let currentViewDate = new Date();
+    let draggedId = null;
+    let isLoading = false;
+    let refreshInterval = null;
+
+    // --- DATE MANAGEMENT ---
+    function changeDate(days) {
+        currentViewDate.setDate(currentViewDate.getDate() + days);
+        updateDateUI();
+        fetchItems();
+    }
+
+    function updateDateUI() {
+        const options = { weekday: 'long', day: 'numeric', month: 'long' };
+        document.getElementById('dateLabel').textContent = currentViewDate.toLocaleDateString('en-GB', options);
+    }
+
+    function getDateKey() {
+        return currentViewDate.toISOString().split('T')[0];
+    }
+
+    // --- DROPDOWN LOGIC ---
+    function setupDropdown(id, options, defaultText) {
+        const container = document.createElement('div');
+        container.className = 'custom-select';
+        container.innerHTML = `
+            <div class="select-trigger" id="${id}-trigger" data-value="">${defaultText}</div>
+            <div class="select-options">
+                ${options.map(opt => `<div class="option" data-value="${opt}">${opt}</div>`).join('')}
+            </div>
+        `;
+
+        const trigger = container.querySelector('.select-trigger');
+        const opts = container.querySelector('.select-options');
+
+        trigger.onclick = (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.select-options').forEach(el => el !== opts && el.classList.remove('show'));
+            opts.classList.toggle('show');
+        };
+
+        opts.querySelectorAll('.option').forEach(opt => {
+            opt.onclick = () => {
+                trigger.textContent = opt.textContent;
+                trigger.dataset.value = opt.dataset.value;
+                opts.classList.remove('show');
+            };
+        });
+
+        return container;
+    }
+
+    document.addEventListener('click', () => document.querySelectorAll('.select-options').forEach(el => el.classList.remove('show')));
+
+    function renderColumns() {
+        const container = document.getElementById('columns');
+        container.innerHTML = SECTIONS.map(s => `
+            <div class="column" data-section="${s}" ondragover="event.preventDefault(); this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event, '${s}')">
+                <div class="column-header">
+                    <div class="column-dot"></div><span class="column-title">${s}</span><span class="column-count" id="count-${s.replace(' ', '-')}">0</span>
+                </div>
+                <div class="quick-add" id="add-${s.replace(' ', '-')}"></div>
+                <div class="items" id="items-${s.replace(' ', '-')}"></div>
+            </div>
+        `).join('');
+
+        SECTIONS.forEach(s => {
+            const addArea = document.getElementById(`add-${s.replace(' ', '-')}`);
+            const row = document.createElement('div'); row.className = 'dropdown-row';
+            row.appendChild(setupDropdown(`vert-${s.replace(' ', '-')}`, VERTICALS, 'Vertical'));
+            row.appendChild(setupDropdown(`creator-${s.replace(' ', '-')}`, CREATORS, 'Creator'));
+            addArea.appendChild(row);
+
+            const input = document.createElement('input');
+            input.className = 'styled-input'; input.placeholder = 'Content Title...';
+            input.onkeydown = (e) => e.key === 'Enter' && addItem(s);
+            addArea.appendChild(input);
+        });
+    }
+
+    function renderItems() {
+        SECTIONS.forEach(s => {
+            const sectionItems = items.filter(i => i.section === s);
+            const list = document.getElementById(`items-${s.replace(' ', '-')}`);
+            document.getElementById(`count-${s.replace(' ', '-')}`).textContent = sectionItems.length;
+
+            if (isLoading) {
+                list.innerHTML = '<div class="loading">Loading</div>';
+                return;
+            }
+
+            list.innerHTML = sectionItems.length === 0 ? '<div class="empty">Empty</div>' : sectionItems.map(i => `
+                <div class="item" draggable="true" ondragstart="draggedId='${i.id}'">
+                    <div class="item-status ${i.status || ''}" onclick="cycleStatus('${i.id}', '${i.status || ''}')">${i.status ? STATUS_ICONS[i.status] : ''}</div>
+                    <div class="item-content">
+                        <div class="item-meta">
+                            <span class="tag item-vertical ${i.vertical?.toLowerCase() || ''}">${i.vertical || ''}</span>
+                            ${i.creator ? `<span class="tag tag-creator">${i.creator}</span>` : ''}
+                        </div>
+                        <div class="item-title">${i.title}</div>
+                    </div>
+                    <button class="item-delete" onclick="deleteItem('${i.id}')">×</button>
+                </div>
+            `).join('');
+        });
+    }
+
+    // --- NOTION API ACTIONS ---
+    async function fetchItems() {
+        isLoading = true;
+        renderItems();
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown?date=${getDateKey()}`);
+            const data = await response.json();
+
+            if (data.success) {
+                items = data.items.sort((a, b) =>
+                    new Date(a.createdTime || 0) - new Date(b.createdTime || 0)
+                );
+            } else {
+                showToast(`Error: ${data.error}`);
+                items = [];
+            }
+        } catch (error) {
+            console.error('Error fetching items:', error);
+            showToast('Failed to load items');
+            items = [];
+        }
+
+        isLoading = false;
+        renderItems();
+    }
+
+    async function addItem(section) {
+        const id = section.replace(' ', '-');
+        const input = document.querySelector(`#add-${id} input`);
+        const title = input.value.trim();
+        const vertical = document.getElementById(`vert-${id}-trigger`).dataset.value;
+        const creator = document.getElementById(`creator-${id}-trigger`).dataset.value;
+
+        if (!title || !vertical) {
+            showToast("Title and Vertical required");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title,
+                    date: getDateKey(),
+                    section,
+                    vertical,
+                    creator: creator || undefined,
+                    status: ''
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                items.push(data.item);
+                renderItems();
+                input.value = '';
+                showToast('Item created');
+            } else {
+                showToast(`Error: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Error adding item:', error);
+            showToast('Failed to create item');
+        }
+    }
+
+    async function handleDrop(e, section) {
+        e.preventDefault();
+        document.querySelectorAll('.column').forEach(c => c.classList.remove('drag-over'));
+
+        if (!draggedId) return;
+
+        const item = items.find(i => i.id === draggedId);
+        if (!item || item.section === section) {
+            draggedId = null;
+            return;
+        }
+
+        // Optimistic update
+        item.section = section;
+        renderItems();
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown/${draggedId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ section })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                showToast(`Error: ${data.error}`);
+                fetchItems(); // Revert on error
+            }
+        } catch (error) {
+            console.error('Error moving item:', error);
+            showToast('Failed to move item');
+            fetchItems();
+        }
+
+        draggedId = null;
+    }
+
+    async function cycleStatus(id, current) {
+        const cycle = ['', 'done', 'pending'];
+        const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        // Optimistic update
+        item.status = next;
+        renderItems();
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: next })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                showToast(`Error: ${data.error}`);
+                fetchItems();
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            showToast('Failed to update status');
+            fetchItems();
+        }
+    }
+
+    async function carryOverItems() {
+        const pending = items.filter(i => i.status !== 'done');
+        if (!pending.length) {
+            showToast("No pending items found");
+            return;
+        }
+
+        const btn = document.getElementById('carryOverBtn');
+        btn.disabled = true;
+        btn.textContent = 'Carrying over...';
+
+        const fromDate = getDateKey();
+        const tomorrow = new Date(currentViewDate);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const toDate = tomorrow.toISOString().split('T')[0];
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown/carry-over`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fromDate, toDate })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(data.message);
+            } else {
+                showToast(`Error: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Error carrying over items:', error);
+            showToast('Failed to carry over items');
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Carry Over Pending';
+    }
+
+    async function deleteItem(id) {
+        if (!confirm('Delete item?')) return;
+
+        // Optimistic update
+        items = items.filter(i => i.id !== id);
+        renderItems();
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown/${id}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Item deleted');
+            } else {
+                showToast(`Error: ${data.error}`);
+                fetchItems();
+            }
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            showToast('Failed to delete item');
+            fetchItems();
+        }
+    }
+
+    function copyForSlack() {
+        const dateStr = currentViewDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+        let text = `*Daily Rundown - ${dateStr}*\n\n`;
+
+        SECTIONS.forEach(section => {
+            const sectionItems = items.filter(i => i.section === section);
+            if (sectionItems.length > 0) {
+                text += `*${section}*\n`;
+                sectionItems.forEach(item => {
+                    const statusEmoji = item.status === 'done' ? '✅' : item.status === 'pending' ? '🟡' : '⬜';
+                    text += `${statusEmoji} [${item.vertical}] ${item.title}${item.creator ? ` - ${item.creator}` : ''}\n`;
+                });
+                text += '\n';
+            }
+        });
+
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('Copied to clipboard');
+        }).catch(() => {
+            showToast('Failed to copy');
+        });
+    }
+
+    function showToast(m) {
+        const t = document.getElementById('toast');
+        t.textContent = m;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    // Auto-refresh every 30 seconds
+    function startAutoRefresh() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(fetchItems, 30000);
+    }
+
+    // Initialize
+    function init() {
+        updateDateUI();
+        renderColumns();
+        fetchItems();
+        startAutoRefresh();
+    }
+
+    init();
+</script>
+</body>
+</html>
