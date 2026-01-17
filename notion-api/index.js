@@ -9,8 +9,8 @@ app.use(express.json());
 // Initialize Notion client
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
-// Database IDs from environment
-const PROJECTS_DB = process.env.NOTION_PROJECTS_DB;
+// Database IDs from environment - must match Cloud Run env var names
+const PROJECTS_DB = process.env.NOTION_MASTER_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
 const DAILY_RUNDOWN_DB = process.env.NOTION_DAILY_RUNDOWN_DB;
 
@@ -81,9 +81,9 @@ function buildStatusProperty(value, propertyType) {
 async function buildProjectProperties(data) {
     const props = {};
     const propertyTypes = await getProjectPropertyTypes();
-    
+
     if (data.title) {
-        props['TITLE'] = { title: [{ text: { content: data.title } }] };
+        props['NAME'] = { title: [{ text: { content: data.title } }] };
     }
     if (data.cardSummary !== undefined) {
         props['CARD SUMMARY'] = { rich_text: data.cardSummary ? [{ text: { content: data.cardSummary } }] : [] };
@@ -351,7 +351,7 @@ app.get('/projects', async (req, res) => {
             return {
                 id: page.id,
                 url: page.url,
-                title: parseProperty(props['TITLE']),
+                title: parseProperty(props['NAME']),
                 client: parseProperty(props['CLIENT / EXTERNAL PARTNER']),
                 projectType: parseProperty(props['PROJECT TYPE']),
                 priority: parseProperty(props['PRIORITY']),
@@ -418,7 +418,7 @@ app.post('/projects', async (req, res) => {
     try {
         const properties = await buildProjectProperties(req.body);
         
-        if (!properties['TITLE']) {
+        if (!properties['NAME']) {
             return res.status(400).json({ success: false, error: 'Title is required' });
         }
         
