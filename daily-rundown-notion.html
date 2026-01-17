@@ -54,6 +54,7 @@
             display: flex; align-items: center; justify-content: space-between;
         }
         .select-trigger:hover { border-color: var(--ink-light); }
+        .select-trigger:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 2px rgba(28, 28, 28, 0.1); }
         .select-trigger::after { content: '↓'; font-size: 10px; opacity: 0.4; }
 
         .select-options {
@@ -63,7 +64,7 @@
         }
         .select-options.show { display: block; }
         .option { padding: 8px 12px; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.1s; }
-        .option:hover { background: var(--surface-alt); color: var(--editorial); }
+        .option:hover, .option.highlighted { background: var(--surface-alt); color: var(--editorial); }
 
         .styled-input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; outline: none; transition: var(--transition); }
         .styled-input:focus { border-color: var(--ink); }
@@ -172,37 +173,130 @@
     }
 
     // --- DROPDOWN LOGIC ---
-    function setupDropdown(id, options, defaultText) {
+    function setupDropdown(id, options, defaultText, section, isVertical) {
         const container = document.createElement('div');
         container.className = 'custom-select';
         container.innerHTML = `
-            <div class="select-trigger" id="${id}-trigger" data-value="">${defaultText}</div>
-            <div class="select-options">
-                ${options.map(opt => `<div class="option" data-value="${opt}">${opt}</div>`).join('')}
+            <div class="select-trigger" id="${id}-trigger" data-value="" tabindex="0" role="combobox" aria-expanded="false">${defaultText}</div>
+            <div class="select-options" role="listbox">
+                ${options.map((opt, idx) => `<div class="option" data-value="${opt}" data-index="${idx}" role="option">${opt}</div>`).join('')}
             </div>
         `;
 
         const trigger = container.querySelector('.select-trigger');
         const opts = container.querySelector('.select-options');
+        const optionEls = opts.querySelectorAll('.option');
+        let highlightedIndex = -1;
+
+        function openDropdown() {
+            document.querySelectorAll('.select-options').forEach(el => el !== opts && el.classList.remove('show'));
+            opts.classList.add('show');
+            trigger.setAttribute('aria-expanded', 'true');
+            highlightedIndex = -1;
+            optionEls.forEach(o => o.classList.remove('highlighted'));
+        }
+
+        function closeDropdown() {
+            opts.classList.remove('show');
+            trigger.setAttribute('aria-expanded', 'false');
+            highlightedIndex = -1;
+            optionEls.forEach(o => o.classList.remove('highlighted'));
+        }
+
+        function selectOption(opt) {
+            trigger.textContent = opt.textContent;
+            trigger.dataset.value = opt.dataset.value;
+            closeDropdown();
+            // Move focus to next element
+            if (isVertical) {
+                // Move to creator dropdown
+                const creatorTrigger = document.getElementById(`creator-${section.replace(' ', '-')}-trigger`);
+                if (creatorTrigger) creatorTrigger.focus();
+            } else {
+                // Move to title input
+                const input = document.querySelector(`#add-${section.replace(' ', '-')} input`);
+                if (input) input.focus();
+            }
+        }
+
+        function highlightOption(index) {
+            optionEls.forEach(o => o.classList.remove('highlighted'));
+            if (index >= 0 && index < optionEls.length) {
+                highlightedIndex = index;
+                optionEls[index].classList.add('highlighted');
+                optionEls[index].scrollIntoView({ block: 'nearest' });
+            }
+        }
 
         trigger.onclick = (e) => {
             e.stopPropagation();
-            document.querySelectorAll('.select-options').forEach(el => el !== opts && el.classList.remove('show'));
-            opts.classList.toggle('show');
+            if (opts.classList.contains('show')) {
+                closeDropdown();
+            } else {
+                openDropdown();
+            }
         };
 
-        opts.querySelectorAll('.option').forEach(opt => {
-            opt.onclick = () => {
-                trigger.textContent = opt.textContent;
-                trigger.dataset.value = opt.dataset.value;
-                opts.classList.remove('show');
+        trigger.onkeydown = (e) => {
+            const isOpen = opts.classList.contains('show');
+
+            switch (e.key) {
+                case 'Enter':
+                case ' ':
+                    e.preventDefault();
+                    if (isOpen && highlightedIndex >= 0) {
+                        selectOption(optionEls[highlightedIndex]);
+                    } else if (isOpen) {
+                        closeDropdown();
+                    } else {
+                        openDropdown();
+                    }
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (!isOpen) {
+                        openDropdown();
+                    } else {
+                        highlightOption(Math.min(highlightedIndex + 1, optionEls.length - 1));
+                    }
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (isOpen) {
+                        highlightOption(Math.max(highlightedIndex - 1, 0));
+                    }
+                    break;
+                case 'Escape':
+                    if (isOpen) {
+                        e.preventDefault();
+                        closeDropdown();
+                    }
+                    break;
+                case 'Tab':
+                    if (isOpen) {
+                        closeDropdown();
+                    }
+                    break;
+            }
+        };
+
+        optionEls.forEach((opt, idx) => {
+            opt.onclick = (e) => {
+                e.stopPropagation();
+                selectOption(opt);
             };
+            opt.onmouseenter = () => highlightOption(idx);
         });
 
         return container;
     }
 
     document.addEventListener('click', () => document.querySelectorAll('.select-options').forEach(el => el.classList.remove('show')));
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.select-options').forEach(el => el.classList.remove('show'));
+        }
+    });
 
     function renderColumns() {
         const container = document.getElementById('columns');
@@ -216,16 +310,31 @@
             </div>
         `).join('');
 
-        SECTIONS.forEach(s => {
+        SECTIONS.forEach((s, sectionIndex) => {
             const addArea = document.getElementById(`add-${s.replace(' ', '-')}`);
             const row = document.createElement('div'); row.className = 'dropdown-row';
-            row.appendChild(setupDropdown(`vert-${s.replace(' ', '-')}`, VERTICALS, 'Vertical'));
-            row.appendChild(setupDropdown(`creator-${s.replace(' ', '-')}`, CREATORS, 'Creator'));
+            row.appendChild(setupDropdown(`vert-${s.replace(' ', '-')}`, VERTICALS, 'Vertical', s, true));
+            row.appendChild(setupDropdown(`creator-${s.replace(' ', '-')}`, CREATORS, 'Creator', s, false));
             addArea.appendChild(row);
 
             const input = document.createElement('input');
-            input.className = 'styled-input'; input.placeholder = 'Content Title...';
-            input.onkeydown = (e) => e.key === 'Enter' && addItem(s);
+            input.className = 'styled-input';
+            input.placeholder = 'Content Title... (Enter to add)';
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addItem(s);
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    // Move to next section's vertical dropdown
+                    const nextSectionIndex = sectionIndex + 1;
+                    if (nextSectionIndex < SECTIONS.length) {
+                        e.preventDefault();
+                        const nextSection = SECTIONS[nextSectionIndex];
+                        const nextVertTrigger = document.getElementById(`vert-${nextSection.replace(' ', '-')}-trigger`);
+                        if (nextVertTrigger) nextVertTrigger.focus();
+                    }
+                }
+            };
             addArea.appendChild(input);
         });
     }

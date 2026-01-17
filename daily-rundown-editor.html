@@ -53,6 +53,7 @@
             display: flex; align-items: center; justify-content: space-between;
         }
         .select-trigger:hover { border-color: var(--ink-light); }
+        .select-trigger:focus { border-color: var(--ink); outline: none; box-shadow: 0 0 0 2px rgba(28, 28, 28, 0.1); }
         .select-trigger::after { content: '↓'; font-size: 10px; opacity: 0.4; }
         
         .select-options { 
@@ -62,7 +63,7 @@
         }
         .select-options.show { display: block; }
         .option { padding: 8px 12px; font-size: 11px; font-weight: 600; cursor: pointer; transition: background 0.1s; }
-        .option:hover { background: var(--surface-alt); color: var(--editorial); }
+        .option:hover, .option.highlighted { background: var(--surface-alt); color: var(--editorial); }
 
         .styled-input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; outline: none; transition: var(--transition); }
         .styled-input:focus { border-color: var(--ink); }
@@ -126,31 +127,26 @@
     <div class="columns" id="columns"></div>
     <div class="toast" id="toast">Update Successful</div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const collectionPath = "artifacts/dmg-command-centre-native/public/data/daily_rundowns";
+<script>
+    // Notion API configuration
+    const API_BASE = 'https://createnotionproject-223535956454.us-central1.run.app';
 
     const SECTIONS = ['FILMING', 'INTERNAL', 'EXTERNAL', 'GOING LIVE'];
     const VERTICALS = ['SPORT', 'UK', 'RESPAWN', 'MAIN', 'MONEY', 'SPOTLIGHT'];
     const CREATORS = ['Mimi', 'Dan', 'Prashan', 'Henry', 'Dine', 'Alex', 'Kaylee', 'Ellie', 'Sophia', 'Kayla', 'Brooklyn'];
     const STATUS_ICONS = { done: '✓', pending: '◔', blocked: '!' };
-    
+
     let items = [];
     let currentViewDate = new Date();
-    let unsubscribe = null;
+    let draggedId = null;
+    let isLoading = false;
+    let refreshInterval = null;
 
     // --- DATE MANAGEMENT ---
     window.changeDate = (days) => {
         currentViewDate.setDate(currentViewDate.getDate() + days);
         updateDateUI();
-        initListener();
+        fetchItems();
     };
 
     function updateDateUI() {
@@ -158,38 +154,133 @@
         document.getElementById('dateLabel').textContent = currentViewDate.toLocaleDateString('en-GB', options);
     }
 
+    function getDateKey() {
+        return currentViewDate.toISOString().split('T')[0];
+    }
+
     // --- DROPDOWN LOGIC ---
-    function setupDropdown(id, options, defaultText) {
+    function setupDropdown(id, options, defaultText, section, isVertical) {
         const container = document.createElement('div');
         container.className = 'custom-select';
         container.innerHTML = `
-            <div class="select-trigger" id="${id}-trigger" data-value="">${defaultText}</div>
-            <div class="select-options">
-                ${options.map(opt => `<div class="option" data-value="${opt}">${opt}</div>`).join('')}
+            <div class="select-trigger" id="${id}-trigger" data-value="" tabindex="0" role="combobox" aria-expanded="false">${defaultText}</div>
+            <div class="select-options" role="listbox">
+                ${options.map((opt, idx) => `<div class="option" data-value="${opt}" data-index="${idx}" role="option">${opt}</div>`).join('')}
             </div>
         `;
-        
+
         const trigger = container.querySelector('.select-trigger');
         const opts = container.querySelector('.select-options');
-        
+        const optionEls = opts.querySelectorAll('.option');
+        let highlightedIndex = -1;
+
+        function openDropdown() {
+            document.querySelectorAll('.select-options').forEach(el => el !== opts && el.classList.remove('show'));
+            opts.classList.add('show');
+            trigger.setAttribute('aria-expanded', 'true');
+            highlightedIndex = -1;
+            optionEls.forEach(o => o.classList.remove('highlighted'));
+        }
+
+        function closeDropdown() {
+            opts.classList.remove('show');
+            trigger.setAttribute('aria-expanded', 'false');
+            highlightedIndex = -1;
+            optionEls.forEach(o => o.classList.remove('highlighted'));
+        }
+
+        function selectOption(opt) {
+            trigger.textContent = opt.textContent;
+            trigger.dataset.value = opt.dataset.value;
+            closeDropdown();
+            // Move focus to next element
+            if (isVertical) {
+                const creatorTrigger = document.getElementById(`creator-${section.replace(' ', '-')}-trigger`);
+                if (creatorTrigger) creatorTrigger.focus();
+            } else {
+                const input = document.querySelector(`#add-${section.replace(' ', '-')} input`);
+                if (input) input.focus();
+            }
+        }
+
+        function highlightOption(index) {
+            optionEls.forEach(o => o.classList.remove('highlighted'));
+            if (index >= 0 && index < optionEls.length) {
+                highlightedIndex = index;
+                optionEls[index].classList.add('highlighted');
+                optionEls[index].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
         trigger.onclick = (e) => {
             e.stopPropagation();
-            document.querySelectorAll('.select-options').forEach(el => el !== opts && el.classList.remove('show'));
-            opts.classList.toggle('show');
+            if (opts.classList.contains('show')) {
+                closeDropdown();
+            } else {
+                openDropdown();
+            }
         };
 
-        opts.querySelectorAll('.option').forEach(opt => {
-            opt.onclick = () => {
-                trigger.textContent = opt.textContent;
-                trigger.dataset.value = opt.dataset.value;
-                opts.classList.remove('show');
+        trigger.onkeydown = (e) => {
+            const isOpen = opts.classList.contains('show');
+
+            switch (e.key) {
+                case 'Enter':
+                case ' ':
+                    e.preventDefault();
+                    if (isOpen && highlightedIndex >= 0) {
+                        selectOption(optionEls[highlightedIndex]);
+                    } else if (isOpen) {
+                        closeDropdown();
+                    } else {
+                        openDropdown();
+                    }
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (!isOpen) {
+                        openDropdown();
+                    } else {
+                        highlightOption(Math.min(highlightedIndex + 1, optionEls.length - 1));
+                    }
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (isOpen) {
+                        highlightOption(Math.max(highlightedIndex - 1, 0));
+                    }
+                    break;
+                case 'Escape':
+                    if (isOpen) {
+                        e.preventDefault();
+                        closeDropdown();
+                    }
+                    break;
+                case 'Tab':
+                    if (isOpen) {
+                        closeDropdown();
+                    }
+                    break;
+            }
+        };
+
+        optionEls.forEach((opt, idx) => {
+            opt.onclick = (e) => {
+                e.stopPropagation();
+                selectOption(opt);
             };
+            opt.onmouseenter = () => highlightOption(idx);
         });
 
         return container;
     }
 
     document.addEventListener('click', () => document.querySelectorAll('.select-options').forEach(el => el.classList.remove('show')));
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.select-options').forEach(el => el.classList.remove('show'));
+        }
+    });
 
     function renderColumns() {
         const container = document.getElementById('columns');
@@ -203,16 +294,30 @@
             </div>
         `).join('');
 
-        SECTIONS.forEach(s => {
+        SECTIONS.forEach((s, sectionIndex) => {
             const addArea = document.getElementById(`add-${s.replace(' ', '-')}`);
             const row = document.createElement('div'); row.className = 'dropdown-row';
-            row.appendChild(setupDropdown(`vert-${s.replace(' ', '-')}`, VERTICALS, 'Vertical'));
-            row.appendChild(setupDropdown(`creator-${s.replace(' ', '-')}`, CREATORS, 'Creator'));
+            row.appendChild(setupDropdown(`vert-${s.replace(' ', '-')}`, VERTICALS, 'Vertical', s, true));
+            row.appendChild(setupDropdown(`creator-${s.replace(' ', '-')}`, CREATORS, 'Creator', s, false));
             addArea.appendChild(row);
 
             const input = document.createElement('input');
-            input.className = 'styled-input'; input.placeholder = 'Content Title...';
-            input.onkeydown = (e) => e.key === 'Enter' && window.addItem(s);
+            input.className = 'styled-input';
+            input.placeholder = 'Content Title... (Enter to add)';
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    window.addItem(s);
+                } else if (e.key === 'Tab' && !e.shiftKey) {
+                    const nextSectionIndex = sectionIndex + 1;
+                    if (nextSectionIndex < SECTIONS.length) {
+                        e.preventDefault();
+                        const nextSection = SECTIONS[nextSectionIndex];
+                        const nextVertTrigger = document.getElementById(`vert-${nextSection.replace(' ', '-')}-trigger`);
+                        if (nextVertTrigger) nextVertTrigger.focus();
+                    }
+                }
+            };
             addArea.appendChild(input);
         });
     }
@@ -222,13 +327,18 @@
             const sectionItems = items.filter(i => i.section === s);
             const list = document.getElementById(`items-${s.replace(' ', '-')}`);
             document.getElementById(`count-${s.replace(' ', '-')}`).textContent = sectionItems.length;
-            
+
+            if (isLoading) {
+                list.innerHTML = '<div class="loading" style="text-align:center;padding:20px;color:#6B7280;font-size:11px;">Loading...</div>';
+                return;
+            }
+
             list.innerHTML = sectionItems.length === 0 ? '<div class="empty">Empty</div>' : sectionItems.map(i => `
                 <div class="item" draggable="true" ondragstart="window.draggedId='${i.id}'">
                     <div class="item-status ${i.status || ''}" onclick="window.cycleStatus('${i.id}', '${i.status || ''}')">${i.status ? STATUS_ICONS[i.status] : ''}</div>
                     <div class="item-content">
                         <div class="item-meta">
-                            <span class="tag item-vertical ${i.vertical.toLowerCase()}">${i.vertical}</span>
+                            <span class="tag item-vertical ${(i.vertical || '').toLowerCase()}">${i.vertical || ''}</span>
                             ${i.creator ? `<span class="tag tag-creator">${i.creator}</span>` : ''}
                         </div>
                         <div class="item-title">${i.title}</div>
@@ -239,64 +349,221 @@
         });
     }
 
-    // --- FIREBASE ACTIONS ---
+    // --- NOTION API ACTIONS ---
+    async function fetchItems() {
+        isLoading = true;
+        renderItems();
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown?date=${getDateKey()}`);
+            const data = await response.json();
+
+            if (data.success) {
+                items = data.items.sort((a, b) =>
+                    new Date(a.createdTime || 0) - new Date(b.createdTime || 0)
+                );
+            } else {
+                showToast(`Error: ${data.error}`);
+                items = [];
+            }
+        } catch (error) {
+            console.error('Error fetching items:', error);
+            showToast('Failed to load items');
+            items = [];
+        }
+
+        isLoading = false;
+        renderItems();
+    }
+
     window.addItem = async (section) => {
         const id = section.replace(' ', '-');
-        const title = document.querySelector(`#add-${id} input`).value;
+        const input = document.querySelector(`#add-${id} input`);
+        const title = input.value.trim();
         const vertical = document.getElementById(`vert-${id}-trigger`).dataset.value;
         const creator = document.getElementById(`creator-${id}-trigger`).dataset.value;
-        if (!title || !vertical) return showToast("Title and Vertical required");
 
-        await addDoc(collection(db, collectionPath), {
-            dateKey: currentViewDate.toISOString().split('T')[0],
-            section, vertical, creator, title, status: '', createdAt: serverTimestamp()
-        });
-        document.querySelector(`#add-${id} input`).value = '';
+        if (!title || !vertical) {
+            showToast("Title and Vertical required");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title,
+                    date: getDateKey(),
+                    section,
+                    vertical,
+                    creator: creator || undefined,
+                    status: ''
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                items.push(data.item);
+                renderItems();
+                input.value = '';
+                showToast('Item created');
+            } else {
+                showToast(`Error: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Error adding item:', error);
+            showToast('Failed to create item');
+        }
     };
 
     window.handleDrop = async (e, section) => {
         e.preventDefault();
         document.querySelectorAll('.column').forEach(c => c.classList.remove('drag-over'));
-        if (window.draggedId) await updateDoc(doc(db, collectionPath, window.draggedId), { section });
+
+        if (!window.draggedId) return;
+
+        const item = items.find(i => i.id === window.draggedId);
+        if (!item || item.section === section) {
+            window.draggedId = null;
+            return;
+        }
+
+        // Optimistic update
+        item.section = section;
+        renderItems();
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown/${window.draggedId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ section })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                showToast(`Error: ${data.error}`);
+                fetchItems();
+            }
+        } catch (error) {
+            console.error('Error moving item:', error);
+            showToast('Failed to move item');
+            fetchItems();
+        }
+
+        window.draggedId = null;
     };
 
     window.cycleStatus = async (id, current) => {
-        const cycle = ['', 'done', 'pending', 'blocked'];
+        const cycle = ['', 'done', 'pending'];
         const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
-        await updateDoc(doc(db, collectionPath, id), { status: next });
+
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        // Optimistic update
+        item.status = next;
+        renderItems();
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: next })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                showToast(`Error: ${data.error}`);
+                fetchItems();
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            showToast('Failed to update status');
+            fetchItems();
+        }
     };
 
     window.carryOverItems = async () => {
         const pending = items.filter(i => i.status !== 'done');
-        if (!pending.length) return showToast("No pending items found");
+        if (!pending.length) {
+            showToast("No pending items found");
+            return;
+        }
 
-        const tomorrow = new Date(currentViewDate); tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowKey = tomorrow.toISOString().split('T')[0];
-        const batch = writeBatch(db);
-        pending.forEach(i => {
-            const ref = doc(collection(db, collectionPath));
-            // Create a clean copy without the id field
-            const { id, ...itemData } = i;
-            batch.set(ref, { ...itemData, dateKey: tomorrowKey, createdAt: serverTimestamp() });
-        });
-        await batch.commit();
-        showToast(`${pending.length} item(s) carried over to tomorrow`);
+        const fromDate = getDateKey();
+        const tomorrow = new Date(currentViewDate);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const toDate = tomorrow.toISOString().split('T')[0];
+
+        try {
+            const response = await fetch(`${API_BASE}/rundown/carry-over`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fromDate, toDate })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(data.message);
+            } else {
+                showToast(`Error: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Error carrying over items:', error);
+            showToast('Failed to carry over items');
+        }
     };
 
-    window.deleteItem = async (id) => confirm('Delete item?') && await deleteDoc(doc(db, collectionPath, id));
+    window.deleteItem = async (id) => {
+        if (!confirm('Delete item?')) return;
 
-    function showToast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+        // Optimistic update
+        items = items.filter(i => i.id !== id);
+        renderItems();
 
-    function initListener() {
-        if (unsubscribe) unsubscribe();
-        const q = query(collection(db, collectionPath), where("dateKey", "==", currentViewDate.toISOString().split('T')[0]));
-        unsubscribe = onSnapshot(q, (snap) => {
-            items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-            renderItems();
-        });
+        try {
+            const response = await fetch(`${API_BASE}/rundown/${id}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showToast('Item deleted');
+            } else {
+                showToast(`Error: ${data.error}`);
+                fetchItems();
+            }
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            showToast('Failed to delete item');
+            fetchItems();
+        }
+    };
+
+    function showToast(m) {
+        const t = document.getElementById('toast');
+        t.textContent = m;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2000);
     }
 
-    signInAnonymously(auth).then(() => { updateDateUI(); renderColumns(); initListener(); });
+    // Auto-refresh every 30 seconds
+    function startAutoRefresh() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(fetchItems, 30000);
+    }
+
+    // Initialize
+    updateDateUI();
+    renderColumns();
+    fetchItems();
+    startAutoRefresh();
 </script>
 </body>
 </html>
