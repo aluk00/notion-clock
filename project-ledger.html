@@ -3,707 +3,1929 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales Intake | DMG Command Centre</title>
+    <title>Intake Hub | DMG Command Centre</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!--
+    ═══════════════════════════════════════════════════════════════════════════════
+    DMG COMMAND CENTRE - INTAKE HUB
+    Last Updated: 17 January 2026
+
+    ARCHITECTURE:
+    - Notion (Master Ledger) = Single source of truth for Projects & Deliverables
+    - Cloud Run API = Firewall that translates requests into Notion API calls
+    - Firebase = Staff Directory, Quick Requests, Real-time updates
+
+    INTAKE TYPES:
+    1. New Brief (Sales) → Creates project in Master Ledger via Cloud Run
+    2. Design Request → Creates task in design_requests (Firebase) → Designer Capacity
+    3. Edit Request → Creates task in edit_queue (Firebase) → Editor Capacity
+
+    API: https://createnotionproject-223535956454.us-central1.run.app
+    ═══════════════════════════════════════════════════════════════════════════════
+    -->
     <style>
-        :root { 
-            --ink: #0F172A; --ink-sub: #64748B; --ink-muted: #94A3B8; 
-            --border: #E2E8F0; --surface: #FFFFFF; --surface-alt: #F8FAFC; 
-            --dmg-blue: #21A0D8; --dmg-blue-soft: #F0F9FF; --dmg-blue-glow: rgba(33, 160, 216, 0.2);
-            --production: #10B981;
-            --radius: 20px;
+        :root {
+            /* Core Colors */
+            --ink: #0F172A;
+            --ink-sub: #64748B;
+            --ink-muted: #94A3B8;
+            --border: #E2E8F0;
+            --surface: #FFFFFF;
+            --surface-alt: #F8FAFC;
+
+            /* Pillar Colors */
+            --dmg-blue: #21A0D8;
+            --dmg-blue-soft: #F0F9FF;
+            --dmg-blue-glow: rgba(33, 160, 216, 0.15);
+            --production: #43B049;
+            --production-soft: rgba(67, 176, 73, 0.1);
+            --creative: #E6468B;
+            --creative-soft: rgba(230, 70, 139, 0.1);
+            --editorial: #E94B4B;
+            --editorial-soft: rgba(233, 75, 75, 0.1);
+            --social: #F59E0B;
+            --social-soft: rgba(245, 158, 11, 0.1);
+
+            /* Capacity States */
+            --available: #10B981;
+            --busy: #F59E0B;
+            --full: #EF4444;
+
+            /* Layout */
+            --radius: 16px;
+            --radius-sm: 10px;
+            --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: transparent; color: var(--ink); min-height: 100vh; padding: 20px; -webkit-font-smoothing: antialiased; }
-        
-        .container { max-width: 700px; margin: 0 auto; position: relative; padding-bottom: 120px; }
-        
-        /* Card & Layout */
-        .step-card { 
-            background: var(--surface); 
-            border: 1px solid var(--border); 
-            border-radius: var(--radius); 
-            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05);
-            overflow: visible;
-            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            position: relative;
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: transparent;
+            color: var(--ink);
+            min-height: 100vh;
+            padding: 16px;
+            -webkit-font-smoothing: antialiased;
         }
-        .step-header { padding: 18px 32px; border-bottom: 1px solid var(--border); background: var(--surface-alt); border-radius: 20px 20px 0 0; }
-        .step-body { padding: 32px; overflow: visible; }
-        .step-label { font-size: 10px; font-weight: 800; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
-        .step-title { font-size: 24px; font-weight: 900; color: var(--ink); letter-spacing: -0.03em; margin-bottom: 32px; }
-        /* Header UI */
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding: 0 8px; }
-        .header-left { display: flex; align-items: center; gap: 12px; }
-        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 3px; }
-        .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite; }
+
+        .container {
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        /* Header with Dot Grid */
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .dots {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dots span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+        }
+        .dots span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
+        .dots span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        .dots span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-        .header-label { font-size: 11px; font-weight: 800; color: var(--dmg-blue); text-transform: uppercase; letter-spacing: 0.05em; }
-        .reset-btn { 
-            font-size: 11px; font-weight: 700; color: var(--ink-sub); 
-            background: var(--surface); border: 1px solid var(--border); 
-            padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; 
+
+        .header-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--dmg-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            flex: 1;
+        }
+
+        .reset-btn {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: var(--transition);
         }
         .reset-btn:hover { border-color: var(--ink-sub); color: var(--ink); }
-        /* Progress */
-        .progress { display: flex; align-items: center; gap: 8px; margin-bottom: 40px; justify-content: center; }
-        .progress-step { width: 10px; height: 10px; border-radius: 50%; background: var(--border); transition: all 0.4s; }
-        .progress-step.active { background: var(--dmg-blue); transform: scale(1.3); }
-        .progress-step.complete { background: var(--production); }
-        .progress-line { width: 30px; height: 2px; background: var(--border); border-radius: 1px; }
-        .progress-line.complete { background: var(--production); }
-        /* Form Controls */
-        .field { margin-bottom: 24px; position: relative; z-index: 1; }
-        .field-label { font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; display: block; }
-        .field-input { 
-            width: 100%; padding: 14px 18px; border: 2px solid var(--border); border-radius: 12px; 
-            font-size: 14px; font-weight: 600; font-family: inherit; background: var(--surface-alt); 
-            color: var(--ink); outline: none; transition: all 0.2s;
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            animation: slideIn 0.3s ease-out;
         }
-        .field-input:focus { border-color: var(--dmg-blue); background: #fff; box-shadow: 0 0 0 4px var(--dmg-blue-glow); }
-        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        /* Client Toggle */
-        .client-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
-        .client-toggle-btn { flex: 1; padding: 10px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; cursor: pointer; background: var(--surface); color: var(--ink-sub); transition: all 0.2s; }
-        .client-toggle-btn.active { background: var(--dmg-blue); border-color: var(--dmg-blue); color: white; box-shadow: 0 4px 10px rgba(33,160,216,0.2); }
-        /* Custom Dropdowns */
-        .custom-select, .staff-picker { position: relative; width: 100%; z-index: 20; }
-        .select-trigger, .picker-trigger { 
-            width: 100%; padding: 14px 18px; border: 2px solid var(--border); border-radius: 12px; 
-            font-size: 13px; font-weight: 700; background: var(--surface-alt); color: var(--ink); 
-            cursor: pointer; display: flex; justify-content: space-between; align-items: center;
-            transition: all 0.2s;
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-alt);
         }
-        .select-trigger:hover, .picker-trigger:hover { border-color: var(--dmg-blue); background: #fff; }
+
+        .card-step {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 4px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+            letter-spacing: -0.02em;
+        }
+
+        .card-desc {
+            font-size: 12px;
+            color: var(--ink-sub);
+            margin-top: 4px;
+            line-height: 1.5;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } }
+
+        /* Intake Type Selection */
+        .intake-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .intake-option {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--surface);
+        }
+
+        .intake-option:hover {
+            border-color: var(--ink-muted);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        }
+
+        .intake-option.selected {
+            border-color: var(--dmg-blue);
+            background: var(--dmg-blue-soft);
+        }
+
+        .intake-option.selected .intake-icon {
+            background: var(--dmg-blue);
+            color: white;
+        }
+
+        .intake-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            background: var(--surface-alt);
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+
+        .intake-content { flex: 1; }
+
+        .intake-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 2px;
+        }
+
+        .intake-desc {
+            font-size: 11px;
+            color: var(--ink-sub);
+            line-height: 1.4;
+        }
+
+        .intake-arrow {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-muted);
+            transition: var(--transition);
+        }
+
+        .intake-option:hover .intake-arrow {
+            color: var(--dmg-blue);
+            transform: translateX(4px);
+        }
+
+        /* Capacity Preview */
+        .capacity-preview {
+            background: var(--surface-alt);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        .capacity-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .capacity-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .capacity-legend {
+            display: flex;
+            gap: 12px;
+        }
+
+        .capacity-dot {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-sub);
+        }
+
+        .capacity-dot span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .capacity-dot.available span { background: var(--available); }
+        .capacity-dot.busy span { background: var(--busy); }
+        .capacity-dot.full span { background: var(--full); }
+
+        .capacity-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+        }
+
+        .capacity-member {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--surface);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .capacity-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 800;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .capacity-info { flex: 1; min-width: 0; }
+
+        .capacity-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .capacity-bar {
+            height: 4px;
+            background: #E5E5E5;
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .capacity-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+
+        .capacity-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Form Fields */
+        .field {
+            margin-bottom: 16px;
+        }
+
+        .field-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .field-label .required { color: var(--editorial); }
+
+        .field-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--ink);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .field-input:focus {
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 3px var(--dmg-blue-glow);
+        }
+
+        .field-input::placeholder { color: var(--ink-muted); }
+
+        textarea.field-input {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Custom Select */
+        .custom-select { position: relative; }
+
+        .select-trigger {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            background: var(--surface);
+            color: var(--ink);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: var(--transition);
+        }
+
+        .select-trigger:hover { border-color: var(--dmg-blue); }
         .select-trigger .placeholder { color: var(--ink-muted); font-weight: 500; }
-        .select-trigger.open, .picker-trigger.open { border-color: var(--dmg-blue); background: #fff; border-radius: 12px 12px 0 0; }
-        
-        .select-dropdown, .staff-picker-body { 
-            position: absolute; top: 100%; left: 0; right: 0; 
-            background: #fff; border: 2px solid var(--dmg-blue); border-top: none; 
-            border-radius: 0 0 12px 12px; max-height: 250px; overflow-y: auto; 
-            z-index: 9999; display: none; box-shadow: 0 15px 40px -10px rgba(0,0,0,0.15);
+        .select-trigger.open { border-color: var(--dmg-blue); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+
+        .select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1.5px solid var(--dmg-blue);
+            border-top: none;
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        .select-dropdown.show, .staff-picker-body.show { display: block; animation: dropIn 0.2s ease-out; }
-        .dropdown-item { padding: 12px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 1px solid var(--surface-alt); }
-        .dropdown-item:hover { background: var(--dmg-blue-soft); color: var(--dmg-blue); padding-left: 22px; transition: all 0.1s; }
-        /* Staff Picker UI */
-        .staff-search { padding: 10px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: #fff; z-index: 10; }
-        .staff-search input { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 12px; outline: none; }
-        .staff-item { display: flex; align-items: center; gap: 12px; padding: 10px 18px; cursor: pointer; }
+
+        .select-dropdown.show { display: block; animation: dropIn 0.2s ease-out; }
+        @keyframes dropIn { from { opacity: 0; transform: translateY(-4px); } }
+
+        .dropdown-item {
+            padding: 10px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .dropdown-item:hover {
+            background: var(--dmg-blue-soft);
+            color: var(--dmg-blue);
+            padding-left: 18px;
+        }
+
+        /* Staff Picker */
+        .staff-search {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+        }
+
+        .staff-search input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 12px;
+            outline: none;
+        }
+
+        .staff-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
         .staff-item:hover { background: var(--surface-alt); }
-        .staff-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--dmg-blue); color: white; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
-        .staff-name { font-size: 13px; font-weight: 700; color: var(--ink); }
-        .selected-badge { background: var(--dmg-blue); color: white; font-size: 10px; padding: 4px 10px; border-radius: 20px; font-weight: 800; text-transform: uppercase; }
-        /* Upload Area */
-        .file-upload-area { 
-            border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; 
-            background: var(--surface-alt); transition: all 0.2s; cursor: pointer; margin-bottom: 16px;
+
+        .staff-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .file-upload-area:hover { border-color: var(--dmg-blue); background: var(--dmg-blue-soft); }
-        .file-upload-icon { font-size: 24px; margin-bottom: 8px; display: block; }
-        .file-upload-text { font-size: 12px; color: var(--ink-sub); font-weight: 600; }
-        .file-list { display: flex; flex-direction: column; gap: 8px; }
-        .file-item { 
-            display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; 
-            background: #fff; border: 1px solid var(--border); border-radius: 8px; 
+
+        .staff-name { font-size: 12px; font-weight: 600; color: var(--ink); }
+        .staff-role { font-size: 10px; color: var(--ink-sub); }
+
+        .selected-badge {
+            background: var(--dmg-blue);
+            color: white;
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 700;
         }
-        .file-name { font-size: 12px; font-weight: 600; color: var(--dmg-blue); }
-        .file-remove { color: #ef4444; background: none; border: none; font-weight: 800; cursor: pointer; }
-        /* Nav Buttons */
-        .btn-row { display: flex; gap: 12px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border); }
-        .btn { 
-            padding: 16px 24px; border-radius: 12px; font-size: 13px; font-weight: 800; 
-            text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer; border: none; 
-            transition: all 0.2s; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+
+        /* Asset Type Pills */
+        .asset-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
         }
-        .btn-back { background: var(--surface-alt); color: var(--ink-sub); border: 1.5px solid var(--border); }
-        .btn-back:hover { background: #fff; color: var(--ink); border-color: var(--ink-muted); }
-        .btn-primary { background: var(--dmg-blue); color: #fff; box-shadow: 0 4px 12px rgba(33, 160, 216, 0.2); }
-        .btn-primary:disabled { background: #CBD5E1; color: #F1F5F9; cursor: not-allowed; }
-        .btn-submit { background: var(--production); color: #fff; }
-        /* Add Detail section */
-        .add-detail-menu { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-        .add-detail-btn { 
-            padding: 10px 14px; border-radius: 10px; border: 1.5px dashed var(--dmg-blue); 
-            background: var(--dmg-blue-soft); color: var(--dmg-blue); font-size: 11px; 
-            font-weight: 800; cursor: pointer; transition: all 0.2s;
+
+        .asset-pill {
+            padding: 8px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--surface);
+            color: var(--ink-sub);
         }
-        .add-detail-btn:hover { background: var(--dmg-blue); color: #fff; border-style: solid; }
+
+        .asset-pill:hover { border-color: var(--ink-muted); }
+        .asset-pill.selected {
+            border-color: var(--dmg-blue);
+            background: var(--dmg-blue-soft);
+            color: var(--dmg-blue);
+        }
+
+        /* Effort Estimation */
+        .effort-box {
+            background: var(--surface-alt);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            margin-top: 16px;
+            border-left: 3px solid var(--production);
+        }
+
+        .effort-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .effort-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--production);
+        }
+
+        .effort-value span {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-sub);
+        }
+
+        .effort-breakdown {
+            font-size: 11px;
+            color: var(--ink-sub);
+            margin-top: 6px;
+        }
+
+        /* Buttons */
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-back {
+            background: var(--surface);
+            color: var(--ink-sub);
+            border: 1.5px solid var(--border);
+            flex: 0 0 auto;
+            padding: 12px 16px;
+        }
+        .btn-back:hover { border-color: var(--ink-sub); color: var(--ink); }
+
+        .btn-primary {
+            background: var(--dmg-blue);
+            color: white;
+        }
+        .btn-primary:hover { background: #1a8ac0; }
+        .btn-primary:disabled { background: #CBD5E1; cursor: not-allowed; }
+
+        .btn-submit {
+            background: var(--production);
+            color: white;
+        }
+        .btn-submit:hover { background: #38a042; }
+
+        /* Preview Panel */
+        .preview-panel {
+            background: var(--surface-alt);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            margin-top: 16px;
+        }
+
+        .preview-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        .preview-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 11px;
+        }
+
+        .preview-item:last-child { border-bottom: none; }
+        .preview-label { color: var(--ink-sub); }
+        .preview-value { font-weight: 600; color: var(--ink); }
+
+        /* Hidden */
         .hidden { display: none !important; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } }
-        @keyframes dropIn { from { opacity: 0; transform: translateY(-8px); } }
-        .loading-screen { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 10000; display: flex; align-items: center; justify-content: center; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #eee; border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-        .type-card { border: 1px solid var(--border); border-radius: 16px; padding: 24px; cursor: pointer; transition: all 0.2s; background: #fff; }
-        .type-card:hover { border-color: var(--dmg-blue); transform: translateY(-4px); box-shadow: 0 12px 30px rgba(33,160,216,0.1); }
-        .type-card.selected { border-color: var(--dmg-blue); background: var(--dmg-blue-soft); border-width: 2.5px; padding: 23px; }
-        .type-icon { font-size: 32px; margin-bottom: 16px; }
-        .type-label { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
-        .type-desc { font-size: 12px; color: var(--ink-sub); line-height: 1.4; }
-        .asset-entry { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; position: relative; }
-        .asset-remove { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #ef4444; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 14px; font-weight: 800; }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            gap: 12px;
+        }
+
+        .loading-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        /* Success Screen */
+        .success-screen {
+            text-align: center;
+            padding: 48px 32px;
+        }
+
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--production);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 28px;
+        }
+
+        .success-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--ink);
+            margin-bottom: 8px;
+        }
+
+        .success-desc {
+            font-size: 13px;
+            color: var(--ink-sub);
+            margin-bottom: 24px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--ink);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 2000;
+            transition: transform 0.3s;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { background: var(--full); }
+        .toast.success { background: var(--production); }
+
+        /* Responsive */
+        @media (max-width: 500px) {
+            .field-row { grid-template-columns: 1fr; }
+            .capacity-list { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-    <div class="loading-screen" id="loading"><div class="spinner"></div></div>
-    <div class="container">
-        <div class="header">
-            <div class="header-left">
-                <div class="dot-grid">
-                    <div class="dot"></div><div class="dot"></div>
-                    <div class="dot"></div><div class="dot"></div>
-                </div>
-                <h1 class="header-label">Project Intake</h1>
-            </div>
-            <button class="reset-btn" id="resetBtn">Reset Form</button>
-        </div>
-        <div class="progress" id="progressBar">
-            <div class="progress-step active"></div><div class="progress-line"></div>
-            <div class="progress-step"></div><div class="progress-line"></div>
-            <div class="progress-step"></div><div class="progress-line"></div>
-            <div class="progress-step"></div>
-        </div>
-        <!-- STEP 1: LOG TYPE -->
-        <div class="step-card" id="step1">
-            <div class="step-body">
-                <div class="step-label">Step 1 of 4</div>
-                <div class="step-title">What are we logging today?</div>
-                <div class="type-grid" id="typeGrid"></div>
-            </div>
-        </div>
-        <!-- STEP 1B: PROJECT SELECT -->
-        <div class="step-card hidden" id="step1b">
-            <div class="step-body">
-                <div class="step-label">Step 1B of 4</div>
-                <div class="step-title">Find existing campaign</div>
-                <div class="field">
-                    <label class="field-label">Active Project Database</label>
-                    <div class="custom-select" id="projectPicker">
-                        <div class="select-trigger"><span class="placeholder">Click to assign project...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
-                        <div class="select-dropdown" id="projectList"></div>
-                    </div>
-                </div>
-                <div class="btn-row">
-                    <button class="btn btn-back" id="back1b">Back</button>
-                    <button class="btn btn-primary" id="continue1b" disabled>Continue</button>
-                </div>
-            </div>
-        </div>
-        <!-- STEP 2: IDENTITY -->
-        <div class="step-card hidden" id="step2">
-            <div class="step-body">
-                <div class="step-label">Step 2 of 4</div>
-                <div class="step-title" id="step2Title">Identity</div>
-                <div id="newProjectFields">
-                    <div class="field">
-                        <label class="field-label">SALES LEAD(S) <span style="color:#e11d48">*</span></label>
-                        <div class="custom-select staff-picker" id="salesLeadPicker">
-                            <div class="select-trigger"><span class="placeholder">Click to assign sales lead...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
-                            <div class="staff-picker-body" id="salesLeadList"></div>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label class="field-label">TITLE <span style="color:#e11d48">*</span></label>
-                        <input type="text" class="field-input" id="titleInput" placeholder="Campaign or brief name...">
-                    </div>
-                    <div class="field">
-                        <label class="field-label">CLIENT / EXTERNAL PARTNER <span style="color:#e11d48">*</span></label>
-                        <div class="client-toggle" id="clientToggle">
-                            <button class="client-toggle-btn active" data-type="existing">Existing</button>
-                            <button class="client-toggle-btn" data-type="new">New</button>
-                        </div>
-                        <div id="existingClientWrap">
-                            <div class="custom-select" id="clientPicker">
-                                <div class="select-trigger"><span class="placeholder">Select client...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
-                                <div class="select-dropdown" id="clientDropdown"></div>
-                            </div>
-                        </div>
-                        <div id="newClientWrap" class="hidden">
-                            <input type="text" class="field-input" id="newClientInput" placeholder="Enter brand name...">
-                        </div>
-                    </div>
-                    <div class="field-row">
-                        <div class="field">
-                            <label class="field-label">VERTICAL</label>
-                            <div class="custom-select" id="verticalPicker">
-                                <div class="select-trigger"><span class="placeholder">Assign...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
-                                <div class="select-dropdown" id="verticalList"></div>
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">OWNER ROLE</label>
-                            <div class="custom-select" id="ownerPicker">
-                                <div class="select-trigger"><span class="placeholder">Assign...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
-                                <div class="select-dropdown" id="ownerList"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div id="addAssetsFields" class="hidden">
-                    <div id="assetsContainer"></div>
-                    <button class="add-detail-btn" id="addAssetBtn" style="width:100%; justify-content:center">+ Add Another Deliverable</button>
-                </div>
-                <div class="btn-row">
-                    <button class="btn btn-back" id="back2">Back</button>
-                    <button class="btn btn-primary" id="continue2">Continue</button>
-                </div>
-            </div>
-        </div>
-        <!-- STEP 3: COMMERCIALS -->
-        <div class="step-card hidden" id="step3">
-            <div class="step-body">
-                <div class="step-label">Step 3 of 4</div>
-                <div class="step-title">Commercials & Dates</div>
-                <div class="field-row">
-                    <div class="field">
-                        <label class="field-label">DEAL STAGE <span style="color:#e11d48">*</span></label>
-                        <div class="custom-select" id="stagePicker">
-                            <div class="select-trigger"><span class="placeholder">Select stage...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
-                            <div class="select-dropdown" id="stageList"></div>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label class="field-label">DEAL VALUE (£)</label>
-                        <input type="number" class="field-input" id="valueInput" placeholder="0">
-                    </div>
-                </div>
-                <div class="field">
-                    <label class="field-label">PRIORITY LEVEL</label>
-                    <div class="custom-select" id="priorityPicker">
-                        <div class="select-trigger"><span>Standard</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>
-                        <div class="select-dropdown" id="priorityList"></div>
-                    </div>
-                </div>
-                <div class="field-row">
-                    <div class="field"><label class="field-label">(CLIENT) DUE DATE</label><input type="date" class="field-input" id="clientDate"></div>
-                    <div class="field"><label class="field-label">(INTERNAL) DUE DATE</label><input type="date" class="field-input" id="internalDate"></div>
-                </div>
-                <div class="btn-row">
-                    <button class="btn btn-back" id="back3">Back</button>
-                    <button class="btn btn-primary" id="continue3">Ownership</button>
-                </div>
-            </div>
-        </div>
-        <!-- STEP 4: OWNERSHIP & ATTACHMENTS -->
-        <div class="step-card hidden" id="step4">
-            <div class="step-body">
-                <div class="step-label">Step 4 of 4</div>
-                <div class="step-title">Context & Assets</div>
-                <!-- ATTACHMENTS SECTION -->
-                <div class="field">
-                    <label class="field-label">Brief & Assets (PDF / Images)</label>
-                    <div class="file-upload-area" id="fileDropZone">
-                        <div class="file-upload-icon">📁</div>
-                        <div class="file-upload-text">Click or Drop files to upload</div>
-                    </div>
-                    <input type="file" id="fileInput" multiple style="display:none">
-                    <div class="file-list" id="fileList"></div>
-                </div>
-                <div class="field">
-                    <label class="field-label">External Links</label>
-                    <div style="display:flex; gap:8px">
-                        <input type="url" class="field-input" id="linkInput" placeholder="https://google.doc...">
-                        <button class="add-detail-btn" id="addLinkBtn" style="white-space:nowrap">Add</button>
-                    </div>
-                    <div class="file-list" id="linkList" style="margin-top:8px"></div>
-                </div>
-                <div class="field">
-                    <label class="field-label">Additional Leads (Optional)</label>
-                    <div id="dynamicStaffContainer"></div>
-                    <div class="add-detail-menu">
-                        <div class="add-detail-btn" data-team="Creative">+ Creative Lead</div>
-                        <div class="add-detail-btn" data-team="Production">+ Production Lead</div>
-                        <div class="add-detail-btn" data-team="Social">+ Social Lead</div>
-                    </div>
-                </div>
-                <div class="field" style="margin-top:32px">
-                    <label class="field-label">(SALES) NOTES & CONTEXT</label>
-                    <textarea class="field-input" id="notesInput" style="min-height:100px; resize:none" placeholder="Important details or blockers..."></textarea>
-                </div>
-                <div class="btn-row">
-                    <button class="btn btn-back" id="back4">Back</button>
-                    <button class="btn btn-submit" id="submitBtn">Sync to Ledger ✓</button>
-                </div>
-            </div>
-        </div>
-        <!-- SUCCESS SCREEN -->
-        <div class="step-card hidden" id="successScreen">
-            <div class="step-body" style="text-align:center; padding:60px 40px">
-                <div style="width:72px; height:72px; border-radius:50%; background:var(--production); display:flex; align-items:center; justify-content:center; margin:0 auto 24px; color:#fff; font-size:32px">✓</div>
-                <div class="step-title" style="margin-bottom:12px">Sync Successful</div>
-                <p style="color:var(--ink-sub); font-size:14px; margin-bottom:32px">Added to the master ledger for creative takeaway.</p>
-                <button class="btn btn-primary" id="finalBtn" style="width:auto; padding:16px 40px">New Brief</button>
-            </div>
+
+<div class="container">
+    <div class="header">
+        <div class="dots"><span></span><span></span><span></span><span></span></div>
+        <span class="header-title">Intake Hub</span>
+        <button class="reset-btn" id="resetBtn">Start Over</button>
+    </div>
+
+    <div id="content">
+        <div class="loading">
+            <div class="dots"><span></span><span></span><span></span><span></span></div>
+            <span class="loading-text">Loading...</span>
         </div>
     </div>
-    <!-- Scripts -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
-    <script>
-    (function() {
-        const CONFIG = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app" };
-        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
-        const APP_ID = 'dmg-command-centre-native';
-        const TEAM_COLORS = { Editorial:'#E94B4B', Creative:'#E6468B', Production:'#43B049', Social:'#F2C316', Operations:'#21A0D8', Sales:'#21A0D8' };
-        
-        let db, storage, staff = [], projects = [], clients = [];
-        let form = { mode:'new', type:'', title:'', client:'', isNewClient:false, vertical:'', owner:'', stage:'', value:'', priority:'Standard', salesLead:null, creativeLead:null, productionLead:null, socialLead:null, notes:'', selectedProject:null, assets:[], files:[], links:[] };
-        let step = 1;
-        
-        async function init() {
-            firebase.initializeApp(CONFIG);
-            db = firebase.firestore();
-            storage = firebase.storage();
-            await firebase.auth().signInAnonymously();
-            await Promise.all([fetchStaff(), fetchProjects()]);
-            renderInitialUI();
-            attachListeners();
-            document.getElementById('loading').classList.add('hidden');
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, doc, setDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONFIGURATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    const firebaseConfig = {
+        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+        authDomain: "dmg-command-centre-native.firebaseapp.com",
+        projectId: "dmg-command-centre-native",
+        storageBucket: "dmg-command-centre-native.firebasestorage.app",
+        messagingSenderId: "223535956454",
+        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+    };
+
+    const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+    const APP_ID = 'dmg-command-centre-native';
+
+    // Team Colors (Design System)
+    const TEAM_COLORS = {
+        'Editorial': '#E94B4B',
+        'Creative': '#E6468B',
+        'Production': '#43B049',
+        'Social': '#F59E0B',
+        'Sales': '#21A0D8',
+        'Design': '#E6468B'
+    };
+
+    // Effort Points by Task Type (from Ecosystem Recap)
+    const EFFORT_POINTS = {
+        design: {
+            'Thumbnail (Standard)': 3,
+            'Thumbnail (Complex)': 5,
+            'Graphics Package': 8,
+            'Motion Graphics (Simple)': 6,
+            'Motion Graphics (Complex)': 12,
+            'Social Asset': 2,
+            'Pitch Deck': 10
+        },
+        edit: {
+            'Quick Cut': 3,
+            'Standard Edit': 6,
+            'Complex Edit': 12,
+            'Breaking/Reactive': 4
+        },
+        modifiers: {
+            'Motion Graphics': 3,
+            'Stock Footage Search': 1.5,
+            'Voiceover Recording': 1,
+            'Multi-Platform Versions': 1.5,
+            'Client Amends': 1.5,
+            'Regulated Industry': 3,
+            'Rush (under 48hrs)': 3
+        },
+        seniorityMultiplier: {
+            'Junior': 2.0,
+            'Midweight': 1.5,
+            'Senior': 1.0,
+            'Lead': 1.0,
+            'Head of': 1.0,
+            'Director of': 1.0
         }
-        
-        async function fetchStaff() {
-            try {
-                const snap = await db.collection('artifacts').doc(APP_ID).collection('public').doc('data').collection('staff_directory').get();
-                staff = snap.docs.map(d => ({ id: d.id, ...d.data(), name: d.data().firstName + ' ' + d.data().lastName }));
-            } catch(e) { console.error('Staff fetch error', e); }
-        }
-        
-        async function fetchProjects() {
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INITIALIZE
+    // ═══════════════════════════════════════════════════════════════════════════
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const storage = getStorage(app);
+
+    let staff = [];
+    let designers = [];
+    let editors = [];
+    let projects = [];
+    let clients = [];
+    let designRequests = [];
+    let editQueue = [];
+
+    // Form State
+    let currentStep = 'select';
+    let intakeType = null;
+    let formData = {
+        // Brief fields
+        title: '',
+        client: '',
+        isNewClient: false,
+        vertical: '',
+        ownerRole: '',
+        dealStage: '',
+        dealValue: '',
+        priority: 'Standard',
+        clientDueDate: '',
+        internalDueDate: '',
+        salesLead: null,
+        creativeLead: null,
+        productionLead: null,
+        notes: '',
+        files: [],
+        links: [],
+        // Design request fields
+        assetType: '',
+        designBrief: '',
+        deadline: '',
+        assignedDesigner: null,
+        // Edit request fields
+        videoComplexity: '',
+        editModifiers: [],
+        editBrief: '',
+        assignedEditor: null,
+        // For linking to existing projects
+        linkedProject: null
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA FETCHING
+    // ═══════════════════════════════════════════════════════════════════════════
+    async function fetchData() {
+        try {
+            // Fetch staff
+            const staffSnap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "staff_directory"));
+            staff = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            // Filter designers and editors
+            designers = staff.filter(s =>
+                s.team === 'Creative' ||
+                s.team === 'Design' ||
+                s.role?.toLowerCase().includes('design')
+            );
+
+            editors = staff.filter(s =>
+                s.team === 'Editorial' ||
+                s.role?.toLowerCase().includes('editor')
+            );
+
+            // Fetch projects from Cloud Run API
             try {
                 const res = await fetch(API_URL + '/projects');
                 const data = await res.json();
-                if (data.success) {
+                if (data.success && data.projects) {
                     projects = data.projects;
-                    const set = new Set();
-                    projects.forEach(p => p.client && set.add(p.client));
-                    clients = Array.from(set).sort();
+                    const clientSet = new Set();
+                    projects.forEach(p => p.client && clientSet.add(p.client));
+                    clients = Array.from(clientSet).sort();
                 }
-            } catch(e) { console.error('Projects fetch error', e); }
-        }
-        
-        function renderInitialUI() {
-            const types = [
-                { id:'LONG TERM CAMPAIGN', icon:'📅', label:'Long Term', desc:'Campaigns & Series' },
-                { id:'SHORT TERM CAMPAIGN', icon:'⚡', label:'Short Term', desc:'Tactical Output' },
-                { id:'VIDEO(S) IDEAS', icon:'💡', label:'Concept', desc:'Creative Pitches' },
-                { id:'DMG VENTURE', icon:'🚀', label:'Venture', desc:'Internal Projects' },
-                { id:'ADD ASSETS', icon:'➕', label:'Add Deliverables', desc:'To Existing Campaign', full:true }
-            ];
-            document.getElementById('typeGrid').innerHTML = types.map(t => '<div class="type-card" data-id="' + t.id + '"' + (t.full ? ' style="grid-column:1/-1"' : '') + '><div class="type-icon">' + t.icon + '</div><div class="type-label">' + t.label + '</div><div class="type-desc">' + t.desc + '</div></div>').join('');
-            
-            populateList('stageList', ['Brief Received','Pitch Sent','Deal Agreed','Campaign Complete','Closed Lost']);
-            populateList('priorityList', ['Low','Standard','High']);
-            populateList('verticalList', ['Social','Editorial','Shows','Distribution','Commercial','Hybrid']);
-            populateList('ownerList', ['Sales-led','Editorial-led','Production-led','Social-led']);
-            populateList('projectList', projects.map(p => ({ v:p.id, l:(p.client || 'TBC') + ' — ' + p.title })));
-            populateList('clientDropdown', clients.map(c => ({ v:c, l:c })));
-            
-            renderStaffDropdown('salesLead', 'Sales');
-        }
-        
-        function populateList(id, items) {
-            document.getElementById(id).innerHTML = items.map(i => '<div class="dropdown-item" data-value="' + (i.v || i) + '">' + (i.l || i) + '</div>').join('');
-        }
-        
-        function renderStaffDropdown(typeId, filterTeam, containerId) {
-            const list = containerId ? document.getElementById(containerId) : document.getElementById(typeId + 'List');
-            const filtered = staff.filter(s => s.team === filterTeam).sort((a,b) => a.name.localeCompare(b.name));
-            
-            let html = '<div class="staff-search"><input type="text" placeholder="Search team..."></div>';
-            html += filtered.map(s => 
-                '<div class="staff-item" data-id="' + s.id + '">' +
-                    '<div class="staff-avatar" style="background:' + (TEAM_COLORS[filterTeam] || '#21A0D8') + '">' + s.firstName[0] + s.lastName[0] + '</div>' +
-                    '<div class="staff-name">' + s.name + '</div>' +
-                '</div>'
-            ).join('');
-            list.innerHTML = html;
-            
-            const input = list.querySelector('input');
-            input.onclick = e => e.stopPropagation();
-            input.oninput = e => {
-                const q = e.target.value.toLowerCase();
-                list.querySelectorAll('.staff-item').forEach(item => {
-                    const person = staff.find(s => s.id === item.dataset.id);
-                    item.style.display = person && person.name.toLowerCase().includes(q) ? 'flex' : 'none';
-                });
-            };
-        }
-        
-        function attachListeners() {
-            // Dropzone
-            const drop = document.getElementById('fileDropZone');
-            const fileIn = document.getElementById('fileInput');
-            drop.onclick = () => fileIn.click();
-            fileIn.onchange = e => handleFiles(e.target.files);
-            drop.ondragover = e => { e.preventDefault(); drop.style.borderColor = 'var(--dmg-blue)'; };
-            drop.ondragleave = () => { drop.style.borderColor = 'var(--border)'; };
-            drop.ondrop = e => { e.preventDefault(); drop.style.borderColor = 'var(--border)'; handleFiles(e.dataTransfer.files); };
-            
-            // Links
-            document.getElementById('addLinkBtn').onclick = () => {
-                const input = document.getElementById('linkInput');
-                if(input.value) {
-                    form.links.push(input.value);
-                    renderLinks();
-                    input.value = '';
-                }
-            };
-            
-            // Type selection
-            document.getElementById('typeGrid').addEventListener('click', e => {
-                const card = e.target.closest('.type-card'); if(!card) return;
-                form.type = card.dataset.id;
-                form.mode = form.type === 'ADD ASSETS' ? 'addAssets' : 'new';
-                document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                goToStep(form.mode === 'addAssets' ? '1b' : 2);
-            });
-            
-            // Client toggle
-            document.getElementById('clientToggle').addEventListener('click', e => {
-                const btn = e.target.closest('.client-toggle-btn'); if(!btn) return;
-                form.isNewClient = btn.dataset.type === 'new';
-                document.querySelectorAll('.client-toggle-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                document.getElementById('existingClientWrap').classList.toggle('hidden', form.isNewClient);
-                document.getElementById('newClientWrap').classList.toggle('hidden', !form.isNewClient);
-            });
-            
-            // Global click handler for dropdowns
-            document.body.addEventListener('click', e => {
-                const trigger = e.target.closest('.select-trigger, .picker-trigger');
-                const menu = e.target.closest('.select-dropdown, .staff-picker-body');
-                
-                if (trigger) {
-                    const dropdown = trigger.parentElement.querySelector('.select-dropdown, .staff-picker-body');
-                    const wasOpen = dropdown.classList.contains('show');
-                    closeAll();
-                    if (!wasOpen) {
-                        dropdown.classList.add('show');
-                        trigger.classList.add('open');
-                    }
-                } else if (menu) {
-                    const item = e.target.closest('.dropdown-item') || e.target.closest('.staff-item');
-                    if (item) {
-                        const picker = menu.parentElement;
-                        const triggerSpan = picker.querySelector('.select-trigger span, .picker-trigger span');
-                        const val = item.dataset.value || item.dataset.id;
-                        const label = item.textContent.trim();
-                        
-                        if (picker.id === 'projectPicker') { 
-                            form.selectedProject = projects.find(p => p.id === val);
-                            document.getElementById('continue1b').disabled = false;
-                        }
-                        else if (picker.id === 'clientPicker') form.client = val;
-                        else if (picker.id === 'verticalPicker') form.vertical = val;
-                        else if (picker.id === 'ownerPicker') form.owner = val;
-                        else if (picker.id === 'stagePicker') form.stage = val;
-                        else if (picker.id === 'priorityPicker') form.priority = val;
-                        else if (picker.id === 'salesLeadPicker') form.salesLead = staff.find(s => s.id === val);
-                        else if (picker.dataset.type) {
-                            const key = picker.dataset.type.toLowerCase() + 'Lead';
-                            form[key] = staff.find(s => s.id === val);
-                        }
-                        
-                        if (picker.classList.contains('staff-picker')) {
-                            const person = staff.find(s => s.id === val);
-                            if (person) triggerSpan.innerHTML = '<span class="selected-badge">' + person.name + '</span>';
-                        } else {
-                            triggerSpan.textContent = label;
-                            triggerSpan.classList.remove('placeholder');
-                        }
-                        closeAll();
-                    }
-                } else { closeAll(); }
-            });
-            
-            // Dynamic staff pickers
-            document.querySelectorAll('.add-detail-btn[data-team]').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const team = btn.dataset.team;
-                    if (document.getElementById('field-' + team)) return;
-                    addDetailPicker(team);
-                    btn.classList.add('hidden');
-                });
-            });
-            
-            // Navigation
-            document.getElementById('back1b').addEventListener('click', () => goToStep(1));
-            document.getElementById('continue1b').addEventListener('click', () => goToStep(2));
-            document.getElementById('back2').addEventListener('click', () => goToStep(form.mode === 'addAssets' ? '1b' : 1));
-            document.getElementById('continue2').addEventListener('click', () => goToStep(3));
-            document.getElementById('back3').addEventListener('click', () => goToStep(2));
-            document.getElementById('continue3').addEventListener('click', () => goToStep(4));
-            document.getElementById('back4').addEventListener('click', () => goToStep(3));
-            document.getElementById('resetBtn').addEventListener('click', () => location.reload());
-            document.getElementById('finalBtn').addEventListener('click', () => location.reload());
-            document.getElementById('addAssetBtn').addEventListener('click', addAsset);
-            document.getElementById('submitBtn').addEventListener('click', submit);
-        }
-        
-        function handleFiles(files) {
-            Array.from(files).forEach(f => {
-                if(f.size > 10*1024*1024) return alert('File too large (>10MB)');
-                form.files.push(f);
-            });
-            renderFiles();
-        }
-        
-        function renderFiles() {
-            document.getElementById('fileList').innerHTML = form.files.map((f, i) => 
-                '<div class="file-item"><span class="file-name">' + f.name + '</span><button class="file-remove" onclick="window.removeFile(' + i + ')">×</button></div>'
-            ).join('');
-        }
-        window.removeFile = i => { form.files.splice(i,1); renderFiles(); };
-        
-        function renderLinks() {
-            document.getElementById('linkList').innerHTML = form.links.map((l, i) => 
-                '<div class="file-item"><span class="file-name" style="color:var(--ink-sub);overflow:hidden;text-overflow:ellipsis;max-width:300px">' + l + '</span><button class="file-remove" onclick="window.removeLink(' + i + ')">×</button></div>'
-            ).join('');
-        }
-        window.removeLink = i => { form.links.splice(i,1); renderLinks(); };
-        
-        function addDetailPicker(team) {
-            const div = document.createElement('div');
-            div.className = 'field';
-            div.id = 'field-' + team;
-            div.innerHTML = 
-                '<label class="field-label">' + team + ' Lead</label>' +
-                '<div class="custom-select staff-picker" data-type="' + team + '">' +
-                    '<div class="picker-trigger"><span class="placeholder">Assign ' + team + ' Lead...</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></div>' +
-                    '<div class="staff-picker-body" id="' + team + 'List"></div>' +
-                '</div>';
-            document.getElementById('dynamicStaffContainer').appendChild(div);
-            renderStaffDropdown(null, team, team + 'List');
-        }
-        
-        function addAsset() {
-            const container = document.getElementById('assetsContainer');
-            const assetN = container.children.length + 1;
-            const div = document.createElement('div');
-            div.className = 'asset-entry';
-            div.innerHTML = 
-                '<button class="asset-remove">×</button>' +
-                '<div class="field"><label class="field-label">Deliverable ' + assetN + '</label><input class="field-input asset-title" placeholder="e.g. 7 x TT/IG Videos"></div>' +
-                '<div class="field-row">' +
-                    '<div class="field"><label class="field-label">Format</label><select class="field-input asset-format"><option>Headlines</option><option>Shows</option><option>TT/IG Video</option><option>Other</option></select></div>' +
-                    '<div class="field"><label class="field-label">Initial State</label><select class="field-input asset-status"><option>Briefed</option><option>In Progress</option></select></div>' +
-                '</div>';
-            container.appendChild(div);
-            div.querySelector('.asset-remove').onclick = () => div.remove();
-        }
-        
-        function closeAll() {
-            document.querySelectorAll('.select-dropdown.show, .staff-picker-body.show').forEach(m => m.classList.remove('show'));
-            document.querySelectorAll('.select-trigger.open, .picker-trigger.open').forEach(t => t.classList.remove('open'));
-        }
-        
-        function goToStep(s) {
-            ['step1','step1b','step2','step3','step4'].forEach(id => document.getElementById(id).classList.add('hidden'));
-            const target = s === '1b' ? 'step1b' : 'step' + s;
-            document.getElementById(target).classList.remove('hidden');
-            
-            step = s === '1b' ? 1.5 : parseInt(s);
-            const num = Math.floor(step);
-            document.querySelectorAll('.progress-step').forEach((el, i) => { 
-                el.classList.toggle('active', i+1 === num); 
-                el.classList.toggle('complete', i+1 < num); 
-            });
-            document.querySelectorAll('.progress-line').forEach((el, i) => {
-                el.classList.toggle('complete', i+1 < num);
-            });
-            
-            if(s === 2) {
-                document.getElementById('step2Title').textContent = form.mode === 'addAssets' ? 'Asset Details' : 'Identity';
-                document.getElementById('newProjectFields').classList.toggle('hidden', form.mode === 'addAssets');
-                document.getElementById('addAssetsFields').classList.toggle('hidden', form.mode !== 'addAssets');
-                if(form.mode === 'addAssets' && document.getElementById('assetsContainer').children.length === 0) addAsset();
+            } catch(e) {
+                console.warn('Could not fetch projects from API:', e);
             }
+
+            // Listen to design requests for capacity
+            onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), (snap) => {
+                designRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            });
+
+            // Listen to edit queue for capacity
+            onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "edit_queue"), (snap) => {
+                editQueue = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            });
+
+        } catch(e) {
+            console.error('Data fetch error:', e);
         }
-        
-        async function submit() {
-            const btn = document.getElementById('submitBtn'); 
-            btn.disabled = true; 
-            btn.textContent = 'Uploading...';
-            
-            try {
-                // 1. Upload files to Firebase Storage
-                const fileUrls = [];
-                for (const f of form.files) {
-                    const ref = storage.ref('briefs/' + Date.now() + '_' + f.name);
-                    await ref.put(f);
-                    const url = await ref.getDownloadURL();
-                    fileUrls.push(url);
-                }
-                
-                btn.textContent = 'Syncing to Notion...';
-                
-                // 2. Build payload for Notion
-                const payload = {
-                    TITLE: document.getElementById('titleInput').value || (form.selectedProject ? form.selectedProject.title : ''),
-                    "CLIENT / EXTERNAL PARTNER": form.isNewClient ? document.getElementById('newClientInput').value : (form.client || (form.selectedProject ? form.selectedProject.client : '')),
-                    "PROJECT TYPE": form.type,
-                    VERTICAL: form.vertical,
-                    "OWNER ROLE": form.owner,
-                    "DEAL STAGE": form.stage,
-                    "DEAL VALUE": parseFloat(document.getElementById('valueInput').value) || 0,
-                    "PRIORITY LEVEL": form.priority,
-                    "SALES LEAD(S)": form.salesLead ? form.salesLead.name : '',
-                    "CREATIVE LEAD(S)": form.creativeLead ? form.creativeLead.name : '',
-                    "PRODUCTION LEAD(S)": form.productionLead ? form.productionLead.name : '',
-                    "SOCIAL LEAD(S)": form.socialLead ? form.socialLead.name : '',
-                    "(SALES) NOTES": document.getElementById('notesInput').value,
-                    "(CLIENT) DUE DATE": document.getElementById('clientDate').value || null,
-                    "(INTERNAL) DUE DATE": document.getElementById('internalDate').value || null,
-                    "PROJECT STATUS": "Not started",
-                    "BRIEF": fileUrls.length > 0 ? fileUrls[0] : null, 
-                    "ASSET FILE(S)": form.links.length > 0 ? form.links.join('\n') : (fileUrls.length > 1 ? fileUrls.slice(1).join('\n') : null)
-                };
-                
-                // 3. POST to Cloud Run API → Notion
-                if(form.mode === 'addAssets') {
-                    const entries = document.querySelectorAll('.asset-entry');
-                    for(const entry of entries) {
-                        await fetch(API_URL + '/deliverables', {
-                            method: 'POST',
-                            headers: {'Content-Type':'application/json'},
-                            body: JSON.stringify({
-                                campaignId: form.selectedProject.id,
-                                title: entry.querySelector('.asset-title').value,
-                                format: entry.querySelector('.asset-format').value,
-                                status: entry.querySelector('.asset-status').value,
-                                deskState: 'With Creative'
-                            })
-                        });
-                    }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════════════════════
+    function getInitials(firstName, lastName) {
+        return `${(firstName || '?')[0]}${(lastName || '?')[0]}`.toUpperCase();
+    }
+
+    function getTeamColor(team) {
+        return TEAM_COLORS[team] || '#21A0D8';
+    }
+
+    function getCapacityStatus(utilization) {
+        if (utilization < 80) return 'available';
+        if (utilization < 100) return 'busy';
+        return 'full';
+    }
+
+    function getCapacityColor(status) {
+        if (status === 'available') return '#10B981';
+        if (status === 'busy') return '#F59E0B';
+        return '#EF4444';
+    }
+
+    function getWeeklyCapacity(person) {
+        return Number(person.weeklyCapacityPTS ?? person.weeklyCapacityPts ?? person.maxHoursPerWeek ?? 40);
+    }
+
+    function calculateDesignerWorkload(designerId) {
+        let effort = 0;
+        let tasks = 0;
+        designRequests.forEach(r => {
+            if (r.designerId === designerId && r.status !== 'Done') {
+                effort += r.effortPTS || EFFORT_POINTS.design[r.assetType] || 3;
+                tasks++;
+            }
+        });
+        return { effort, tasks };
+    }
+
+    function calculateEditorWorkload(editorName) {
+        let effort = 0;
+        let tasks = 0;
+        editQueue.forEach(item => {
+            if (item.editor === editorName && item.status !== 'Live' && item.status !== 'Approved') {
+                effort += item.effortPTS || EFFORT_POINTS.edit[item.videoComplexity] || 6;
+                tasks++;
+            }
+        });
+        return { effort, tasks };
+    }
+
+    function calculateEffortEstimate() {
+        if (intakeType === 'design' && formData.assetType) {
+            const base = EFFORT_POINTS.design[formData.assetType] || 3;
+            const seniority = formData.assignedDesigner?.seniority || 'Senior';
+            const multiplier = EFFORT_POINTS.seniorityMultiplier[seniority] || 1.0;
+            return (base * multiplier).toFixed(1);
+        }
+        if (intakeType === 'edit' && formData.videoComplexity) {
+            let base = EFFORT_POINTS.edit[formData.videoComplexity] || 6;
+            formData.editModifiers.forEach(mod => {
+                base += EFFORT_POINTS.modifiers[mod] || 0;
+            });
+            const seniority = formData.assignedEditor?.seniority || 'Senior';
+            const multiplier = EFFORT_POINTS.seniorityMultiplier[seniority] || 1.0;
+            return (base * multiplier).toFixed(1);
+        }
+        return null;
+    }
+
+    function showToast(message, type = '') {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `toast show ${type}`;
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // RENDER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+    function render() {
+        const content = document.getElementById('content');
+
+        switch(currentStep) {
+            case 'select':
+                content.innerHTML = renderSelectType();
+                break;
+            case 'brief':
+                content.innerHTML = renderBriefForm();
+                break;
+            case 'brief-details':
+                content.innerHTML = renderBriefDetails();
+                break;
+            case 'brief-context':
+                content.innerHTML = renderBriefContext();
+                break;
+            case 'design':
+                content.innerHTML = renderDesignForm();
+                break;
+            case 'edit':
+                content.innerHTML = renderEditForm();
+                break;
+            case 'success':
+                content.innerHTML = renderSuccess();
+                break;
+        }
+
+        attachEventListeners();
+    }
+
+    function renderSelectType() {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-step">Step 1</div>
+                    <div class="card-title">What do you need?</div>
+                    <div class="card-desc">Select the type of request to get started</div>
+                </div>
+                <div class="card-body">
+                    <div class="intake-grid">
+                        <div class="intake-option" data-type="brief">
+                            <div class="intake-icon" style="background: var(--dmg-blue-soft);">📋</div>
+                            <div class="intake-content">
+                                <div class="intake-label">Log a New Brief</div>
+                                <div class="intake-desc">Commercial project or campaign from Sales. Creates entry in Master Ledger.</div>
+                            </div>
+                            <div class="intake-arrow">→</div>
+                        </div>
+
+                        <div class="intake-option" data-type="design">
+                            <div class="intake-icon" style="background: var(--creative-soft);">🎨</div>
+                            <div class="intake-content">
+                                <div class="intake-label">Request Design Work</div>
+                                <div class="intake-desc">Thumbnails, graphics, or visual assets. Goes to Design team queue.</div>
+                            </div>
+                            <div class="intake-arrow">→</div>
+                        </div>
+
+                        <div class="intake-option" data-type="edit">
+                            <div class="intake-icon" style="background: var(--editorial-soft);">🎬</div>
+                            <div class="intake-content">
+                                <div class="intake-label">Request Video Edit</div>
+                                <div class="intake-desc">Video editing or post-production work. Goes to Editor queue.</div>
+                            </div>
+                            <div class="intake-arrow">→</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderCapacityPreview(team) {
+        const members = team === 'design' ? designers : editors;
+        if (members.length === 0) return '';
+
+        return `
+            <div class="capacity-preview">
+                <div class="capacity-header">
+                    <div class="capacity-title">${team === 'design' ? 'Designer' : 'Editor'} Availability</div>
+                    <div class="capacity-legend">
+                        <div class="capacity-dot available"><span></span> Available</div>
+                        <div class="capacity-dot busy"><span></span> Busy</div>
+                        <div class="capacity-dot full"><span></span> Full</div>
+                    </div>
+                </div>
+                <div class="capacity-list">
+                    ${members.slice(0, 6).map(m => {
+                        const workload = team === 'design'
+                            ? calculateDesignerWorkload(m.id)
+                            : calculateEditorWorkload(`${m.firstName} ${m.lastName}`);
+                        const capacity = getWeeklyCapacity(m);
+                        const utilization = capacity > 0 ? (workload.effort / capacity) * 100 : 0;
+                        const status = getCapacityStatus(utilization);
+                        const color = getCapacityColor(status);
+
+                        return `
+                            <div class="capacity-member">
+                                <div class="capacity-avatar" style="background: ${getTeamColor(m.team)}">${getInitials(m.firstName, m.lastName)}</div>
+                                <div class="capacity-info">
+                                    <div class="capacity-name">${m.firstName}</div>
+                                    <div class="capacity-bar">
+                                        <div class="capacity-fill" style="width: ${Math.min(utilization, 100)}%; background: ${color}"></div>
+                                    </div>
+                                </div>
+                                <div class="capacity-status" style="background: ${color}"></div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderDesignForm() {
+        const effortEstimate = calculateEffortEstimate();
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-step">Design Request</div>
+                    <div class="card-title">What do you need designed?</div>
+                    <div class="card-desc">This will be added to the Design team queue</div>
+                </div>
+                <div class="card-body">
+                    ${renderCapacityPreview('design')}
+
+                    <div class="field">
+                        <label class="field-label">Asset Type <span class="required">*</span></label>
+                        <div class="asset-pills">
+                            ${Object.keys(EFFORT_POINTS.design).map(type => `
+                                <div class="asset-pill ${formData.assetType === type ? 'selected' : ''}" data-type="${type}">${type}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Title / Headline <span class="required">*</span></label>
+                        <input type="text" class="field-input" id="designTitle" placeholder="e.g. I ATE A SHARK thumbnail" value="${formData.title}">
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Link to Project (Optional)</label>
+                        <div class="custom-select" id="projectPicker">
+                            <div class="select-trigger">
+                                <span class="${formData.linkedProject ? '' : 'placeholder'}">${formData.linkedProject ? formData.linkedProject.title : 'Link to existing project...'}</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                            <div class="select-dropdown" id="projectDropdown">
+                                ${projects.slice(0, 20).map(p => `
+                                    <div class="dropdown-item" data-id="${p.id}" data-title="${p.title}">${p.client || 'TBC'} — ${p.title}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Deadline <span class="required">*</span></label>
+                            <input type="date" class="field-input" id="designDeadline" value="${formData.deadline}">
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Assign to (Optional)</label>
+                            <div class="custom-select" id="designerPicker">
+                                <div class="select-trigger">
+                                    <span class="${formData.assignedDesigner ? '' : 'placeholder'}">${formData.assignedDesigner ? `${formData.assignedDesigner.firstName} ${formData.assignedDesigner.lastName}` : 'Auto-assign based on capacity'}</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="select-dropdown" id="designerDropdown">
+                                    <div class="staff-search"><input type="text" placeholder="Search designers..."></div>
+                                    ${designers.map(d => `
+                                        <div class="staff-item" data-id="${d.id}">
+                                            <div class="staff-avatar" style="background: ${getTeamColor(d.team)}">${getInitials(d.firstName, d.lastName)}</div>
+                                            <div>
+                                                <div class="staff-name">${d.firstName} ${d.lastName}</div>
+                                                <div class="staff-role">${d.role || 'Designer'}</div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Brief / Notes</label>
+                        <textarea class="field-input" id="designBrief" placeholder="Describe what you need...">${formData.designBrief}</textarea>
+                    </div>
+
+                    ${effortEstimate ? `
+                        <div class="effort-box">
+                            <div class="effort-title">Estimated Effort</div>
+                            <div class="effort-value">${effortEstimate} <span>PTS</span></div>
+                            <div class="effort-breakdown">Based on ${formData.assetType}${formData.assignedDesigner ? ` + ${formData.assignedDesigner.seniority || 'Senior'} level` : ''}</div>
+                        </div>
+                    ` : ''}
+
+                    <div class="btn-row">
+                        <button class="btn btn-back" id="backBtn">← Back</button>
+                        <button class="btn btn-submit" id="submitDesign" ${!formData.assetType || !formData.deadline ? 'disabled' : ''}>Submit Request</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderEditForm() {
+        const effortEstimate = calculateEffortEstimate();
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-step">Edit Request</div>
+                    <div class="card-title">What video work do you need?</div>
+                    <div class="card-desc">This will be added to the Editor queue</div>
+                </div>
+                <div class="card-body">
+                    ${renderCapacityPreview('edit')}
+
+                    <div class="field">
+                        <label class="field-label">Video Complexity <span class="required">*</span></label>
+                        <div class="asset-pills">
+                            ${Object.keys(EFFORT_POINTS.edit).map(type => `
+                                <div class="asset-pill ${formData.videoComplexity === type ? 'selected' : ''}" data-complexity="${type}">${type}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Modifiers (Select all that apply)</label>
+                        <div class="asset-pills">
+                            ${['Motion Graphics', 'Stock Footage Search', 'Voiceover Recording', 'Multi-Platform Versions', 'Client Amends', 'Rush (under 48hrs)'].map(mod => `
+                                <div class="asset-pill ${formData.editModifiers.includes(mod) ? 'selected' : ''}" data-modifier="${mod}">${mod}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Title / Headline <span class="required">*</span></label>
+                        <input type="text" class="field-input" id="editTitle" placeholder="e.g. I ATE A SHARK edit" value="${formData.title}">
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Link to Project (Optional)</label>
+                        <div class="custom-select" id="projectPicker">
+                            <div class="select-trigger">
+                                <span class="${formData.linkedProject ? '' : 'placeholder'}">${formData.linkedProject ? formData.linkedProject.title : 'Link to existing project...'}</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                            <div class="select-dropdown" id="projectDropdown">
+                                ${projects.slice(0, 20).map(p => `
+                                    <div class="dropdown-item" data-id="${p.id}" data-title="${p.title}">${p.client || 'TBC'} — ${p.title}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Deadline <span class="required">*</span></label>
+                            <input type="date" class="field-input" id="editDeadline" value="${formData.deadline}">
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Assign to (Optional)</label>
+                            <div class="custom-select" id="editorPicker">
+                                <div class="select-trigger">
+                                    <span class="${formData.assignedEditor ? '' : 'placeholder'}">${formData.assignedEditor ? `${formData.assignedEditor.firstName} ${formData.assignedEditor.lastName}` : 'Auto-assign based on capacity'}</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="select-dropdown" id="editorDropdown">
+                                    <div class="staff-search"><input type="text" placeholder="Search editors..."></div>
+                                    ${editors.map(e => `
+                                        <div class="staff-item" data-id="${e.id}">
+                                            <div class="staff-avatar" style="background: ${getTeamColor(e.team)}">${getInitials(e.firstName, e.lastName)}</div>
+                                            <div>
+                                                <div class="staff-name">${e.firstName} ${e.lastName}</div>
+                                                <div class="staff-role">${e.role || 'Editor'}</div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Brief / Notes</label>
+                        <textarea class="field-input" id="editBrief" placeholder="Describe what you need...">${formData.editBrief}</textarea>
+                    </div>
+
+                    ${effortEstimate ? `
+                        <div class="effort-box">
+                            <div class="effort-title">Estimated Effort</div>
+                            <div class="effort-value">${effortEstimate} <span>PTS</span></div>
+                            <div class="effort-breakdown">Based on ${formData.videoComplexity}${formData.editModifiers.length > 0 ? ` + ${formData.editModifiers.length} modifier(s)` : ''}</div>
+                        </div>
+                    ` : ''}
+
+                    <div class="btn-row">
+                        <button class="btn btn-back" id="backBtn">← Back</button>
+                        <button class="btn btn-submit" id="submitEdit" ${!formData.videoComplexity || !formData.deadline ? 'disabled' : ''}>Submit Request</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderBriefForm() {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-step">Brief — Step 1 of 3</div>
+                    <div class="card-title">Project Identity</div>
+                    <div class="card-desc">Basic information about this project</div>
+                </div>
+                <div class="card-body">
+                    <div class="field">
+                        <label class="field-label">Project Title <span class="required">*</span></label>
+                        <input type="text" class="field-input" id="briefTitle" placeholder="Campaign or brief name..." value="${formData.title}">
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Client / Brand <span class="required">*</span></label>
+                        <div class="custom-select" id="clientPicker">
+                            <div class="select-trigger">
+                                <span class="${formData.client ? '' : 'placeholder'}">${formData.client || 'Select or type new client...'}</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                            <div class="select-dropdown" id="clientDropdown">
+                                <div class="staff-search"><input type="text" placeholder="Search or add new..." id="clientSearch"></div>
+                                ${clients.map(c => `
+                                    <div class="dropdown-item" data-value="${c}">${c}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Vertical</label>
+                            <div class="custom-select" id="verticalPicker">
+                                <div class="select-trigger">
+                                    <span class="${formData.vertical ? '' : 'placeholder'}">${formData.vertical || 'Select...'}</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="select-dropdown" id="verticalDropdown">
+                                    ${['Commercial', 'Social', 'Editorial', 'Shows', 'Distribution', 'Hybrid'].map(v => `
+                                        <div class="dropdown-item" data-value="${v}">${v}</div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Owner Role</label>
+                            <div class="custom-select" id="ownerPicker">
+                                <div class="select-trigger">
+                                    <span class="${formData.ownerRole ? '' : 'placeholder'}">${formData.ownerRole || 'Select...'}</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="select-dropdown" id="ownerDropdown">
+                                    ${['Sales-led', 'Editorial-led', 'Production-led', 'Social-led'].map(o => `
+                                        <div class="dropdown-item" data-value="${o}">${o}</div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button class="btn btn-back" id="backBtn">← Back</button>
+                        <button class="btn btn-primary" id="continueBtn" ${!formData.title ? 'disabled' : ''}>Continue →</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderBriefDetails() {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-step">Brief — Step 2 of 3</div>
+                    <div class="card-title">Commercials & Timeline</div>
+                    <div class="card-desc">Deal details and key dates</div>
+                </div>
+                <div class="card-body">
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Deal Stage <span class="required">*</span></label>
+                            <div class="custom-select" id="stagePicker">
+                                <div class="select-trigger">
+                                    <span class="${formData.dealStage ? '' : 'placeholder'}">${formData.dealStage || 'Select...'}</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="select-dropdown" id="stageDropdown">
+                                    ${['Brief Received', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete', 'Closed Lost'].map(s => `
+                                        <div class="dropdown-item" data-value="${s}">${s}</div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Deal Value (£)</label>
+                            <input type="number" class="field-input" id="dealValue" placeholder="0" value="${formData.dealValue}">
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Priority</label>
+                        <div class="asset-pills">
+                            ${['Low', 'Standard', 'High'].map(p => `
+                                <div class="asset-pill ${formData.priority === p ? 'selected' : ''}" data-priority="${p}">${p}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Client Due Date</label>
+                            <input type="date" class="field-input" id="clientDueDate" value="${formData.clientDueDate}">
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Internal Due Date</label>
+                            <input type="date" class="field-input" id="internalDueDate" value="${formData.internalDueDate}">
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button class="btn btn-back" id="backBtn">← Back</button>
+                        <button class="btn btn-primary" id="continueBtn" ${!formData.dealStage ? 'disabled' : ''}>Continue →</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderBriefContext() {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-step">Brief — Step 3 of 3</div>
+                    <div class="card-title">Team & Context</div>
+                    <div class="card-desc">Assign leads and add any notes</div>
+                </div>
+                <div class="card-body">
+                    <div class="field">
+                        <label class="field-label">Sales Lead</label>
+                        <div class="custom-select" id="salesLeadPicker">
+                            <div class="select-trigger">
+                                <span class="${formData.salesLead ? '' : 'placeholder'}">${formData.salesLead ? `${formData.salesLead.firstName} ${formData.salesLead.lastName}` : 'Assign sales lead...'}</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                            <div class="select-dropdown" id="salesLeadDropdown">
+                                <div class="staff-search"><input type="text" placeholder="Search..."></div>
+                                ${staff.filter(s => s.team === 'Sales').map(s => `
+                                    <div class="staff-item" data-id="${s.id}" data-lead="sales">
+                                        <div class="staff-avatar" style="background: ${getTeamColor(s.team)}">${getInitials(s.firstName, s.lastName)}</div>
+                                        <div>
+                                            <div class="staff-name">${s.firstName} ${s.lastName}</div>
+                                            <div class="staff-role">${s.role || 'Sales'}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Creative Lead</label>
+                            <div class="custom-select" id="creativeLeadPicker">
+                                <div class="select-trigger">
+                                    <span class="${formData.creativeLead ? '' : 'placeholder'}">${formData.creativeLead ? `${formData.creativeLead.firstName} ${formData.creativeLead.lastName}` : 'Optional...'}</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="select-dropdown" id="creativeLeadDropdown">
+                                    ${staff.filter(s => s.team === 'Creative').map(s => `
+                                        <div class="staff-item" data-id="${s.id}" data-lead="creative">
+                                            <div class="staff-avatar" style="background: ${getTeamColor(s.team)}">${getInitials(s.firstName, s.lastName)}</div>
+                                            <div class="staff-name">${s.firstName} ${s.lastName}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Production Lead</label>
+                            <div class="custom-select" id="productionLeadPicker">
+                                <div class="select-trigger">
+                                    <span class="${formData.productionLead ? '' : 'placeholder'}">${formData.productionLead ? `${formData.productionLead.firstName} ${formData.productionLead.lastName}` : 'Optional...'}</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                                </div>
+                                <div class="select-dropdown" id="productionLeadDropdown">
+                                    ${staff.filter(s => s.team === 'Production').map(s => `
+                                        <div class="staff-item" data-id="${s.id}" data-lead="production">
+                                            <div class="staff-avatar" style="background: ${getTeamColor(s.team)}">${getInitials(s.firstName, s.lastName)}</div>
+                                            <div class="staff-name">${s.firstName} ${s.lastName}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Notes & Context</label>
+                        <textarea class="field-input" id="briefNotes" placeholder="Any important details, blockers, or context...">${formData.notes}</textarea>
+                    </div>
+
+                    <div class="preview-panel">
+                        <div class="preview-title">Summary</div>
+                        <div class="preview-item">
+                            <span class="preview-label">Project</span>
+                            <span class="preview-value">${formData.title || '—'}</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="preview-label">Client</span>
+                            <span class="preview-value">${formData.client || '—'}</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="preview-label">Deal Stage</span>
+                            <span class="preview-value">${formData.dealStage || '—'}</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="preview-label">Value</span>
+                            <span class="preview-value">${formData.dealValue ? '£' + Number(formData.dealValue).toLocaleString() : '—'}</span>
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button class="btn btn-back" id="backBtn">← Back</button>
+                        <button class="btn btn-submit" id="submitBrief">Sync to Ledger ✓</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderSuccess() {
+        const typeLabels = {
+            'brief': 'Brief synced to Master Ledger',
+            'design': 'Design request added to queue',
+            'edit': 'Edit request added to queue'
+        };
+
+        return `
+            <div class="card">
+                <div class="card-body">
+                    <div class="success-screen">
+                        <div class="success-icon">✓</div>
+                        <div class="success-title">Request Submitted</div>
+                        <div class="success-desc">${typeLabels[intakeType] || 'Your request has been submitted'}</div>
+                        <button class="btn btn-primary" id="newRequestBtn" style="width: auto; padding: 12px 32px;">New Request</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EVENT LISTENERS
+    // ═══════════════════════════════════════════════════════════════════════════
+    function attachEventListeners() {
+        // Reset button
+        document.getElementById('resetBtn')?.addEventListener('click', () => {
+            location.reload();
+        });
+
+        // Intake type selection
+        document.querySelectorAll('.intake-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                intakeType = opt.dataset.type;
+                currentStep = intakeType;
+                render();
+            });
+        });
+
+        // Back button
+        document.getElementById('backBtn')?.addEventListener('click', () => {
+            if (currentStep === 'brief') currentStep = 'select';
+            else if (currentStep === 'brief-details') currentStep = 'brief';
+            else if (currentStep === 'brief-context') currentStep = 'brief-details';
+            else if (currentStep === 'design' || currentStep === 'edit') currentStep = 'select';
+            render();
+        });
+
+        // Continue button
+        document.getElementById('continueBtn')?.addEventListener('click', () => {
+            if (currentStep === 'brief') currentStep = 'brief-details';
+            else if (currentStep === 'brief-details') currentStep = 'brief-context';
+            render();
+        });
+
+        // New request button
+        document.getElementById('newRequestBtn')?.addEventListener('click', () => {
+            location.reload();
+        });
+
+        // Asset type pills (Design)
+        document.querySelectorAll('.asset-pill[data-type]').forEach(pill => {
+            pill.addEventListener('click', () => {
+                formData.assetType = pill.dataset.type;
+                render();
+            });
+        });
+
+        // Video complexity pills (Edit)
+        document.querySelectorAll('.asset-pill[data-complexity]').forEach(pill => {
+            pill.addEventListener('click', () => {
+                formData.videoComplexity = pill.dataset.complexity;
+                render();
+            });
+        });
+
+        // Edit modifiers
+        document.querySelectorAll('.asset-pill[data-modifier]').forEach(pill => {
+            pill.addEventListener('click', () => {
+                const mod = pill.dataset.modifier;
+                if (formData.editModifiers.includes(mod)) {
+                    formData.editModifiers = formData.editModifiers.filter(m => m !== mod);
                 } else {
-                    const res = await fetch(API_URL + '/projects', { 
-                        method: 'POST', 
-                        headers: {'Content-Type':'application/json'}, 
-                        body: JSON.stringify(payload) 
-                    });
-                    if (!res.ok) throw new Error('API error');
+                    formData.editModifiers.push(mod);
                 }
-                
-                // 4. Success!
-                document.getElementById('step4').classList.add('hidden');
-                document.getElementById('successScreen').classList.remove('hidden');
-                
-            } catch(e) { 
-                console.error('Submit failed:', e);
-                alert('Sync Failed. Please try again.'); 
-                btn.disabled = false; 
-                btn.textContent = 'Retry'; 
+                render();
+            });
+        });
+
+        // Priority pills
+        document.querySelectorAll('.asset-pill[data-priority]').forEach(pill => {
+            pill.addEventListener('click', () => {
+                formData.priority = pill.dataset.priority;
+                render();
+            });
+        });
+
+        // Form inputs
+        document.getElementById('designTitle')?.addEventListener('input', (e) => {
+            formData.title = e.target.value;
+        });
+        document.getElementById('designDeadline')?.addEventListener('change', (e) => {
+            formData.deadline = e.target.value;
+            render();
+        });
+        document.getElementById('designBrief')?.addEventListener('input', (e) => {
+            formData.designBrief = e.target.value;
+        });
+        document.getElementById('editTitle')?.addEventListener('input', (e) => {
+            formData.title = e.target.value;
+        });
+        document.getElementById('editDeadline')?.addEventListener('change', (e) => {
+            formData.deadline = e.target.value;
+            render();
+        });
+        document.getElementById('editBrief')?.addEventListener('input', (e) => {
+            formData.editBrief = e.target.value;
+        });
+        document.getElementById('briefTitle')?.addEventListener('input', (e) => {
+            formData.title = e.target.value;
+            const btn = document.getElementById('continueBtn');
+            if (btn) btn.disabled = !e.target.value;
+        });
+        document.getElementById('dealValue')?.addEventListener('input', (e) => {
+            formData.dealValue = e.target.value;
+        });
+        document.getElementById('clientDueDate')?.addEventListener('change', (e) => {
+            formData.clientDueDate = e.target.value;
+        });
+        document.getElementById('internalDueDate')?.addEventListener('change', (e) => {
+            formData.internalDueDate = e.target.value;
+        });
+        document.getElementById('briefNotes')?.addEventListener('input', (e) => {
+            formData.notes = e.target.value;
+        });
+
+        // Custom select dropdowns
+        setupCustomSelect('clientPicker', 'clientDropdown', (value) => {
+            formData.client = value;
+            render();
+        });
+        setupCustomSelect('verticalPicker', 'verticalDropdown', (value) => {
+            formData.vertical = value;
+            render();
+        });
+        setupCustomSelect('ownerPicker', 'ownerDropdown', (value) => {
+            formData.ownerRole = value;
+            render();
+        });
+        setupCustomSelect('stagePicker', 'stageDropdown', (value) => {
+            formData.dealStage = value;
+            render();
+        });
+        setupCustomSelect('projectPicker', 'projectDropdown', (value, title) => {
+            formData.linkedProject = { id: value, title: title };
+            render();
+        });
+
+        // Staff pickers
+        setupStaffPicker('designerPicker', 'designerDropdown', designers, (person) => {
+            formData.assignedDesigner = person;
+            render();
+        });
+        setupStaffPicker('editorPicker', 'editorDropdown', editors, (person) => {
+            formData.assignedEditor = person;
+            render();
+        });
+        setupStaffPicker('salesLeadPicker', 'salesLeadDropdown', staff.filter(s => s.team === 'Sales'), (person) => {
+            formData.salesLead = person;
+            render();
+        });
+        setupStaffPicker('creativeLeadPicker', 'creativeLeadDropdown', staff.filter(s => s.team === 'Creative'), (person) => {
+            formData.creativeLead = person;
+            render();
+        });
+        setupStaffPicker('productionLeadPicker', 'productionLeadDropdown', staff.filter(s => s.team === 'Production'), (person) => {
+            formData.productionLead = person;
+            render();
+        });
+
+        // Submit buttons
+        document.getElementById('submitDesign')?.addEventListener('click', submitDesignRequest);
+        document.getElementById('submitEdit')?.addEventListener('click', submitEditRequest);
+        document.getElementById('submitBrief')?.addEventListener('click', submitBrief);
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.custom-select')) {
+                document.querySelectorAll('.select-dropdown.show').forEach(d => d.classList.remove('show'));
+                document.querySelectorAll('.select-trigger.open').forEach(t => t.classList.remove('open'));
             }
+        });
+    }
+
+    function setupCustomSelect(pickerId, dropdownId, onSelect) {
+        const picker = document.getElementById(pickerId);
+        const dropdown = document.getElementById(dropdownId);
+        if (!picker || !dropdown) return;
+
+        const trigger = picker.querySelector('.select-trigger');
+        trigger?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = dropdown.classList.contains('show');
+            document.querySelectorAll('.select-dropdown.show').forEach(d => d.classList.remove('show'));
+            document.querySelectorAll('.select-trigger.open').forEach(t => t.classList.remove('open'));
+            if (!isOpen) {
+                dropdown.classList.add('show');
+                trigger.classList.add('open');
+            }
+        });
+
+        dropdown.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const value = item.dataset.value || item.dataset.id;
+                const title = item.dataset.title || item.textContent.trim();
+                onSelect(value, title);
+                dropdown.classList.remove('show');
+                trigger.classList.remove('open');
+            });
+        });
+    }
+
+    function setupStaffPicker(pickerId, dropdownId, staffList, onSelect) {
+        const picker = document.getElementById(pickerId);
+        const dropdown = document.getElementById(dropdownId);
+        if (!picker || !dropdown) return;
+
+        const trigger = picker.querySelector('.select-trigger');
+        trigger?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = dropdown.classList.contains('show');
+            document.querySelectorAll('.select-dropdown.show').forEach(d => d.classList.remove('show'));
+            document.querySelectorAll('.select-trigger.open').forEach(t => t.classList.remove('open'));
+            if (!isOpen) {
+                dropdown.classList.add('show');
+                trigger.classList.add('open');
+            }
+        });
+
+        const searchInput = dropdown.querySelector('.staff-search input');
+        searchInput?.addEventListener('click', (e) => e.stopPropagation());
+        searchInput?.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase();
+            dropdown.querySelectorAll('.staff-item').forEach(item => {
+                const person = staffList.find(s => s.id === item.dataset.id);
+                const name = person ? `${person.firstName} ${person.lastName}`.toLowerCase() : '';
+                item.style.display = name.includes(q) ? 'flex' : 'none';
+            });
+        });
+
+        dropdown.querySelectorAll('.staff-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const person = staffList.find(s => s.id === item.dataset.id);
+                if (person) onSelect(person);
+                dropdown.classList.remove('show');
+                trigger.classList.remove('open');
+            });
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SUBMIT FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+    async function submitDesignRequest() {
+        const btn = document.getElementById('submitDesign');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        try {
+            const effortEstimate = calculateEffortEstimate();
+
+            await addDoc(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), {
+                title: formData.title,
+                headline: formData.title,
+                assetType: formData.assetType,
+                deadline: formData.deadline,
+                brief: formData.designBrief,
+                designerId: formData.assignedDesigner?.id || null,
+                designerName: formData.assignedDesigner ? `${formData.assignedDesigner.firstName} ${formData.assignedDesigner.lastName}` : null,
+                linkedProjectId: formData.linkedProject?.id || null,
+                linkedProjectTitle: formData.linkedProject?.title || null,
+                effortPTS: effortEstimate ? parseFloat(effortEstimate) : null,
+                status: 'Not Started',
+                source: 'intake_hub',
+                createdAt: serverTimestamp()
+            });
+
+            showToast('Design request submitted!', 'success');
+            currentStep = 'success';
+            render();
+        } catch (error) {
+            console.error('Submit error:', error);
+            showToast('Failed to submit: ' + error.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Submit Request';
         }
-        
-        init();
-    })();
-    </script>
+    }
+
+    async function submitEditRequest() {
+        const btn = document.getElementById('submitEdit');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        try {
+            const effortEstimate = calculateEffortEstimate();
+
+            await addDoc(collection(db, "artifacts", APP_ID, "public", "data", "edit_queue"), {
+                title: formData.title,
+                videoComplexity: formData.videoComplexity,
+                editModifiers: formData.editModifiers,
+                deadline: formData.deadline,
+                dueDate: formData.deadline,
+                brief: formData.editBrief,
+                editor: formData.assignedEditor ? `${formData.assignedEditor.firstName} ${formData.assignedEditor.lastName}` : null,
+                editorId: formData.assignedEditor?.id || null,
+                linkedProjectId: formData.linkedProject?.id || null,
+                linkedProjectTitle: formData.linkedProject?.title || null,
+                effortPTS: effortEstimate ? parseFloat(effortEstimate) : null,
+                status: 'Not Started',
+                source: 'intake_hub',
+                createdAt: serverTimestamp()
+            });
+
+            showToast('Edit request submitted!', 'success');
+            currentStep = 'success';
+            render();
+        } catch (error) {
+            console.error('Submit error:', error);
+            showToast('Failed to submit: ' + error.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Submit Request';
+        }
+    }
+
+    async function submitBrief() {
+        const btn = document.getElementById('submitBrief');
+        btn.disabled = true;
+        btn.textContent = 'Syncing...';
+
+        try {
+            const payload = {
+                TITLE: formData.title,
+                "CLIENT / EXTERNAL PARTNER": formData.client,
+                VERTICAL: formData.vertical,
+                "OWNER ROLE": formData.ownerRole,
+                "DEAL STAGE": formData.dealStage,
+                "DEAL VALUE": parseFloat(formData.dealValue) || 0,
+                "PRIORITY LEVEL": formData.priority,
+                "SALES LEAD(S)": formData.salesLead ? `${formData.salesLead.firstName} ${formData.salesLead.lastName}` : '',
+                "CREATIVE LEAD(S)": formData.creativeLead ? `${formData.creativeLead.firstName} ${formData.creativeLead.lastName}` : '',
+                "PRODUCTION LEAD(S)": formData.productionLead ? `${formData.productionLead.firstName} ${formData.productionLead.lastName}` : '',
+                "(SALES) NOTES": formData.notes,
+                "(CLIENT) DUE DATE": formData.clientDueDate || null,
+                "(INTERNAL) DUE DATE": formData.internalDueDate || null,
+                "PROJECT STATUS": "Not started"
+            };
+
+            const res = await fetch(API_URL + '/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error('API error');
+
+            showToast('Brief synced to Master Ledger!', 'success');
+            currentStep = 'success';
+            render();
+        } catch (error) {
+            console.error('Submit error:', error);
+            showToast('Failed to sync: ' + error.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Sync to Ledger ✓';
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INITIALIZE
+    // ═══════════════════════════════════════════════════════════════════════════
+    signInAnonymously(auth).then(async () => {
+        await fetchData();
+        render();
+    }).catch(err => {
+        console.error('Auth error:', err);
+        document.getElementById('content').innerHTML = `
+            <div class="card">
+                <div class="card-body" style="text-align: center; padding: 40px;">
+                    <div style="font-size: 24px; margin-bottom: 12px;">⚠️</div>
+                    <div style="font-weight: 700; margin-bottom: 8px;">Connection Error</div>
+                    <div style="font-size: 12px; color: var(--ink-sub);">Unable to connect. Please refresh.</div>
+                </div>
+            </div>
+        `;
+    });
+</script>
+
 </body>
 </html>
