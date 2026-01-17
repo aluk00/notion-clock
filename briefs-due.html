@@ -132,6 +132,49 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.03);
         }
 
+        /* Slide-off animation for completed items */
+        .card.completing {
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Complete checkbox */
+        .complete-checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            background: var(--white);
+        }
+        .complete-checkbox:hover {
+            border-color: var(--production-green);
+            background: rgba(67, 176, 73, 0.1);
+        }
+        .complete-checkbox.completing {
+            border-color: var(--production-green);
+            background: var(--production-green);
+        }
+        .complete-checkbox svg {
+            width: 12px;
+            height: 12px;
+            stroke: white;
+            stroke-width: 3;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s ease;
+        }
+        .complete-checkbox.completing svg {
+            opacity: 1;
+            transform: scale(1);
+        }
+
         /* Source Indicator Bar */
         .card::before {
             content: '';
@@ -413,9 +456,12 @@
                 const day = item.dueDate.getDate();
                 const month = item.dueDate.toLocaleDateString('en-GB', { month: 'short' });
                 const isOverdue = item.dueDate < new Date().setHours(0,0,0,0);
-                
+
                 return `
-                <div class="card source-${item.source} ${isOverdue ? 'overdue' : ''}" onclick="openEditSheet('${item.id}')">
+                <div class="card source-${item.source} ${isOverdue ? 'overdue' : ''}" id="card-${item.id}" onclick="openEditSheet('${item.id}')">
+                    <div class="complete-checkbox" onclick="event.stopPropagation(); markComplete('${item.id}', '${item.source}')" title="Mark as complete">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
                     <div class="date-badge">
                         <span class="date-day">${day}</span>
                         <span class="date-month">${month}</span>
@@ -529,11 +575,29 @@
 
             try {
                 if (source === 'notion') {
-                    // Logic: Save link to `brief_links` collection
+                    // Logic: Save link to both Firebase (backup) AND Notion (master)
+
+                    // Save to Firebase as backup/cache
                     await db.collection(LINKS_PATH).doc(id).set({
                         url: linkVal,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true });
+
+                    // Also update Notion via Cloud Run API if link has changed
+                    if (linkVal) {
+                        try {
+                            const notionRes = await fetch(`${API_URL}/projects/${id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ creativeResponseLink: linkVal })
+                            });
+                            if (!notionRes.ok) {
+                                console.warn('Notion update failed, but Firebase saved');
+                            }
+                        } catch (notionErr) {
+                            console.warn('Notion update error:', notionErr);
+                        }
+                    }
                 } else {
                     // Logic: Save/Update Brief in `briefs_due`
                     const payload = {
@@ -562,6 +626,52 @@
             btn.textContent = originalText;
             btn.disabled = false;
         });
+
+        // --- 7. MARK COMPLETE LOGIC ---
+        async function markComplete(id, source) {
+            const card = document.getElementById(`card-${id}`);
+            const checkbox = card?.querySelector('.complete-checkbox');
+            if (!card || !checkbox) return;
+
+            // Visual feedback
+            checkbox.classList.add('completing');
+
+            try {
+                if (source === 'notion') {
+                    // Update Notion project via Cloud Run API
+                    const res = await fetch(`${API_URL}/projects/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ dealStage: 'Campaign Complete' })
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || `HTTP ${res.status}`);
+                    }
+
+                    const data = await res.json();
+                    if (!data.success) throw new Error(data.error || 'Update failed');
+                } else {
+                    // Delete Firebase brief
+                    await db.collection(BRIEFS_PATH).doc(id).delete();
+                }
+
+                // Slide off animation
+                card.classList.add('completing');
+
+                // Remove from local data and re-render after animation
+                setTimeout(() => {
+                    globalData = globalData.filter(item => item.id !== id);
+                    render();
+                }, 400);
+
+            } catch (err) {
+                console.error('Complete error:', err);
+                checkbox.classList.remove('completing');
+                alert('Error marking complete: ' + err.message);
+            }
+        }
 
     </script>
 </body>
