@@ -324,17 +324,15 @@
     const auth = getAuth(app);
     const APP_ID = "dmg-command-centre-native";
 
-    // Effort scores in hours per task type
+    // Effort points fallback per task type when no effortPTS is provided
     const EFFORT = {
-        'Thumbnail': 0.5,
-        'Headline': 0.5,
-        'Swipe': 1,
-        'Deck': 2,
-        'Template': 1.5,
-        'Other': 1
+        'Thumbnail': 4,
+        'Headline': 2,
+        'Swipe': 2,
+        'Deck': 6,
+        'Template': 3,
+        'Other': 2
     };
-
-    const MAX_HOURS = 6; // Max productive hours per designer per day
 
     let designers = [];
     let requests = [];
@@ -345,10 +343,9 @@
         return name.split(' ').map(n => n[0]).join('').toUpperCase();
     }
 
-    function getCapacityStatus(hours) {
-        const pct = (hours / MAX_HOURS) * 100;
-        if (pct < 50) return 'available';
-        if (pct < 80) return 'busy';
+    function getCapacityStatus(utilization) {
+        if (utilization < 80) return 'available';
+        if (utilization < 100) return 'busy';
         return 'full';
     }
 
@@ -356,6 +353,17 @@
         if (status === 'available') return '#10B981';
         if (status === 'busy') return '#F59E0B';
         return '#EF4444';
+    }
+
+    function getWeeklyCapacity(person) {
+        return Number(person.weeklyCapacityPTS ?? person.weeklyCapacityPts ?? person.maxHoursPerWeek ?? 40);
+    }
+
+    function getEffortPoints(item) {
+        if (typeof item?.effortPTS === 'number') return item.effortPTS;
+        if (typeof item?.effortPts === 'number') return item.effortPts;
+        const fallback = EFFORT[item?.assetType] ?? 2;
+        return Number(fallback);
     }
 
     // Show toast notification
@@ -455,8 +463,10 @@
         const modal = document.getElementById('modal');
         const availableProjects = getAvailableProjects();
 
-        const status = getCapacityStatus(designerData.hours);
-        const pct = Math.min((designerData.hours / MAX_HOURS) * 100, 100);
+        const weeklyCapacity = getWeeklyCapacity(designerData);
+        const utilization = weeklyCapacity > 0 ? (designerData.effort / weeklyCapacity) * 100 : 0;
+        const status = getCapacityStatus(utilization);
+        const pct = Math.min(utilization, 100);
 
         modal.innerHTML = `
             <div class="modal-header">
@@ -469,7 +479,7 @@
                             <div class="modal-bar-fill" style="width:${pct}%; background:${getCapacityColor(status)}"></div>
                         </div>
                         <span class="modal-percent" style="color:${getCapacityColor(status)}">${Math.round(pct)}%</span>
-                        <span style="font-size: 11px; color: var(--ink-light);">${designerData.tasks} tasks • ${designerData.hours.toFixed(1)}h</span>
+                        <span style="font-size: 11px; color: var(--ink-light);">${designerData.tasks} tasks • ${designerData.effort.toFixed(1)} PTS / ${weeklyCapacity} PTS</span>
                     </div>
                 </div>
                 <button class="modal-close" onclick="closeModal()">×</button>
@@ -520,19 +530,20 @@
         const workload = {};
         const tasksByDesigner = {};
         designers.forEach(d => {
-            workload[d.id] = { tasks: 0, hours: 0 };
+            workload[d.id] = { tasks: 0, effort: 0, weeklyCapacity: getWeeklyCapacity(d) };
             tasksByDesigner[d.id] = [];
         });
 
         // Only count tasks that are In Progress or Not Started and assigned to a designer
         requests.forEach(r => {
             if (r.designerId && workload[r.designerId] && r.status !== 'Done') {
-                const effort = EFFORT[r.assetType] || 1;
+                const effort = getEffortPoints(r);
                 workload[r.designerId].tasks++;
-                workload[r.designerId].hours += effort;
+                workload[r.designerId].effort += effort;
                 tasksByDesigner[r.designerId].push({
                     title: r.headline || r.title || 'Untitled',
                     type: r.assetType,
+                    effortPTS: effort,
                     dueDate: r.deadline,
                     liveDate: r.liveDate,
                     status: r.status
@@ -543,7 +554,10 @@
         // Calculate summary stats
         let available = 0, busy = 0, full = 0;
         designers.forEach(d => {
-            const status = getCapacityStatus(workload[d.id].hours);
+            const utilization = workload[d.id].weeklyCapacity
+                ? (workload[d.id].effort / workload[d.id].weeklyCapacity) * 100
+                : 0;
+            const status = getCapacityStatus(utilization);
             if (status === 'available') available++;
             else if (status === 'busy') busy++;
             else full++;
@@ -578,8 +592,9 @@
                 ${designers.map((d, idx) => {
                     const w = workload[d.id];
                     const tasks = tasksByDesigner[d.id] || [];
-                    const status = getCapacityStatus(w.hours);
-                    const pct = Math.min((w.hours / MAX_HOURS) * 100, 100);
+                    const utilization = w.weeklyCapacity ? (w.effort / w.weeklyCapacity) * 100 : 0;
+                    const status = getCapacityStatus(utilization);
+                    const pct = Math.min(utilization, 100);
                     const name = `${d.firstName} ${d.lastName}`;
 
                     // Create serializable data for modal
@@ -590,7 +605,8 @@
                         role: d.role,
                         team: d.team,
                         tasks: w.tasks,
-                        hours: w.hours,
+                        effort: w.effort,
+                        weeklyCapacity: w.weeklyCapacity,
                         taskList: tasks
                     }).replace(/"/g, '&quot;');
 
@@ -609,7 +625,7 @@
                             </div>
                             <div class="tasks-summary">
                                 <span class="tasks-count">${w.tasks} task${w.tasks !== 1 ? 's' : ''}</span>
-                                <span class="tasks-detail">${w.hours.toFixed(1)}h / ${MAX_HOURS}h</span>
+                                <span class="tasks-detail">${w.effort.toFixed(1)} PTS / ${w.weeklyCapacity} PTS</span>
                             </div>
                         </div>
                     `;
@@ -617,7 +633,7 @@
             </div>
 
             <div class="footer">
-                <span class="footer-text">Based on assigned tasks in queue</span>
+                <span class="footer-text">Based on assigned effort points in queue</span>
                 <a href="design-request-form.html" class="btn-request">Submit Request →</a>
             </div>
         `;

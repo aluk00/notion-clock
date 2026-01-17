@@ -9,8 +9,10 @@
  * Environment Variables Required:
  * - NOTION_API_KEY: Notion integration token
  * - GOOGLE_APPLICATION_CREDENTIALS: Path to Firebase service account JSON
- * - NOTION_STAFF_DB_ID: Notion database ID for staff directory
- * - NOTION_PROJECTS_DB_ID: Notion database ID for projects (optional)
+ * - NOTION_STAFF_DB_ID: Notion database ID for staff directory (legacy)
+ * - NOTION_STAFF_DIR_DB: Notion database ID for staff directory (new)
+ * - NOTION_PROJECTS_DB_ID: Notion database ID for projects (legacy, optional)
+ * - NOTION_MASTER_PROJECTS_DB: Notion database ID for master projects ledger (new)
  * - APP_ID: Application ID (default: dmg-command-centre-native)
  * - FIREBASE_PROJECT_ID: Firebase project ID (default: dmg-command-centre-native)
  * 
@@ -53,9 +55,9 @@ const targetCollection = collectionArg ? collectionArg.split('=')[1] : null;
 async function syncStaffDirectory() {
     console.log('📋 Syncing Staff Directory...');
     
-    const databaseId = process.env.NOTION_STAFF_DB_ID;
+    const databaseId = process.env.NOTION_STAFF_DIR_DB || process.env.NOTION_STAFF_DB_ID;
     if (!databaseId) {
-        console.error('❌ NOTION_STAFF_DB_ID not set');
+        console.error('❌ NOTION_STAFF_DIR_DB or NOTION_STAFF_DB_ID not set');
         return;
     }
 
@@ -64,7 +66,7 @@ async function syncStaffDirectory() {
         const response = await notion.databases.query({
             database_id: databaseId,
             filter: {
-                property: 'Status',
+                property: 'STATUS',
                 select: { equals: 'Active' }
             }
         });
@@ -79,13 +81,21 @@ async function syncStaffDirectory() {
             
             // Extract staff data from Notion properties
             const staffData = {
-                firstName: getTextProperty(props['First Name']),
-                lastName: getTextProperty(props['Last Name']),
-                email: getEmailProperty(props['Email']),
-                team: getSelectProperty(props['Team']),
-                role: getTextProperty(props['Role']),
-                manager: getTextProperty(props['Manager']),
-                startDate: getDateProperty(props['Start Date']),
+                firstName: getTextProperty(props['FIRST NAME']),
+                lastName: getTextProperty(props['LAST NAME']),
+                email: getFormulaStringProperty(props['EMAIL']),
+                team: getSelectProperty(props['TEAM']),
+                role: getSelectProperty(props['ROLE']),
+                seniority: getSelectProperty(props['SENIORITY']),
+                status: getSelectProperty(props['STATUS']),
+                maxHoursPerWeek: getNumberProperty(props['MAX HOURS PER WEEK']),
+                weeklyCapacityPTS: getNumberProperty(props['MAX HOURS PER WEEK']),
+                managerName: getFormulaStringProperty(props['MANAGER NAME (API)']),
+                isManager: getCheckboxProperty(props['IS MANAGER']),
+                isEditor: getCheckboxProperty(props['IS EDITOR']),
+                isCreator: getCheckboxProperty(props['IS CREATOR']),
+                isProducer: getCheckboxProperty(props['IS PRODUCER']),
+                employmentType: getSelectProperty(props['EMPLOYMENT TYPE']),
                 notionPageId: page.id,
                 lastSynced: admin.firestore.FieldValue.serverTimestamp()
             };
@@ -131,9 +141,9 @@ async function syncStaffDirectory() {
 async function syncProjects() {
     console.log('📋 Syncing Projects...');
     
-    const databaseId = process.env.NOTION_PROJECTS_DB_ID;
+    const databaseId = process.env.NOTION_MASTER_PROJECTS_DB || process.env.NOTION_PROJECTS_DB_ID;
     if (!databaseId) {
-        console.log('ℹ️  NOTION_PROJECTS_DB_ID not set, skipping projects sync');
+        console.log('ℹ️  NOTION_MASTER_PROJECTS_DB or NOTION_PROJECTS_DB_ID not set, skipping projects sync');
         return;
     }
 
@@ -141,17 +151,9 @@ async function syncProjects() {
         // Query Notion database
         const response = await notion.databases.query({
             database_id: databaseId,
-            filter: {
-                and: [
-                    {
-                        property: 'Status',
-                        select: { is_not_empty: true }
-                    }
-                ]
-            },
             sorts: [
                 {
-                    property: 'Due Date',
+                    property: 'DUE DATE',
                     direction: 'ascending'
                 }
             ]
@@ -165,15 +167,29 @@ async function syncProjects() {
         for (const page of response.results) {
             const props = page.properties;
             
+            const assignedTo = await getRelationNames(props['ASSIGNED TO']);
+            const creativeLeads = await getRelationNames(props['CREATIVE LEAD(S)']);
+            const productionLeads = await getRelationNames(props['PRODUCTION LEAD(S)']);
+            const socialLeads = await getRelationNames(props['SOCIAL LEAD(S)']);
+
             const projectData = {
-                name: getTextProperty(props['Project Name']) || getTitleProperty(props['Name']),
-                client: getTextProperty(props['Client']),
-                status: getSelectProperty(props['Status']),
-                priority: getSelectProperty(props['Priority']),
-                dueDate: getDateProperty(props['Due Date']),
-                team: getSelectProperty(props['Team']),
-                assignee: getTextProperty(props['Assignee']),
-                projectType: getSelectProperty(props['Project Type']),
+                name: getTitleProperty(props['NAME']) || getTextProperty(props['NAME']),
+                client: getTextProperty(props['CLIENT / EXTERNAL PARTNER']),
+                status: getSelectProperty(props['STATUS 1']) || getSelectProperty(props['STATUS']) || getSelectProperty(props['PROJECT STATUS']),
+                dealStage: getSelectProperty(props['DEAL STAGE']),
+                priority: getSelectProperty(props['PRIORITY LEVEL']),
+                dueDate: getDateProperty(props['DUE DATE']),
+                internalDueDate: getDateProperty(props['(INTERNAL) PROJECT DUE DATE']),
+                team: getSelectProperty(props['TEAM']),
+                assignee: assignedTo[0] || null,
+                assignedTo: assignedTo,
+                creativeLead: creativeLeads,
+                productionLead: productionLeads,
+                socialLead: socialLeads,
+                projectType: getSelectProperty(props['PROJECT TYPE']),
+                discipline: getSelectProperty(props['DISCIPLINE']),
+                effortPTS: getNumberProperty(props['EFFORT SCORE']) || getFormulaNumberProperty(props['EFFORT (PTS)']),
+                totalProjectEffortPTS: getNumberProperty(props['Total Project Effort (PTS)']) || getNumberProperty(props['TOTAL PROJECT EFFORT (PTS)']),
                 notionPageId: page.id,
                 notionUrl: page.url,
                 lastSynced: admin.firestore.FieldValue.serverTimestamp()
@@ -251,6 +267,45 @@ function getNumberProperty(prop) {
 function getCheckboxProperty(prop) {
     if (!prop || prop.type !== 'checkbox') return false;
     return prop.checkbox;
+}
+
+function getFormulaStringProperty(prop) {
+    if (!prop || prop.type !== 'formula') return null;
+    if (prop.formula.type === 'string') return prop.formula.string || null;
+    if (prop.formula.type === 'number') return prop.formula.number?.toString() || null;
+    return null;
+}
+
+function getFormulaNumberProperty(prop) {
+    if (!prop || prop.type !== 'formula') return null;
+    if (prop.formula.type === 'number') return prop.formula.number;
+    return null;
+}
+
+const relationNameCache = new Map();
+
+async function getRelationNames(prop) {
+    if (!prop || prop.type !== 'relation') return [];
+    const ids = prop.relation?.map(rel => rel.id) || [];
+    const names = [];
+
+    for (const id of ids) {
+        if (relationNameCache.has(id)) {
+            names.push(relationNameCache.get(id));
+            continue;
+        }
+        try {
+            const page = await notion.pages.retrieve({ page_id: id });
+            const titleProp = Object.values(page.properties || {}).find(p => p.type === 'title');
+            const name = getTitleProperty(titleProp) || 'Untitled';
+            relationNameCache.set(id, name);
+            names.push(name);
+        } catch (error) {
+            console.warn(`⚠️  Failed to fetch related page ${id}: ${error.message}`);
+        }
+    }
+
+    return names;
 }
 
 /**
