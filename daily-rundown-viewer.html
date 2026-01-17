@@ -24,6 +24,8 @@
         @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
         .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
         .date-label { font-size: 11px; font-weight: 700; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.05em; }
+        .notion-badge { font-size: 9px; color: var(--ink-light); display: flex; align-items: center; gap: 4px; margin-left: auto; }
+        .notion-badge svg { width: 10px; height: 10px; }
         .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         @media (max-width: 900px) { .columns { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 600px) { .columns { grid-template-columns: 1fr; } }
@@ -56,23 +58,19 @@
     <div class="top-bar">
         <div class="dots"><span></span><span></span><span></span><span></span></div>
         <span class="date-label" id="dateLabel">Loading...</span>
+        <div class="notion-badge">
+            <svg viewBox="0 0 100 100" fill="currentColor"><path d="M6.017 4.313l55.333-4.087c6.797-.583 8.543-.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277-1.553 6.807-6.99 7.193L24.467 99.967c-4.08.193-6.023-.39-8.16-3.113L3.3 79.94c-2.333-3.113-3.3-5.443-3.3-8.167V11.113c0-3.497 1.553-6.413 6.017-6.8z" fill-rule="evenodd"/></svg>
+            Notion
+        </div>
     </div>
     <div class="columns" id="columns">
         <div class="loading"><div class="dots"><span></span><span></span><span></span><span></span></div><span class="loading-text">Loading rundown...</span></div>
     </div>
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native", storageBucket: "dmg-command-centre-native.firebasestorage.app", messagingSenderId: "223535956454", appId: "1:223535956454:web:b25e5bc69d8a4a7f209627" };
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-    const collectionPath = "artifacts/dmg-command-centre-native/public/data/daily_rundowns";
-
+<script>
+    const API_BASE = 'https://createnotionproject-223535956454.us-central1.run.app';
     const SECTIONS = ['FILMING', 'INTERNAL', 'EXTERNAL', 'GOING LIVE'];
     const STATUS_ICONS = { done: '✓', pending: '◔', blocked: '!' };
+
     let items = [];
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -87,7 +85,7 @@
                         ${sectionItems.length === 0 ? '<div class="empty">No items</div>' : sectionItems.map(item => `
                             <div class="item">
                                 <div class="item-status ${item.status || ''}">${item.status ? STATUS_ICONS[item.status] : ''}</div>
-                                <div class="item-content"><span class="item-vertical ${item.vertical.toLowerCase()}">${item.vertical}</span><div class="item-title">${item.title}</div></div>
+                                <div class="item-content"><span class="item-vertical ${(item.vertical || '').toLowerCase()}">${item.vertical || ''}</span><div class="item-title">${item.title}</div></div>
                             </div>
                         `).join('')}
                     </div>
@@ -96,13 +94,30 @@
         }).join('');
     }
 
-    signInAnonymously(auth).then(() => {
-        onSnapshot(query(collection(db, collectionPath), where("dateKey", "==", today)), (snapshot) => {
-            items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            items.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-            render();
-        });
-    });
+    async function fetchItems() {
+        try {
+            const response = await fetch(`${API_BASE}/rundown?date=${today}`);
+            const data = await response.json();
+            if (data.success) {
+                items = data.items.sort((a, b) =>
+                    new Date(a.createdTime || 0) - new Date(b.createdTime || 0)
+                );
+                render();
+            } else {
+                console.error('API error:', data.error);
+                document.getElementById('columns').innerHTML = '<div class="empty">Error loading data</div>';
+            }
+        } catch (error) {
+            console.error('Fetch error:', error);
+            document.getElementById('columns').innerHTML = '<div class="empty">Error loading data</div>';
+        }
+    }
+
+    // Initial fetch
+    fetchItems();
+
+    // Auto-refresh every 30 seconds
+    setInterval(fetchItems, 30000);
 </script>
 </body>
 </html>

@@ -12,6 +12,7 @@ const notion = new Client({ auth: process.env.NOTION_API_KEY });
 // Database IDs from environment
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
+const DAILY_RUNDOWN_DB = process.env.NOTION_DAILY_RUNDOWN_DB;
 
 // ============================================
 // HELPER: Parse Notion properties
@@ -252,6 +253,86 @@ function buildDeliverableProperties(data, projectId) {
     }
     
     return props;
+}
+
+// ============================================
+// HELPER: Build Daily Rundown properties
+// ============================================
+function buildRundownProperties(data) {
+    const props = {};
+
+    // Title field
+    if (data.title) {
+        props['TITLE'] = { title: [{ text: { content: data.title } }] };
+    }
+
+    // Date field
+    if (data.date !== undefined) {
+        props['DATE'] = { date: data.date ? { start: data.date } : null };
+    }
+
+    // Select fields
+    if (data.section) {
+        props['SECTION'] = { select: { name: data.section } };
+    }
+    if (data.vertical) {
+        props['VERTICAL'] = { select: { name: data.vertical } };
+    }
+    if (data.creator) {
+        props['CREATOR'] = { select: { name: data.creator } };
+    }
+
+    // Status field (Notion status type)
+    if (data.status !== undefined) {
+        // Map widget status to Notion status
+        let statusName = 'To set';
+        if (data.status === 'done') statusName = 'Done';
+        else if (data.status === 'pending') statusName = 'Pending';
+        else if (data.status === 'blocked') statusName = 'To set'; // No blocked status, use To set
+        props['STATUS'] = { status: { name: statusName } };
+    }
+
+    // Person field (CREATOR @)
+    if (data.creatorId) {
+        props['CREATOR @'] = { people: [{ id: data.creatorId }] };
+    }
+
+    // Relation field (MASTER LEDGER ITEM)
+    if (data.masterLedgerItemIds && Array.isArray(data.masterLedgerItemIds)) {
+        props['MASTER LEDGER ITEM'] = { relation: data.masterLedgerItemIds.map(id => ({ id })) };
+    }
+
+    return props;
+}
+
+// ============================================
+// HELPER: Parse rundown item from Notion page
+// ============================================
+function parseRundownItem(page) {
+    const props = page.properties;
+
+    // Map Notion status back to widget status
+    const notionStatus = parseProperty(props['STATUS']);
+    let status = '';
+    if (notionStatus === 'Done') status = 'done';
+    else if (notionStatus === 'Pending') status = 'pending';
+    // 'To set' maps to empty status
+
+    return {
+        id: page.id,
+        url: page.url,
+        title: parseProperty(props['TITLE']),
+        date: parseProperty(props['DATE']),
+        section: parseProperty(props['SECTION']),
+        vertical: parseProperty(props['VERTICAL']),
+        creator: parseProperty(props['CREATOR']),
+        creatorPerson: parseProperty(props['CREATOR @']),
+        status: status,
+        aiTitle: parseProperty(props['AI TITLE']),
+        masterLedgerItemIds: parseProperty(props['MASTER LEDGER ITEM']),
+        createdTime: page.created_time,
+        lastEditedTime: page.last_edited_time
+    };
 }
 
 // ============================================
@@ -647,15 +728,213 @@ app.get('/capacity', async (req, res) => {
     }
 });
 
+// ============================================
+// DAILY RUNDOWN ENDPOINTS
+// ============================================
+
+// GET /rundown - List rundown items for a specific date
+app.get('/rundown', async (req, res) => {
+    try {
+        if (!DAILY_RUNDOWN_DB) {
+            return res.status(400).json({ success: false, error: 'Daily Rundown DB not configured' });
+        }
+
+        const { date } = req.query;
+
+        if (!date) {
+            return res.status(400).json({ success: false, error: 'date query parameter is required (YYYY-MM-DD)' });
+        }
+
+        const response = await notion.databases.query({
+            database_id: DAILY_RUNDOWN_DB,
+            filter: {
+                property: 'DATE',
+                date: {
+                    equals: date
+                }
+            },
+            sorts: [{ timestamp: 'created_time', direction: 'ascending' }]
+        });
+
+        const items = response.results.map(parseRundownItem);
+
+        res.json({ success: true, items, count: items.length, date });
+    } catch (error) {
+        console.error('Error fetching rundown items:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST /rundown - Create a new rundown item
+app.post('/rundown', async (req, res) => {
+    try {
+        if (!DAILY_RUNDOWN_DB) {
+            return res.status(400).json({ success: false, error: 'Daily Rundown DB not configured' });
+        }
+
+        const { title, date, section, vertical, creator, status, creatorId, masterLedgerItemIds } = req.body;
+
+        if (!title) {
+            return res.status(400).json({ success: false, error: 'title is required' });
+        }
+        if (!date) {
+            return res.status(400).json({ success: false, error: 'date is required' });
+        }
+        if (!section) {
+            return res.status(400).json({ success: false, error: 'section is required' });
+        }
+        if (!vertical) {
+            return res.status(400).json({ success: false, error: 'vertical is required' });
+        }
+
+        const properties = buildRundownProperties({
+            title, date, section, vertical, creator,
+            status: status || '',
+            creatorId,
+            masterLedgerItemIds
+        });
+
+        const response = await notion.pages.create({
+            parent: { database_id: DAILY_RUNDOWN_DB },
+            properties
+        });
+
+        const item = parseRundownItem(response);
+
+        res.json({
+            success: true,
+            message: 'Rundown item created',
+            item
+        });
+    } catch (error) {
+        console.error('Error creating rundown item:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// PATCH /rundown/:id - Update a rundown item
+app.patch('/rundown/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const properties = buildRundownProperties(req.body);
+
+        if (Object.keys(properties).length === 0) {
+            return res.status(400).json({ success: false, error: 'No valid properties to update' });
+        }
+
+        const response = await notion.pages.update({
+            page_id: id,
+            properties
+        });
+
+        const item = parseRundownItem(response);
+
+        res.json({ success: true, message: 'Rundown item updated', item });
+    } catch (error) {
+        console.error('Error updating rundown item:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// DELETE /rundown/:id - Archive (delete) a rundown item
+app.delete('/rundown/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await notion.pages.update({
+            page_id: id,
+            archived: true
+        });
+
+        res.json({ success: true, message: 'Rundown item deleted' });
+    } catch (error) {
+        console.error('Error deleting rundown item:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST /rundown/carry-over - Carry over pending items to next day
+app.post('/rundown/carry-over', async (req, res) => {
+    try {
+        if (!DAILY_RUNDOWN_DB) {
+            return res.status(400).json({ success: false, error: 'Daily Rundown DB not configured' });
+        }
+
+        const { fromDate, toDate } = req.body;
+
+        if (!fromDate || !toDate) {
+            return res.status(400).json({ success: false, error: 'fromDate and toDate are required' });
+        }
+
+        // Fetch all non-done items for fromDate
+        const response = await notion.databases.query({
+            database_id: DAILY_RUNDOWN_DB,
+            filter: {
+                and: [
+                    {
+                        property: 'DATE',
+                        date: { equals: fromDate }
+                    },
+                    {
+                        property: 'STATUS',
+                        status: { does_not_equal: 'Done' }
+                    }
+                ]
+            }
+        });
+
+        const pendingItems = response.results;
+        const results = [];
+        const errors = [];
+
+        // Create copies for toDate
+        for (const page of pendingItems) {
+            try {
+                const parsed = parseRundownItem(page);
+                const properties = buildRundownProperties({
+                    title: parsed.title,
+                    date: toDate,
+                    section: parsed.section,
+                    vertical: parsed.vertical,
+                    creator: parsed.creator,
+                    status: parsed.status
+                });
+
+                const newPage = await notion.pages.create({
+                    parent: { database_id: DAILY_RUNDOWN_DB },
+                    properties
+                });
+
+                results.push({ id: newPage.id, title: parsed.title });
+            } catch (err) {
+                errors.push({ title: parseRundownItem(page).title, error: err.message });
+            }
+        }
+
+        res.json({
+            success: errors.length === 0,
+            message: `${results.length} item(s) carried over to ${toDate}`,
+            created: results.length,
+            failed: errors.length,
+            items: results,
+            errors: errors.length > 0 ? errors : undefined
+        });
+    } catch (error) {
+        console.error('Error carrying over rundown items:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Health check
 app.get('/', (req, res) => {
     const { version } = require('./package.json');
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
         version,
         databases: {
             projects: PROJECTS_DB ? 'configured' : 'missing',
-            deliverables: DELIVERABLES_DB ? 'configured' : 'missing'
+            deliverables: DELIVERABLES_DB ? 'configured' : 'missing',
+            dailyRundown: DAILY_RUNDOWN_DB ? 'configured' : 'missing'
         },
         endpoints: [
             'GET /projects',
@@ -667,7 +946,12 @@ app.get('/', (req, res) => {
             'POST /deliverables/bulk',
             'PATCH /deliverables/:id',
             'GET /staff',
-            'GET /capacity'
+            'GET /capacity',
+            'GET /rundown?date=YYYY-MM-DD',
+            'POST /rundown',
+            'PATCH /rundown/:id',
+            'DELETE /rundown/:id',
+            'POST /rundown/carry-over'
         ]
     });
 });
