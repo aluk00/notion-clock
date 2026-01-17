@@ -10,30 +10,23 @@
     DMG COMMAND CENTRE - INTAKE HUB
     Last Updated: 17 January 2026
 
-    ARCHITECTURE:
-    - Notion (Master Ledger) = Single source of truth for Projects & Deliverables
-    - Cloud Run API = Firewall that translates requests into Notion API calls
-    - Firebase = Staff Directory, Quick Requests, Real-time updates
-
-    INTAKE TYPES:
-    1. New Brief (Sales) → Creates project in Master Ledger via Cloud Run
-    2. Design Request → Creates task in design_requests (Firebase) → Designer Capacity
-    3. Edit Request → Creates task in edit_queue (Firebase) → Editor Capacity
+    PATHS:
+    1. Log a New Brief (Sales) → Cloud Run API → Notion Master Ledger
+    2. Request Design Work → Firebase design_requests → Designer Capacity
+    3. Request Video Edit → Firebase edit_queue → Editor Capacity
+    4. Add Deliverable → Cloud Run API → Notion Master Ledger (sub-item)
 
     API: https://createnotionproject-223535956454.us-central1.run.app
     ═══════════════════════════════════════════════════════════════════════════════
     -->
     <style>
         :root {
-            /* Core Colors */
             --ink: #0F172A;
             --ink-sub: #64748B;
             --ink-muted: #94A3B8;
             --border: #E2E8F0;
             --surface: #FFFFFF;
             --surface-alt: #F8FAFC;
-
-            /* Pillar Colors */
             --dmg-blue: #21A0D8;
             --dmg-blue-soft: #F0F9FF;
             --dmg-blue-glow: rgba(33, 160, 216, 0.15);
@@ -43,15 +36,9 @@
             --creative-soft: rgba(230, 70, 139, 0.1);
             --editorial: #E94B4B;
             --editorial-soft: rgba(233, 75, 75, 0.1);
-            --social: #F59E0B;
-            --social-soft: rgba(245, 158, 11, 0.1);
-
-            /* Capacity States */
             --available: #10B981;
             --busy: #F59E0B;
             --full: #EF4444;
-
-            /* Layout */
             --radius: 16px;
             --radius-sm: 10px;
             --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -68,12 +55,9 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        .container {
-            max-width: 640px;
-            margin: 0 auto;
-        }
+        .container { max-width: 580px; margin: 0 auto; }
 
-        /* Header with Dot Grid */
+        /* Header */
         .header {
             display: flex;
             align-items: center;
@@ -83,656 +67,133 @@
             border-bottom: 1px solid var(--border);
         }
 
-        .dots {
-            display: grid;
-            grid-template-columns: repeat(2, 6px);
-            gap: 3px;
-        }
-        .dots span {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--dmg-blue);
-        }
+        .dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--dmg-blue); }
         .dots span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
         .dots span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
         .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
         .dots span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-        .header-title {
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--dmg-blue);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            flex: 1;
-        }
-
-        .reset-btn {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
+        .header-title { font-size: 11px; font-weight: 800; color: var(--dmg-blue); text-transform: uppercase; letter-spacing: 0.05em; flex: 1; }
+        .reset-btn { font-size: 10px; font-weight: 700; color: var(--ink-sub); background: var(--surface); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: var(--transition); }
         .reset-btn:hover { border-color: var(--ink-sub); color: var(--ink); }
 
         /* Cards */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: visible;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .card-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-            background: var(--surface-alt);
-            border-radius: var(--radius) var(--radius) 0 0;
-        }
-
-        .card-step {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 4px;
-        }
-
-        .card-title {
-            font-size: 18px;
-            font-weight: 800;
-            color: var(--ink);
-            letter-spacing: -0.02em;
-        }
-
-        .card-desc {
-            font-size: 12px;
-            color: var(--ink-sub);
-            margin-top: 4px;
-            line-height: 1.5;
-        }
-
-        .card-body {
-            padding: 20px;
-        }
-
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: visible; animation: slideIn 0.3s ease-out; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--surface-alt); border-radius: var(--radius) var(--radius) 0 0; }
+        .card-step { font-size: 10px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+        .card-title { font-size: 18px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
+        .card-desc { font-size: 12px; color: var(--ink-sub); margin-top: 4px; line-height: 1.5; }
+        .card-body { padding: 20px; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } }
 
-        /* Intake Type Selection */
-        .intake-grid {
-            display: grid;
-            gap: 12px;
-        }
-
-        .intake-option {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            cursor: pointer;
-            transition: var(--transition);
-            background: var(--surface);
-        }
-
-        .intake-option:hover {
-            border-color: var(--ink-muted);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-        }
-
-        .intake-option.selected {
-            border-color: var(--dmg-blue);
-            background: var(--dmg-blue-soft);
-        }
-
-        .intake-option.selected .intake-icon {
-            background: var(--dmg-blue);
-            color: white;
-        }
-
-        .intake-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            background: var(--surface-alt);
-            flex-shrink: 0;
-            transition: var(--transition);
-        }
-
+        /* Intake Options */
+        .intake-grid { display: grid; gap: 10px; }
+        .intake-option { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 2px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: var(--transition); background: var(--surface); }
+        .intake-option:hover { border-color: var(--ink-muted); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.05); }
+        .intake-option.selected { border-color: var(--dmg-blue); background: var(--dmg-blue-soft); }
+        .intake-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: var(--surface-alt); flex-shrink: 0; }
         .intake-content { flex: 1; }
-
-        .intake-label {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--ink);
-            margin-bottom: 2px;
-        }
-
-        .intake-desc {
-            font-size: 11px;
-            color: var(--ink-sub);
-            line-height: 1.4;
-        }
-
-        .intake-arrow {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--ink-muted);
-            transition: var(--transition);
-        }
-
-        .intake-option:hover .intake-arrow {
-            color: var(--dmg-blue);
-            transform: translateX(4px);
-        }
-
-        /* Capacity Preview */
-        .capacity-preview {
-            background: var(--surface-alt);
-            border-radius: var(--radius-sm);
-            padding: 14px;
-            margin-bottom: 16px;
-        }
-
-        .capacity-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-        }
-
-        .capacity-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .capacity-legend {
-            display: flex;
-            gap: 12px;
-        }
-
-        .capacity-dot {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 9px;
-            font-weight: 600;
-            color: var(--ink-sub);
-        }
-
-        .capacity-dot span {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .capacity-dot.available span { background: var(--available); }
-        .capacity-dot.busy span { background: var(--busy); }
-        .capacity-dot.full span { background: var(--full); }
-
-        .capacity-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 8px;
-        }
-
-        .capacity-member {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            background: var(--surface);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
-        .capacity-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: 800;
-            color: white;
-            flex-shrink: 0;
-        }
-
-        .capacity-info { flex: 1; min-width: 0; }
-
-        .capacity-name {
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--ink);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .capacity-bar {
-            height: 4px;
-            background: #E5E5E5;
-            border-radius: 2px;
-            margin-top: 4px;
-            overflow: hidden;
-        }
-
-        .capacity-fill {
-            height: 100%;
-            border-radius: 2px;
-            transition: width 0.4s ease;
-        }
-
-        .capacity-status {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
+        .intake-label { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+        .intake-desc { font-size: 10px; color: var(--ink-sub); line-height: 1.4; }
+        .intake-arrow { color: var(--ink-muted); transition: var(--transition); }
+        .intake-option:hover .intake-arrow { color: var(--dmg-blue); transform: translateX(3px); }
 
         /* Form Fields */
-        .field {
-            margin-bottom: 16px;
-        }
-
-        .field-label {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 8px;
-            display: block;
-        }
-
+        .field { margin-bottom: 16px; }
+        .field-label { font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
         .field-label .required { color: var(--editorial); }
-
-        .field-input {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius-sm);
-            font-size: 13px;
-            font-weight: 500;
-            font-family: inherit;
-            background: var(--surface);
-            color: var(--ink);
-            outline: none;
-            transition: var(--transition);
-        }
-
-        .field-input:focus {
-            border-color: var(--dmg-blue);
-            box-shadow: 0 0 0 3px var(--dmg-blue-glow);
-        }
-
+        .field-label .optional { font-weight: 500; color: var(--ink-muted); text-transform: none; }
+        .field-input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; font-family: inherit; background: var(--surface); color: var(--ink); outline: none; transition: var(--transition); }
+        .field-input:focus { border-color: var(--dmg-blue); box-shadow: 0 0 0 3px var(--dmg-blue-glow); }
         .field-input::placeholder { color: var(--ink-muted); }
-
-        textarea.field-input {
-            min-height: 80px;
-            resize: vertical;
-        }
-
-        .field-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            overflow: visible;
-        }
+        textarea.field-input { min-height: 70px; resize: vertical; }
+        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; overflow: visible; }
+        .field-hint { font-size: 10px; color: var(--ink-muted); margin-top: 6px; }
 
         /* Custom Select */
-        .custom-select {
-            position: relative;
-            z-index: 10;
-        }
-
-        .custom-select:focus-within {
-            z-index: 100;
-        }
-
-        .select-trigger {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius-sm);
-            font-size: 13px;
-            font-weight: 600;
-            background: var(--surface);
-            color: var(--ink);
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: var(--transition);
-        }
-
+        .custom-select { position: relative; z-index: 10; }
+        .custom-select:focus-within { z-index: 100; }
+        .select-trigger { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; background: var(--surface); color: var(--ink); cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: var(--transition); }
         .select-trigger:hover { border-color: var(--dmg-blue); }
         .select-trigger .placeholder { color: var(--ink-muted); font-weight: 500; }
         .select-trigger.open { border-color: var(--dmg-blue); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
-
-        .select-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: var(--surface);
-            border: 1.5px solid var(--dmg-blue);
-            border-top: none;
-            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        }
-
-        .select-dropdown.show { display: block; animation: dropIn 0.2s ease-out; }
+        .select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 1.5px solid var(--dmg-blue); border-top: none; border-radius: 0 0 var(--radius-sm) var(--radius-sm); max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+        .select-dropdown.show { display: block; animation: dropIn 0.15s ease-out; }
         @keyframes dropIn { from { opacity: 0; transform: translateY(-4px); } }
+        .dropdown-item { padding: 10px 14px; font-size: 12px; font-weight: 500; cursor: pointer; transition: var(--transition); }
+        .dropdown-item:hover { background: var(--dmg-blue-soft); color: var(--dmg-blue); }
+        .dropdown-search { padding: 8px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); }
+        .dropdown-search input { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; outline: none; }
+        .dropdown-search input:focus { border-color: var(--dmg-blue); }
 
-        .dropdown-item {
-            padding: 10px 14px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-        }
+        /* Pills */
+        .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pill { padding: 8px 14px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: var(--transition); background: var(--surface); color: var(--ink-sub); }
+        .pill:hover { border-color: var(--ink-muted); }
+        .pill.selected { border-color: var(--dmg-blue); background: var(--dmg-blue-soft); color: var(--dmg-blue); }
 
-        .dropdown-item:hover {
-            background: var(--dmg-blue-soft);
-            color: var(--dmg-blue);
-            padding-left: 18px;
-        }
+        /* Capacity Preview */
+        .capacity-preview { background: var(--surface-alt); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px; }
+        .capacity-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .capacity-title { font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; }
+        .capacity-legend { display: flex; gap: 10px; }
+        .capacity-dot { display: flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 600; color: var(--ink-sub); }
+        .capacity-dot span { width: 6px; height: 6px; border-radius: 50%; }
+        .capacity-dot.available span { background: var(--available); }
+        .capacity-dot.busy span { background: var(--busy); }
+        .capacity-dot.full span { background: var(--full); }
+        .capacity-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .capacity-member { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--surface); border-radius: 6px; border: 1px solid var(--border); }
+        .capacity-avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; color: white; }
+        .capacity-name { font-size: 11px; font-weight: 600; color: var(--ink); }
+        .capacity-status { width: 6px; height: 6px; border-radius: 50%; }
 
-        /* Staff Picker */
-        .staff-search {
-            padding: 8px;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            background: var(--surface);
-        }
-
-        .staff-search input {
-            width: 100%;
-            padding: 8px 10px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            font-size: 12px;
-            outline: none;
-        }
-
-        .staff-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 14px;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .staff-item:hover { background: var(--surface-alt); }
-
-        .staff-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            color: white;
-            font-size: 10px;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .staff-name { font-size: 12px; font-weight: 600; color: var(--ink); }
-        .staff-role { font-size: 10px; color: var(--ink-sub); }
-
-        .selected-badge {
-            background: var(--dmg-blue);
-            color: white;
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 700;
-        }
-
-        /* Asset Type Pills */
-        .asset-pills {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .asset-pill {
-            padding: 8px 14px;
-            border: 1.5px solid var(--border);
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            background: var(--surface);
-            color: var(--ink-sub);
-        }
-
-        .asset-pill:hover { border-color: var(--ink-muted); }
-        .asset-pill.selected {
-            border-color: var(--dmg-blue);
-            background: var(--dmg-blue-soft);
-            color: var(--dmg-blue);
-        }
-
-        /* Effort Estimation */
-        .effort-box {
-            background: var(--surface-alt);
-            border-radius: var(--radius-sm);
-            padding: 14px;
-            margin-top: 16px;
-            border-left: 3px solid var(--production);
-        }
-
-        .effort-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .effort-value {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--production);
-        }
-
-        .effort-value span {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--ink-sub);
-        }
-
-        .effort-breakdown {
-            font-size: 11px;
-            color: var(--ink-sub);
-            margin-top: 6px;
-        }
+        /* Effort Box */
+        .effort-box { background: var(--surface-alt); border-radius: var(--radius-sm); padding: 12px; margin-top: 16px; border-left: 3px solid var(--production); }
+        .effort-title { font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 4px; }
+        .effort-value { font-size: 20px; font-weight: 800; color: var(--production); }
+        .effort-value span { font-size: 11px; font-weight: 600; color: var(--ink-sub); }
 
         /* Buttons */
-        .btn-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid var(--border);
-        }
-
-        .btn {
-            padding: 12px 20px;
-            border-radius: var(--radius-sm);
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            cursor: pointer;
-            border: none;
-            transition: var(--transition);
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .btn-back {
-            background: var(--surface);
-            color: var(--ink-sub);
-            border: 1.5px solid var(--border);
-            flex: 0 0 auto;
-            padding: 12px 16px;
-        }
+        .btn-row { display: flex; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+        .btn { padding: 12px 20px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; cursor: pointer; border: none; transition: var(--transition); flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn-back { background: var(--surface); color: var(--ink-sub); border: 1.5px solid var(--border); flex: 0 0 auto; padding: 12px 16px; }
         .btn-back:hover { border-color: var(--ink-sub); color: var(--ink); }
-
-        .btn-primary {
-            background: var(--dmg-blue);
-            color: white;
-        }
+        .btn-primary { background: var(--dmg-blue); color: white; }
         .btn-primary:hover { background: #1a8ac0; }
         .btn-primary:disabled { background: #CBD5E1; cursor: not-allowed; }
-
-        .btn-submit {
-            background: var(--production);
-            color: white;
-        }
+        .btn-submit { background: var(--production); color: white; }
         .btn-submit:hover { background: #38a042; }
+        .btn-submit:disabled { background: #CBD5E1; cursor: not-allowed; }
 
-        /* Preview Panel */
-        .preview-panel {
-            background: var(--surface-alt);
-            border-radius: var(--radius-sm);
-            padding: 14px;
-            margin-top: 16px;
-        }
+        /* Summary */
+        .summary-box { background: var(--surface-alt); border-radius: var(--radius-sm); padding: 12px; margin-top: 16px; }
+        .summary-title { font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 8px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-label { color: var(--ink-sub); }
+        .summary-value { font-weight: 600; color: var(--ink); }
 
-        .preview-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 10px;
-        }
-
-        .preview-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 11px;
-        }
-
-        .preview-item:last-child { border-bottom: none; }
-        .preview-label { color: var(--ink-sub); }
-        .preview-value { font-weight: 600; color: var(--ink); }
-
-        /* Hidden */
-        .hidden { display: none !important; }
-
-        /* Loading */
-        .loading {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px;
-            gap: 12px;
-        }
-
-        .loading-text {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
-
-        /* Success Screen */
-        .success-screen {
-            text-align: center;
-            padding: 48px 32px;
-        }
-
-        .success-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            background: var(--production);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            color: white;
-            font-size: 28px;
-        }
-
-        .success-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--ink);
-            margin-bottom: 8px;
-        }
-
-        .success-desc {
-            font-size: 13px;
-            color: var(--ink-sub);
-            margin-bottom: 24px;
-        }
+        /* Success */
+        .success-screen { text-align: center; padding: 40px 24px; }
+        .success-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--production); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: white; font-size: 24px; }
+        .success-title { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
+        .success-desc { font-size: 12px; color: var(--ink-sub); margin-bottom: 20px; }
 
         /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: var(--ink);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 600;
-            z-index: 2000;
-            transition: transform 0.3s;
-        }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--ink); color: white; padding: 12px 24px; border-radius: 50px; font-size: 12px; font-weight: 600; z-index: 2000; transition: transform 0.3s; }
         .toast.show { transform: translateX(-50%) translateY(0); }
         .toast.error { background: var(--full); }
         .toast.success { background: var(--production); }
 
-        /* Responsive */
-        @media (max-width: 500px) {
-            .field-row { grid-template-columns: 1fr; }
-            .capacity-list { grid-template-columns: 1fr; }
-        }
+        /* Loading */
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; gap: 12px; }
+        .loading-text { font-size: 11px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.08em; }
+
+        .hidden { display: none !important; }
+        @media (max-width: 500px) { .field-row { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -743,7 +204,6 @@
         <span class="header-title">Intake Hub</span>
         <button class="reset-btn" id="resetBtn">Start Over</button>
     </div>
-
     <div id="content">
         <div class="loading">
             <div class="dots"><span></span><span></span><span></span><span></span></div>
@@ -756,12 +216,11 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, getDocs, addDoc, doc, setDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, addDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // CONFIGURATION
+    // CONFIG
     // ═══════════════════════════════════════════════════════════════════════════
     const firebaseConfig = {
         apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
@@ -775,270 +234,132 @@
     const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
     const APP_ID = 'dmg-command-centre-native';
 
-    // Team Colors (Design System)
-    const TEAM_COLORS = {
-        'Editorial': '#E94B4B',
-        'Creative': '#E6468B',
-        'Production': '#43B049',
-        'Social': '#F59E0B',
-        'Sales': '#21A0D8',
-        'Design': '#E6468B'
-    };
+    const TEAM_COLORS = { 'Editorial': '#E94B4B', 'Creative': '#E6468B', 'Production': '#43B049', 'Social': '#F59E0B', 'Sales': '#21A0D8', 'Design': '#E6468B' };
 
-    // Effort Points by Task Type (from Ecosystem Recap)
-    const EFFORT_POINTS = {
-        design: {
-            'Thumbnail (Standard)': 3,
-            'Thumbnail (Complex)': 5,
-            'Graphics Package': 8,
-            'Motion Graphics (Simple)': 6,
-            'Motion Graphics (Complex)': 12,
-            'Social Asset': 2,
-            'Pitch Deck': 10
-        },
-        edit: {
-            'Quick Cut': 3,
-            'Standard Edit': 6,
-            'Complex Edit': 12,
-            'Breaking/Reactive': 4
-        },
-        modifiers: {
-            'Motion Graphics': 3,
-            'Stock Footage Search': 1.5,
-            'Voiceover Recording': 1,
-            'Multi-Platform Versions': 1.5,
-            'Client Amends': 1.5,
-            'Regulated Industry': 3,
-            'Rush (under 48hrs)': 3
-        },
-        seniorityMultiplier: {
-            'Junior': 2.0,
-            'Midweight': 1.5,
-            'Senior': 1.0,
-            'Lead': 1.0,
-            'Head of': 1.0,
-            'Director of': 1.0
-        }
+    // Effort points from Ecosystem Recap
+    const EFFORT = {
+        design: { 'Thumbnail': 3, 'Graphics Package': 8, 'Motion Graphics': 8, 'Social Asset': 2, 'Pitch Deck': 10 },
+        edit: { 'Quick Cut': 3, 'Standard Edit': 6, 'Complex Edit': 12, 'Breaking/Reactive': 4 },
+        modifiers: { 'Motion Graphics': 3, 'Stock Footage': 1.5, 'Voiceover': 1, 'Multi-Platform': 1.5, 'Rush': 3 }
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // INITIALIZE
+    // INIT
     // ═══════════════════════════════════════════════════════════════════════════
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    const storage = getStorage(app);
 
-    let staff = [];
-    let designers = [];
-    let editors = [];
-    let projects = [];
-    let clients = [];
-    let designRequests = [];
-    let editQueue = [];
+    let staff = [], designers = [], editors = [], salesTeam = [];
+    let projects = [], clients = [];
+    let designRequests = [], editQueue = [];
 
-    // Form State
     let currentStep = 'select';
     let intakeType = null;
-    let formData = {
-        // Brief fields
-        title: '',
-        client: '',
-        isNewClient: false,
-        vertical: '',
-        ownerRole: '',
-        dealStage: '',
-        dealValue: '',
-        priority: 'Standard',
-        clientDueDate: '',
-        internalDueDate: '',
-        salesLead: null,
-        creativeLead: null,
-        productionLead: null,
-        notes: '',
-        files: [],
-        links: [],
-        // Design request fields
-        assetType: '',
-        designBrief: '',
-        deadline: '',
-        assignedDesigner: null,
-        // Edit request fields
-        videoComplexity: '',
-        editModifiers: [],
-        editBrief: '',
-        assignedEditor: null,
-        // For linking to existing projects
-        linkedProject: null
+    let form = {
+        // Brief
+        client: '', isNewClient: false, title: '', projectType: 'Campaign',
+        dealValue: '', dueDate: '', responseFormat: 'Deck',
+        channels: [], deliverableCount: '', notes: '', salesLead: null,
+        // Design/Edit
+        assetType: '', videoComplexity: '', editModifiers: [], brief: '', deadline: '',
+        assignedTo: null, linkedProject: null,
+        // Deliverable
+        deliverableType: '', deliverableTitle: ''
     };
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // DATA FETCHING
+    // DATA
     // ═══════════════════════════════════════════════════════════════════════════
     async function fetchData() {
         try {
-            // Fetch staff
             const staffSnap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "staff_directory"));
             staff = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            designers = staff.filter(s => s.team === 'Creative' || s.team === 'Design' || s.role?.toLowerCase().includes('design'));
+            editors = staff.filter(s => s.team === 'Editorial' || s.role?.toLowerCase().includes('editor'));
+            salesTeam = staff.filter(s => s.team === 'Sales');
 
-            // Filter designers and editors
-            designers = staff.filter(s =>
-                s.team === 'Creative' ||
-                s.team === 'Design' ||
-                s.role?.toLowerCase().includes('design')
-            );
-
-            editors = staff.filter(s =>
-                s.team === 'Editorial' ||
-                s.role?.toLowerCase().includes('editor')
-            );
-
-            // Fetch projects from Cloud Run API
             try {
                 const res = await fetch(API_URL + '/projects');
                 const data = await res.json();
                 if (data.success && data.projects) {
-                    projects = data.projects;
-                    const clientSet = new Set();
-                    projects.forEach(p => p.client && clientSet.add(p.client));
-                    clients = Array.from(clientSet).sort();
+                    projects = data.projects.filter(p => p.status !== 'Complete' && p.status !== 'Cancelled');
+                    clients = [...new Set(projects.map(p => p.client).filter(Boolean))].sort();
                 }
-            } catch(e) {
-                console.warn('Could not fetch projects from API:', e);
-            }
+            } catch(e) { console.warn('Projects fetch:', e); }
 
-            // Listen to design requests for capacity
-            onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), (snap) => {
+            onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), snap => {
                 designRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             });
-
-            // Listen to edit queue for capacity
-            onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "edit_queue"), (snap) => {
+            onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "edit_queue"), snap => {
                 editQueue = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             });
-
-        } catch(e) {
-            console.error('Data fetch error:', e);
-        }
+        } catch(e) { console.error('Fetch error:', e); }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // HELPERS
     // ═══════════════════════════════════════════════════════════════════════════
-    function getInitials(firstName, lastName) {
-        return `${(firstName || '?')[0]}${(lastName || '?')[0]}`.toUpperCase();
-    }
+    const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
+    const teamColor = t => TEAM_COLORS[t] || '#21A0D8';
+    const capStatus = u => u < 80 ? 'available' : u < 100 ? 'busy' : 'full';
+    const capColor = s => s === 'available' ? '#10B981' : s === 'busy' ? '#F59E0B' : '#EF4444';
+    const weeklyCapacity = p => Number(p.weeklyCapacityPTS ?? p.maxHoursPerWeek ?? 40);
 
-    function getTeamColor(team) {
-        return TEAM_COLORS[team] || '#21A0D8';
-    }
-
-    function getCapacityStatus(utilization) {
-        if (utilization < 80) return 'available';
-        if (utilization < 100) return 'busy';
-        return 'full';
-    }
-
-    function getCapacityColor(status) {
-        if (status === 'available') return '#10B981';
-        if (status === 'busy') return '#F59E0B';
-        return '#EF4444';
-    }
-
-    function getWeeklyCapacity(person) {
-        return Number(person.weeklyCapacityPTS ?? person.weeklyCapacityPts ?? person.maxHoursPerWeek ?? 40);
-    }
-
-    function calculateDesignerWorkload(designerId) {
+    function calcWorkload(type, id) {
+        const items = type === 'design' ? designRequests : editQueue;
+        const key = type === 'design' ? 'designerId' : 'editor';
         let effort = 0;
-        let tasks = 0;
-        designRequests.forEach(r => {
-            if (r.designerId === designerId && r.status !== 'Done') {
-                effort += r.effortPTS || EFFORT_POINTS.design[r.assetType] || 3;
-                tasks++;
+        items.forEach(i => {
+            const match = type === 'design' ? i.designerId === id : i.editor === id;
+            if (match && i.status !== 'Done' && i.status !== 'Live') {
+                effort += i.effortPTS || (type === 'design' ? EFFORT.design[i.assetType] : EFFORT.edit[i.videoComplexity]) || 4;
             }
         });
-        return { effort, tasks };
+        return effort;
     }
 
-    function calculateEditorWorkload(editorName) {
-        let effort = 0;
-        let tasks = 0;
-        editQueue.forEach(item => {
-            if (item.editor === editorName && item.status !== 'Live' && item.status !== 'Approved') {
-                effort += item.effortPTS || EFFORT_POINTS.edit[item.videoComplexity] || 6;
-                tasks++;
-            }
-        });
-        return { effort, tasks };
-    }
-
-    function calculateEffortEstimate() {
-        if (intakeType === 'design' && formData.assetType) {
-            const base = EFFORT_POINTS.design[formData.assetType] || 3;
-            const seniority = formData.assignedDesigner?.seniority || 'Senior';
-            const multiplier = EFFORT_POINTS.seniorityMultiplier[seniority] || 1.0;
-            return (base * multiplier).toFixed(1);
-        }
-        if (intakeType === 'edit' && formData.videoComplexity) {
-            let base = EFFORT_POINTS.edit[formData.videoComplexity] || 6;
-            formData.editModifiers.forEach(mod => {
-                base += EFFORT_POINTS.modifiers[mod] || 0;
-            });
-            const seniority = formData.assignedEditor?.seniority || 'Senior';
-            const multiplier = EFFORT_POINTS.seniorityMultiplier[seniority] || 1.0;
-            return (base * multiplier).toFixed(1);
+    function calcEffort() {
+        if (intakeType === 'design' && form.assetType) return EFFORT.design[form.assetType] || 4;
+        if (intakeType === 'edit' && form.videoComplexity) {
+            let base = EFFORT.edit[form.videoComplexity] || 6;
+            form.editModifiers.forEach(m => base += EFFORT.modifiers[m] || 0);
+            return base;
         }
         return null;
     }
 
-    function showToast(message, type = '') {
-        const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.className = `toast show ${type}`;
-        setTimeout(() => toast.classList.remove('show'), 3000);
+    function showToast(msg, type = '') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = `toast show ${type}`;
+        setTimeout(() => t.classList.remove('show'), 3000);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // RENDER FUNCTIONS
+    // RENDER
     // ═══════════════════════════════════════════════════════════════════════════
     function render() {
-        const content = document.getElementById('content');
-
+        const c = document.getElementById('content');
         switch(currentStep) {
-            case 'select':
-                content.innerHTML = renderSelectType();
-                break;
-            case 'brief':
-                content.innerHTML = renderBriefForm();
-                break;
-            case 'brief-details':
-                content.innerHTML = renderBriefDetails();
-                break;
-            case 'brief-context':
-                content.innerHTML = renderBriefContext();
-                break;
-            case 'design':
-                content.innerHTML = renderDesignForm();
-                break;
-            case 'edit':
-                content.innerHTML = renderEditForm();
-                break;
-            case 'success':
-                content.innerHTML = renderSuccess();
-                break;
+            case 'select': c.innerHTML = renderSelect(); break;
+            case 'brief': c.innerHTML = renderBrief(); break;
+            case 'brief-2': c.innerHTML = renderBrief2(); break;
+            case 'design': c.innerHTML = renderDesign(); break;
+            case 'edit': c.innerHTML = renderEdit(); break;
+            case 'deliverable': c.innerHTML = renderDeliverable(); break;
+            case 'deliverable-2': c.innerHTML = renderDeliverable2(); break;
+            case 'success': c.innerHTML = renderSuccess(); break;
         }
-
-        attachEventListeners();
+        attachListeners();
     }
 
-    function renderSelectType() {
+    function renderSelect() {
         return `
             <div class="card">
                 <div class="card-header">
-                    <div class="card-step">Step 1</div>
+                    <div class="card-step">Start</div>
                     <div class="card-title">What do you need?</div>
-                    <div class="card-desc">Select the type of request to get started</div>
                 </div>
                 <div class="card-body">
                     <div class="intake-grid">
@@ -1046,25 +367,31 @@
                             <div class="intake-icon" style="background: var(--dmg-blue-soft);">📋</div>
                             <div class="intake-content">
                                 <div class="intake-label">Log a New Brief</div>
-                                <div class="intake-desc">Commercial project or campaign from Sales. Creates entry in Master Ledger.</div>
+                                <div class="intake-desc">Sales: log a new client brief for Creative to respond to</div>
                             </div>
                             <div class="intake-arrow">→</div>
                         </div>
-
                         <div class="intake-option" data-type="design">
                             <div class="intake-icon" style="background: var(--creative-soft);">🎨</div>
                             <div class="intake-content">
                                 <div class="intake-label">Request Design Work</div>
-                                <div class="intake-desc">Thumbnails, graphics, or visual assets. Goes to Design team queue.</div>
+                                <div class="intake-desc">Need a thumbnail, graphics, or visual asset</div>
                             </div>
                             <div class="intake-arrow">→</div>
                         </div>
-
                         <div class="intake-option" data-type="edit">
                             <div class="intake-icon" style="background: var(--editorial-soft);">🎬</div>
                             <div class="intake-content">
                                 <div class="intake-label">Request Video Edit</div>
-                                <div class="intake-desc">Video editing or post-production work. Goes to Editor queue.</div>
+                                <div class="intake-desc">Need video editing or post-production work</div>
+                            </div>
+                            <div class="intake-arrow">→</div>
+                        </div>
+                        <div class="intake-option" data-type="deliverable">
+                            <div class="intake-icon" style="background: var(--production-soft);">➕</div>
+                            <div class="intake-content">
+                                <div class="intake-label">Add Deliverable to Project</div>
+                                <div class="intake-desc">Add a new deliverable to an existing project</div>
                             </div>
                             <div class="intake-arrow">→</div>
                         </div>
@@ -1074,86 +401,192 @@
         `;
     }
 
-    function renderCapacityPreview(team) {
-        const members = team === 'design' ? designers : editors;
-        if (members.length === 0) return '';
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BRIEF FLOW (Sales)
+    // ═══════════════════════════════════════════════════════════════════════════
+    function renderBrief() {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-step">New Brief — 1/2</div>
+                    <div class="card-title">The Basics</div>
+                </div>
+                <div class="card-body">
+                    <div class="field">
+                        <label class="field-label">Client <span class="required">*</span></label>
+                        <div class="custom-select" id="clientPicker">
+                            <div class="select-trigger">
+                                <span class="${form.client ? '' : 'placeholder'}">${form.client || 'Select or add new...'}</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                            <div class="select-dropdown" id="clientDropdown">
+                                <div class="dropdown-search"><input type="text" placeholder="Search or type new..." id="clientSearch"></div>
+                                <div class="dropdown-item" data-value="__new__" style="color: var(--dmg-blue); font-weight: 600;">+ Add new client</div>
+                                ${clients.map(c => `<div class="dropdown-item" data-value="${c}">${c}</div>`).join('')}
+                            </div>
+                        </div>
+                    </div>
 
+                    <div class="field">
+                        <label class="field-label">Brief / Campaign Name <span class="required">*</span></label>
+                        <input type="text" class="field-input" id="titleInput" placeholder="e.g. Summer Campaign 2026" value="${form.title}">
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">What type?</label>
+                        <div class="pills">
+                            ${['Campaign', 'Video Ideas'].map(t => `<div class="pill ${form.projectType === t ? 'selected' : ''}" data-type="${t}">${t}</div>`).join('')}
+                        </div>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Deal Value <span class="optional">(£)</span></label>
+                            <input type="number" class="field-input" id="valueInput" placeholder="0" value="${form.dealValue}">
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Response Due <span class="required">*</span></label>
+                            <input type="date" class="field-input" id="dueDateInput" value="${form.dueDate}">
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button class="btn btn-back" id="backBtn">← Back</button>
+                        <button class="btn btn-primary" id="continueBtn" ${!form.client || !form.title || !form.dueDate ? 'disabled' : ''}>Continue →</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderBrief2() {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-step">New Brief — 2/2</div>
+                    <div class="card-title">Details & Context</div>
+                </div>
+                <div class="card-body">
+                    <div class="field">
+                        <label class="field-label">Response Format</label>
+                        <div class="pills">
+                            ${['Deck', 'Google Doc'].map(f => `<div class="pill ${form.responseFormat === f ? 'selected' : ''}" data-format="${f}">${f}</div>`).join('')}
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Channels mentioned? <span class="optional">(select any)</span></label>
+                        <div class="pills">
+                            ${['TikTok', 'Instagram', 'YouTube', 'Facebook', 'X/Twitter', 'Web'].map(ch => `<div class="pill ${form.channels.includes(ch) ? 'selected' : ''}" data-channel="${ch}">${ch}</div>`).join('')}
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Rough deliverable count? <span class="optional">(if known)</span></label>
+                        <input type="text" class="field-input" id="countInput" placeholder="e.g. 3 videos, 5 social assets" value="${form.deliverableCount}">
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Filed by</label>
+                        <div class="custom-select" id="salesLeadPicker">
+                            <div class="select-trigger">
+                                <span class="${form.salesLead ? '' : 'placeholder'}">${form.salesLead ? `${form.salesLead.firstName} ${form.salesLead.lastName}` : 'Select...'}</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                            <div class="select-dropdown" id="salesLeadDropdown">
+                                ${salesTeam.map(s => `<div class="dropdown-item" data-id="${s.id}">${s.firstName} ${s.lastName}</div>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label">Notes / Context <span class="optional">(anything else?)</span></label>
+                        <textarea class="field-input" id="notesInput" placeholder="Key details, blockers, client preferences...">${form.notes}</textarea>
+                    </div>
+
+                    <div class="summary-box">
+                        <div class="summary-title">Summary</div>
+                        <div class="summary-row"><span class="summary-label">Client</span><span class="summary-value">${form.client}</span></div>
+                        <div class="summary-row"><span class="summary-label">Brief</span><span class="summary-value">${form.title}</span></div>
+                        <div class="summary-row"><span class="summary-label">Due</span><span class="summary-value">${form.dueDate ? new Date(form.dueDate).toLocaleDateString('en-GB', {day:'numeric',month:'short'}) : '—'}</span></div>
+                        <div class="summary-row"><span class="summary-label">Value</span><span class="summary-value">${form.dealValue ? '£' + Number(form.dealValue).toLocaleString() : '—'}</span></div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button class="btn btn-back" id="backBtn">← Back</button>
+                        <button class="btn btn-submit" id="submitBrief">Submit Brief ✓</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DESIGN REQUEST
+    // ═══════════════════════════════════════════════════════════════════════════
+    function renderCapacity(type) {
+        const members = type === 'design' ? designers : editors;
+        if (!members.length) return '';
         return `
             <div class="capacity-preview">
                 <div class="capacity-header">
-                    <div class="capacity-title">${team === 'design' ? 'Designer' : 'Editor'} Availability</div>
+                    <div class="capacity-title">${type === 'design' ? 'Designer' : 'Editor'} Availability</div>
                     <div class="capacity-legend">
-                        <div class="capacity-dot available"><span></span> Available</div>
-                        <div class="capacity-dot busy"><span></span> Busy</div>
-                        <div class="capacity-dot full"><span></span> Full</div>
+                        <div class="capacity-dot available"><span></span>Free</div>
+                        <div class="capacity-dot busy"><span></span>Busy</div>
+                        <div class="capacity-dot full"><span></span>Full</div>
                     </div>
                 </div>
                 <div class="capacity-list">
-                    ${members.slice(0, 6).map(m => {
-                        const workload = team === 'design'
-                            ? calculateDesignerWorkload(m.id)
-                            : calculateEditorWorkload(`${m.firstName} ${m.lastName}`);
-                        const capacity = getWeeklyCapacity(m);
-                        const utilization = capacity > 0 ? (workload.effort / capacity) * 100 : 0;
-                        const status = getCapacityStatus(utilization);
-                        const color = getCapacityColor(status);
-
-                        return `
-                            <div class="capacity-member">
-                                <div class="capacity-avatar" style="background: ${getTeamColor(m.team)}">${getInitials(m.firstName, m.lastName)}</div>
-                                <div class="capacity-info">
-                                    <div class="capacity-name">${m.firstName}</div>
-                                    <div class="capacity-bar">
-                                        <div class="capacity-fill" style="width: ${Math.min(utilization, 100)}%; background: ${color}"></div>
-                                    </div>
-                                </div>
-                                <div class="capacity-status" style="background: ${color}"></div>
-                            </div>
-                        `;
+                    ${members.slice(0,6).map(m => {
+                        const effort = calcWorkload(type, type === 'design' ? m.id : `${m.firstName} ${m.lastName}`);
+                        const cap = weeklyCapacity(m);
+                        const util = cap > 0 ? (effort / cap) * 100 : 0;
+                        const status = capStatus(util);
+                        return `<div class="capacity-member">
+                            <div class="capacity-avatar" style="background:${teamColor(m.team)}">${initials(m.firstName, m.lastName)}</div>
+                            <div class="capacity-name">${m.firstName}</div>
+                            <div class="capacity-status" style="background:${capColor(status)}"></div>
+                        </div>`;
                     }).join('')}
                 </div>
             </div>
         `;
     }
 
-    function renderDesignForm() {
-        const effortEstimate = calculateEffortEstimate();
-
+    function renderDesign() {
+        const effort = calcEffort();
         return `
             <div class="card">
                 <div class="card-header">
                     <div class="card-step">Design Request</div>
-                    <div class="card-title">What do you need designed?</div>
-                    <div class="card-desc">This will be added to the Design team queue</div>
+                    <div class="card-title">What do you need?</div>
                 </div>
                 <div class="card-body">
-                    ${renderCapacityPreview('design')}
+                    ${renderCapacity('design')}
 
                     <div class="field">
                         <label class="field-label">Asset Type <span class="required">*</span></label>
-                        <div class="asset-pills">
-                            ${Object.keys(EFFORT_POINTS.design).map(type => `
-                                <div class="asset-pill ${formData.assetType === type ? 'selected' : ''}" data-type="${type}">${type}</div>
-                            `).join('')}
+                        <div class="pills">
+                            ${Object.keys(EFFORT.design).map(t => `<div class="pill ${form.assetType === t ? 'selected' : ''}" data-asset="${t}">${t}</div>`).join('')}
                         </div>
                     </div>
 
                     <div class="field">
                         <label class="field-label">Title / Headline <span class="required">*</span></label>
-                        <input type="text" class="field-input" id="designTitle" placeholder="e.g. I ATE A SHARK thumbnail" value="${formData.title}">
+                        <input type="text" class="field-input" id="designTitle" placeholder="e.g. I ATE A SHARK thumbnail" value="${form.title}">
                     </div>
 
                     <div class="field">
-                        <label class="field-label">Link to Project (Optional)</label>
+                        <label class="field-label">Link to Project <span class="optional">(optional)</span></label>
                         <div class="custom-select" id="projectPicker">
                             <div class="select-trigger">
-                                <span class="${formData.linkedProject ? '' : 'placeholder'}">${formData.linkedProject ? formData.linkedProject.title : 'Link to existing project...'}</span>
+                                <span class="${form.linkedProject ? '' : 'placeholder'}">${form.linkedProject ? form.linkedProject.title : 'Select project...'}</span>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
                             </div>
                             <div class="select-dropdown" id="projectDropdown">
-                                ${projects.slice(0, 20).map(p => `
-                                    <div class="dropdown-item" data-id="${p.id}" data-title="${p.title}">${p.client || 'TBC'} — ${p.title}</div>
-                                `).join('')}
+                                <div class="dropdown-search"><input type="text" placeholder="Search projects..."></div>
+                                ${projects.slice(0,20).map(p => `<div class="dropdown-item" data-id="${p.id}" data-title="${p.title}">${p.client || 'TBC'} — ${p.title}</div>`).join('')}
                             </div>
                         </div>
                     </div>
@@ -1161,26 +594,17 @@
                     <div class="field-row">
                         <div class="field">
                             <label class="field-label">Deadline <span class="required">*</span></label>
-                            <input type="date" class="field-input" id="designDeadline" value="${formData.deadline}">
+                            <input type="date" class="field-input" id="deadlineInput" value="${form.deadline}">
                         </div>
                         <div class="field">
-                            <label class="field-label">Assign to (Optional)</label>
-                            <div class="custom-select" id="designerPicker">
+                            <label class="field-label">Assign to <span class="optional">(optional)</span></label>
+                            <div class="custom-select" id="assignPicker">
                                 <div class="select-trigger">
-                                    <span class="${formData.assignedDesigner ? '' : 'placeholder'}">${formData.assignedDesigner ? `${formData.assignedDesigner.firstName} ${formData.assignedDesigner.lastName}` : 'Auto-assign based on capacity'}</span>
+                                    <span class="${form.assignedTo ? '' : 'placeholder'}">${form.assignedTo ? `${form.assignedTo.firstName} ${form.assignedTo.lastName}` : 'Auto-assign'}</span>
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
                                 </div>
-                                <div class="select-dropdown" id="designerDropdown">
-                                    <div class="staff-search"><input type="text" placeholder="Search designers..."></div>
-                                    ${designers.map(d => `
-                                        <div class="staff-item" data-id="${d.id}">
-                                            <div class="staff-avatar" style="background: ${getTeamColor(d.team)}">${getInitials(d.firstName, d.lastName)}</div>
-                                            <div>
-                                                <div class="staff-name">${d.firstName} ${d.lastName}</div>
-                                                <div class="staff-role">${d.role || 'Designer'}</div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
+                                <div class="select-dropdown" id="assignDropdown">
+                                    ${designers.map(d => `<div class="dropdown-item" data-id="${d.id}">${d.firstName} ${d.lastName}</div>`).join('')}
                                 </div>
                             </div>
                         </div>
@@ -1188,73 +612,63 @@
 
                     <div class="field">
                         <label class="field-label">Brief / Notes</label>
-                        <textarea class="field-input" id="designBrief" placeholder="Describe what you need...">${formData.designBrief}</textarea>
+                        <textarea class="field-input" id="briefInput" placeholder="Describe what you need...">${form.brief}</textarea>
                     </div>
 
-                    ${effortEstimate ? `
-                        <div class="effort-box">
-                            <div class="effort-title">Estimated Effort</div>
-                            <div class="effort-value">${effortEstimate} <span>PTS</span></div>
-                            <div class="effort-breakdown">Based on ${formData.assetType}${formData.assignedDesigner ? ` + ${formData.assignedDesigner.seniority || 'Senior'} level` : ''}</div>
-                        </div>
-                    ` : ''}
+                    ${effort ? `<div class="effort-box"><div class="effort-title">Est. Effort</div><div class="effort-value">${effort} <span>PTS</span></div></div>` : ''}
 
                     <div class="btn-row">
                         <button class="btn btn-back" id="backBtn">← Back</button>
-                        <button class="btn btn-submit" id="submitDesign" ${!formData.assetType || !formData.deadline ? 'disabled' : ''}>Submit Request</button>
+                        <button class="btn btn-submit" id="submitDesign" ${!form.assetType || !form.title || !form.deadline ? 'disabled' : ''}>Submit →</button>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    function renderEditForm() {
-        const effortEstimate = calculateEffortEstimate();
-
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EDIT REQUEST
+    // ═══════════════════════════════════════════════════════════════════════════
+    function renderEdit() {
+        const effort = calcEffort();
         return `
             <div class="card">
                 <div class="card-header">
                     <div class="card-step">Edit Request</div>
-                    <div class="card-title">What video work do you need?</div>
-                    <div class="card-desc">This will be added to the Editor queue</div>
+                    <div class="card-title">What do you need?</div>
                 </div>
                 <div class="card-body">
-                    ${renderCapacityPreview('edit')}
+                    ${renderCapacity('edit')}
 
                     <div class="field">
-                        <label class="field-label">Video Complexity <span class="required">*</span></label>
-                        <div class="asset-pills">
-                            ${Object.keys(EFFORT_POINTS.edit).map(type => `
-                                <div class="asset-pill ${formData.videoComplexity === type ? 'selected' : ''}" data-complexity="${type}">${type}</div>
-                            `).join('')}
+                        <label class="field-label">Complexity <span class="required">*</span></label>
+                        <div class="pills">
+                            ${Object.keys(EFFORT.edit).map(t => `<div class="pill ${form.videoComplexity === t ? 'selected' : ''}" data-complexity="${t}">${t}</div>`).join('')}
                         </div>
                     </div>
 
                     <div class="field">
-                        <label class="field-label">Modifiers (Select all that apply)</label>
-                        <div class="asset-pills">
-                            ${['Motion Graphics', 'Stock Footage Search', 'Voiceover Recording', 'Multi-Platform Versions', 'Client Amends', 'Rush (under 48hrs)'].map(mod => `
-                                <div class="asset-pill ${formData.editModifiers.includes(mod) ? 'selected' : ''}" data-modifier="${mod}">${mod}</div>
-                            `).join('')}
+                        <label class="field-label">Extras <span class="optional">(select any)</span></label>
+                        <div class="pills">
+                            ${Object.keys(EFFORT.modifiers).map(m => `<div class="pill ${form.editModifiers.includes(m) ? 'selected' : ''}" data-modifier="${m}">${m}</div>`).join('')}
                         </div>
                     </div>
 
                     <div class="field">
-                        <label class="field-label">Title / Headline <span class="required">*</span></label>
-                        <input type="text" class="field-input" id="editTitle" placeholder="e.g. I ATE A SHARK edit" value="${formData.title}">
+                        <label class="field-label">Title <span class="required">*</span></label>
+                        <input type="text" class="field-input" id="editTitle" placeholder="e.g. I ATE A SHARK edit" value="${form.title}">
                     </div>
 
                     <div class="field">
-                        <label class="field-label">Link to Project (Optional)</label>
+                        <label class="field-label">Link to Project <span class="optional">(optional)</span></label>
                         <div class="custom-select" id="projectPicker">
                             <div class="select-trigger">
-                                <span class="${formData.linkedProject ? '' : 'placeholder'}">${formData.linkedProject ? formData.linkedProject.title : 'Link to existing project...'}</span>
+                                <span class="${form.linkedProject ? '' : 'placeholder'}">${form.linkedProject ? form.linkedProject.title : 'Select project...'}</span>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
                             </div>
                             <div class="select-dropdown" id="projectDropdown">
-                                ${projects.slice(0, 20).map(p => `
-                                    <div class="dropdown-item" data-id="${p.id}" data-title="${p.title}">${p.client || 'TBC'} — ${p.title}</div>
-                                `).join('')}
+                                <div class="dropdown-search"><input type="text" placeholder="Search projects..."></div>
+                                ${projects.slice(0,20).map(p => `<div class="dropdown-item" data-id="${p.id}" data-title="${p.title}">${p.client || 'TBC'} — ${p.title}</div>`).join('')}
                             </div>
                         </div>
                     </div>
@@ -1262,26 +676,17 @@
                     <div class="field-row">
                         <div class="field">
                             <label class="field-label">Deadline <span class="required">*</span></label>
-                            <input type="date" class="field-input" id="editDeadline" value="${formData.deadline}">
+                            <input type="date" class="field-input" id="deadlineInput" value="${form.deadline}">
                         </div>
                         <div class="field">
-                            <label class="field-label">Assign to (Optional)</label>
-                            <div class="custom-select" id="editorPicker">
+                            <label class="field-label">Assign to <span class="optional">(optional)</span></label>
+                            <div class="custom-select" id="assignPicker">
                                 <div class="select-trigger">
-                                    <span class="${formData.assignedEditor ? '' : 'placeholder'}">${formData.assignedEditor ? `${formData.assignedEditor.firstName} ${formData.assignedEditor.lastName}` : 'Auto-assign based on capacity'}</span>
+                                    <span class="${form.assignedTo ? '' : 'placeholder'}">${form.assignedTo ? `${form.assignedTo.firstName} ${form.assignedTo.lastName}` : 'Auto-assign'}</span>
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
                                 </div>
-                                <div class="select-dropdown" id="editorDropdown">
-                                    <div class="staff-search"><input type="text" placeholder="Search editors..."></div>
-                                    ${editors.map(e => `
-                                        <div class="staff-item" data-id="${e.id}">
-                                            <div class="staff-avatar" style="background: ${getTeamColor(e.team)}">${getInitials(e.firstName, e.lastName)}</div>
-                                            <div>
-                                                <div class="staff-name">${e.firstName} ${e.lastName}</div>
-                                                <div class="staff-role">${e.role || 'Editor'}</div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
+                                <div class="select-dropdown" id="assignDropdown">
+                                    ${editors.map(e => `<div class="dropdown-item" data-id="${e.id}">${e.firstName} ${e.lastName}</div>`).join('')}
                                 </div>
                             </div>
                         </div>
@@ -1289,82 +694,98 @@
 
                     <div class="field">
                         <label class="field-label">Brief / Notes</label>
-                        <textarea class="field-input" id="editBrief" placeholder="Describe what you need...">${formData.editBrief}</textarea>
+                        <textarea class="field-input" id="briefInput" placeholder="Describe what you need...">${form.brief}</textarea>
                     </div>
 
-                    ${effortEstimate ? `
-                        <div class="effort-box">
-                            <div class="effort-title">Estimated Effort</div>
-                            <div class="effort-value">${effortEstimate} <span>PTS</span></div>
-                            <div class="effort-breakdown">Based on ${formData.videoComplexity}${formData.editModifiers.length > 0 ? ` + ${formData.editModifiers.length} modifier(s)` : ''}</div>
+                    ${effort ? `<div class="effort-box"><div class="effort-title">Est. Effort</div><div class="effort-value">${effort} <span>PTS</span></div></div>` : ''}
+
+                    <div class="btn-row">
+                        <button class="btn btn-back" id="backBtn">← Back</button>
+                        <button class="btn btn-submit" id="submitEdit" ${!form.videoComplexity || !form.title || !form.deadline ? 'disabled' : ''}>Submit →</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ADD DELIVERABLE TO PROJECT
+    // ═══════════════════════════════════════════════════════════════════════════
+    function renderDeliverable() {
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-step">Add Deliverable — 1/2</div>
+                    <div class="card-title">Select Project</div>
+                </div>
+                <div class="card-body">
+                    <div class="field">
+                        <label class="field-label">Project <span class="required">*</span></label>
+                        <div class="custom-select" id="projectPicker">
+                            <div class="select-trigger">
+                                <span class="${form.linkedProject ? '' : 'placeholder'}">${form.linkedProject ? `${form.linkedProject.client || 'TBC'} — ${form.linkedProject.title}` : 'Search projects...'}</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+                            </div>
+                            <div class="select-dropdown" id="projectDropdown">
+                                <div class="dropdown-search"><input type="text" placeholder="Search projects..."></div>
+                                ${projects.map(p => `<div class="dropdown-item" data-id="${p.id}" data-title="${p.title}" data-client="${p.client||''}">${p.client || 'TBC'} — ${p.title}</div>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    ${form.linkedProject ? `
+                        <div class="summary-box">
+                            <div class="summary-title">Selected Project</div>
+                            <div class="summary-row"><span class="summary-label">Client</span><span class="summary-value">${form.linkedProject.client || '—'}</span></div>
+                            <div class="summary-row"><span class="summary-label">Project</span><span class="summary-value">${form.linkedProject.title}</span></div>
                         </div>
                     ` : ''}
 
                     <div class="btn-row">
                         <button class="btn btn-back" id="backBtn">← Back</button>
-                        <button class="btn btn-submit" id="submitEdit" ${!formData.videoComplexity || !formData.deadline ? 'disabled' : ''}>Submit Request</button>
+                        <button class="btn btn-primary" id="continueBtn" ${!form.linkedProject ? 'disabled' : ''}>Continue →</button>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    function renderBriefForm() {
+    function renderDeliverable2() {
         return `
             <div class="card">
                 <div class="card-header">
-                    <div class="card-step">Brief — Step 1 of 3</div>
-                    <div class="card-title">Project Identity</div>
-                    <div class="card-desc">Basic information about this project</div>
+                    <div class="card-step">Add Deliverable — 2/2</div>
+                    <div class="card-title">Deliverable Details</div>
+                    <div class="card-desc">Adding to: ${form.linkedProject?.title}</div>
                 </div>
                 <div class="card-body">
                     <div class="field">
-                        <label class="field-label">Project Title <span class="required">*</span></label>
-                        <input type="text" class="field-input" id="briefTitle" placeholder="Campaign or brief name..." value="${formData.title}">
+                        <label class="field-label">Discipline <span class="required">*</span></label>
+                        <div class="pills">
+                            ${['Editor', 'Design', 'Creative', 'Producer', 'Creator'].map(d => `<div class="pill ${form.deliverableType === d ? 'selected' : ''}" data-discipline="${d}">${d}</div>`).join('')}
+                        </div>
                     </div>
 
                     <div class="field">
-                        <label class="field-label">Client / Brand <span class="required">*</span></label>
-                        <div class="custom-select" id="clientPicker">
-                            <div class="select-trigger">
-                                <span class="${formData.client ? '' : 'placeholder'}">${formData.client || 'Select or type new client...'}</span>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
-                            </div>
-                            <div class="select-dropdown" id="clientDropdown">
-                                <div class="staff-search"><input type="text" placeholder="Search or add new..." id="clientSearch"></div>
-                                ${clients.map(c => `
-                                    <div class="dropdown-item" data-value="${c}">${c}</div>
-                                `).join('')}
-                            </div>
-                        </div>
+                        <label class="field-label">Deliverable Title <span class="required">*</span></label>
+                        <input type="text" class="field-input" id="deliverableTitleInput" placeholder="e.g. 📹 Edit – Episode Name" value="${form.deliverableTitle}">
+                        <div class="field-hint">Format: [Emoji] [Task] – [Episode Name]</div>
                     </div>
 
                     <div class="field-row">
                         <div class="field">
-                            <label class="field-label">Vertical</label>
-                            <div class="custom-select" id="verticalPicker">
-                                <div class="select-trigger">
-                                    <span class="${formData.vertical ? '' : 'placeholder'}">${formData.vertical || 'Select...'}</span>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
-                                </div>
-                                <div class="select-dropdown" id="verticalDropdown">
-                                    ${['Commercial', 'Social', 'Editorial', 'Shows', 'Distribution', 'Hybrid'].map(v => `
-                                        <div class="dropdown-item" data-value="${v}">${v}</div>
-                                    `).join('')}
-                                </div>
-                            </div>
+                            <label class="field-label">Due Date <span class="required">*</span></label>
+                            <input type="date" class="field-input" id="deadlineInput" value="${form.deadline}">
                         </div>
                         <div class="field">
-                            <label class="field-label">Owner Role</label>
-                            <div class="custom-select" id="ownerPicker">
+                            <label class="field-label">Assign to <span class="optional">(optional)</span></label>
+                            <div class="custom-select" id="assignPicker">
                                 <div class="select-trigger">
-                                    <span class="${formData.ownerRole ? '' : 'placeholder'}">${formData.ownerRole || 'Select...'}</span>
+                                    <span class="${form.assignedTo ? '' : 'placeholder'}">${form.assignedTo ? `${form.assignedTo.firstName} ${form.assignedTo.lastName}` : 'Assign later'}</span>
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
                                 </div>
-                                <div class="select-dropdown" id="ownerDropdown">
-                                    ${['Sales-led', 'Editorial-led', 'Production-led', 'Social-led'].map(o => `
-                                        <div class="dropdown-item" data-value="${o}">${o}</div>
-                                    `).join('')}
+                                <div class="select-dropdown" id="assignDropdown">
+                                    ${staff.map(s => `<div class="dropdown-item" data-id="${s.id}">${s.firstName} ${s.lastName} (${s.team || 'Team'})</div>`).join('')}
                                 </div>
                             </div>
                         </div>
@@ -1372,189 +793,32 @@
 
                     <div class="btn-row">
                         <button class="btn btn-back" id="backBtn">← Back</button>
-                        <button class="btn btn-primary" id="continueBtn" ${!formData.title ? 'disabled' : ''}>Continue →</button>
+                        <button class="btn btn-submit" id="submitDeliverable" ${!form.deliverableType || !form.deliverableTitle || !form.deadline ? 'disabled' : ''}>Add Deliverable ✓</button>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    function renderBriefDetails() {
-        return `
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-step">Brief — Step 2 of 3</div>
-                    <div class="card-title">Commercials & Timeline</div>
-                    <div class="card-desc">Deal details and key dates</div>
-                </div>
-                <div class="card-body">
-                    <div class="field-row">
-                        <div class="field">
-                            <label class="field-label">Deal Stage <span class="required">*</span></label>
-                            <div class="custom-select" id="stagePicker">
-                                <div class="select-trigger">
-                                    <span class="${formData.dealStage ? '' : 'placeholder'}">${formData.dealStage || 'Select...'}</span>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
-                                </div>
-                                <div class="select-dropdown" id="stageDropdown">
-                                    ${['Brief Received', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete', 'Closed Lost'].map(s => `
-                                        <div class="dropdown-item" data-value="${s}">${s}</div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Deal Value (£)</label>
-                            <input type="number" class="field-input" id="dealValue" placeholder="0" value="${formData.dealValue}">
-                        </div>
-                    </div>
-
-                    <div class="field">
-                        <label class="field-label">Priority</label>
-                        <div class="asset-pills">
-                            ${['Low', 'Standard', 'High'].map(p => `
-                                <div class="asset-pill ${formData.priority === p ? 'selected' : ''}" data-priority="${p}">${p}</div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <div class="field-row">
-                        <div class="field">
-                            <label class="field-label">Client Due Date</label>
-                            <input type="date" class="field-input" id="clientDueDate" value="${formData.clientDueDate}">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Internal Due Date</label>
-                            <input type="date" class="field-input" id="internalDueDate" value="${formData.internalDueDate}">
-                        </div>
-                    </div>
-
-                    <div class="btn-row">
-                        <button class="btn btn-back" id="backBtn">← Back</button>
-                        <button class="btn btn-primary" id="continueBtn" ${!formData.dealStage ? 'disabled' : ''}>Continue →</button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    function renderBriefContext() {
-        return `
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-step">Brief — Step 3 of 3</div>
-                    <div class="card-title">Team & Context</div>
-                    <div class="card-desc">Assign leads and add any notes</div>
-                </div>
-                <div class="card-body">
-                    <div class="field">
-                        <label class="field-label">Sales Lead</label>
-                        <div class="custom-select" id="salesLeadPicker">
-                            <div class="select-trigger">
-                                <span class="${formData.salesLead ? '' : 'placeholder'}">${formData.salesLead ? `${formData.salesLead.firstName} ${formData.salesLead.lastName}` : 'Assign sales lead...'}</span>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
-                            </div>
-                            <div class="select-dropdown" id="salesLeadDropdown">
-                                <div class="staff-search"><input type="text" placeholder="Search..."></div>
-                                ${staff.filter(s => s.team === 'Sales').map(s => `
-                                    <div class="staff-item" data-id="${s.id}" data-lead="sales">
-                                        <div class="staff-avatar" style="background: ${getTeamColor(s.team)}">${getInitials(s.firstName, s.lastName)}</div>
-                                        <div>
-                                            <div class="staff-name">${s.firstName} ${s.lastName}</div>
-                                            <div class="staff-role">${s.role || 'Sales'}</div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="field-row">
-                        <div class="field">
-                            <label class="field-label">Creative Lead</label>
-                            <div class="custom-select" id="creativeLeadPicker">
-                                <div class="select-trigger">
-                                    <span class="${formData.creativeLead ? '' : 'placeholder'}">${formData.creativeLead ? `${formData.creativeLead.firstName} ${formData.creativeLead.lastName}` : 'Optional...'}</span>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
-                                </div>
-                                <div class="select-dropdown" id="creativeLeadDropdown">
-                                    ${staff.filter(s => s.team === 'Creative').map(s => `
-                                        <div class="staff-item" data-id="${s.id}" data-lead="creative">
-                                            <div class="staff-avatar" style="background: ${getTeamColor(s.team)}">${getInitials(s.firstName, s.lastName)}</div>
-                                            <div class="staff-name">${s.firstName} ${s.lastName}</div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Production Lead</label>
-                            <div class="custom-select" id="productionLeadPicker">
-                                <div class="select-trigger">
-                                    <span class="${formData.productionLead ? '' : 'placeholder'}">${formData.productionLead ? `${formData.productionLead.firstName} ${formData.productionLead.lastName}` : 'Optional...'}</span>
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
-                                </div>
-                                <div class="select-dropdown" id="productionLeadDropdown">
-                                    ${staff.filter(s => s.team === 'Production').map(s => `
-                                        <div class="staff-item" data-id="${s.id}" data-lead="production">
-                                            <div class="staff-avatar" style="background: ${getTeamColor(s.team)}">${getInitials(s.firstName, s.lastName)}</div>
-                                            <div class="staff-name">${s.firstName} ${s.lastName}</div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="field">
-                        <label class="field-label">Notes & Context</label>
-                        <textarea class="field-input" id="briefNotes" placeholder="Any important details, blockers, or context...">${formData.notes}</textarea>
-                    </div>
-
-                    <div class="preview-panel">
-                        <div class="preview-title">Summary</div>
-                        <div class="preview-item">
-                            <span class="preview-label">Project</span>
-                            <span class="preview-value">${formData.title || '—'}</span>
-                        </div>
-                        <div class="preview-item">
-                            <span class="preview-label">Client</span>
-                            <span class="preview-value">${formData.client || '—'}</span>
-                        </div>
-                        <div class="preview-item">
-                            <span class="preview-label">Deal Stage</span>
-                            <span class="preview-value">${formData.dealStage || '—'}</span>
-                        </div>
-                        <div class="preview-item">
-                            <span class="preview-label">Value</span>
-                            <span class="preview-value">${formData.dealValue ? '£' + Number(formData.dealValue).toLocaleString() : '—'}</span>
-                        </div>
-                    </div>
-
-                    <div class="btn-row">
-                        <button class="btn btn-back" id="backBtn">← Back</button>
-                        <button class="btn btn-submit" id="submitBrief">Sync to Ledger ✓</button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SUCCESS
+    // ═══════════════════════════════════════════════════════════════════════════
     function renderSuccess() {
-        const typeLabels = {
-            'brief': 'Brief synced to Master Ledger',
-            'design': 'Design request added to queue',
-            'edit': 'Edit request added to queue'
+        const msgs = {
+            brief: { title: 'Brief Logged', desc: 'Added to Master Ledger. Creative will pick it up.' },
+            design: { title: 'Design Request Sent', desc: 'Added to Design queue.' },
+            edit: { title: 'Edit Request Sent', desc: 'Added to Editor queue.' },
+            deliverable: { title: 'Deliverable Added', desc: 'Added to the project in Master Ledger.' }
         };
-
+        const m = msgs[intakeType] || { title: 'Done!', desc: 'Request submitted.' };
         return `
             <div class="card">
                 <div class="card-body">
                     <div class="success-screen">
                         <div class="success-icon">✓</div>
-                        <div class="success-title">Request Submitted</div>
-                        <div class="success-desc">${typeLabels[intakeType] || 'Your request has been submitted'}</div>
-                        <button class="btn btn-primary" id="newRequestBtn" style="width: auto; padding: 12px 32px;">New Request</button>
+                        <div class="success-title">${m.title}</div>
+                        <div class="success-desc">${m.desc}</div>
+                        <button class="btn btn-primary" id="newRequestBtn" style="width:auto;padding:12px 28px;">New Request</button>
                     </div>
                 </div>
             </div>
@@ -1562,171 +826,100 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // EVENT LISTENERS
+    // LISTENERS
     // ═══════════════════════════════════════════════════════════════════════════
-    function attachEventListeners() {
-        // Reset button
-        document.getElementById('resetBtn')?.addEventListener('click', () => {
-            location.reload();
-        });
+    function attachListeners() {
+        document.getElementById('resetBtn')?.addEventListener('click', () => location.reload());
+        document.getElementById('newRequestBtn')?.addEventListener('click', () => location.reload());
 
-        // Intake type selection
-        document.querySelectorAll('.intake-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                intakeType = opt.dataset.type;
+        // Intake selection
+        document.querySelectorAll('.intake-option').forEach(o => {
+            o.addEventListener('click', () => {
+                intakeType = o.dataset.type;
                 currentStep = intakeType;
                 render();
             });
         });
 
-        // Back button
+        // Back
         document.getElementById('backBtn')?.addEventListener('click', () => {
             if (currentStep === 'brief') currentStep = 'select';
-            else if (currentStep === 'brief-details') currentStep = 'brief';
-            else if (currentStep === 'brief-context') currentStep = 'brief-details';
+            else if (currentStep === 'brief-2') currentStep = 'brief';
             else if (currentStep === 'design' || currentStep === 'edit') currentStep = 'select';
+            else if (currentStep === 'deliverable') currentStep = 'select';
+            else if (currentStep === 'deliverable-2') currentStep = 'deliverable';
             render();
         });
 
-        // Continue button
+        // Continue
         document.getElementById('continueBtn')?.addEventListener('click', () => {
-            if (currentStep === 'brief') currentStep = 'brief-details';
-            else if (currentStep === 'brief-details') currentStep = 'brief-context';
+            if (currentStep === 'brief') currentStep = 'brief-2';
+            else if (currentStep === 'deliverable') currentStep = 'deliverable-2';
             render();
         });
 
-        // New request button
-        document.getElementById('newRequestBtn')?.addEventListener('click', () => {
-            location.reload();
-        });
+        // Pills
+        document.querySelectorAll('.pill[data-type]').forEach(p => p.addEventListener('click', () => { form.projectType = p.dataset.type; render(); }));
+        document.querySelectorAll('.pill[data-format]').forEach(p => p.addEventListener('click', () => { form.responseFormat = p.dataset.format; render(); }));
+        document.querySelectorAll('.pill[data-channel]').forEach(p => p.addEventListener('click', () => {
+            const ch = p.dataset.channel;
+            form.channels = form.channels.includes(ch) ? form.channels.filter(c => c !== ch) : [...form.channels, ch];
+            render();
+        }));
+        document.querySelectorAll('.pill[data-asset]').forEach(p => p.addEventListener('click', () => { form.assetType = p.dataset.asset; render(); }));
+        document.querySelectorAll('.pill[data-complexity]').forEach(p => p.addEventListener('click', () => { form.videoComplexity = p.dataset.complexity; render(); }));
+        document.querySelectorAll('.pill[data-modifier]').forEach(p => p.addEventListener('click', () => {
+            const m = p.dataset.modifier;
+            form.editModifiers = form.editModifiers.includes(m) ? form.editModifiers.filter(x => x !== m) : [...form.editModifiers, m];
+            render();
+        }));
+        document.querySelectorAll('.pill[data-discipline]').forEach(p => p.addEventListener('click', () => { form.deliverableType = p.dataset.discipline; render(); }));
 
-        // Asset type pills (Design)
-        document.querySelectorAll('.asset-pill[data-type]').forEach(pill => {
-            pill.addEventListener('click', () => {
-                formData.assetType = pill.dataset.type;
-                render();
-            });
-        });
+        // Inputs
+        document.getElementById('titleInput')?.addEventListener('input', e => { form.title = e.target.value; updateBtnState(); });
+        document.getElementById('valueInput')?.addEventListener('input', e => { form.dealValue = e.target.value; });
+        document.getElementById('dueDateInput')?.addEventListener('change', e => { form.dueDate = e.target.value; updateBtnState(); });
+        document.getElementById('countInput')?.addEventListener('input', e => { form.deliverableCount = e.target.value; });
+        document.getElementById('notesInput')?.addEventListener('input', e => { form.notes = e.target.value; });
+        document.getElementById('designTitle')?.addEventListener('input', e => { form.title = e.target.value; updateBtnState(); });
+        document.getElementById('editTitle')?.addEventListener('input', e => { form.title = e.target.value; updateBtnState(); });
+        document.getElementById('deadlineInput')?.addEventListener('change', e => { form.deadline = e.target.value; updateBtnState(); });
+        document.getElementById('briefInput')?.addEventListener('input', e => { form.brief = e.target.value; });
+        document.getElementById('deliverableTitleInput')?.addEventListener('input', e => { form.deliverableTitle = e.target.value; updateBtnState(); });
 
-        // Video complexity pills (Edit)
-        document.querySelectorAll('.asset-pill[data-complexity]').forEach(pill => {
-            pill.addEventListener('click', () => {
-                formData.videoComplexity = pill.dataset.complexity;
-                render();
-            });
-        });
-
-        // Edit modifiers
-        document.querySelectorAll('.asset-pill[data-modifier]').forEach(pill => {
-            pill.addEventListener('click', () => {
-                const mod = pill.dataset.modifier;
-                if (formData.editModifiers.includes(mod)) {
-                    formData.editModifiers = formData.editModifiers.filter(m => m !== mod);
-                } else {
-                    formData.editModifiers.push(mod);
-                }
-                render();
-            });
-        });
-
-        // Priority pills
-        document.querySelectorAll('.asset-pill[data-priority]').forEach(pill => {
-            pill.addEventListener('click', () => {
-                formData.priority = pill.dataset.priority;
-                render();
-            });
-        });
-
-        // Form inputs
-        document.getElementById('designTitle')?.addEventListener('input', (e) => {
-            formData.title = e.target.value;
-        });
-        document.getElementById('designDeadline')?.addEventListener('change', (e) => {
-            formData.deadline = e.target.value;
+        // Dropdowns
+        setupDropdown('clientPicker', 'clientDropdown', (val) => {
+            if (val === '__new__') {
+                const search = document.getElementById('clientSearch');
+                form.client = search?.value || '';
+                form.isNewClient = true;
+            } else {
+                form.client = val;
+                form.isNewClient = false;
+            }
             render();
         });
-        document.getElementById('designBrief')?.addEventListener('input', (e) => {
-            formData.designBrief = e.target.value;
-        });
-        document.getElementById('editTitle')?.addEventListener('input', (e) => {
-            formData.title = e.target.value;
-        });
-        document.getElementById('editDeadline')?.addEventListener('change', (e) => {
-            formData.deadline = e.target.value;
+        setupDropdown('salesLeadPicker', 'salesLeadDropdown', (id) => {
+            form.salesLead = salesTeam.find(s => s.id === id);
             render();
         });
-        document.getElementById('editBrief')?.addEventListener('input', (e) => {
-            formData.editBrief = e.target.value;
-        });
-        document.getElementById('briefTitle')?.addEventListener('input', (e) => {
-            formData.title = e.target.value;
-            const btn = document.getElementById('continueBtn');
-            if (btn) btn.disabled = !e.target.value;
-        });
-        document.getElementById('dealValue')?.addEventListener('input', (e) => {
-            formData.dealValue = e.target.value;
-        });
-        document.getElementById('clientDueDate')?.addEventListener('change', (e) => {
-            formData.clientDueDate = e.target.value;
-        });
-        document.getElementById('internalDueDate')?.addEventListener('change', (e) => {
-            formData.internalDueDate = e.target.value;
-        });
-        document.getElementById('briefNotes')?.addEventListener('input', (e) => {
-            formData.notes = e.target.value;
-        });
-
-        // Custom select dropdowns
-        setupCustomSelect('clientPicker', 'clientDropdown', (value) => {
-            formData.client = value;
+        setupDropdown('projectPicker', 'projectDropdown', (id, title, client) => {
+            form.linkedProject = { id, title, client };
             render();
         });
-        setupCustomSelect('verticalPicker', 'verticalDropdown', (value) => {
-            formData.vertical = value;
-            render();
-        });
-        setupCustomSelect('ownerPicker', 'ownerDropdown', (value) => {
-            formData.ownerRole = value;
-            render();
-        });
-        setupCustomSelect('stagePicker', 'stageDropdown', (value) => {
-            formData.dealStage = value;
-            render();
-        });
-        setupCustomSelect('projectPicker', 'projectDropdown', (value, title) => {
-            formData.linkedProject = { id: value, title: title };
-            render();
-        });
-
-        // Staff pickers
-        setupStaffPicker('designerPicker', 'designerDropdown', designers, (person) => {
-            formData.assignedDesigner = person;
-            render();
-        });
-        setupStaffPicker('editorPicker', 'editorDropdown', editors, (person) => {
-            formData.assignedEditor = person;
-            render();
-        });
-        setupStaffPicker('salesLeadPicker', 'salesLeadDropdown', staff.filter(s => s.team === 'Sales'), (person) => {
-            formData.salesLead = person;
-            render();
-        });
-        setupStaffPicker('creativeLeadPicker', 'creativeLeadDropdown', staff.filter(s => s.team === 'Creative'), (person) => {
-            formData.creativeLead = person;
-            render();
-        });
-        setupStaffPicker('productionLeadPicker', 'productionLeadDropdown', staff.filter(s => s.team === 'Production'), (person) => {
-            formData.productionLead = person;
+        setupDropdown('assignPicker', 'assignDropdown', (id) => {
+            form.assignedTo = staff.find(s => s.id === id);
             render();
         });
 
         // Submit buttons
-        document.getElementById('submitDesign')?.addEventListener('click', submitDesignRequest);
-        document.getElementById('submitEdit')?.addEventListener('click', submitEditRequest);
         document.getElementById('submitBrief')?.addEventListener('click', submitBrief);
+        document.getElementById('submitDesign')?.addEventListener('click', submitDesign);
+        document.getElementById('submitEdit')?.addEventListener('click', submitEdit);
+        document.getElementById('submitDeliverable')?.addEventListener('click', submitDeliverable);
 
         // Close dropdowns on outside click
-        document.addEventListener('click', (e) => {
+        document.addEventListener('click', e => {
             if (!e.target.closest('.custom-select')) {
                 document.querySelectorAll('.select-dropdown.show').forEach(d => d.classList.remove('show'));
                 document.querySelectorAll('.select-trigger.open').forEach(t => t.classList.remove('open'));
@@ -1734,205 +927,179 @@
         });
     }
 
-    function setupCustomSelect(pickerId, dropdownId, onSelect) {
+    function setupDropdown(pickerId, dropdownId, onSelect) {
         const picker = document.getElementById(pickerId);
         const dropdown = document.getElementById(dropdownId);
         if (!picker || !dropdown) return;
 
         const trigger = picker.querySelector('.select-trigger');
-        trigger?.addEventListener('click', (e) => {
+        trigger?.addEventListener('click', e => {
             e.stopPropagation();
-            const isOpen = dropdown.classList.contains('show');
+            const open = dropdown.classList.contains('show');
             document.querySelectorAll('.select-dropdown.show').forEach(d => d.classList.remove('show'));
             document.querySelectorAll('.select-trigger.open').forEach(t => t.classList.remove('open'));
-            if (!isOpen) {
-                dropdown.classList.add('show');
-                trigger.classList.add('open');
-            }
+            if (!open) { dropdown.classList.add('show'); trigger.classList.add('open'); }
+        });
+
+        const search = dropdown.querySelector('.dropdown-search input');
+        search?.addEventListener('click', e => e.stopPropagation());
+        search?.addEventListener('input', e => {
+            const q = e.target.value.toLowerCase();
+            dropdown.querySelectorAll('.dropdown-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(q) ? 'block' : 'none';
+            });
         });
 
         dropdown.querySelectorAll('.dropdown-item').forEach(item => {
             item.addEventListener('click', () => {
-                const value = item.dataset.value || item.dataset.id;
+                const id = item.dataset.id || item.dataset.value;
                 const title = item.dataset.title || item.textContent.trim();
-                onSelect(value, title);
+                const client = item.dataset.client || '';
+                onSelect(id, title, client);
                 dropdown.classList.remove('show');
                 trigger.classList.remove('open');
             });
         });
     }
 
-    function setupStaffPicker(pickerId, dropdownId, staffList, onSelect) {
-        const picker = document.getElementById(pickerId);
-        const dropdown = document.getElementById(dropdownId);
-        if (!picker || !dropdown) return;
+    function updateBtnState() {
+        const continueBtn = document.getElementById('continueBtn');
+        const submitDesign = document.getElementById('submitDesign');
+        const submitEdit = document.getElementById('submitEdit');
+        const submitDeliverable = document.getElementById('submitDeliverable');
 
-        const trigger = picker.querySelector('.select-trigger');
-        trigger?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isOpen = dropdown.classList.contains('show');
-            document.querySelectorAll('.select-dropdown.show').forEach(d => d.classList.remove('show'));
-            document.querySelectorAll('.select-trigger.open').forEach(t => t.classList.remove('open'));
-            if (!isOpen) {
-                dropdown.classList.add('show');
-                trigger.classList.add('open');
-            }
-        });
-
-        const searchInput = dropdown.querySelector('.staff-search input');
-        searchInput?.addEventListener('click', (e) => e.stopPropagation());
-        searchInput?.addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase();
-            dropdown.querySelectorAll('.staff-item').forEach(item => {
-                const person = staffList.find(s => s.id === item.dataset.id);
-                const name = person ? `${person.firstName} ${person.lastName}`.toLowerCase() : '';
-                item.style.display = name.includes(q) ? 'flex' : 'none';
-            });
-        });
-
-        dropdown.querySelectorAll('.staff-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const person = staffList.find(s => s.id === item.dataset.id);
-                if (person) onSelect(person);
-                dropdown.classList.remove('show');
-                trigger.classList.remove('open');
-            });
-        });
+        if (continueBtn && currentStep === 'brief') continueBtn.disabled = !form.client || !form.title || !form.dueDate;
+        if (continueBtn && currentStep === 'deliverable') continueBtn.disabled = !form.linkedProject;
+        if (submitDesign) submitDesign.disabled = !form.assetType || !form.title || !form.deadline;
+        if (submitEdit) submitEdit.disabled = !form.videoComplexity || !form.title || !form.deadline;
+        if (submitDeliverable) submitDeliverable.disabled = !form.deliverableType || !form.deliverableTitle || !form.deadline;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // SUBMIT FUNCTIONS
     // ═══════════════════════════════════════════════════════════════════════════
-    async function submitDesignRequest() {
-        const btn = document.getElementById('submitDesign');
-        btn.disabled = true;
-        btn.textContent = 'Submitting...';
-
-        try {
-            const effortEstimate = calculateEffortEstimate();
-
-            await addDoc(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), {
-                title: formData.title,
-                headline: formData.title,
-                assetType: formData.assetType,
-                deadline: formData.deadline,
-                brief: formData.designBrief,
-                designerId: formData.assignedDesigner?.id || null,
-                designerName: formData.assignedDesigner ? `${formData.assignedDesigner.firstName} ${formData.assignedDesigner.lastName}` : null,
-                linkedProjectId: formData.linkedProject?.id || null,
-                linkedProjectTitle: formData.linkedProject?.title || null,
-                effortPTS: effortEstimate ? parseFloat(effortEstimate) : null,
-                status: 'Not Started',
-                source: 'intake_hub',
-                createdAt: serverTimestamp()
-            });
-
-            showToast('Design request submitted!', 'success');
-            currentStep = 'success';
-            render();
-        } catch (error) {
-            console.error('Submit error:', error);
-            showToast('Failed to submit: ' + error.message, 'error');
-            btn.disabled = false;
-            btn.textContent = 'Submit Request';
-        }
-    }
-
-    async function submitEditRequest() {
-        const btn = document.getElementById('submitEdit');
-        btn.disabled = true;
-        btn.textContent = 'Submitting...';
-
-        try {
-            const effortEstimate = calculateEffortEstimate();
-
-            await addDoc(collection(db, "artifacts", APP_ID, "public", "data", "edit_queue"), {
-                title: formData.title,
-                videoComplexity: formData.videoComplexity,
-                editModifiers: formData.editModifiers,
-                deadline: formData.deadline,
-                dueDate: formData.deadline,
-                brief: formData.editBrief,
-                editor: formData.assignedEditor ? `${formData.assignedEditor.firstName} ${formData.assignedEditor.lastName}` : null,
-                editorId: formData.assignedEditor?.id || null,
-                linkedProjectId: formData.linkedProject?.id || null,
-                linkedProjectTitle: formData.linkedProject?.title || null,
-                effortPTS: effortEstimate ? parseFloat(effortEstimate) : null,
-                status: 'Not Started',
-                source: 'intake_hub',
-                createdAt: serverTimestamp()
-            });
-
-            showToast('Edit request submitted!', 'success');
-            currentStep = 'success';
-            render();
-        } catch (error) {
-            console.error('Submit error:', error);
-            showToast('Failed to submit: ' + error.message, 'error');
-            btn.disabled = false;
-            btn.textContent = 'Submit Request';
-        }
-    }
-
     async function submitBrief() {
         const btn = document.getElementById('submitBrief');
-        btn.disabled = true;
-        btn.textContent = 'Syncing...';
-
+        btn.disabled = true; btn.textContent = 'Submitting...';
         try {
             const payload = {
-                TITLE: formData.title,
-                "CLIENT / EXTERNAL PARTNER": formData.client,
-                VERTICAL: formData.vertical,
-                "OWNER ROLE": formData.ownerRole,
-                "DEAL STAGE": formData.dealStage,
-                "DEAL VALUE": parseFloat(formData.dealValue) || 0,
-                "PRIORITY LEVEL": formData.priority,
-                "SALES LEAD(S)": formData.salesLead ? `${formData.salesLead.firstName} ${formData.salesLead.lastName}` : '',
-                "CREATIVE LEAD(S)": formData.creativeLead ? `${formData.creativeLead.firstName} ${formData.creativeLead.lastName}` : '',
-                "PRODUCTION LEAD(S)": formData.productionLead ? `${formData.productionLead.firstName} ${formData.productionLead.lastName}` : '',
-                "(SALES) NOTES": formData.notes,
-                "(CLIENT) DUE DATE": formData.clientDueDate || null,
-                "(INTERNAL) DUE DATE": formData.internalDueDate || null,
+                TITLE: form.title,
+                "CLIENT / EXTERNAL PARTNER": form.client,
+                "PROJECT TYPE": form.projectType === 'Campaign' ? '🎯 SHORT TERM CAMPAIGN' : '💡 VIDEO(S) IDEAS',
+                "DEAL VALUE": parseFloat(form.dealValue) || 0,
+                "(CLIENT) PROJECT DUE DATE": form.dueDate || null,
+                "RESPONSE TYPE NEEDED": form.responseFormat,
+                "ASSET(S) NEEDED": form.channels.length ? form.channels.join(', ') : null,
+                "AGREED CONTENT DELIVERABLES (FOR AI)": form.deliverableCount || null,
+                "(SALES) NOTES": form.notes,
+                "SALES LEAD(S)": form.salesLead ? `${form.salesLead.firstName} ${form.salesLead.lastName}` : '',
+                "DEAL STAGE": "Brief Received",
                 "PROJECT STATUS": "Not started"
             };
-
-            const res = await fetch(API_URL + '/projects', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
+            const res = await fetch(API_URL + '/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!res.ok) throw new Error('API error');
+            showToast('Brief logged!', 'success');
+            currentStep = 'success'; render();
+        } catch(e) {
+            console.error(e);
+            showToast('Failed: ' + e.message, 'error');
+            btn.disabled = false; btn.textContent = 'Submit Brief ✓';
+        }
+    }
 
-            showToast('Brief synced to Master Ledger!', 'success');
-            currentStep = 'success';
-            render();
-        } catch (error) {
-            console.error('Submit error:', error);
-            showToast('Failed to sync: ' + error.message, 'error');
-            btn.disabled = false;
-            btn.textContent = 'Sync to Ledger ✓';
+    async function submitDesign() {
+        const btn = document.getElementById('submitDesign');
+        btn.disabled = true; btn.textContent = 'Submitting...';
+        try {
+            // → Firebase design_requests → Designer Capacity widget
+            await addDoc(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), {
+                title: form.title,
+                headline: form.title,
+                assetType: form.assetType,
+                deadline: form.deadline,
+                brief: form.brief,
+                designerId: form.assignedTo?.id || null,
+                designerName: form.assignedTo ? `${form.assignedTo.firstName} ${form.assignedTo.lastName}` : null,
+                linkedProjectId: form.linkedProject?.id || null,
+                linkedProjectTitle: form.linkedProject?.title || null,
+                effortPTS: calcEffort(),
+                status: 'Not Started',
+                source: 'intake_hub',
+                createdAt: serverTimestamp()
+            });
+            showToast('Design request sent!', 'success');
+            currentStep = 'success'; render();
+        } catch(e) {
+            console.error(e);
+            showToast('Failed: ' + e.message, 'error');
+            btn.disabled = false; btn.textContent = 'Submit →';
+        }
+    }
+
+    async function submitEdit() {
+        const btn = document.getElementById('submitEdit');
+        btn.disabled = true; btn.textContent = 'Submitting...';
+        try {
+            // → Firebase edit_queue → Editor Capacity widget
+            await addDoc(collection(db, "artifacts", APP_ID, "public", "data", "edit_queue"), {
+                title: form.title,
+                videoComplexity: form.videoComplexity,
+                editModifiers: form.editModifiers,
+                deadline: form.deadline,
+                dueDate: form.deadline,
+                brief: form.brief,
+                editor: form.assignedTo ? `${form.assignedTo.firstName} ${form.assignedTo.lastName}` : null,
+                editorId: form.assignedTo?.id || null,
+                linkedProjectId: form.linkedProject?.id || null,
+                linkedProjectTitle: form.linkedProject?.title || null,
+                effortPTS: calcEffort(),
+                status: 'Not Started',
+                source: 'intake_hub',
+                createdAt: serverTimestamp()
+            });
+            showToast('Edit request sent!', 'success');
+            currentStep = 'success'; render();
+        } catch(e) {
+            console.error(e);
+            showToast('Failed: ' + e.message, 'error');
+            btn.disabled = false; btn.textContent = 'Submit →';
+        }
+    }
+
+    async function submitDeliverable() {
+        const btn = document.getElementById('submitDeliverable');
+        btn.disabled = true; btn.textContent = 'Adding...';
+        try {
+            // → Cloud Run API → Notion Master Ledger as sub-item
+            const payload = {
+                "Deliverable Title": form.deliverableTitle,
+                "DISCIPLINE": form.deliverableType,
+                "DUE DATE": form.deadline,
+                "ASSIGNED TO": form.assignedTo ? `${form.assignedTo.firstName} ${form.assignedTo.lastName}` : null,
+                "STATUS": "Not Started",
+                "PARENT ITEM": form.linkedProject.id
+            };
+            const res = await fetch(API_URL + '/deliverables', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!res.ok) throw new Error('API error');
+            showToast('Deliverable added!', 'success');
+            currentStep = 'success'; render();
+        } catch(e) {
+            console.error(e);
+            showToast('Failed: ' + e.message, 'error');
+            btn.disabled = false; btn.textContent = 'Add Deliverable ✓';
         }
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // INITIALIZE
+    // INIT
     // ═══════════════════════════════════════════════════════════════════════════
     signInAnonymously(auth).then(async () => {
         await fetchData();
         render();
     }).catch(err => {
-        console.error('Auth error:', err);
-        document.getElementById('content').innerHTML = `
-            <div class="card">
-                <div class="card-body" style="text-align: center; padding: 40px;">
-                    <div style="font-size: 24px; margin-bottom: 12px;">⚠️</div>
-                    <div style="font-weight: 700; margin-bottom: 8px;">Connection Error</div>
-                    <div style="font-size: 12px; color: var(--ink-sub);">Unable to connect. Please refresh.</div>
-                </div>
-            </div>
-        `;
+        console.error(err);
+        document.getElementById('content').innerHTML = `<div class="card"><div class="card-body" style="text-align:center;padding:40px"><div style="font-size:24px;margin-bottom:12px">⚠️</div><div style="font-weight:700">Connection Error</div><div style="font-size:12px;color:var(--ink-sub)">Please refresh</div></div></div>`;
     });
 </script>
 
