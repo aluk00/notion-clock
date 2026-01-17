@@ -582,6 +582,116 @@
         /* Enhanced drag feedback */
         .column.drag-over .cards-container { background: rgba(33, 160, 216, 0.05); border-radius: 6px; }
         .project-card.drop-target { border: 2px dashed var(--dmg-blue); background: rgba(33, 160, 216, 0.05); }
+
+        /* Scope Banner - Shows what user is viewing */
+        .scope-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--surface-alt);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .scope-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .scope-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .scope-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(33, 160, 216, 0.1);
+            color: var(--dmg-blue);
+        }
+        .scope-badge.active { background: rgba(67, 176, 73, 0.1); color: var(--production); }
+        .scope-badge.pipeline { background: rgba(230, 70, 139, 0.1); color: var(--creative); }
+        .scope-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            font-weight: 500;
+            color: var(--ink-sub);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            transition: all 0.15s ease;
+        }
+        .filter-toggle:hover {
+            background: var(--surface-alt);
+            border-color: #D1D5DB;
+        }
+        .filter-toggle.active {
+            background: var(--ink);
+            color: white;
+            border-color: var(--ink);
+        }
+        .filter-toggle input {
+            width: 12px;
+            height: 12px;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        /* Bento Box Card Styling */
+        .bento-grid {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .bento-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            transition: all 0.2s ease;
+        }
+        .bento-card:hover {
+            border-color: #D1D5DB;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .bento-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .bento-card-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .bento-card-count {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .bento-card-subtitle {
+            font-size: 9px;
+            color: var(--ink-muted);
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
@@ -601,6 +711,11 @@
         let hasChanges = false;
         let loading = true;
         let draggedCard = null;
+        let showCompleted = false; // Filter: show completed/cancelled projects
+
+        // Project status filters - based on STATUS 1 property
+        const ACTIVE_STATUSES = ['Pipeline', 'Active', 'In Progress'];
+        const INACTIVE_STATUSES = ['Complete', 'Completed', 'Cancelled', 'On Hold', 'Campaign Complete'];
 
         // ═══════════════════════════════════════════════════════════════
         // VIEW CONFIGURATIONS - Each view has its own columns and field
@@ -612,10 +727,10 @@
                 field: 'dealStage',
                 color: '#21A0D8',
                 columns: [
-                    { key: 'Brief Recieved', title: 'Brief In', color: '#E6468B' },
-                    { key: 'Pitch Sent', title: 'Pitch Sent', color: '#21A0D8' },
-                    { key: 'Deal Agreed', title: 'Agreed', color: '#43B049' },
-                    { key: 'Campaign Complete', title: 'Complete', color: '#F2C316' }
+                    { key: 'Brief Recieved', aliases: ['Brief Received', 'Brief In'], title: 'Brief In', color: '#E6468B' },
+                    { key: 'Pitch Sent', aliases: ['Pitch', 'Pitching'], title: 'Pitch Sent', color: '#21A0D8' },
+                    { key: 'Deal Agreed', aliases: ['Agreed', 'Won'], title: 'Agreed', color: '#43B049' },
+                    { key: 'Campaign Complete', aliases: ['Complete', 'Completed', 'Done'], title: 'Complete', color: '#F2C316' }
                 ]
             },
             Creative: {
@@ -623,14 +738,14 @@
                 field: 'creativeWorkflowStatus',
                 color: '#E6468B',
                 columns: [
-                    { key: 'Sales Review', title: 'Sales Review', color: '#E6468B' },
-                    { key: 'To Be Briefed', title: 'To Be Briefed', color: '#9CA3AF' },
-                    { key: 'In Progress', title: 'In Progress', color: '#21A0D8' },
-                    { key: 'In Edit', title: 'In Edit', color: '#F59E0B' },
-                    { key: 'With Design', title: 'With Design', color: '#8B5CF6' },
-                    { key: 'Internal Review', title: 'Internal Review', color: '#F59E0B' },
-                    { key: 'Feedback / Revisions', title: 'Feedback', color: '#E94B4B' },
-                    { key: 'Complete', title: 'Complete', color: '#43B049' }
+                    { key: 'Sales Review', aliases: [], title: 'Sales Review', color: '#E6468B' },
+                    { key: 'To Be Briefed', aliases: ['Briefed', 'Not Started'], title: 'To Be Briefed', color: '#9CA3AF' },
+                    { key: 'In Progress', aliases: ['Active', 'Working'], title: 'In Progress', color: '#21A0D8' },
+                    { key: 'In Edit', aliases: ['Editing', 'Edit'], title: 'In Edit', color: '#F59E0B' },
+                    { key: 'With Design', aliases: ['Design', 'Designing'], title: 'With Design', color: '#8B5CF6' },
+                    { key: 'Internal Review', aliases: ['Review', 'Reviewing'], title: 'Internal Review', color: '#F59E0B' },
+                    { key: 'Feedback / Revisions', aliases: ['Feedback', 'Revisions'], title: 'Feedback', color: '#E94B4B' },
+                    { key: 'Complete', aliases: ['Completed', 'Done'], title: 'Complete', color: '#43B049' }
                 ]
             },
             Production: {
@@ -638,12 +753,12 @@
                 field: 'productionWorkflowStatus',
                 color: '#43B049',
                 columns: [
-                    { key: 'Not Started', title: 'Not Started', color: '#9CA3AF' },
-                    { key: 'In Production', title: 'In Production', color: '#21A0D8' },
-                    { key: 'Stakeholder Review', title: 'Stakeholder Review', color: '#F59E0B' },
-                    { key: 'Feedback / Revisions', title: 'Feedback', color: '#E94B4B' },
-                    { key: 'Assets Approved', title: 'Assets Approved', color: '#43B049' },
-                    { key: 'Scheduled / Ready to Post', title: 'Ready to Post', color: '#E6468B' }
+                    { key: 'Not Started', aliases: ['To Do', 'Pending'], title: 'Not Started', color: '#9CA3AF' },
+                    { key: 'In Production', aliases: ['Production', 'Active', 'Filming', 'Shooting'], title: 'In Production', color: '#21A0D8' },
+                    { key: 'Stakeholder Review', aliases: ['Client Review', 'Review'], title: 'Stakeholder Review', color: '#F59E0B' },
+                    { key: 'Feedback / Revisions', aliases: ['Feedback', 'Revisions', 'Changes'], title: 'Feedback', color: '#E94B4B' },
+                    { key: 'Assets Approved', aliases: ['Approved', 'Complete'], title: 'Assets Approved', color: '#43B049' },
+                    { key: 'Scheduled / Ready to Post', aliases: ['Ready to Post', 'Scheduled', 'Ready'], title: 'Ready to Post', color: '#E6468B' }
                 ]
             },
             Social: {
@@ -651,13 +766,22 @@
                 field: 'socialWorkflowStatus',
                 color: '#F2C316',
                 columns: [
-                    { key: 'Awaiting Asset(s)', title: 'Awaiting Assets', color: '#9CA3AF' },
-                    { key: 'Ready to Post', title: 'Ready to Post', color: '#F59E0B' },
-                    { key: 'Scheduled', title: 'Scheduled', color: '#21A0D8' },
-                    { key: 'Live', title: 'Live', color: '#43B049' }
+                    { key: 'Awaiting Asset(s)', aliases: ['Awaiting Assets', 'Waiting', 'Pending'], title: 'Awaiting Assets', color: '#9CA3AF' },
+                    { key: 'Ready to Post', aliases: ['Ready'], title: 'Ready to Post', color: '#F59E0B' },
+                    { key: 'Scheduled', aliases: ['Scheduling'], title: 'Scheduled', color: '#21A0D8' },
+                    { key: 'Live', aliases: ['Posted', 'Published'], title: 'Live', color: '#43B049' }
                 ]
             }
         };
+
+        // Helper function to match project value against column (key + aliases)
+        function matchesColumn(projectValue, column) {
+            if (!projectValue) return false;
+            const normalizedValue = projectValue.toLowerCase().trim();
+            if (column.key.toLowerCase() === normalizedValue) return true;
+            if (column.aliases && column.aliases.some(alias => alias.toLowerCase() === normalizedValue)) return true;
+            return false;
+        }
 
         // Options for detail view dropdowns
         const dealStageOptions = ['Brief Recieved', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete'];
@@ -700,21 +824,46 @@
 
         async function loadProjects() {
             try {
-                console.log('Fetching from:', `${API_URL}/projects`);
+                console.log('[Projects Kanban] Fetching from:', `${API_URL}/projects`);
                 const res = await fetch(`${API_URL}/projects`);
-                console.log('Response status:', res.status);
+                console.log('[Projects Kanban] Response status:', res.status);
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+
                 const data = await res.json();
-                console.log('API response:', data);
-                console.log('Projects count:', data?.projects?.length || 0);
+                console.log('[Projects Kanban] API response:', { success: data?.success, count: data?.projects?.length || 0 });
+
+                if (data?.success === false) {
+                    throw new Error(data.error || 'API returned success: false');
+                }
+
                 allProjects = data?.projects || [];
                 loading = false;
+
+                // Log unique status values for debugging
+                const config = viewConfigs[currentView];
+                const uniqueValues = [...new Set(allProjects.map(p => p[config.field]).filter(Boolean))];
+                console.log(`[Projects Kanban] Unique ${config.field} values:`, uniqueValues);
+
                 render();
             } catch (e) {
-                console.error('Load failed:', e);
-                console.error('Error details:', e.message);
+                console.error('[Projects Kanban] Load failed:', e);
                 loading = false;
-                render();
+                allProjects = [];
+                renderError(e.message);
             }
+        }
+
+        function renderError(message) {
+            document.getElementById('app').innerHTML = `
+                <div class="loading-screen">
+                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                    <span class="loading-text" style="color: var(--editorial)">Failed to load projects</span>
+                    <span class="loading-text" style="font-size: 9px; color: var(--ink-muted);">${message || 'Unknown error'}</span>
+                    <button onclick="loadProjects()" style="margin-top: 12px; padding: 8px 16px; border-radius: 6px; font-size: 10px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); cursor: pointer;">Retry</button>
+                </div>`;
         }
 
         function render() {
@@ -733,20 +882,60 @@
         // KANBAN RENDERING - Now with dynamic columns per view
         // ═══════════════════════════════════════════════════════════════
 
+        // Helper to check if project is active (not completed/cancelled)
+        function isProjectActive(project) {
+            const status = (project.status1 || project.dealStage || '').toLowerCase();
+            // Exclude completed/cancelled projects unless filter is enabled
+            return !INACTIVE_STATUSES.some(s => status.includes(s.toLowerCase()));
+        }
+
+        // Toggle completed projects filter
+        function toggleCompletedFilter() {
+            showCompleted = !showCompleted;
+            render();
+        }
+
         function renderKanban() {
             const config = viewConfigs[currentView];
             const columns = config.columns;
             const field = config.field;
-            
-            // For 'all' view, show everything. For team views, show all projects
-            // (they'll be grouped by their workflow status for that team)
-            const filtered = allProjects;
-            
+
+            // Filter projects based on active status (unless showCompleted is enabled)
+            const baseFiltered = showCompleted ? allProjects : allProjects.filter(isProjectActive);
+
+            // For team views, also filter to projects that have a value in that workflow field
+            const filtered = currentView === 'all'
+                ? baseFiltered
+                : baseFiltered.filter(p => p[field]); // Only show projects with a status in this workflow
+
             const totalValue = filtered.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
             const valueStr = totalValue >= 1000 ? `£${Math.round(totalValue / 1000)}K` : `£${totalValue}`;
-            
-            // Count projects that have a value in the current field
-            const relevantProjects = filtered.filter(p => p[field]);
+
+            // Count stats for scope banner
+            const totalProjects = allProjects.length;
+            const activeCount = allProjects.filter(isProjectActive).length;
+            const completedCount = totalProjects - activeCount;
+
+            // Count projects that match any column in the current view
+            const relevantProjects = filtered.filter(p =>
+                p[field] && columns.some(col => matchesColumn(p[field], col))
+            );
+
+            // Find projects that have a value but don't match any column (for debugging)
+            const unmatchedProjects = filtered.filter(p =>
+                p[field] && !columns.some(col => matchesColumn(p[field], col))
+            );
+            if (unmatchedProjects.length > 0) {
+                console.log(`[${config.label}] Unmatched projects:`, unmatchedProjects.map(p => ({
+                    title: p.title,
+                    [field]: p[field]
+                })));
+            }
+
+            // Scope description based on current view
+            const scopeDesc = currentView === 'all'
+                ? 'Deal Pipeline'
+                : `${config.label} (projects with ${field.replace(/([A-Z])/g, ' $1').trim()} set)`;
 
             let html = `
                 <div class="kanban-container">
@@ -760,15 +949,33 @@
                             <span class="stat"><strong>${valueStr}</strong> Pipeline</span>
                         </div>
                     </div>
+
+                    <!-- Scope Banner - Clarifies what user is viewing -->
+                    <div class="scope-banner">
+                        <div class="scope-info">
+                            <span class="scope-label">Showing:</span>
+                            <span class="scope-badge ${showCompleted ? '' : 'active'}">${showCompleted ? 'All Projects' : 'Active Only'}</span>
+                            <span class="scope-badge pipeline">${filtered.length} of ${totalProjects}</span>
+                        </div>
+                        <div class="scope-controls">
+                            <label class="filter-toggle ${showCompleted ? 'active' : ''}" title="Include completed and cancelled projects">
+                                <input type="checkbox" ${showCompleted ? 'checked' : ''} onchange="toggleCompletedFilter()">
+                                Include Completed (${completedCount})
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="view-tabs">
-                        <button class="view-tab ${currentView === 'all' ? 'active' : ''}" onclick="setView('all')">All Projects</button>
-                        <button class="view-tab ${currentView === 'Creative' ? 'active' : ''}" onclick="setView('Creative')">
+                        <button class="view-tab ${currentView === 'all' ? 'active' : ''}" onclick="setView('all')" title="View all projects by Deal Stage">
+                            All Projects
+                        </button>
+                        <button class="view-tab ${currentView === 'Creative' ? 'active' : ''}" onclick="setView('Creative')" title="Projects with Creative Workflow status">
                             <span class="dot" style="background: var(--creative)"></span>Creative
                         </button>
-                        <button class="view-tab ${currentView === 'Production' ? 'active' : ''}" onclick="setView('Production')">
+                        <button class="view-tab ${currentView === 'Production' ? 'active' : ''}" onclick="setView('Production')" title="Projects with Production Workflow status">
                             <span class="dot" style="background: var(--production)"></span>Production
                         </button>
-                        <button class="view-tab ${currentView === 'Social' ? 'active' : ''}" onclick="setView('Social')">
+                        <button class="view-tab ${currentView === 'Social' ? 'active' : ''}" onclick="setView('Social')" title="Projects with Social Workflow status">
                             <span class="dot" style="background: var(--social)"></span>Social
                         </button>
                     </div>
@@ -776,7 +983,7 @@
                     <div class="kanban cols-${Math.min(columns.length, 8)}">`;
 
             columns.forEach(col => {
-                const columnProjects = filtered.filter(p => p[field] === col.key);
+                const columnProjects = filtered.filter(p => matchesColumn(p[field], col));
                 
                 html += `
                     <div class="column" data-stage="${col.key}" data-field="${field}" 
@@ -822,7 +1029,44 @@
                 html += `</div></div>`;
             });
 
-            html += `</div></div>`;
+            html += `</div>`;
+
+            // Add "Uncategorized" column if there are unmatched projects with a field value
+            if (unmatchedProjects.length > 0) {
+                html += `
+                    <div class="column" style="border: 2px dashed var(--amber);">
+                        <div class="column-header">
+                            <span class="column-title" style="color: var(--amber)">Uncategorized</span>
+                            <span class="column-count">${unmatchedProjects.length}</span>
+                        </div>
+                        <div class="cards-container">`;
+
+                unmatchedProjects.forEach(project => {
+                    const value = parseFloat(project.dealValue) || 0;
+                    const valueStr = value >= 1000 ? `£${Math.round(value / 1000)}K` : value > 0 ? `£${value}` : '';
+                    const team = project.team || project.primaryTeam || 'Sales';
+
+                    html += `
+                        <div class="project-card"
+                             data-id="${project.id}"
+                             data-team="${team}"
+                             draggable="true"
+                             ondragstart="handleDragStart(event)"
+                             ondragend="handleDragEnd(event)"
+                             onclick="openProject('${project.id}')">
+                            <div class="card-client">${project.client || 'Internal'}</div>
+                            <div class="card-title">${project.title || 'Untitled'}</div>
+                            <div class="card-meta">
+                                <span class="card-tag" style="background: rgba(245, 158, 11, 0.1); color: var(--amber);">${project[field] || 'No Status'}</span>
+                                ${valueStr ? `<span class="card-value">${valueStr}</span>` : ''}
+                            </div>
+                        </div>`;
+                });
+
+                html += `</div></div>`;
+            }
+
+            html += `</div>`;
 
             if (loading) {
                 html = `
@@ -834,8 +1078,9 @@
                 html = `
                     <div class="loading-screen">
                         <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                        <span class="loading-text" style="color: var(--editorial)">No projects loaded. Check console (F12) for errors.</span>
-                        <span class="loading-text">API: ${API_URL}/projects</span>
+                        <span class="loading-text" style="color: var(--ink-muted)">No projects found</span>
+                        <span class="loading-text" style="font-size: 9px;">The Notion database may be empty or inaccessible</span>
+                        <button onclick="loadProjects()" style="margin-top: 12px; padding: 8px 16px; border-radius: 6px; font-size: 10px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); cursor: pointer;">Refresh</button>
                     </div>`;
             }
 

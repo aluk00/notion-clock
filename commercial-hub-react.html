@@ -251,6 +251,50 @@
 
         .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1C1C1C; color: #FFF; padding: 10px 24px; border-radius: 30px; font-size: 12px; font-weight: 600; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 200; }
         .toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); }
+
+        /* Scope Banner - Shows what user is viewing */
+        .scope-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+            background: var(--bg-soft);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .scope-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .scope-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .scope-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(33, 160, 216, 0.1);
+            color: var(--dmg-blue);
+        }
+        .scope-badge.active { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .scope-help {
+            font-size: 9px;
+            color: var(--ink-sub);
+            font-weight: 500;
+        }
+        .section-description {
+            font-size: 9px;
+            color: var(--ink-sub);
+            font-weight: 500;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
@@ -273,8 +317,21 @@
             <div class="stat-item"><span class="stat-label">Action</span><div class="stat-value" style="color:var(--danger)" id="kpi-action">0</div></div>
         </div>
 
+        <!-- Scope Banner - Clarifies what user is viewing -->
+        <div class="scope-banner">
+            <div class="scope-info">
+                <span class="scope-label">Showing:</span>
+                <span class="scope-badge active">Active Projects Only</span>
+                <span class="scope-badge" id="scope-total">0 projects</span>
+            </div>
+            <span class="scope-help">Projects with Deal Stage: Deal Agreed, Campaign Complete, or Won</span>
+        </div>
+
         <div class="section-header">
-            <div class="section-title">Active Production <span class="badge" id="count-prod">0</span></div>
+            <div class="section-title">
+                Active Production <span class="badge" id="count-prod">0</span>
+                <span class="section-description">Deal Agreed / Won / In Production</span>
+            </div>
             <div class="section-title" style="color:var(--success)"><span class="live-dot"></span> Live Sync</div>
         </div>
         <div class="list-header grid-prod">
@@ -285,7 +342,10 @@
         </div>
 
         <div class="section-header" style="border-top:1px solid var(--border);">
-            <div class="section-title">Commercial Pipeline <span class="badge" id="count-pipe">0</span></div>
+            <div class="section-title">
+                Commercial Pipeline <span class="badge" id="count-pipe">0</span>
+                <span class="section-description">Brief Received / Pitch Sent (not yet agreed)</span>
+            </div>
         </div>
         <div class="list-header grid-pipe">
             <span>Client / Brief</span><span>Stage</span><span>Assets</span><span>Sales</span><span>Due</span>
@@ -415,20 +475,34 @@
 
     async function loadData() {
         try {
+            console.log('[Commercial Hub] Fetching from:', `${API_URL}/projects`);
             const res = await fetch(`${API_URL}/projects`);
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+
             const data = await res.json();
+            console.log('[Commercial Hub] API response:', { success: data.success, count: data.projects?.length || 0 });
 
             if (data.success) {
-                const rawProjects = data.projects;
+                const rawProjects = data.projects || [];
                 projects = rawProjects;
                 groupedProjects = {};
+
+                if (rawProjects.length === 0) {
+                    console.warn('[Commercial Hub] No projects returned from API');
+                    document.getElementById('production-list').innerHTML = `<div class="loading" style="color:var(--ink-sub)">No projects found</div>`;
+                    return;
+                }
 
                 rawProjects.forEach(p => {
                     const clientName = (p.client || 'Internal').trim();
                     const stage = p.dealStage || 'Ideation';
 
-                    // More flexible matching for production projects
-                    const isProduction = ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed', 'Complete'].some(k =>
+                    // More flexible matching for production projects (case-insensitive)
+                    const productionKeywords = ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed', 'Complete', 'In Production', 'Active'];
+                    const isProduction = productionKeywords.some(k =>
                         stage.toLowerCase().includes(k.toLowerCase())
                     );
 
@@ -466,18 +540,27 @@
                 });
                 render(rawProjects);
             } else {
-                console.error('API returned success:false', data.error);
-                document.getElementById('production-list').innerHTML = `<div class="loading" style="color:var(--danger)">Error Loading Data</div>`;
+                console.error('[Commercial Hub] API returned success:false', data.error);
+                document.getElementById('production-list').innerHTML = `<div class="loading" style="color:var(--danger)">Error: ${data.error || 'Failed to load projects'}</div>`;
             }
 
             if(db) {
-                const snap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("asset_metadata").get();
-                snap.forEach(doc => assetMetadata[doc.id] = doc.data());
-                loadNotes();
+                try {
+                    const snap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("asset_metadata").get();
+                    snap.forEach(doc => assetMetadata[doc.id] = doc.data());
+                    loadNotes();
+                } catch(fbErr) {
+                    console.warn('[Commercial Hub] Firebase metadata load failed:', fbErr);
+                }
             }
         } catch (e) {
-            console.error("Load Error:", e);
-            document.getElementById('production-list').innerHTML = `<div class="loading" style="color:var(--danger)">Error Loading Data</div>`;
+            console.error("[Commercial Hub] Load Error:", e);
+            document.getElementById('production-list').innerHTML = `
+                <div class="loading" style="color:var(--danger); flex-direction: column; gap: 8px;">
+                    <div>Failed to connect to API</div>
+                    <div style="font-size: 10px; color: var(--ink-sub);">${e.message || 'Check console for details'}</div>
+                    <button class="btn btn-primary" style="margin-top: 8px;" onclick="loadData()">Retry</button>
+                </div>`;
         }
     }
 
@@ -511,14 +594,17 @@
         });
 
         if (rawProjects) {
+            const productionKeywords = ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed', 'Complete', 'In Production', 'Active'];
             rawProjects.forEach(p => {
-                if (!['Deal Agreed', 'Campaign Complete', 'Won'].some(k => (p.dealStage||'').includes(k))) {
+                const stage = p.dealStage || '';
+                const isInProduction = productionKeywords.some(k => stage.toLowerCase().includes(k.toLowerCase()));
+                if (!isInProduction) {
                     counts.pipe++;
                     const div = document.createElement('div');
                     div.className = 'row grid-pipe';
                     div.innerHTML = `
                         <div><div class="cell-title">${p.client || 'Internal'}</div><div class="cell-sub">${p.title}</div></div>
-                        <div><span class="pill status-pitch"><span class="dot"></span>${p.dealStage}</span></div>
+                        <div><span class="pill status-pitch"><span class="dot"></span>${p.dealStage || 'No Stage'}</span></div>
                         <div class="cell-sub" style="color:var(--purple); font-weight:700;">${formatAssets(p.assetsNeeded)}</div>
                         <div class="cell-sub">${formatPeople(p.salesLead)}</div>
                         <div class="cell-meta">${formatDate(p.dueDate)}</div>
@@ -528,12 +614,24 @@
             });
         }
 
+        // Show empty states if no projects
+        if (prodMount.innerHTML === '') {
+            prodMount.innerHTML = '<div class="loading" style="color:var(--ink-sub)">No active production projects</div>';
+        }
+        if (pipeMount.innerHTML === '') {
+            pipeMount.innerHTML = '<div class="loading" style="color:var(--ink-sub)">No pipeline projects</div>';
+        }
+
         document.getElementById('kpi-prod').innerText = counts.prod;
         document.getElementById('kpi-pipe').innerText = counts.pipe;
         document.getElementById('kpi-live').innerText = counts.live;
         document.getElementById('kpi-action').innerText = counts.action;
         document.getElementById('count-prod').innerText = counts.prod;
         document.getElementById('count-pipe').innerText = counts.pipe;
+
+        // Update scope banner total
+        const totalProjects = counts.prod + counts.pipe;
+        document.getElementById('scope-total').innerText = `${totalProjects} project${totalProjects === 1 ? '' : 's'}`;
     }
 
     // --- SIDEBAR ---
