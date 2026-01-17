@@ -115,7 +115,7 @@
         const root = document.getElementById('root');
 
         const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
-        const capacityColor = c => c > 85 ? '#16A34A' : c > 70 ? '#F59E0B' : '#22C55E';
+        const capacityColor = c => c > 100 ? '#EF4444' : c >= 80 ? '#F59E0B' : '#22C55E';
 
         // Team colors matching design system
         const teamColors = {
@@ -129,20 +129,34 @@
         const getTeamColor = (team) => teamColors[team] || '#43B049';
 
         // Calculate workload per editor from edit_queue and asset_metadata
+        function getWeeklyCapacity(editor) {
+            return Number(editor.weeklyCapacityPTS ?? editor.weeklyCapacityPts ?? editor.maxHoursPerWeek ?? 40);
+        }
+
+        function getEffortPoints(item) {
+            if (typeof item?.effortPTS === 'number') return item.effortPTS;
+            if (typeof item?.effortPts === 'number') return item.effortPts;
+            return 0;
+        }
+
         function calculateEditorWorkload(editorName) {
             let taskCount = 0;
+            let effortPoints = 0;
             let tasks = [];
 
             // Count from edit_queue (synced from Commercial Hub)
             editQueue.forEach(item => {
                 if (item.editor === editorName && item.status !== 'Live' && item.status !== 'Approved') {
+                    const effort = getEffortPoints(item);
                     taskCount++;
+                    effortPoints += effort;
                     tasks.push({
                         title: item.title,
                         client: item.clientName,
                         dueDate: item.dueDate,
                         liveDate: item.liveDate,
-                        status: item.status
+                        status: item.status,
+                        effortPTS: effort
                     });
                 }
             });
@@ -153,18 +167,21 @@
                 if (asset.editor === editorName &&
                     !editQueue.some(q => q.id === asset.id) &&
                     asset.status !== 'Live' && asset.status !== 'Approved') {
+                    const effort = getEffortPoints(asset);
                     taskCount++;
+                    effortPoints += effort;
                     tasks.push({
                         title: asset.assetTitle,
                         client: asset.clientName,
                         dueDate: asset.deliveryDue,
                         liveDate: asset.liveDate || asset.plannedLiveDate,
-                        status: asset.status
+                        status: asset.status,
+                        effortPTS: effort
                     });
                 }
             });
 
-            return { taskCount, tasks };
+            return { taskCount, effortPoints, tasks };
         }
 
         function render() {
@@ -185,14 +202,14 @@
             // Calculate capacity based on actual workload
             const editorsWithWorkload = editors.map(e => {
                 const fullName = `${e.firstName} ${e.lastName}`;
-                const { taskCount, tasks } = calculateEditorWorkload(fullName);
-                // Assume max 8 tasks per person = 100% capacity
-                const capacity = Math.min(Math.round((taskCount / 8) * 100), 100);
-                return { ...e, capacity, taskCount, tasks };
+                const { taskCount, effortPoints, tasks } = calculateEditorWorkload(fullName);
+                const weeklyCapacity = getWeeklyCapacity(e);
+                const utilization = weeklyCapacity > 0 ? Math.round((effortPoints / weeklyCapacity) * 100) : 0;
+                return { ...e, utilization, taskCount, tasks, effortPoints, weeklyCapacity };
             });
 
             const avgCapacity = editorsWithWorkload.length > 0
-                ? Math.round(editorsWithWorkload.reduce((sum, s) => sum + s.capacity, 0) / editorsWithWorkload.length)
+                ? Math.round(editorsWithWorkload.reduce((sum, s) => sum + s.utilization, 0) / editorsWithWorkload.length)
                 : 0;
 
             root.innerHTML = `
@@ -216,12 +233,12 @@
                                         <div class="avatar" style="background: ${getTeamColor(e.team)}">${initials(e.firstName, e.lastName)}</div>
                                         <div class="editor-info">
                                             <div class="editor-name">${e.firstName} ${e.lastName}</div>
-                                            <div class="editor-role">${e.role || 'Editor'} • ${e.taskCount} task${e.taskCount !== 1 ? 's' : ''}</div>
+                                            <div class="editor-role">${e.role || 'Editor'} • ${e.effortPoints.toFixed(1)} PTS / ${e.weeklyCapacity} PTS</div>
                                         </div>
                                         <div class="capacity-bar">
-                                            <div class="capacity-fill" style="width:${e.capacity}%; background:${capacityColor(e.capacity)}"></div>
+                                            <div class="capacity-fill" style="width:${Math.min(e.utilization, 100)}%; background:${capacityColor(e.utilization)}"></div>
                                         </div>
-                                        <div class="capacity-value" style="color:${capacityColor(e.capacity)}">${e.capacity}%</div>
+                                        <div class="capacity-value" style="color:${capacityColor(e.utilization)}">${e.utilization}%</div>
                                     </div>
                                 </div>
                             `).join('')}
@@ -360,10 +377,10 @@
                         <div class="modal-role">${editorData.role || 'Editor'} • ${editorData.team || 'Editorial'}</div>
                         <div class="modal-capacity">
                             <div class="modal-bar">
-                                <div class="modal-bar-fill" style="width:${editorData.capacity}%; background:${capacityColor(editorData.capacity)}"></div>
+                                <div class="modal-bar-fill" style="width:${Math.min(editorData.utilization, 100)}%; background:${capacityColor(editorData.utilization)}"></div>
                             </div>
-                            <span class="modal-percent" style="color:${capacityColor(editorData.capacity)}">${editorData.capacity}%</span>
-                            <span style="font-size: 11px; color: var(--ink-sub);">${editorData.taskCount} active tasks</span>
+                            <span class="modal-percent" style="color:${capacityColor(editorData.utilization)}">${editorData.utilization}%</span>
+                            <span style="font-size: 11px; color: var(--ink-sub);">${editorData.effortPoints.toFixed(1)} PTS / ${editorData.weeklyCapacity} PTS</span>
                         </div>
                     </div>
                     <button class="modal-close" onclick="closeModal()">×</button>
@@ -382,6 +399,7 @@
                                     <div class="modal-task-meta">
                                         ${t.client ? `<span class="modal-tag client">${t.client}</span>` : ''}
                                         ${t.status ? `<span class="modal-tag status">${t.status}</span>` : ''}
+                                        ${t.effortPTS ? `<span class="modal-tag">${t.effortPTS} PTS</span>` : ''}
                                         ${t.dueDate ? `<span class="modal-tag due">Due: ${new Date(t.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
                                         ${t.liveDate ? `<span class="modal-tag live">Live: ${new Date(t.liveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
                                     </div>

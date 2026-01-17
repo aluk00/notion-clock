@@ -9,13 +9,14 @@
     <style>
         :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; --success: #22C55E; --warning: #F59E0B; --danger: #EF4444; }
         * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #F5F5F7; margin: 0; padding: 16px; color: var(--ink); }
+        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 16px; color: var(--ink); }
         .container { max-width: 1200px; margin: 0 auto; }
-        .header { background: #FFF; border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
-        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
-        .dot-grid span { width: 6px; height: 6px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
+        .header { background: #FFF; border: 1px solid var(--border); border-radius: 16px; padding: 18px 22px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 2px; }
+        .dot-grid span { width: 5px; height: 5px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
         @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-        .title { font-size: 18px; font-weight: 900; }
+        .eyebrow { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.16em; color: var(--dmg-blue); }
+        .title { font-size: 18px; font-weight: 900; letter-spacing: -0.02em; }
         .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
         
@@ -26,8 +27,10 @@
         .tab .count { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 99px; font-size: 10px; background: rgba(255,255,255,0.2); }
         
         .card { background: #FFF; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
-        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-        .card-title { font-size: 14px; font-weight: 800; }
+        .card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .card-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+        .card-meta { font-size: 11px; color: var(--ink-sub); font-weight: 600; }
+        .card-title-row { display: flex; align-items: center; gap: 10px; }
         
         .btn { padding: 10px 16px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
         .btn-primary { background: var(--dmg-blue); color: #FFF; }
@@ -83,6 +86,16 @@
         .stat { text-align: center; padding: 16px; background: var(--bg-soft); border-radius: 12px; }
         .stat-value { font-size: 24px; font-weight: 900; }
         .stat-label { font-size: 10px; color: var(--ink-sub); font-weight: 600; text-transform: uppercase; margin-top: 4px; }
+
+        .availability-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 20px; }
+        .availability-card { background: var(--bg-soft); border-radius: 14px; padding: 16px; }
+        .availability-title { font-size: 12px; font-weight: 800; margin-bottom: 8px; }
+        .availability-meta { font-size: 11px; color: var(--ink-sub); margin-bottom: 12px; }
+        .availability-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .availability-row:last-child { border-bottom: none; }
+        .availability-pill { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; }
+        .availability-pill.in { background: #DCFCE7; color: #166534; }
+        .availability-pill.out { background: #FEE2E2; color: #B91C1C; }
     </style>
 </head>
 <body>
@@ -117,7 +130,7 @@
         const rotaRef = () => collection(db, "artifacts", appId, "public", "data", "rota_requests");
         const color = t => COLORS[t] || '#21a0d8';
         const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
-        const capacityColor = c => c > 85 ? '#EF4444' : c > 70 ? '#F59E0B' : '#22C55E';
+        const capacityColor = c => c > 100 ? '#EF4444' : c >= 80 ? '#F59E0B' : '#22C55E';
 
         function showToast(msg, type = 'success') {
             toastEl.textContent = msg;
@@ -131,15 +144,107 @@
             return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
         }
 
+        function isWithinRange(date, start, end) {
+            if (!start || !end) return false;
+            return date >= start && date <= end;
+        }
+
+        function isRangeOverlapping(startA, endA, startB, endB) {
+            if (!startA || !endA || !startB || !endB) return false;
+            return startA <= endB && endA >= startB;
+        }
+
+        const normalizeName = (name) => (name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+        const toNameArray = (value) => {
+            if (!value) return [];
+            if (Array.isArray(value)) {
+                return value.flatMap(item => {
+                    if (!item) return [];
+                    if (typeof item === 'string') return [item];
+                    if (typeof item?.name === 'string') return [item.name];
+                    if (typeof item?.fullName === 'string') return [item.fullName];
+                    return [];
+                });
+            }
+            if (typeof value === 'string') return [value];
+            if (typeof value?.name === 'string') return [value.name];
+            if (typeof value?.fullName === 'string') return [value.fullName];
+            return [];
+        };
+
+        const projectEffort = (project) => Number(project?.effortPTS ?? project?.effortPts ?? project?.effort ?? 0);
+
+        const projectAssignees = (project) => {
+            const fields = [
+                'assignedTo',
+                'assignee',
+                'owner',
+                'editor',
+                'producer',
+                'creativeLead',
+                'productionLead',
+                'designLead',
+                'designer',
+                'talent',
+                'teamMembers'
+            ];
+            const names = fields.flatMap(field => toNameArray(project?.[field]));
+            return names.map(normalizeName).filter(Boolean);
+        };
+
+        const isProjectComplete = (project) => {
+            const status = `${project?.status || project?.projectStatus || project?.dealStage || ''}`.toLowerCase();
+            return status.includes('complete') || status.includes('completed') || status.includes('done');
+        };
+
+        function getWeeklyCapacity(person) {
+            return Number(person.weeklyCapacityPTS ?? person.weeklyCapacityPts ?? person.maxHoursPerWeek ?? 40);
+        }
+
+        function getMemberEffort(person) {
+            const name = normalizeName(`${person.firstName || ''} ${person.lastName || ''}`.trim());
+            let currentEffort = 0;
+            let completedEffort = 0;
+
+            projects.forEach(project => {
+                const assignees = projectAssignees(project);
+                if (!assignees.includes(name)) return;
+                const effort = projectEffort(project);
+                if (!effort) return;
+                if (isProjectComplete(project)) {
+                    completedEffort += effort;
+                } else {
+                    currentEffort += effort;
+                }
+            });
+
+            const weeklyCapacity = getWeeklyCapacity(person);
+            const utilization = weeklyCapacity > 0 ? (currentEffort / weeklyCapacity) * 100 : 0;
+            return { currentEffort, completedEffort, weeklyCapacity, utilization };
+        }
+
         function renderOverview() {
             const teamData = TEAMS.map(t => {
                 const members = staff.filter(s => s.team === t);
-                const avgCap = members.length ? Math.round(members.reduce((sum, m) => sum + (m.capacity || 0), 0) / members.length) : 0;
-                return { name: t, members, avgCap };
+                const totals = members.reduce((sum, member) => {
+                    const stats = getMemberEffort(member);
+                    sum.effort += stats.currentEffort;
+                    sum.capacity += stats.weeklyCapacity;
+                    return sum;
+                }, { effort: 0, capacity: 0 });
+                const utilization = totals.capacity > 0 ? Math.round((totals.effort / totals.capacity) * 100) : 0;
+                return { name: t, members, utilization, totals };
             }).filter(t => t.members.length > 0);
             
             const pendingRota = rotaRequests.filter(r => r.status === 'pending').length;
-            const totalCapacity = staff.length ? Math.round(staff.reduce((sum, s) => sum + (s.capacity || 0), 0) / staff.length) : 0;
+            const overallTotals = staff.reduce((sum, member) => {
+                const stats = getMemberEffort(member);
+                sum.effort += stats.currentEffort;
+                sum.capacity += stats.weeklyCapacity;
+                return sum;
+            }, { effort: 0, capacity: 0 });
+            const totalCapacity = overallTotals.capacity > 0 ? Math.round((overallTotals.effort / overallTotals.capacity) * 100) : 0;
             
             return `
                 <div class="card">
@@ -150,7 +255,7 @@
                         </div>
                         <div class="stat">
                             <div class="stat-value" style="color:${capacityColor(totalCapacity)}">${totalCapacity}%</div>
-                            <div class="stat-label">Avg Capacity</div>
+                            <div class="stat-label">Avg Utilization</div>
                         </div>
                         <div class="stat">
                             <div class="stat-value" style="color:${pendingRota > 0 ? '#F59E0B' : '#22C55E'}">${pendingRota}</div>
@@ -165,7 +270,10 @@
                 
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title">Team Capacity</h2>
+                        <div class="card-title-row">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="card-title">Team Capacity</h2>
+                        </div>
                     </div>
                     ${teamData.length === 0 ? `
                         <div class="empty">
@@ -180,18 +288,18 @@
                                     <div class="team-header">
                                         <div class="team-dot" style="background:${color(t.name)}"></div>
                                         <span class="team-name">${t.name}</span>
-                                        <span class="team-count">${t.members.length} members</span>
+                                        <span class="team-count">${t.members.length} members • ${t.totals.effort.toFixed(1)} PTS</span>
                                     </div>
                                     <div class="capacity-bar">
-                                        <div class="capacity-fill" style="width:${t.avgCap}%; background:${capacityColor(t.avgCap)}"></div>
+                                        <div class="capacity-fill" style="width:${Math.min(t.utilization, 100)}%; background:${capacityColor(t.utilization)}"></div>
                                     </div>
                                     <div class="capacity-label">
-                                        <span>Capacity</span>
-                                        <span style="color:${capacityColor(t.avgCap)}; font-weight:700;">${t.avgCap}%</span>
+                                        <span>Utilization</span>
+                                        <span style="color:${capacityColor(t.utilization)}; font-weight:700;">${t.utilization}%</span>
                                     </div>
                                     <div class="members-row">
                                         ${t.members.slice(0, 6).map(m => `
-                                            <div class="member-avatar" style="background:${color(t.name)}" title="${m.firstName} ${m.lastName}: ${m.capacity || 0}%">
+                                            <div class="member-avatar" style="background:${color(t.name)}" title="${m.firstName} ${m.lastName}: ${getMemberEffort(m).currentEffort.toFixed(1)} PTS / ${getMemberEffort(m).weeklyCapacity} PTS">
                                                 ${initials(m.firstName, m.lastName)}
                                             </div>
                                         `).join('')}
@@ -209,7 +317,10 @@
             return `
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title">Individual Capacity</h2>
+                        <div class="card-title-row">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="card-title">Individual Capacity</h2>
+                        </div>
                     </div>
                     ${staff.length === 0 ? `
                         <div class="empty">
@@ -219,24 +330,26 @@
                         </div>
                     ` : `
                         <div style="padding: 16px;">
-                            ${staff.map(s => `
+                            ${staff.map(s => {
+                                const stats = getMemberEffort(s);
+                                return `
                                 <div style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #F5F5F5;">
                                     <div class="avatar" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div>
                                     <div style="flex:1;">
                                         <div style="font-weight:700; font-size:13px;">${s.firstName} ${s.lastName}</div>
-                                        <div style="font-size:11px; color:var(--ink-sub);">${s.team} • ${s.role || 'Team Member'}</div>
+                                        <div style="font-size:11px; color:var(--ink-sub);">${s.team} • ${s.role || 'Team Member'} • ${stats.currentEffort.toFixed(1)} PTS</div>
                                     </div>
                                     <div style="width:120px;">
                                         <div class="capacity-bar" style="margin-bottom:4px;">
-                                            <div class="capacity-fill" style="width:${s.capacity || 0}%; background:${capacityColor(s.capacity || 0)}"></div>
+                                            <div class="capacity-fill" style="width:${Math.min(stats.utilization, 100)}%; background:${capacityColor(stats.utilization)}"></div>
                                         </div>
                                     </div>
-                                    <div style="width:50px; text-align:right; font-weight:800; color:${capacityColor(s.capacity || 0)}">${s.capacity || 0}%</div>
-                                    <input type="range" min="0" max="100" value="${s.capacity || 0}" 
+                                    <div style="width:50px; text-align:right; font-weight:800; color:${capacityColor(stats.utilization)}">${Math.round(stats.utilization)}%</div>
+                                    <input type="range" min="0" max="60" value="${stats.weeklyCapacity}" 
                                            style="width:80px;" 
                                            onchange="window.updateCapacity('${s.id}', this.value)">
                                 </div>
-                            `).join('')}
+                            `; }).join('')}
                         </div>
                     `}
                 </div>
@@ -250,8 +363,11 @@
             return `
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title">Pending Requests</h2>
-                        <span style="font-size:12px; color:var(--ink-sub);">${pending.length} awaiting</span>
+                        <div class="card-title-row">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="card-title">Pending Requests</h2>
+                        </div>
+                        <span class="card-meta">${pending.length} awaiting</span>
                     </div>
                     ${pending.length === 0 ? `
                         <div class="empty">
@@ -283,7 +399,10 @@
                 ${processed.length > 0 ? `
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="card-title">Processed</h2>
+                            <div class="card-title-row">
+                                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                                <h2 class="card-title">Processed</h2>
+                            </div>
                         </div>
                         <div class="rota-list">
                             ${processed.slice(0, 10).map(r => `
@@ -299,6 +418,134 @@
                         </div>
                     </div>
                 ` : ''}
+            `;
+        }
+
+        function renderAvailability() {
+            const today = new Date();
+            const weekEnd = new Date();
+            weekEnd.setDate(today.getDate() + 6);
+
+            const approved = rotaRequests.filter(r => r.status === 'approved');
+            const formatted = approved.map(r => {
+                const start = r.startDate?.toDate ? r.startDate.toDate() : r.startDate ? new Date(r.startDate) : null;
+                const end = r.endDate?.toDate ? r.endDate.toDate() : r.endDate ? new Date(r.endDate) : null;
+                return { ...r, start, end };
+            });
+
+            const teamSummaries = TEAMS.map(team => {
+                const teamRequests = formatted.filter(r => (r.team || 'Unassigned') === team);
+                const outToday = teamRequests.filter(r => isWithinRange(today, r.start, r.end)).length;
+                const outWeek = teamRequests.filter(r => isRangeOverlapping(r.start, r.end, today, weekEnd)).length;
+                return { team, outToday, outWeek };
+            }).filter(t => t.outToday > 0 || t.outWeek > 0);
+
+            const outTodayList = formatted.filter(r => isWithinRange(today, r.start, r.end));
+            const outWeekList = formatted.filter(r => isRangeOverlapping(r.start, r.end, today, weekEnd));
+
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="card-title">Team Availability</h2>
+                        </div>
+                        <span class="card-meta">Next 7 days</span>
+                    </div>
+                    ${(teamSummaries.length === 0 && outTodayList.length === 0) ? `
+                        <div class="empty">
+                            <div class="empty-icon">🟢</div>
+                            <div class="empty-title">Everyone In</div>
+                            <div class="empty-sub">No approved absences recorded for the next week.</div>
+                        </div>
+                    ` : `
+                        <div class="availability-grid">
+                            ${teamSummaries.map(t => `
+                                <div class="availability-card">
+                                    <div class="availability-title">${t.team}</div>
+                                    <div class="availability-meta">${t.outWeek} out this week • ${t.outToday} out today</div>
+                                    <div class="availability-row">
+                                        <span>Today</span>
+                                        <span class="availability-pill ${t.outToday > 0 ? 'out' : 'in'}">${t.outToday > 0 ? `${t.outToday} out` : 'All in'}</span>
+                                    </div>
+                                    <div class="availability-row">
+                                        <span>This week</span>
+                                        <span class="availability-pill ${t.outWeek > 0 ? 'out' : 'in'}">${t.outWeek > 0 ? `${t.outWeek} out` : 'All in'}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+
+                ${outTodayList.length > 0 ? `
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title-row">
+                                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                                <h2 class="card-title">Out Today</h2>
+                            </div>
+                            <span class="card-meta">${outTodayList.length} people</span>
+                        </div>
+                        <div class="rota-list">
+                            ${outTodayList.map(r => `
+                                <div class="rota-item">
+                                    <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName || '')}</div>
+                                    <div class="rota-info">
+                                        <div class="rota-name">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div>
+                                        <div class="rota-detail">${r.team || 'No team'} • ${r.reason || r.type || 'Out'}</div>
+                                        <div class="rota-dates">${formatDate(r.start)} → ${formatDate(r.end)}</div>
+                                    </div>
+                                    <span class="rota-type ${(r.type || 'leave').toLowerCase()}">${r.type || 'Leave'}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                ${outWeekList.length > 0 ? `
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title-row">
+                                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                                <h2 class="card-title">Out This Week</h2>
+                            </div>
+                            <span class="card-meta">${outWeekList.length} entries</span>
+                        </div>
+                        <div class="rota-list">
+                            ${outWeekList.slice(0, 12).map(r => `
+                                <div class="rota-item">
+                                    <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName || '')}</div>
+                                    <div class="rota-info">
+                                        <div class="rota-name">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div>
+                                        <div class="rota-detail">${r.team || 'No team'} • ${r.reason || r.type || 'Out'}</div>
+                                        <div class="rota-dates">${formatDate(r.start)} → ${formatDate(r.end)}</div>
+                                    </div>
+                                    <span class="rota-type ${(r.type || 'leave').toLowerCase()}">${r.type || 'Leave'}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function renderBudgets() {
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title-row">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="card-title">Project Budgets</h2>
+                        </div>
+                        <span class="card-meta">Manager view</span>
+                    </div>
+                    <div class="empty">
+                        <div class="empty-icon">💷</div>
+                        <div class="empty-title">Budget Tracking Coming Soon</div>
+                        <div class="empty-sub">Hook this section to your finance data or Notion budget database when ready.</div>
+                    </div>
+                </div>
             `;
         }
 
@@ -329,8 +576,11 @@
             return `
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title">Project Assignments</h2>
-                        <span style="font-size:12px; color:var(--ink-sub);">${activeProjects.length} active projects</span>
+                        <div class="card-title-row">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <h2 class="card-title">Project Assignments</h2>
+                        </div>
+                        <span class="card-meta">${activeProjects.length} active projects</span>
                     </div>
                     ${activeProjects.length === 0 ? `
                         <div class="empty">
@@ -393,11 +643,19 @@
 
         function render() {
             const pendingCount = rotaRequests.filter(r => r.status === 'pending').length;
+            const outTodayCount = rotaRequests.filter(r => r.status === 'approved').filter(r => {
+                const start = r.startDate?.toDate ? r.startDate.toDate() : r.startDate ? new Date(r.startDate) : null;
+                const end = r.endDate?.toDate ? r.endDate.toDate() : r.endDate ? new Date(r.endDate) : null;
+                return isWithinRange(new Date(), start, end);
+            }).length;
             
             root.innerHTML = `
                 <div class="header">
                     <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                    <h1 class="title">Manager Dashboard</h1>
+                    <div>
+                        <div class="eyebrow">Manager</div>
+                        <h1 class="title">Dashboard</h1>
+                    </div>
                     <div class="status">
                         <span class="status-dot"></span>
                         <span>Live</span>
@@ -407,6 +665,10 @@
                 <div class="tabs">
                     <button class="tab ${activeTab === 'overview' ? 'active' : ''}" onclick="window.setTab('overview')">Overview</button>
                     <button class="tab ${activeTab === 'capacity' ? 'active' : ''}" onclick="window.setTab('capacity')">Capacity</button>
+                    <button class="tab ${activeTab === 'availability' ? 'active' : ''}" onclick="window.setTab('availability')">
+                        Availability
+                        ${outTodayCount > 0 ? `<span class="count">${outTodayCount}</span>` : ''}
+                    </button>
                     <button class="tab ${activeTab === 'projects' ? 'active' : ''}" onclick="window.setTab('projects')">
                         Project Assignments
                         ${projects.filter(p => !p.creativeLead || !p.productionLead).length > 0 ? `<span class="count">${projects.filter(p => !p.creativeLead || !p.productionLead).length}</span>` : ''}
@@ -415,12 +677,15 @@
                         Rota Requests
                         ${pendingCount > 0 ? `<span class="count">${pendingCount}</span>` : ''}
                     </button>
+                    <button class="tab ${activeTab === 'budgets' ? 'active' : ''}" onclick="window.setTab('budgets')">Budgets</button>
                 </div>
 
                 ${activeTab === 'overview' ? renderOverview() : ''}
                 ${activeTab === 'capacity' ? renderCapacity() : ''}
+                ${activeTab === 'availability' ? renderAvailability() : ''}
                 ${activeTab === 'projects' ? renderProjects() : ''}
                 ${activeTab === 'rota' ? renderRotaRequests() : ''}
+                ${activeTab === 'budgets' ? renderBudgets() : ''}
             `;
         }
 
@@ -430,10 +695,10 @@
         window.updateCapacity = async (id, value) => {
             try {
                 await updateDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", id), {
-                    capacity: parseInt(value),
+                    weeklyCapacityPTS: parseInt(value),
                     updatedAt: serverTimestamp()
                 });
-                showToast('Capacity updated!');
+                showToast('Weekly capacity updated!');
             } catch (e) {
                 showToast('Error: ' + e.message, 'error');
             }
