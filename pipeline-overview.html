@@ -89,6 +89,17 @@
             letter-spacing: 0.05em;
         }
 
+        .total-badge {
+            background: var(--bg-hover);
+            color: var(--text-sub);
+            font-size: 9px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.03em;
+            border: 1px solid var(--border);
+        }
+
         /* Stats Grid - Bento Style */
         .stats-grid {
             display: grid;
@@ -512,6 +523,7 @@
     <div class="title-group">
         <span class="title">Pipeline</span>
         <span class="quarter-badge">Q1 2026</span>
+        <span class="total-badge" id="totalBadge" style="display:none;"></span>
     </div>
 </div>
 
@@ -559,7 +571,9 @@
     };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+    // Primary API: Firebase Functions (more reliable for project data)
+    const API_URL = 'https://us-central1-dmg-command-centre-native.cloudfunctions.net/api';
 
     // Icons as SVG strings
     const ICONS = {
@@ -593,12 +607,43 @@
 
     function filterProjects(category) {
         const stageMap = {
-            won: p => ['deal agreed', 'campaign complete'].includes(normalize(p.dealStage || p.stage)),
-            pending: p => ['pitch sent', 'sales review', 'brief received', 'brief recieved'].includes(normalize(p.dealStage || p.stage)),
-            lost: p => normalize(p.dealStage || p.stage) === 'lost',
-            confirmed: p => ['deal agreed', 'campaign complete'].includes(normalize(p.dealStage || p.stage)),
-            projected: p => ['pitch sent', 'sales review', 'brief received', 'brief recieved', 'deal agreed', 'campaign complete'].includes(normalize(p.dealStage || p.stage)),
-            delivered: p => normalize(p.dealStage || p.stage) === 'complete' || normalize(p.status) === 'complete' || normalize(p.status) === 'live'
+            won: p => {
+                const stage = normalize(p.dealStage);
+                const status1 = normalize(p.status1 || p.statusOne);
+                return stage === 'deal agreed' || stage === 'campaign complete' ||
+                       status1 === 'complete' || stage.includes('won') || stage.includes('agreed');
+            },
+            pending: p => {
+                const stage = normalize(p.dealStage);
+                const status1 = normalize(p.status1 || p.statusOne);
+                return stage === 'pitch sent' || stage === 'brief received' || stage === 'brief recieved' ||
+                       stage.includes('pitch') || stage.includes('review') ||
+                       status1 === 'pipeline' || status1 === 'active';
+            },
+            lost: p => {
+                const stage = normalize(p.dealStage);
+                const status1 = normalize(p.status1 || p.statusOne);
+                return stage === 'lost' || status1 === 'cancelled';
+            },
+            confirmed: p => {
+                const stage = normalize(p.dealStage);
+                return stage === 'deal agreed' || stage === 'campaign complete' ||
+                       stage.includes('won') || stage.includes('agreed');
+            },
+            projected: p => {
+                const stage = normalize(p.dealStage);
+                const status1 = normalize(p.status1 || p.statusOne);
+                return stage === 'pitch sent' || stage === 'deal agreed' || stage === 'brief received' ||
+                       stage === 'brief recieved' || stage === 'campaign complete' ||
+                       status1 === 'pipeline' || status1 === 'active';
+            },
+            delivered: p => {
+                const stage = normalize(p.dealStage);
+                const status = normalize(p.status);
+                const status1 = normalize(p.status1 || p.statusOne);
+                return stage === 'complete' || stage === 'campaign complete' ||
+                       status === 'complete' || status === 'live' || status1 === 'complete';
+            }
         };
         return allProjects.filter(stageMap[category] || (() => false));
     }
@@ -660,26 +705,54 @@
         try {
             const res = await fetch(API_URL + '/projects');
             const data = await res.json();
-            allProjects = data.projects || [];
 
+            // Handle both API response formats
+            if (data.success === false) {
+                throw new Error(data.error || 'API returned error');
+            }
+            allProjects = data.projects || data || [];
+
+            // Debug: log what we received
+            console.log('Pipeline: Loaded', allProjects.length, 'projects');
+            if (allProjects.length > 0) {
+                console.log('Sample project fields:', Object.keys(allProjects[0]));
+            }
+
+            // Filter projects using robust matching
             const won = allProjects.filter(p => {
-                const stage = normalize(p.dealStage || p.stage);
-                return stage === 'deal agreed' || stage === 'campaign complete';
+                const stage = normalize(p.dealStage);
+                const status1 = normalize(p.status1 || p.statusOne);
+                return stage === 'deal agreed' || stage === 'campaign complete' ||
+                       status1 === 'complete' || stage.includes('won') || stage.includes('agreed');
             });
             const pending = allProjects.filter(p => {
-                const stage = normalize(p.dealStage || p.stage);
-                return ['pitch sent', 'sales review', 'brief received', 'brief recieved'].includes(stage);
+                const stage = normalize(p.dealStage);
+                const status1 = normalize(p.status1 || p.statusOne);
+                return stage === 'pitch sent' || stage === 'brief received' || stage === 'brief recieved' ||
+                       stage.includes('pitch') || stage.includes('review') ||
+                       status1 === 'pipeline' || status1 === 'active';
             });
-            const lost = allProjects.filter(p => normalize(p.dealStage || p.stage) === 'lost');
+            const lost = allProjects.filter(p => {
+                const stage = normalize(p.dealStage);
+                const status1 = normalize(p.status1 || p.statusOne);
+                return stage === 'lost' || status1 === 'cancelled';
+            });
             const completed = allProjects.filter(p => {
-                const stage = normalize(p.dealStage || p.stage);
+                const stage = normalize(p.dealStage);
                 const status = normalize(p.status);
-                return stage === 'complete' || status === 'complete' || status === 'live';
+                const status1 = normalize(p.status1 || p.statusOne);
+                return stage === 'complete' || stage === 'campaign complete' ||
+                       status === 'complete' || status === 'live' || status1 === 'complete';
             });
 
             const wonRevenue = won.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
             const avgDealValue = won.length > 0 ? wonRevenue / won.length : 15000;
             const projectedRevenue = wonRevenue + (pending.length * avgDealValue * 0.4);
+
+            // Show total projects badge
+            const totalBadge = document.getElementById('totalBadge');
+            totalBadge.textContent = `${allProjects.length} Total`;
+            totalBadge.style.display = 'inline-block';
 
             const statsGrid = document.getElementById('statsGrid');
             statsGrid.innerHTML = `
