@@ -582,6 +582,116 @@
         /* Enhanced drag feedback */
         .column.drag-over .cards-container { background: rgba(33, 160, 216, 0.05); border-radius: 6px; }
         .project-card.drop-target { border: 2px dashed var(--dmg-blue); background: rgba(33, 160, 216, 0.05); }
+
+        /* Scope Banner - Shows what user is viewing */
+        .scope-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--surface-alt);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .scope-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .scope-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .scope-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(33, 160, 216, 0.1);
+            color: var(--dmg-blue);
+        }
+        .scope-badge.active { background: rgba(67, 176, 73, 0.1); color: var(--production); }
+        .scope-badge.pipeline { background: rgba(230, 70, 139, 0.1); color: var(--creative); }
+        .scope-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .filter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            font-weight: 500;
+            color: var(--ink-sub);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            transition: all 0.15s ease;
+        }
+        .filter-toggle:hover {
+            background: var(--surface-alt);
+            border-color: #D1D5DB;
+        }
+        .filter-toggle.active {
+            background: var(--ink);
+            color: white;
+            border-color: var(--ink);
+        }
+        .filter-toggle input {
+            width: 12px;
+            height: 12px;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        /* Bento Box Card Styling */
+        .bento-grid {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .bento-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            transition: all 0.2s ease;
+        }
+        .bento-card:hover {
+            border-color: #D1D5DB;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .bento-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .bento-card-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .bento-card-count {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .bento-card-subtitle {
+            font-size: 9px;
+            color: var(--ink-muted);
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
@@ -601,6 +711,11 @@
         let hasChanges = false;
         let loading = true;
         let draggedCard = null;
+        let showCompleted = false; // Filter: show completed/cancelled projects
+
+        // Project status filters - based on STATUS 1 property
+        const ACTIVE_STATUSES = ['Pipeline', 'Active', 'In Progress'];
+        const INACTIVE_STATUSES = ['Complete', 'Completed', 'Cancelled', 'On Hold', 'Campaign Complete'];
 
         // ═══════════════════════════════════════════════════════════════
         // VIEW CONFIGURATIONS - Each view has its own columns and field
@@ -767,18 +882,40 @@
         // KANBAN RENDERING - Now with dynamic columns per view
         // ═══════════════════════════════════════════════════════════════
 
+        // Helper to check if project is active (not completed/cancelled)
+        function isProjectActive(project) {
+            const status = (project.status1 || project.dealStage || '').toLowerCase();
+            // Exclude completed/cancelled projects unless filter is enabled
+            return !INACTIVE_STATUSES.some(s => status.includes(s.toLowerCase()));
+        }
+
+        // Toggle completed projects filter
+        function toggleCompletedFilter() {
+            showCompleted = !showCompleted;
+            render();
+        }
+
         function renderKanban() {
             const config = viewConfigs[currentView];
             const columns = config.columns;
             const field = config.field;
-            
-            // For 'all' view, show everything. For team views, show all projects
-            // (they'll be grouped by their workflow status for that team)
-            const filtered = allProjects;
-            
+
+            // Filter projects based on active status (unless showCompleted is enabled)
+            const baseFiltered = showCompleted ? allProjects : allProjects.filter(isProjectActive);
+
+            // For team views, also filter to projects that have a value in that workflow field
+            const filtered = currentView === 'all'
+                ? baseFiltered
+                : baseFiltered.filter(p => p[field]); // Only show projects with a status in this workflow
+
             const totalValue = filtered.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
             const valueStr = totalValue >= 1000 ? `£${Math.round(totalValue / 1000)}K` : `£${totalValue}`;
-            
+
+            // Count stats for scope banner
+            const totalProjects = allProjects.length;
+            const activeCount = allProjects.filter(isProjectActive).length;
+            const completedCount = totalProjects - activeCount;
+
             // Count projects that match any column in the current view
             const relevantProjects = filtered.filter(p =>
                 p[field] && columns.some(col => matchesColumn(p[field], col))
@@ -795,6 +932,11 @@
                 })));
             }
 
+            // Scope description based on current view
+            const scopeDesc = currentView === 'all'
+                ? 'Deal Pipeline'
+                : `${config.label} (projects with ${field.replace(/([A-Z])/g, ' $1').trim()} set)`;
+
             let html = `
                 <div class="kanban-container">
                     <div class="header">
@@ -807,15 +949,33 @@
                             <span class="stat"><strong>${valueStr}</strong> Pipeline</span>
                         </div>
                     </div>
+
+                    <!-- Scope Banner - Clarifies what user is viewing -->
+                    <div class="scope-banner">
+                        <div class="scope-info">
+                            <span class="scope-label">Showing:</span>
+                            <span class="scope-badge ${showCompleted ? '' : 'active'}">${showCompleted ? 'All Projects' : 'Active Only'}</span>
+                            <span class="scope-badge pipeline">${filtered.length} of ${totalProjects}</span>
+                        </div>
+                        <div class="scope-controls">
+                            <label class="filter-toggle ${showCompleted ? 'active' : ''}" title="Include completed and cancelled projects">
+                                <input type="checkbox" ${showCompleted ? 'checked' : ''} onchange="toggleCompletedFilter()">
+                                Include Completed (${completedCount})
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="view-tabs">
-                        <button class="view-tab ${currentView === 'all' ? 'active' : ''}" onclick="setView('all')">All Projects</button>
-                        <button class="view-tab ${currentView === 'Creative' ? 'active' : ''}" onclick="setView('Creative')">
+                        <button class="view-tab ${currentView === 'all' ? 'active' : ''}" onclick="setView('all')" title="View all projects by Deal Stage">
+                            All Projects
+                        </button>
+                        <button class="view-tab ${currentView === 'Creative' ? 'active' : ''}" onclick="setView('Creative')" title="Projects with Creative Workflow status">
                             <span class="dot" style="background: var(--creative)"></span>Creative
                         </button>
-                        <button class="view-tab ${currentView === 'Production' ? 'active' : ''}" onclick="setView('Production')">
+                        <button class="view-tab ${currentView === 'Production' ? 'active' : ''}" onclick="setView('Production')" title="Projects with Production Workflow status">
                             <span class="dot" style="background: var(--production)"></span>Production
                         </button>
-                        <button class="view-tab ${currentView === 'Social' ? 'active' : ''}" onclick="setView('Social')">
+                        <button class="view-tab ${currentView === 'Social' ? 'active' : ''}" onclick="setView('Social')" title="Projects with Social Workflow status">
                             <span class="dot" style="background: var(--social)"></span>Social
                         </button>
                     </div>
