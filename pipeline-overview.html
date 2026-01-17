@@ -3,152 +3,750 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pipeline Overview</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <title>Q1 Pipeline Overview</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --blue: #21a0d8;
-            --green: #10B981;
-            --amber: #F59E0B;
-            --red: #EF4444;
-            --border: #E5E7EB;
+            --blue: #21A0D8;
+            --blue-light: rgba(33, 160, 216, 0.1);
+            --blue-medium: rgba(33, 160, 216, 0.15);
+            --blue-dark: #1B8ABB;
+            --border: #EAECEF;
             --text-main: #1C1C1C;
             --text-sub: #6B7280;
+            --text-muted: #9CA3AF;
+            --bg-card: #FFFFFF;
+            --bg-hover: #F9FAFB;
         }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: transparent; padding: 20px; }
-        
-        .header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
-        .dots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; width: 28px; height: 28px; }
-        .dot { width: 100%; height: 100%; background: var(--blue); border-radius: 50%; }
-        @keyframes heartbeat { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
-        .dot-anim { animation: heartbeat 3s infinite ease-in-out; }
-        .dot-anim:nth-child(1) { animation-delay: 0s; }
-        .dot-anim:nth-child(2) { animation-delay: 0.75s; }
-        .dot-anim:nth-child(4) { animation-delay: 1.5s; }
-        .dot-anim:nth-child(3) { animation-delay: 2.25s; }
-        .title { font-size: 1.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: -0.03em; color: var(--text-main); }
-        
-        .stats-row { display: flex; gap: 16px; flex-wrap: wrap; }
-        
-        .stat-card { 
-            flex: 1;
-            min-width: 140px;
-            background: #FFF; 
-            border: 2.5px solid var(--blue);
-            border-radius: 16px; 
-            padding: 24px 20px;
-            text-align: center;
-            transition: 0.2s;
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: transparent;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
         }
-        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(33, 160, 216, 0.15); }
-        .stat-card.green { border-color: var(--green); }
-        .stat-card.amber { border-color: var(--amber); }
-        .stat-card.red { border-color: var(--red); }
-        
-        .stat-value { 
-            font-size: 52px; 
-            font-weight: 900; 
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 20px;
+            opacity: 0;
+            transform: translateY(-10px);
+            animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .dots-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            width: 28px;
+            height: 28px;
+        }
+
+        .dot {
+            width: 100%;
+            height: 100%;
+            background: var(--blue);
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+
+        @keyframes pulse4 {
+            0%, 100% { opacity: 0.3; }
+            25% { opacity: 1; }
+        }
+
+        .dot:nth-child(1) { animation: pulse4 3s infinite ease-in-out 0s; }
+        .dot:nth-child(2) { animation: pulse4 3s infinite ease-in-out 0.75s; }
+        .dot:nth-child(4) { animation: pulse4 3s infinite ease-in-out 1.5s; }
+        .dot:nth-child(3) { animation: pulse4 3s infinite ease-in-out 2.25s; }
+
+        .title-group {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -0.03em;
+            color: var(--text-main);
+        }
+
+        .quarter-badge {
+            background: var(--blue);
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        /* Stats Grid - Bento Style */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 500px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 16px;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--blue);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 32px rgba(33, 160, 216, 0.15);
+            border-color: var(--blue);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card:active {
+            transform: translateY(-2px) scale(1);
+        }
+
+        .stat-card.loaded {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .stat-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 12px;
+            background: var(--blue-light);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover .stat-icon {
+            background: var(--blue);
+            transform: scale(1.1);
+        }
+
+        .stat-icon svg {
+            width: 16px;
+            height: 16px;
+            color: var(--blue);
+            transition: color 0.3s ease;
+        }
+
+        .stat-card:hover .stat-icon svg {
+            color: white;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 900;
             color: var(--blue);
             line-height: 1;
             letter-spacing: -0.03em;
+            font-variant-numeric: tabular-nums;
+            transition: transform 0.3s ease;
         }
-        .stat-card.green .stat-value { color: var(--green); }
-        .stat-card.amber .stat-value { color: var(--amber); }
-        .stat-card.red .stat-value { color: var(--red); }
-        
-        .stat-value.money::before { content: '£'; font-size: 28px; vertical-align: top; }
-        
-        .stat-label { 
-            font-size: 11px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            letter-spacing: 0.1em; 
+
+        .stat-card:hover .stat-value {
+            transform: scale(1.05);
+        }
+
+        .stat-value.money::before {
+            content: '£';
+            font-size: 20px;
+            vertical-align: top;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
             color: var(--text-sub);
-            margin-top: 10px;
+            margin-top: 8px;
         }
-        
-        #loading { text-align: center; padding: 60px; font-size: 12px; color: var(--text-sub); font-weight: 700; }
+
+        .stat-hint {
+            font-size: 8px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 6px;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover .stat-hint {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Loading State */
+        #loading {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 16px;
+        }
+
+        .loading-dots {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            width: 24px;
+            height: 24px;
+        }
+
+        .loading-dot {
+            width: 100%;
+            height: 100%;
+            background: var(--blue);
+            border-radius: 50%;
+            animation: loadPulse 1.2s infinite ease-in-out;
+        }
+
+        .loading-dot:nth-child(1) { animation-delay: 0s; }
+        .loading-dot:nth-child(2) { animation-delay: 0.15s; }
+        .loading-dot:nth-child(3) { animation-delay: 0.3s; }
+        .loading-dot:nth-child(4) { animation-delay: 0.45s; }
+
+        @keyframes loadPulse {
+            0%, 100% { transform: scale(0.6); opacity: 0.3; }
+            50% { transform: scale(1); opacity: 1; }
+        }
+
+        .loading-text {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 480px;
+            max-height: 80vh;
+            overflow: hidden;
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-hover);
+        }
+
+        .modal-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--blue);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-icon svg {
+            width: 18px;
+            height: 18px;
+            color: white;
+        }
+
+        .modal-title {
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            color: var(--text-main);
+        }
+
+        .modal-count {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--blue);
+            background: var(--blue-light);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-sub);
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--border);
+            color: var(--text-main);
+        }
+
+        .modal-body {
+            padding: 16px 24px 24px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .project-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .project-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--bg-hover);
+            border-radius: 12px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            opacity: 0;
+            transform: translateX(-10px);
+            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .project-item:nth-child(1) { animation-delay: 0.05s; }
+        .project-item:nth-child(2) { animation-delay: 0.1s; }
+        .project-item:nth-child(3) { animation-delay: 0.15s; }
+        .project-item:nth-child(4) { animation-delay: 0.2s; }
+        .project-item:nth-child(5) { animation-delay: 0.25s; }
+        .project-item:nth-child(6) { animation-delay: 0.3s; }
+        .project-item:nth-child(7) { animation-delay: 0.35s; }
+        .project-item:nth-child(8) { animation-delay: 0.4s; }
+
+        @keyframes slideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .project-item:hover {
+            background: white;
+            border-color: var(--blue-medium);
+            box-shadow: 0 4px 12px rgba(33, 160, 216, 0.1);
+        }
+
+        .project-indicator {
+            width: 4px;
+            height: 28px;
+            background: var(--blue);
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .project-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .project-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-transform: uppercase;
+            letter-spacing: -0.01em;
+        }
+
+        .project-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .project-client {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-sub);
+        }
+
+        .project-stage {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: var(--blue-light);
+            color: var(--blue);
+        }
+
+        .project-value {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--blue);
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+
+        .empty-state p {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Animations */
+        @keyframes slideDown {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
 
 <div class="header">
     <div class="dots-grid">
-        <div class="dot dot-anim"></div>
-        <div class="dot dot-anim"></div>
-        <div class="dot dot-anim"></div>
-        <div class="dot dot-anim"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
     </div>
-    <span class="title">Pipeline Overview</span>
+    <div class="title-group">
+        <span class="title">Pipeline</span>
+        <span class="quarter-badge">Q1 2026</span>
+    </div>
 </div>
 
-<div class="stats-row" id="statsRow">
-    <div id="loading">Loading pipeline...</div>
+<div class="stats-grid" id="statsGrid">
+    <div id="loading">
+        <div class="loading-dots">
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+        </div>
+        <div class="loading-text">Syncing Pipeline Data</div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title-group">
+                <div class="modal-icon" id="modalIcon"></div>
+                <span class="modal-title" id="modalTitle">Projects</span>
+            </div>
+            <span class="modal-count" id="modalCount">0 Projects</span>
+            <button class="modal-close" id="modalClose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="project-list" id="projectList"></div>
+        </div>
+    </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    
-    const firebaseConfig = { apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY", authDomain: "dmg-command-centre-native.firebaseapp.com", projectId: "dmg-command-centre-native" };
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+        authDomain: "dmg-command-centre-native.firebaseapp.com",
+        projectId: "dmg-command-centre-native"
+    };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
-    
+
+    // Icons as SVG strings
+    const ICONS = {
+        won: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>`,
+        pending: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+        lost: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>`,
+        confirmed: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>`,
+        projected: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
+        delivered: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+        empty: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+    };
+
+    let allProjects = [];
+
     function formatMoney(num) {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
         if (num >= 1000) return (num / 1000).toFixed(0) + 'K';
         return num.toString();
     }
-    
+
+    function formatCurrency(val) {
+        if (!val) return '';
+        if (val >= 1000000) return `£${(val / 1000000).toFixed(1)}M`;
+        if (val >= 1000) return `£${Math.round(val / 1000)}K`;
+        return `£${Math.round(val)}`;
+    }
+
+    function normalize(s) {
+        return (s || '').toLowerCase().trim();
+    }
+
+    function filterProjects(category) {
+        const stageMap = {
+            won: p => ['deal agreed', 'campaign complete'].includes(normalize(p.dealStage || p.stage)),
+            pending: p => ['pitch sent', 'sales review', 'brief received', 'brief recieved'].includes(normalize(p.dealStage || p.stage)),
+            lost: p => normalize(p.dealStage || p.stage) === 'lost',
+            confirmed: p => ['deal agreed', 'campaign complete'].includes(normalize(p.dealStage || p.stage)),
+            projected: p => ['pitch sent', 'sales review', 'brief received', 'brief recieved', 'deal agreed', 'campaign complete'].includes(normalize(p.dealStage || p.stage)),
+            delivered: p => normalize(p.dealStage || p.stage) === 'complete' || normalize(p.status) === 'complete' || normalize(p.status) === 'live'
+        };
+        return allProjects.filter(stageMap[category] || (() => false));
+    }
+
+    function openModal(category, title, count) {
+        const projects = filterProjects(category);
+        const overlay = document.getElementById('modalOverlay');
+        const modalIcon = document.getElementById('modalIcon');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalCount = document.getElementById('modalCount');
+        const projectList = document.getElementById('projectList');
+
+        modalIcon.innerHTML = ICONS[category] || ICONS.won;
+        modalTitle.textContent = title;
+        modalCount.textContent = `${projects.length} Project${projects.length !== 1 ? 's' : ''}`;
+
+        if (projects.length === 0) {
+            projectList.innerHTML = `
+                <div class="empty-state">
+                    ${ICONS.empty}
+                    <p>No projects in this category</p>
+                </div>
+            `;
+        } else {
+            projectList.innerHTML = projects.map(p => `
+                <div class="project-item">
+                    <div class="project-indicator"></div>
+                    <div class="project-content">
+                        <div class="project-name">${p.title || p.name || 'Untitled Project'}</div>
+                        <div class="project-meta">
+                            <span class="project-client">${p.client || 'Internal'}</span>
+                            ${p.dealStage || p.stage ? `<span class="project-stage">${p.dealStage || p.stage}</span>` : ''}
+                        </div>
+                    </div>
+                    ${p.dealValue ? `<span class="project-value">${formatCurrency(parseFloat(p.dealValue))}</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    // Close modal on overlay click or close button
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+        if (e.target.id === 'modalOverlay') closeModal();
+    });
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+    });
+
     async function loadStats() {
         try {
             const res = await fetch(API_URL + '/projects');
             const data = await res.json();
-            const projects = data.projects || [];
-            
-            const won = projects.filter(p => p.stage === 'Deal Agreed' || p.stage === 'Complete').length;
-            const pending = projects.filter(p => p.stage === 'Pitch Sent' || p.stage === 'Sales Review').length;
-            const lost = projects.filter(p => p.stage === 'Lost').length;
-            const completed = projects.filter(p => p.stage === 'Complete').length;
-            
-            const avgDealValue = 15000;
-            const confirmedRevenue = won * avgDealValue;
-            const projectedRevenue = confirmedRevenue + (pending * avgDealValue * 0.4);
-            
-            document.getElementById('statsRow').innerHTML = `
-                <div class="stat-card green">
-                    <div class="stat-value">${won}</div>
+            allProjects = data.projects || [];
+
+            const won = allProjects.filter(p => {
+                const stage = normalize(p.dealStage || p.stage);
+                return stage === 'deal agreed' || stage === 'campaign complete';
+            });
+            const pending = allProjects.filter(p => {
+                const stage = normalize(p.dealStage || p.stage);
+                return ['pitch sent', 'sales review', 'brief received', 'brief recieved'].includes(stage);
+            });
+            const lost = allProjects.filter(p => normalize(p.dealStage || p.stage) === 'lost');
+            const completed = allProjects.filter(p => {
+                const stage = normalize(p.dealStage || p.stage);
+                const status = normalize(p.status);
+                return stage === 'complete' || status === 'complete' || status === 'live';
+            });
+
+            const wonRevenue = won.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
+            const avgDealValue = won.length > 0 ? wonRevenue / won.length : 15000;
+            const projectedRevenue = wonRevenue + (pending.length * avgDealValue * 0.4);
+
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-card" data-category="won" data-title="Won Projects">
+                    <div class="stat-icon">${ICONS.won}</div>
+                    <div class="stat-value">${won.length}</div>
                     <div class="stat-label">Won</div>
+                    <div class="stat-hint">Click to view</div>
                 </div>
-                <div class="stat-card amber">
-                    <div class="stat-value">${pending}</div>
+                <div class="stat-card" data-category="pending" data-title="Pending Projects">
+                    <div class="stat-icon">${ICONS.pending}</div>
+                    <div class="stat-value">${pending.length}</div>
                     <div class="stat-label">Pending</div>
+                    <div class="stat-hint">Click to view</div>
                 </div>
-                <div class="stat-card red">
-                    <div class="stat-value">${lost}</div>
+                <div class="stat-card" data-category="lost" data-title="Lost Projects">
+                    <div class="stat-icon">${ICONS.lost}</div>
+                    <div class="stat-value">${lost.length}</div>
                     <div class="stat-label">Lost</div>
+                    <div class="stat-hint">Click to view</div>
                 </div>
-                <div class="stat-card green">
-                    <div class="stat-value money">${formatMoney(confirmedRevenue)}</div>
+                <div class="stat-card" data-category="confirmed" data-title="Confirmed Revenue">
+                    <div class="stat-icon">${ICONS.confirmed}</div>
+                    <div class="stat-value money">${formatMoney(wonRevenue)}</div>
                     <div class="stat-label">Confirmed</div>
+                    <div class="stat-hint">Click to view</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" data-category="projected" data-title="Projected Revenue">
+                    <div class="stat-icon">${ICONS.projected}</div>
                     <div class="stat-value money">${formatMoney(projectedRevenue)}</div>
                     <div class="stat-label">Projected</div>
+                    <div class="stat-hint">Click to view</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">${completed}</div>
+                <div class="stat-card" data-category="delivered" data-title="Delivered Projects">
+                    <div class="stat-icon">${ICONS.delivered}</div>
+                    <div class="stat-value">${completed.length}</div>
                     <div class="stat-label">Delivered</div>
+                    <div class="stat-hint">Click to view</div>
                 </div>
             `;
+
+            // Stagger card animations
+            const cards = statsGrid.querySelectorAll('.stat-card');
+            cards.forEach((card, i) => {
+                setTimeout(() => {
+                    card.classList.add('loaded');
+                }, i * 80);
+
+                // Add click handlers
+                card.addEventListener('click', () => {
+                    const category = card.dataset.category;
+                    const title = card.dataset.title;
+                    const count = card.querySelector('.stat-value').textContent;
+                    openModal(category, title, count);
+                });
+            });
+
         } catch (err) {
             console.error('Error:', err);
-            document.getElementById('statsRow').innerHTML = '<div id="loading">Unable to load</div>';
+            document.getElementById('statsGrid').innerHTML = `
+                <div id="loading">
+                    <div class="loading-text" style="color: #E94B4B;">Unable to load pipeline data</div>
+                </div>
+            `;
         }
     }
-    
+
     signInAnonymously(auth).then(loadStats);
 </script>
 
