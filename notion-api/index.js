@@ -13,7 +13,7 @@ const notion = new Client({ auth: process.env.NOTION_API_KEY });
 const PROJECTS_DB = process.env.NOTION_MASTER_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
 const DAILY_RUNDOWN_DB = process.env.NOTION_DAILY_RUNDOWN_DB;
-const EVENTS_DB = process.env.NOTION_EVENTS_ACCREDITATION_DB;
+const EVENTS_DB = process.env.NOTION_PROD_EVENTS_DB;
 
 // ============================================
 // HELPER: Parse Notion properties
