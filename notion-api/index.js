@@ -13,6 +13,7 @@ const notion = new Client({ auth: process.env.NOTION_API_KEY });
 const PROJECTS_DB = process.env.NOTION_MASTER_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
 const DAILY_RUNDOWN_DB = process.env.NOTION_DAILY_RUNDOWN_DB;
+const EVENTS_DB = process.env.NOTION_PROD_EVENTS_DB;
 
 // ============================================
 // HELPER: Parse Notion properties
@@ -925,6 +926,140 @@ app.post('/rundown/carry-over', async (req, res) => {
     }
 });
 
+// ============================================
+// EVENTS & ACCREDITATION ENDPOINTS
+// ============================================
+
+// HELPER: Parse event item from Notion page
+function parseEventItem(page) {
+    const props = page.properties;
+
+    return {
+        id: page.id,
+        url: page.url,
+        title: parseProperty(props['NAME'] || props['Title'] || props['Event Name']),
+        date: parseProperty(props['DATE'] || props['Event Date'] || props['Start Date']),
+        endDate: parseProperty(props['END DATE'] || props['End Date']),
+        type: parseProperty(props['TYPE'] || props['Event Type']),
+        status: parseProperty(props['STATUS'] || props['Status']),
+        location: parseProperty(props['LOCATION'] || props['Location'] || props['Venue']),
+        description: parseProperty(props['DESCRIPTION'] || props['Description'] || props['Notes']),
+        accreditationStatus: parseProperty(props['ACCREDITATION STATUS'] || props['Accreditation']),
+        producer: parseProperty(props['PRODUCER'] || props['Producer'] || props['Lead']),
+        team: parseProperty(props['TEAM'] || props['Team']),
+        budget: parseProperty(props['BUDGET'] || props['Budget']),
+        priority: parseProperty(props['PRIORITY'] || props['Priority']),
+        deliverables: parseProperty(props['DELIVERABLES'] || props['Deliverables']),
+        createdTime: page.created_time,
+        lastEditedTime: page.last_edited_time
+    };
+}
+
+// GET /events - List all events
+app.get('/events', async (req, res) => {
+    try {
+        if (!EVENTS_DB) {
+            return res.status(400).json({ success: false, error: 'Events DB not configured' });
+        }
+
+        const { startDate, endDate, status } = req.query;
+
+        let filter = undefined;
+        const conditions = [];
+
+        if (startDate) {
+            conditions.push({
+                property: 'DATE',
+                date: { on_or_after: startDate }
+            });
+        }
+        if (endDate) {
+            conditions.push({
+                property: 'DATE',
+                date: { on_or_before: endDate }
+            });
+        }
+        if (status) {
+            conditions.push({
+                property: 'STATUS',
+                select: { equals: status }
+            });
+        }
+
+        if (conditions.length > 0) {
+            filter = conditions.length === 1 ? conditions[0] : { and: conditions };
+        }
+
+        const response = await notion.databases.query({
+            database_id: EVENTS_DB,
+            filter,
+            page_size: 100,
+            sorts: [{ property: 'DATE', direction: 'ascending' }]
+        });
+
+        const events = response.results.map(parseEventItem);
+
+        res.json({ success: true, events, count: events.length });
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /events/:id - Get single event
+app.get('/events/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const page = await notion.pages.retrieve({ page_id: id });
+        const event = parseEventItem(page);
+        res.json({ success: true, event });
+    } catch (error) {
+        console.error('Error fetching event:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// PATCH /events/:id - Update an event
+app.patch('/events/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const props = {};
+
+        if (req.body.title) {
+            props['NAME'] = { title: [{ text: { content: req.body.title } }] };
+        }
+        if (req.body.date !== undefined) {
+            props['DATE'] = { date: req.body.date ? { start: req.body.date } : null };
+        }
+        if (req.body.status) {
+            props['STATUS'] = { select: { name: req.body.status } };
+        }
+        if (req.body.location !== undefined) {
+            props['LOCATION'] = { rich_text: req.body.location ? [{ text: { content: req.body.location } }] : [] };
+        }
+        if (req.body.accreditationStatus) {
+            props['ACCREDITATION STATUS'] = { select: { name: req.body.accreditationStatus } };
+        }
+        if (req.body.description !== undefined) {
+            props['DESCRIPTION'] = { rich_text: req.body.description ? [{ text: { content: req.body.description } }] : [] };
+        }
+
+        if (Object.keys(props).length === 0) {
+            return res.status(400).json({ success: false, error: 'No valid properties to update' });
+        }
+
+        await notion.pages.update({
+            page_id: id,
+            properties: props
+        });
+
+        res.json({ success: true, message: 'Event updated' });
+    } catch (error) {
+        console.error('Error updating event:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Health check
 app.get('/', (req, res) => {
     const { version } = require('./package.json');
@@ -934,7 +1069,8 @@ app.get('/', (req, res) => {
         databases: {
             projects: PROJECTS_DB ? 'configured' : 'missing',
             deliverables: DELIVERABLES_DB ? 'configured' : 'missing',
-            dailyRundown: DAILY_RUNDOWN_DB ? 'configured' : 'missing'
+            dailyRundown: DAILY_RUNDOWN_DB ? 'configured' : 'missing',
+            events: EVENTS_DB ? 'configured' : 'missing'
         },
         endpoints: [
             'GET /projects',
@@ -951,7 +1087,10 @@ app.get('/', (req, res) => {
             'POST /rundown',
             'PATCH /rundown/:id',
             'DELETE /rundown/:id',
-            'POST /rundown/carry-over'
+            'POST /rundown/carry-over',
+            'GET /events',
+            'GET /events/:id',
+            'PATCH /events/:id'
         ]
     });
 });
