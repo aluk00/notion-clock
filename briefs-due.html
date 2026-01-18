@@ -200,6 +200,11 @@
         .card.overdue .date-day { color: var(--danger); }
         .card.overdue .date-month { color: var(--danger); }
 
+        /* No date styling */
+        .card.no-date .date-badge { background: #F3F4F6; border-color: #E5E7EB; }
+        .card.no-date .date-day { font-size: 12px; color: var(--ink-sub); }
+        .card.no-date .date-month { color: var(--ink-sub); }
+
         .info { flex: 1; min-width: 0; }
         .client-name { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.03em; margin-bottom: 4px; }
         .project-name { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -414,19 +419,30 @@
                     notionItems = (apiJson.projects || []).map(p => {
                         // Priority: Custom Link > Notion Field Link > Notion URL
                         const customLink = linksMap[p.id];
-                        const dateVal = p.dueDate || p.internalDueDate || p.liveDate;
-                        
-                        if (!dateVal) return null; // Only show items with dates
+                        // Check multiple date fields - more comprehensive
+                        const dateVal = p.clientDueDate || p.internalDueDate || p.dueDate || p.expectedCloseDate || p.publishDate || p.liveDate;
+
+                        // Include projects even without dates if they have active deal stage
+                        const dealStage = (p.dealStage || '').toLowerCase();
+                        const isActiveDeal = dealStage &&
+                            !dealStage.includes('complete') &&
+                            !dealStage.includes('lost') &&
+                            !dealStage.includes('archived');
+
+                        // Skip if no date AND no active deal stage
+                        if (!dateVal && !isActiveDeal) return null;
 
                         return {
                             id: p.id,
                             source: 'notion',
                             client: p.client,
                             title: p.title,
-                            dueDate: new Date(dateVal),
+                            // Use date if available, otherwise set to 30 days from now for sorting
+                            dueDate: dateVal ? new Date(dateVal) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
                             link: customLink || p.creativeResponseLink || p.briefLink,
                             originalLink: p.creativeResponseLink || p.briefLink,
-                            status: p.dealStage || ''
+                            status: p.dealStage || '',
+                            hasNoDate: !dateVal // Track if date was missing
                         };
                     }).filter(p => p && !p.status.toLowerCase().includes('complete'));
                 }
@@ -455,16 +471,17 @@
             container.innerHTML = globalData.map(item => {
                 const day = item.dueDate.getDate();
                 const month = item.dueDate.toLocaleDateString('en-GB', { month: 'short' });
-                const isOverdue = item.dueDate < new Date().setHours(0,0,0,0);
+                const isOverdue = !item.hasNoDate && item.dueDate < new Date().setHours(0,0,0,0);
+                const noDateClass = item.hasNoDate ? 'no-date' : '';
 
                 return `
-                <div class="card source-${item.source} ${isOverdue ? 'overdue' : ''}" id="card-${item.id}" onclick="openEditSheet('${item.id}')">
+                <div class="card source-${item.source} ${isOverdue ? 'overdue' : ''} ${noDateClass}" id="card-${item.id}" onclick="openEditSheet('${item.id}')">
                     <div class="complete-checkbox" onclick="event.stopPropagation(); markComplete('${item.id}', '${item.source}')" title="Mark as complete">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
                     <div class="date-badge">
-                        <span class="date-day">${day}</span>
-                        <span class="date-month">${month}</span>
+                        <span class="date-day">${item.hasNoDate ? 'TBD' : day}</span>
+                        <span class="date-month">${item.hasNoDate ? '' : month}</span>
                     </div>
                     <div class="info">
                         <div class="client-name">${item.client || 'Internal'}</div>
