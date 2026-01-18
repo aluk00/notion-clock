@@ -942,25 +942,43 @@ app.post('/rundown/carry-over', async (req, res) => {
 // ============================================
 
 // HELPER: Parse event item from Notion page
+// Maps to "Events & Accreditation Production + Planning" database schema
 function parseEventItem(page) {
     const props = page.properties;
+
+    // Handle date property which can be a date range
+    const dateValue = props['Date']?.date;
+    const startDate = dateValue?.start || null;
+    const endDate = dateValue?.end || null;
 
     return {
         id: page.id,
         url: page.url,
-        title: parseProperty(props['NAME'] || props['Title'] || props['Event Name']),
-        date: parseProperty(props['DATE'] || props['Event Date'] || props['Start Date']),
-        endDate: parseProperty(props['END DATE'] || props['End Date']),
-        type: parseProperty(props['TYPE'] || props['Event Type']),
-        status: parseProperty(props['STATUS'] || props['Status']),
-        location: parseProperty(props['LOCATION'] || props['Location'] || props['Venue']),
-        description: parseProperty(props['DESCRIPTION'] || props['Description'] || props['Notes']),
-        accreditationStatus: parseProperty(props['ACCREDITATION STATUS'] || props['Accreditation']),
-        producer: parseProperty(props['PRODUCER'] || props['Producer'] || props['Lead']),
-        team: parseProperty(props['TEAM'] || props['Team']),
-        budget: parseProperty(props['BUDGET'] || props['Budget']),
-        priority: parseProperty(props['PRIORITY'] || props['Priority']),
-        deliverables: parseProperty(props['DELIVERABLES'] || props['Deliverables']),
+        title: parseProperty(props['Event']),
+        event: parseProperty(props['Event']),
+        date: startDate,
+        endDate: endDate,
+        type: parseProperty(props['Angle Bucket']),
+        angleBucket: parseProperty(props['Angle Bucket']),
+        status: parseProperty(props['Status']),
+        location: parseProperty(props['Where']),
+        where: parseProperty(props['Where']),
+        accreditationStatus: parseProperty(props['Local Permissions Needed']),
+        accreditation: parseProperty(props['Local Permissions Needed']),
+        producer: parseProperty(props['Sub-Item Owner']),
+        subItemOwner: parseProperty(props['Sub-Item Owner']),
+        creators: parseProperty(props['Creator(s)']),
+        priority: parseProperty(props['Coverage Priority']),
+        coveragePriority: parseProperty(props['Coverage Priority']),
+        abroad: parseProperty(props['Abroad']),
+        visaNeeded: parseProperty(props['Visa / ESTA Needed']),
+        subItemType: parseProperty(props['Sub-Item Type']),
+        subItemFormats: parseProperty(props['Sub-Item Format(s)']),
+        idea: parseProperty(props['Idea']),
+        link: parseProperty(props['Link']),
+        additionalContextLink: parseProperty(props['Additional Context Link']),
+        externalContactDetails: parseProperty(props['External Contact Details']),
+        permissionDetails: parseProperty(props['Permission Details']),
         createdTime: page.created_time,
         lastEditedTime: page.last_edited_time
     };
@@ -980,19 +998,19 @@ app.get('/events', async (req, res) => {
 
         if (startDate) {
             conditions.push({
-                property: 'DATE',
+                property: 'Date',
                 date: { on_or_after: startDate }
             });
         }
         if (endDate) {
             conditions.push({
-                property: 'DATE',
+                property: 'Date',
                 date: { on_or_before: endDate }
             });
         }
         if (status) {
             conditions.push({
-                property: 'STATUS',
+                property: 'Status',
                 select: { equals: status }
             });
         }
@@ -1005,7 +1023,7 @@ app.get('/events', async (req, res) => {
             database_id: EVENTS_DB,
             filter,
             page_size: 100,
-            sorts: [{ timestamp: 'created_time', direction: 'ascending' }]
+            sorts: [{ property: 'Date', direction: 'ascending' }]
         });
 
         const events = response.results.map(parseEventItem);
@@ -1037,22 +1055,25 @@ app.patch('/events/:id', async (req, res) => {
         const props = {};
 
         if (req.body.title) {
-            props['NAME'] = { title: [{ text: { content: req.body.title } }] };
+            props['Event'] = { title: [{ text: { content: req.body.title } }] };
         }
         if (req.body.date !== undefined) {
-            props['DATE'] = { date: req.body.date ? { start: req.body.date } : null };
+            props['Date'] = { date: req.body.date ? { start: req.body.date, end: req.body.endDate || null } : null };
         }
         if (req.body.status) {
-            props['STATUS'] = { select: { name: req.body.status } };
+            props['Status'] = { select: { name: req.body.status } };
         }
         if (req.body.location !== undefined) {
-            props['LOCATION'] = { rich_text: req.body.location ? [{ text: { content: req.body.location } }] : [] };
+            props['Where'] = { rich_text: req.body.location ? [{ text: { content: req.body.location } }] : [] };
         }
         if (req.body.accreditationStatus) {
-            props['ACCREDITATION STATUS'] = { select: { name: req.body.accreditationStatus } };
+            props['Local Permissions Needed'] = { select: { name: req.body.accreditationStatus } };
         }
-        if (req.body.description !== undefined) {
-            props['DESCRIPTION'] = { rich_text: req.body.description ? [{ text: { content: req.body.description } }] : [] };
+        if (req.body.coveragePriority) {
+            props['Coverage Priority'] = { select: { name: req.body.coveragePriority } };
+        }
+        if (req.body.angleBucket) {
+            props['Angle Bucket'] = { select: { name: req.body.angleBucket } };
         }
 
         if (Object.keys(props).length === 0) {
