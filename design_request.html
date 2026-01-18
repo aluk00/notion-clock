@@ -286,6 +286,79 @@
             border-top: 1px solid var(--border);
         }
         .link-fields.show { display: block; }
+
+        /* File Upload Styles */
+        .file-upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            text-align: center;
+            transition: var(--transition);
+            background: var(--surface-alt);
+        }
+        .file-upload-zone.dragover {
+            border-color: var(--production);
+            background: var(--production-light);
+        }
+        .upload-prompt {
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--ink-light);
+        }
+        .upload-prompt svg {
+            color: var(--production);
+        }
+        .upload-prompt span {
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .upload-hint {
+            font-size: 10px !important;
+            color: #9CA3AF !important;
+        }
+        .file-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .file-item .file-name {
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .file-item .remove-file {
+            cursor: pointer;
+            color: var(--urgent);
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+        .file-item .remove-file:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .upload-progress {
+            margin-top: 8px;
+            font-size: 10px;
+            color: var(--production);
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -388,7 +461,11 @@
                 </div>
 
                 <div class="section">
-                    <div class="section-label"><span class="section-num">4</span>References (Optional)</div>
+                    <div class="section-label"><span class="section-num">4</span>References & Files</div>
+                    <div class="field">
+                        <label class="field-label" for="projectFileUrl">Project File Link (video that will be posted)</label>
+                        <input type="url" id="projectFileUrl" placeholder="https://drive.google.com/... or YouTube link">
+                    </div>
                     <div class="field">
                         <label class="field-label" for="referenceUrl">Reference Image / Link</label>
                         <input type="url" id="referenceUrl" placeholder="https://drive.google.com/...">
@@ -396,6 +473,22 @@
                     <div class="field">
                         <label class="field-label" for="scriptUrl">Script / Doc Link</label>
                         <input type="url" id="scriptUrl" placeholder="https://docs.google.com/...">
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Upload Files (up to 4)</label>
+                        <div class="file-upload-zone" id="fileUploadZone">
+                            <input type="file" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.psd,.ai" style="display: none;">
+                            <div class="upload-prompt" onclick="document.getElementById('fileInput').click()">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <span>Click to upload or drag files here</span>
+                                <span class="upload-hint">Images, PDFs, PSD, AI - Max 4 files</span>
+                            </div>
+                            <div class="file-list" id="fileList"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -431,6 +524,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
@@ -444,10 +538,12 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    const storage = getStorage(app);
     const APP_ID = "dmg-command-centre-native";
 
     let selectedAsset = '';
     let selectedPriority = '';
+    let uploadedFiles = [];
 
     // Chip selection logic
     document.querySelectorAll('#assetChips .chip').forEach(chip => {
@@ -470,6 +566,85 @@
     document.getElementById('linkToggle').addEventListener('change', (e) => {
         document.getElementById('linkFields').classList.toggle('show', e.target.checked);
     });
+
+    // File upload handling
+    const fileInput = document.getElementById('fileInput');
+    const fileUploadZone = document.getElementById('fileUploadZone');
+    const fileList = document.getElementById('fileList');
+
+    fileInput.addEventListener('change', handleFileSelect);
+
+    // Drag and drop
+    fileUploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUploadZone.classList.add('dragover');
+    });
+    fileUploadZone.addEventListener('dragleave', () => {
+        fileUploadZone.classList.remove('dragover');
+    });
+    fileUploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUploadZone.classList.remove('dragover');
+        const files = Array.from(e.dataTransfer.files);
+        addFiles(files);
+    });
+
+    function handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        addFiles(files);
+    }
+
+    function addFiles(files) {
+        const remaining = 4 - uploadedFiles.length;
+        const toAdd = files.slice(0, remaining);
+
+        toAdd.forEach(file => {
+            if (file.size > 10 * 1024 * 1024) {
+                alert(`${file.name} is too large. Max 10MB per file.`);
+                return;
+            }
+            uploadedFiles.push(file);
+        });
+
+        if (files.length > remaining) {
+            alert(`Only ${remaining} more file(s) can be added. Max 4 files total.`);
+        }
+
+        renderFileList();
+    }
+
+    function renderFileList() {
+        fileList.innerHTML = uploadedFiles.map((file, index) => `
+            <div class="file-item">
+                <span class="file-name" title="${file.name}">${file.name}</span>
+                <span class="remove-file" onclick="window.removeFile(${index})">×</span>
+            </div>
+        `).join('');
+    }
+
+    window.removeFile = (index) => {
+        uploadedFiles.splice(index, 1);
+        renderFileList();
+    };
+
+    async function uploadFilesToStorage() {
+        const urls = [];
+        for (const file of uploadedFiles) {
+            const timestamp = Date.now();
+            const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const filePath = `design_requests/${timestamp}_${safeName}`;
+            const storageRef = ref(storage, filePath);
+
+            try {
+                await uploadBytes(storageRef, file);
+                const url = await getDownloadURL(storageRef);
+                urls.push({ name: file.name, url: url });
+            } catch (err) {
+                console.error('Upload error:', err);
+            }
+        }
+        return urls;
+    }
 
     async function loadStaff() {
         try {
@@ -507,6 +682,18 @@
 
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
+        btn.textContent = 'Uploading files...';
+
+        // Upload files first
+        let fileUrls = [];
+        if (uploadedFiles.length > 0) {
+            try {
+                fileUrls = await uploadFilesToStorage();
+            } catch (err) {
+                console.error('File upload error:', err);
+            }
+        }
+
         btn.textContent = 'Submitting...';
 
         const deadlineDate = document.getElementById('deadlineDate').value;
@@ -519,8 +706,10 @@
             seriesName: document.getElementById('series').value,
             priority: selectedPriority,
             deadline: `${deadlineDate}T${normalizedTime}`,
+            projectFileUrl: document.getElementById('projectFileUrl').value,
             referenceUrl: document.getElementById('referenceUrl').value,
             scriptUrl: document.getElementById('scriptUrl').value,
+            uploadedFiles: fileUrls,
             requesterId: document.getElementById('requester').value,
             deliverableId: document.getElementById('linkToggle').checked ? document.getElementById('deliverableSelect').value : null,
             status: 'Not Started',
@@ -546,6 +735,8 @@
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
         selectedAsset = '';
         selectedPriority = '';
+        uploadedFiles = [];
+        renderFileList();
         document.getElementById('formContent').classList.remove('hide');
         document.getElementById('successState').classList.remove('show');
         document.getElementById('submitBtn').disabled = false;
