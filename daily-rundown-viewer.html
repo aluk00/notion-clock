@@ -96,7 +96,25 @@
 
     async function fetchItems() {
         try {
-            const response = await fetch(`${API_BASE}/rundown?date=${today}`);
+            const response = await fetch(`${API_BASE}/rundown?date=${today}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            // Check if response is ok before parsing
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg = `Server error (${response.status})`;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    if (errorData.error) errorMsg = errorData.error;
+                } catch (e) {
+                    // Response wasn't JSON
+                    console.error('Non-JSON error response:', errorText);
+                }
+                throw new Error(errorMsg);
+            }
+
             const data = await response.json();
             if (data.success) {
                 items = data.items.sort((a, b) =>
@@ -116,7 +134,18 @@
             }
         } catch (error) {
             console.error('Fetch error:', error);
-            document.getElementById('columns').innerHTML = '<div class="empty" style="grid-column: 1/-1; padding: 60px 20px;">Connection error - check console for details</div>';
+
+            // Determine error type and show helpful message
+            let errorMsg = 'Connection error';
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                errorMsg = 'Network error: Unable to reach the server. This may be a CORS issue or the server may be down.';
+            } else if (error.message.includes('CORS')) {
+                errorMsg = 'CORS error: The server is not allowing requests from this origin.';
+            } else if (error.message) {
+                errorMsg = error.message;
+            }
+
+            document.getElementById('columns').innerHTML = `<div class="empty" style="grid-column: 1/-1; padding: 60px 20px;">${errorMsg}</div>`;
         }
     }
 

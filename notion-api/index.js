@@ -3,7 +3,18 @@ const cors = require('cors');
 const { Client } = require('@notionhq/client');
 
 const app = express();
-app.use(cors({ origin: true }));
+
+// CORS configuration - allow cross-origin requests from any origin
+app.use(cors({
+    origin: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true
+}));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
+
 app.use(express.json());
 
 // Initialize Notion client
