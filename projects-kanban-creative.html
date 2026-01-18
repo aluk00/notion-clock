@@ -1485,8 +1485,14 @@
 
             const changes = {};
             for (const key in currentProject) {
-                if (JSON.stringify(currentProject[key]) !== JSON.stringify(originalProject[key])) changes[key] = currentProject[key];
+                if (JSON.stringify(currentProject[key]) !== JSON.stringify(originalProject[key])) {
+                    changes[key] = currentProject[key];
+                }
             }
+
+            // Debug: log what we're sending
+            console.log('Saving changes to project:', currentProject.id);
+            console.log('Changes being sent:', changes);
 
             try {
                 const res = await fetch(`${API_URL}/projects/${currentProject.id}`, {
@@ -1494,7 +1500,17 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(changes)
                 });
+
+                // Debug: log raw response
+                console.log('Response status:', res.status);
+
                 const data = await res.json();
+                console.log('Response data:', data);
+
+                if (!res.ok) {
+                    throw new Error(data.error || data.message || `Server error: ${res.status}`);
+                }
+
                 if (data.success) {
                     const idx = allProjects.findIndex(p => p.id === currentProject.id);
                     if (idx !== -1) allProjects[idx] = { ...allProjects[idx], ...changes };
@@ -1502,9 +1518,13 @@
                     hasChanges = false;
                     showToast('Changes saved!', 'success');
                     render();
-                } else throw new Error(data.error || 'Save failed');
+                } else {
+                    throw new Error(data.error || 'Save failed - check backend logs');
+                }
             } catch (e) {
                 console.error('Save error:', e);
+                console.error('Project ID:', currentProject.id);
+                console.error('Changes attempted:', changes);
                 showToast('Failed to save: ' + e.message, 'error');
             }
             saveBtn.disabled = false;

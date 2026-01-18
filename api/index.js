@@ -80,73 +80,117 @@ function buildStatusProperty(value, propertyType) {
 async function buildProjectProperties(data) {
     const props = {};
     const propertyTypes = await getProjectPropertyTypes();
-    
+
+    // Title (required for create, optional for update)
     if (data.title) {
         props['TITLE'] = { title: [{ text: { content: data.title } }] };
     }
+
+    // Rich text fields
     if (data.cardSummary !== undefined) {
         props['CARD SUMMARY'] = { rich_text: data.cardSummary ? [{ text: { content: data.cardSummary } }] : [] };
     }
     if (data.notes !== undefined) {
         props['(INTERNAL) NOTES'] = { rich_text: data.notes ? [{ text: { content: data.notes } }] : [] };
     }
-    if (data.client) {
-        props['CLIENT / EXTERNAL PARTNER'] = { select: { name: data.client } };
+    if (data.salesNotes !== undefined) {
+        props['SALES NOTES'] = { rich_text: data.salesNotes ? [{ text: { content: data.salesNotes } }] : [] };
     }
-    if (data.projectType) {
-        props['PROJECT TYPE'] = { select: { name: data.projectType } };
+
+    // Select fields - use !== undefined to allow clearing
+    if (data.client !== undefined) {
+        props['CLIENT / EXTERNAL PARTNER'] = data.client ? { select: { name: data.client } } : { select: null };
     }
-    if (data.priority) {
-        props['PRIORITY'] = { select: { name: data.priority } };
+    if (data.projectType !== undefined) {
+        props['PROJECT TYPE'] = data.projectType ? { select: { name: data.projectType } } : { select: null };
     }
-    if (data.vertical) {
-        props['VERTICAL'] = { select: { name: data.vertical } };
+    if (data.priority !== undefined) {
+        props['PRIORITY'] = data.priority ? { select: { name: data.priority } } : { select: null };
     }
-    if (data.ownerRole) {
-        props['OWNER ROLE'] = { select: { name: data.ownerRole } };
+    if (data.vertical !== undefined) {
+        props['VERTICAL'] = data.vertical ? { select: { name: data.vertical } } : { select: null };
     }
-    if (data.deskState) {
-        props['DESK STATE'] = { select: { name: data.deskState } };
+    if (data.ownerRole !== undefined) {
+        props['OWNER ROLE'] = data.ownerRole ? { select: { name: data.ownerRole } } : { select: null };
     }
-    if (data.dealStage) {
-        props['DEAL STAGE'] = { select: { name: data.dealStage } };
+    if (data.deskState !== undefined) {
+        props['DESK STATE'] = data.deskState ? { select: { name: data.deskState } } : { select: null };
     }
-    if (data.creativeWorkflowStatus) {
+    if (data.dealStage !== undefined) {
+        props['DEAL STAGE'] = data.dealStage ? { select: { name: data.dealStage } } : { select: null };
+    }
+    if (data.responseTypeNeeded !== undefined) {
+        props['RESPONSE TYPE NEEDED'] = data.responseTypeNeeded ? { select: { name: data.responseTypeNeeded } } : { select: null };
+    }
+    if (data.probability !== undefined) {
+        props['PROBABILITY'] = data.probability ? { select: { name: data.probability } } : { select: null };
+    }
+
+    // Status/Select fields (workflow)
+    if (data.creativeWorkflowStatus !== undefined) {
         props['CREATIVE WORKFLOW STATUS'] = buildStatusProperty(
             data.creativeWorkflowStatus,
             propertyTypes['CREATIVE WORKFLOW STATUS']
         );
     }
-    if (data.productionWorkflowStatus) {
+    if (data.productionWorkflowStatus !== undefined) {
         props['PRODUCTION WORKFLOW STATUS'] = buildStatusProperty(
             data.productionWorkflowStatus,
             propertyTypes['PRODUCTION WORKFLOW STATUS']
         );
     }
-    if (data.socialWorkflowStatus) {
+    if (data.socialWorkflowStatus !== undefined) {
         props['SOCIAL WORKFLOW STATUS'] = buildStatusProperty(
             data.socialWorkflowStatus,
             propertyTypes['SOCIAL WORKFLOW STATUS']
         );
     }
+
+    // Multi-select fields
     if (data.primaryTeam && Array.isArray(data.primaryTeam)) {
         props['PRIMARY TEAM'] = { multi_select: data.primaryTeam.map(t => ({ name: t })) };
     }
     if (data.assetsNeeded && Array.isArray(data.assetsNeeded)) {
         props['ASSET(S) NEEDED'] = { multi_select: data.assetsNeeded.map(a => ({ name: a })) };
     }
+
+    // Date fields
     if (data.dueDate !== undefined) {
         props['(INTERNAL) DUE DATE'] = { date: data.dueDate ? { start: data.dueDate } : null };
     }
     if (data.clientDueDate !== undefined) {
         props['CLIENT DUE DATE'] = { date: data.clientDueDate ? { start: data.clientDueDate } : null };
     }
+    if (data.expectedCloseDate !== undefined) {
+        props['EXPECTED CLOSE DATE'] = { date: data.expectedCloseDate ? { start: data.expectedCloseDate } : null };
+    }
+    if (data.suggestedCampaignWindow !== undefined) {
+        props['SUGGESTED CAMPAIGN WINDOW'] = { date: data.suggestedCampaignWindow ? { start: data.suggestedCampaignWindow } : null };
+    }
+
+    // Number fields
     if (data.dealValue !== undefined) {
         props['DEAL VALUE'] = { number: data.dealValue };
     }
     if (data.effortScore !== undefined) {
         props['EFFORT SCORE'] = { number: data.effortScore };
     }
+
+    // URL fields
+    if (data.briefLink !== undefined) {
+        props['BRIEF LINK'] = { url: data.briefLink || null };
+    }
+    if (data.creativeResponseLink !== undefined) {
+        props['CREATIVE RESPONSE LINK'] = { url: data.creativeResponseLink || null };
+    }
+    if (data.frameIoLink !== undefined) {
+        props['FRAME.IO LINK'] = { url: data.frameIoLink || null };
+    }
+    if (data.driveFolder !== undefined) {
+        props['DRIVE FOLDER'] = { url: data.driveFolder || null };
+    }
+
+    // People fields (require Notion user IDs)
     if (data.salesLeadId) {
         props['SALES LEAD'] = { people: [{ id: data.salesLeadId }] };
     }
@@ -159,7 +203,7 @@ async function buildProjectProperties(data) {
     if (data.editorialLeadId) {
         props['EDITORIAL LEAD'] = { people: [{ id: data.editorialLeadId }] };
     }
-    
+
     return props;
 }
 
@@ -264,7 +308,7 @@ app.get('/projects', async (req, res) => {
             page_size: 100,
             sorts: [{ property: '(INTERNAL) DUE DATE', direction: 'ascending' }]
         });
-        
+
         const projects = response.results.map(page => {
             const props = page.properties;
             return {
@@ -277,8 +321,11 @@ app.get('/projects', async (req, res) => {
                 vertical: parseProperty(props['VERTICAL']),
                 dealStage: parseProperty(props['DEAL STAGE']),
                 dealValue: parseProperty(props['DEAL VALUE']),
+                probability: parseProperty(props['PROBABILITY']),
                 dueDate: parseProperty(props['(INTERNAL) DUE DATE']),
                 clientDueDate: parseProperty(props['CLIENT DUE DATE']),
+                expectedCloseDate: parseProperty(props['EXPECTED CLOSE DATE']),
+                suggestedCampaignWindow: parseProperty(props['SUGGESTED CAMPAIGN WINDOW']),
                 creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
                 productionWorkflowStatus: parseProperty(props['PRODUCTION WORKFLOW STATUS']),
                 socialWorkflowStatus: parseProperty(props['SOCIAL WORKFLOW STATUS']),
@@ -288,6 +335,15 @@ app.get('/projects', async (req, res) => {
                 assetsNeeded: parseProperty(props['ASSET(S) NEEDED']),
                 effortScore: parseProperty(props['EFFORT SCORE']),
                 cardSummary: parseProperty(props['CARD SUMMARY']),
+                notes: parseProperty(props['(INTERNAL) NOTES']),
+                salesNotes: parseProperty(props['SALES NOTES']),
+                // URL fields
+                briefLink: parseProperty(props['BRIEF LINK']),
+                creativeResponseLink: parseProperty(props['CREATIVE RESPONSE LINK']),
+                frameIoLink: parseProperty(props['FRAME.IO LINK']),
+                driveFolder: parseProperty(props['DRIVE FOLDER']),
+                responseTypeNeeded: parseProperty(props['RESPONSE TYPE NEEDED']),
+                // People
                 salesLead: parseProperty(props['SALES LEAD']),
                 creativeLead: parseProperty(props['CREATIVE LEAD']),
                 productionLead: parseProperty(props['PRODUCTION LEAD']),
@@ -298,7 +354,7 @@ app.get('/projects', async (req, res) => {
                 nextDeliverableDue: parseProperty(props['NEXT DELIVERABLE DUE'])
             };
         });
-        
+
         res.json({ success: true, projects, count: projects.length });
     } catch (error) {
         console.error('Error fetching projects:', error);
@@ -312,21 +368,45 @@ app.get('/projects', async (req, res) => {
 app.patch('/projects/:id', async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Log incoming request for debugging
+        console.log(`PATCH /projects/${id}`);
+        console.log('Request body:', JSON.stringify(req.body, null, 2));
+
         const properties = await buildProjectProperties(req.body);
-        
+
+        console.log('Built Notion properties:', JSON.stringify(properties, null, 2));
+
         if (Object.keys(properties).length === 0) {
-            return res.status(400).json({ success: false, error: 'No valid properties to update' });
+            console.log('No valid properties found to update');
+            return res.status(400).json({
+                success: false,
+                error: 'No valid properties to update',
+                receivedFields: Object.keys(req.body)
+            });
         }
-        
-        await notion.pages.update({
+
+        const response = await notion.pages.update({
             page_id: id,
             properties
         });
-        
-        res.json({ success: true, message: 'Project updated' });
+
+        console.log('Notion update successful for page:', id);
+
+        res.json({
+            success: true,
+            message: 'Project updated',
+            updatedFields: Object.keys(properties)
+        });
     } catch (error) {
         console.error('Error updating project:', error);
-        res.status(500).json({ success: false, error: error.message });
+        console.error('Project ID:', req.params.id);
+        console.error('Request body:', req.body);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            code: error.code || 'UNKNOWN'
+        });
     }
 });
 

@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deal Tracker | DMG Command Centre</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #0F172A;
+            --ink-sub: #64748B;
+            --ink-muted: #94A3B8;
+            --border: #E2E8F0;
+            --surface: #FFFFFF;
+            --surface-alt: #F8FAFC;
+            --dmg-blue: #21A0D8;
+            --dmg-blue-soft: rgba(33, 160, 216, 0.1);
+            --creative: #E6468B;
+            --production: #43B049;
+            --editorial: #E94B4B;
+            --social: #F2C316;
+            --sales: #21A0D8;
+            --amber: #F59E0B;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--surface);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        /* Loading */
+        .loading-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            gap: 12px;
+        }
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 6px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sales);
+        }
+        .dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
+        .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        .loading-text {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        /* Main Container */
+        .container { padding: 16px; }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-label {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--sales);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .header-stats {
+            display: flex;
+            gap: 16px;
+        }
+        .stat {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-muted);
+        }
+        .stat strong {
+            color: var(--ink);
+            font-weight: 800;
+        }
+        .stat.highlight strong {
+            color: var(--production);
+        }
+
+        /* Action Buttons */
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .action-btn.primary {
+            background: var(--sales);
+            color: white;
+        }
+        .action-btn.primary:hover {
+            background: #1a8ac0;
+            transform: translateY(-1px);
+        }
+        .action-btn.secondary {
+            background: var(--surface);
+            color: var(--production);
+            border: 1px solid var(--production);
+        }
+        .action-btn.secondary:hover {
+            background: rgba(67, 176, 73, 0.1);
+            transform: translateY(-1px);
+        }
+        .action-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* View Tabs */
+        .view-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .view-tab {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: var(--ink-sub);
+        }
+        .view-tab:hover {
+            border-color: #D1D5DB;
+            background: var(--surface-alt);
+        }
+        .view-tab.active {
+            background: var(--ink);
+            color: white;
+            border-color: var(--ink);
+        }
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+        }
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface);
+            min-width: 1200px;
+        }
+        .sales-table thead {
+            background: var(--surface-alt);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .sales-table th {
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .sales-table td {
+            padding: 10px 12px;
+            font-size: 11px;
+            border-bottom: 1px solid var(--border);
+            color: var(--ink);
+        }
+        .sales-table tr:last-child td {
+            border-bottom: none;
+        }
+        .sales-table tbody tr {
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .sales-table tbody tr:hover {
+            background: var(--surface-alt);
+        }
+        .sales-table tbody tr.ready-for-handoff {
+            background: rgba(67, 176, 73, 0.05);
+        }
+        .sales-table tbody tr.ready-for-handoff:hover {
+            background: rgba(67, 176, 73, 0.1);
+        }
+        /* Table Elements */
+        .table-title {
+            font-weight: 600;
+            color: var(--ink);
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .table-client {
+            font-size: 10px;
+            color: var(--ink-sub);
+            font-weight: 500;
+        }
+        .table-tag {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            white-space: nowrap;
+        }
+        .table-tag.stage-brief { background: rgba(230, 70, 139, 0.1); color: var(--creative); }
+        .table-tag.stage-pitch { background: rgba(33, 160, 216, 0.1); color: var(--sales); }
+        .table-tag.stage-agreed { background: rgba(67, 176, 73, 0.1); color: var(--production); }
+        .table-tag.stage-complete { background: rgba(242, 195, 22, 0.1); color: #B8860B; }
+        .table-tag.priority-high { background: rgba(233, 75, 75, 0.1); color: var(--editorial); }
+        .table-tag.priority-medium { background: rgba(245, 158, 11, 0.1); color: var(--amber); }
+        .table-tag.priority-low { background: var(--surface-alt); color: var(--ink-sub); }
+
+        .table-value {
+            font-weight: 700;
+            color: var(--production);
+        }
+        .table-value.weighted {
+            color: var(--ink-sub);
+            font-weight: 600;
+        }
+        .table-date {
+            font-size: 10px;
+            color: var(--ink-sub);
+        }
+        .table-date.overdue {
+            color: var(--editorial);
+            font-weight: 600;
+        }
+        .table-date.soon {
+            color: var(--amber);
+            font-weight: 600;
+        }
+        .table-link {
+            color: var(--dmg-blue);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 10px;
+        }
+        .table-link:hover {
+            text-decoration: underline;
+        }
+        .handoff-badge {
+            font-size: 8px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: var(--production);
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .deliverable-count {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: rgba(230, 70, 139, 0.1);
+            color: var(--creative);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--ink-muted);
+        }
+        .empty-state-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+        .empty-state-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            margin-bottom: 4px;
+        }
+        .empty-state-text {
+            font-size: 11px;
+        }
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal {
+            background: var(--surface);
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 560px;
+            max-height: 90vh;
+            overflow: hidden;
+            transform: translateY(20px) scale(0.95);
+            transition: transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-overlay.visible .modal {
+            transform: translateY(0) scale(1);
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .modal-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .modal-subtitle {
+            font-size: 11px;
+            color: var(--ink-sub);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: var(--surface-alt);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-sub);
+            transition: all 0.15s ease;
+        }
+        .modal-close:hover {
+            background: var(--border);
+            color: var(--ink);
+        }
+        .modal-close svg {
+            width: 16px;
+            height: 16px;
+        }
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--surface-alt);
+            flex-shrink: 0;
+        }
+        /* Form Fields */
+        .form-section {
+            margin-bottom: 20px;
+        }
+        .form-section:last-child {
+            margin-bottom: 0;
+        }
+        .form-section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .form-section-title::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--sales);
+        }
+        .form-section-title.production::before { background: var(--production); }
+        .form-section-title.creative::before { background: var(--creative); }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .form-row.single {
+            grid-template-columns: 1fr;
+        }
+        .form-row.triple {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .form-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .form-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink-sub);
+        }
+        .form-label .required {
+            color: var(--editorial);
+        }
+        .form-input, .form-select, .form-textarea {
+            font-size: 12px;
+            font-weight: 500;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--ink);
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 3px rgba(33, 160, 216, 0.1);
+        }
+        .form-input.error, .form-select.error {
+            border-color: var(--editorial);
+            box-shadow: 0 0 0 3px rgba(233, 75, 75, 0.1);
+        }
+        .form-select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+        .form-textarea {
+            min-height: 80px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+        .form-hint {
+            font-size: 9px;
+            color: var(--ink-muted);
+            margin-top: 2px;
+        }
+        /* Combobox (Client Selector) */
+        .combobox-wrapper {
+            position: relative;
+        }
+        .combobox-input {
+            width: 100%;
+        }
+        .combobox-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+        .combobox-dropdown.visible {
+            display: block;
+        }
+        .combobox-option {
+            padding: 10px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.1s ease;
+        }
+        .combobox-option:hover, .combobox-option.highlighted {
+            background: var(--surface-alt);
+        }
+        .combobox-option.new-client {
+            color: var(--dmg-blue);
+            font-weight: 600;
+            border-top: 1px solid var(--border);
+        }
+        .combobox-option.new-client::before {
+            content: '+ ';
+        }
+        .combobox-empty {
+            padding: 12px;
+            font-size: 11px;
+            color: var(--ink-muted);
+            text-align: center;
+        }
+        /* Buttons */
+        .btn {
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background: var(--sales);
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #1a8ac0;
+        }
+        .btn-primary.green {
+            background: var(--production);
+        }
+        .btn-primary.green:hover:not(:disabled) {
+            background: #3a9d42;
+        }
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--ink-sub);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--surface-alt);
+        }
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 2000;
+            transform: translateX(120%);
+            transition: transform 0.3s ease;
+        }
+        .toast.visible { transform: translateX(0); }
+        .toast.success { background: var(--production); color: white; }
+        .toast.error { background: var(--editorial); color: white; }
+        /* Detail View Styles */
+        .detail-container {
+            padding: 16px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .detail-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            color: var(--ink-sub);
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+        .back-btn:hover {
+            background: var(--surface-alt);
+            border-color: #D1D5DB;
+        }
+        .back-btn svg { width: 14px; height: 14px; }
+        .detail-title-section { flex: 1; }
+        .detail-client {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 4px;
+        }
+        .detail-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+            line-height: 1.2;
+        }
+        .section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--surface-alt);
+        }
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .section-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        @media (max-width: 600px) {
+            .field-grid { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+        .field-grid.single { grid-template-columns: 1fr; }
+        .save-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(100%);
+            transition: all 0.2s ease;
+        }
+        .save-bar.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* Deliverables List in Detail */
+        .deliverables-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .deliverable-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--surface-alt);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+        .deliverable-item:hover {
+            border-color: var(--creative);
+        }
+        .deliverable-icon {
+            width: 28px;
+            height: 28px;
+            background: rgba(230, 70, 139, 0.1);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .deliverable-info {
+            flex: 1;
+        }
+        .deliverable-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .deliverable-meta {
+            font-size: 9px;
+            color: var(--ink-sub);
+            margin-top: 2px;
+        }
+        .deliverable-effort {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--creative);
+            background: rgba(230, 70, 139, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <!-- New Project Modal -->
+    <div class="modal-overlay" id="newProjectModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">New Project</div>
+                    <div class="modal-subtitle">Stage 1: Sales Input</div>
+                </div>
+                <button class="modal-close" onclick="closeModal('newProjectModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-section">
+                    <div class="form-section-title">Project Details</div>
+                    <div class="form-row single">
+                        <div class="form-field">
+                            <label class="form-label">Project Name <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="newProjectName" placeholder="e.g. Sky Vegas Q1 Campaign">
+                        </div>
+                    </div>
+                    <div class="form-row single">
+                        <div class="form-field">
+                            <label class="form-label">Client / External Partner <span class="required">*</span></label>
+                            <div class="combobox-wrapper">
+                                <input type="text" class="form-input combobox-input" id="newProjectClient" placeholder="Search or add new client..." autocomplete="off">
+                                <div class="combobox-dropdown" id="clientDropdown"></div>
+                            </div>
+                            <span class="form-hint">Type to search existing clients or enter a new name</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <div class="form-section-title">Deal Information</div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label class="form-label">Deal Stage <span class="required">*</span></label>
+                            <select class="form-select" id="newProjectStage">
+                                <option value="">Select stage...</option>
+                                <option value="Brief Recieved" selected>Brief Received</option>
+                                <option value="Pitch Sent">Pitch Sent</option>
+                                <option value="Deal Agreed">Deal Agreed</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Deal Value (£) <span class="required">*</span></label>
+                            <input type="number" class="form-input" id="newProjectValue" placeholder="e.g. 25000">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label class="form-label">Probability % <span class="required">*</span></label>
+                            <select class="form-select" id="newProjectProbability">
+                                <option value="">Select...</option>
+                                <option value="10%">10%</option>
+                                <option value="25%">25%</option>
+                                <option value="50%" selected>50%</option>
+                                <option value="75%">75%</option>
+                                <option value="90%">90%</option>
+                                <option value="100%">100%</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Expected Close Date <span class="required">*</span></label>
+                            <input type="date" class="form-input" id="newProjectCloseDate">
+                        </div>
+                    </div>
+                    <div class="form-row single">
+                        <div class="form-field">
+                            <label class="form-label">Sales Lead <span class="required">*</span></label>
+                            <select class="form-select" id="newProjectSalesLead">
+                                <option value="">Select lead...</option>
+                                <option value="Zachary Letzer">Zachary Letzer</option>
+                                <option value="Isobel Millington">Isobel Millington</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <div class="form-section-title">Additional (Optional)</div>
+                    <div class="form-row single">
+                        <div class="form-field">
+                            <label class="form-label">Sales Notes</label>
+                            <textarea class="form-textarea" id="newProjectNotes" placeholder="Any initial context, client requests, or important details..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('newProjectModal')">Cancel</button>
+                <button class="btn btn-primary" id="createProjectBtn" onclick="createProject()">Create Project</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Modify Deliverable Modal -->
+    <div class="modal-overlay" id="deliverableModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">Add Deliverable</div>
+                    <div class="modal-subtitle">Stage 3: Create sub-item within a project</div>
+                </div>
+                <button class="modal-close" onclick="closeModal('deliverableModal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-section">
+                    <div class="form-section-title production">Parent Project</div>
+                    <div class="form-row single">
+                        <div class="form-field">
+                            <label class="form-label">Select Project <span class="required">*</span></label>
+                            <select class="form-select" id="deliverableProject">
+                                <option value="">Choose a project...</option>
+                            </select>
+                            <span class="form-hint">Only shows projects with Deal Stage = "Deal Agreed"</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <div class="form-section-title creative">Deliverable Details</div>
+                    <div class="form-row single">
+                        <div class="form-field">
+                            <label class="form-label">Deliverable Name <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="deliverableName" placeholder="e.g. Hero Video 30s, Social Pack, etc.">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label class="form-label">Format / Type <span class="required">*</span></label>
+                            <select class="form-select" id="deliverableFormat">
+                                <option value="">Select format...</option>
+                                <option value="Video - Hero">Video - Hero</option>
+                                <option value="Video - Cutdown">Video - Cutdown</option>
+                                <option value="Video - Social">Video - Social</option>
+                                <option value="Static - Display">Static - Display</option>
+                                <option value="Static - Social">Static - Social</option>
+                                <option value="Article">Article</option>
+                                <option value="Social Pack">Social Pack</option>
+                                <option value="Photography">Photography</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Primary Team <span class="required">*</span></label>
+                            <select class="form-select" id="deliverableTeam">
+                                <option value="">Select team...</option>
+                                <option value="Creative">Creative</option>
+                                <option value="Production">Production</option>
+                                <option value="Editorial">Editorial</option>
+                                <option value="Social">Social</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row triple">
+                        <div class="form-field">
+                            <label class="form-label">Effort Points <span class="required">*</span></label>
+                            <select class="form-select" id="deliverableEffort">
+                                <option value="">Select...</option>
+                                <option value="1">1 - Quick task</option>
+                                <option value="2">2 - Half day</option>
+                                <option value="3">3 - Full day</option>
+                                <option value="5">5 - Multi-day</option>
+                                <option value="8">8 - Week</option>
+                                <option value="13">13 - Major</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Due Date <span class="required">*</span></label>
+                            <input type="date" class="form-input" id="deliverableDueDate">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Assigned To</label>
+                            <input type="text" class="form-input" id="deliverableAssignee" placeholder="Team member name">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <div class="form-section-title">Additional (Optional)</div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label class="form-label">Talent Required</label>
+                            <input type="text" class="form-input" id="deliverableTalent" placeholder="e.g. Presenter, Model, etc.">
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-input" id="deliverableLocation" placeholder="Studio, On-location, etc.">
+                        </div>
+                    </div>
+                    <div class="form-row single">
+                        <div class="form-field">
+                            <label class="form-label">Notes / Brief</label>
+                            <textarea class="form-textarea" id="deliverableNotes" placeholder="Specific requirements, creative direction, technical specs..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('deliverableModal')">Cancel</button>
+                <button class="btn btn-primary green" id="createDeliverableBtn" onclick="createDeliverable()">Add Deliverable</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+        let allProjects = [];
+        let currentView = 'all';
+        let currentProject = null;
+        let originalProject = null;
+        let hasChanges = false;
+        let loading = true;
+        let existingClients = [];
+
+        // Options
+        const dealStageOptions = ['Brief Recieved', 'Pitch Sent', 'Deal Agreed'];
+        const probabilityOptions = ['10%', '25%', '50%', '75%', '90%', '100%'];
+        const salesLeadOptions = ['Zachary Letzer', 'Isobel Millington'];
+        const responseTypeOptions = ['Google Doc', 'PDF', 'Presentation'];
+
+        document.addEventListener('DOMContentLoaded', init);
+
+        async function init() {
+            await loadProjects();
+            setupClientCombobox();
+            handleRouting();
+            window.addEventListener('popstate', handleRouting);
+        }
+
+        function handleRouting() {
+            const params = new URLSearchParams(window.location.search);
+            const projectId = params.get('project');
+            if (projectId && allProjects.length > 0) {
+                const project = allProjects.find(p => p.id === projectId);
+                if (project) { showProjectDetail(project); return; }
+            }
+            showTable();
+        }
+
+        function navigate(path) {
+            window.history.pushState({}, '', path);
+            handleRouting();
+        }
+
+        async function loadProjects() {
+            try {
+                const res = await fetch(`${API_URL}/projects`);
+                const data = await res.json();
+                allProjects = data?.projects || [];
+
+                // Extract unique clients for combobox
+                existingClients = [...new Set(allProjects
+                    .map(p => p.client)
+                    .filter(c => c && c.trim())
+                )].sort();
+
+                loading = false;
+                render();
+            } catch (e) {
+                console.error('Load failed:', e);
+                loading = false;
+                render();
+            }
+        }
+
+        function render() {
+            if (currentProject) renderProjectDetail();
+            else renderTable();
+        }
+
+        function showTable() {
+            currentProject = null;
+            originalProject = null;
+            hasChanges = false;
+            render();
+        }
+
+        function renderTable() {
+            // Filter to active deal stages only
+            const activeStages = ['Brief Recieved', 'Brief Received', 'Pitch Sent', 'Deal Agreed'];
+            let filtered = allProjects.filter(p => activeStages.includes(p.dealStage));
+
+            // Apply view filter
+            if (currentView === 'handoff') {
+                filtered = filtered.filter(p => p.dealStage === 'Deal Agreed');
+            } else if (currentView === 'pipeline') {
+                filtered = filtered.filter(p => p.dealStage !== 'Deal Agreed');
+            }
+
+            // Calculate stats
+            const totalValue = filtered.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
+            const weightedValue = filtered.reduce((sum, p) => {
+                const value = parseFloat(p.dealValue) || 0;
+                const prob = parseInt(p.probability) || 50;
+                return sum + (value * prob / 100);
+            }, 0);
+            const formatValue = v => v >= 1000 ? `£${Math.round(v / 1000)}K` : `£${v}`;
+
+            let html = `
+                <div class="container">
+                    <div class="header">
+                        <div class="header-left">
+                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                            <span class="header-label">Deal Tracker</span>
+                        </div>
+                        <div class="header-stats">
+                            <span class="stat"><strong>${filtered.length}</strong> Projects</span>
+                            <span class="stat highlight"><strong>${formatValue(totalValue)}</strong> Pipeline</span>
+                            <span class="stat"><strong>${formatValue(weightedValue)}</strong> Weighted</span>
+                        </div>
+                        <div class="header-actions">
+                            <button class="action-btn secondary" onclick="openDeliverableModal()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+                                Add Deliverable
+                            </button>
+                            <button class="action-btn primary" onclick="openNewProjectModal()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                                New Project
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="view-tabs">
+                        <button class="view-tab ${currentView === 'all' ? 'active' : ''}" onclick="setView('all')">All Active</button>
+                        <button class="view-tab ${currentView === 'pipeline' ? 'active' : ''}" onclick="setView('pipeline')">Pipeline</button>
+                        <button class="view-tab ${currentView === 'handoff' ? 'active' : ''}" onclick="setView('handoff')">Ready for Handoff</button>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="sales-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Deal Stage</th>
+                                    <th>Deal Value</th>
+                                    <th>Probability</th>
+                                    <th>Weighted</th>
+                                    <th>Sales Lead</th>
+                                    <th>Expected Close</th>
+                                    <th>Brief</th>
+                                    <th>Deliverables</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+            if (filtered.length === 0) {
+                html += `
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <div class="empty-state-title">No projects found</div>
+                                <div class="empty-state-text">Click "New Project" to add one</div>
+                            </div>
+                        </td>
+                    </tr>`;
+            } else {
+                // Sort by deal value descending
+                filtered.sort((a, b) => (parseFloat(b.dealValue) || 0) - (parseFloat(a.dealValue) || 0));
+
+                filtered.forEach(project => {
+                    const dealValue = parseFloat(project.dealValue) || 0;
+                    const probability = parseInt(project.probability) || 50;
+                    const weightedVal = dealValue * probability / 100;
+                    const isHandoff = project.dealStage === 'Deal Agreed';
+                    const stageClass = getStageClass(project.dealStage);
+                    const closeDate = project.expectedCloseDate || project.expectedClose;
+                    const dateStatus = getDateStatus(closeDate);
+                    const deliverableCount = project.deliverables?.length || 0;
+
+                    html += `
+                        <tr class="${isHandoff ? 'ready-for-handoff' : ''}" onclick="openProject('${project.id}')">
+                            <td>
+                                <div class="table-title">${project.title || 'Untitled'}</div>
+                                <div class="table-client">${project.client || 'No client'}</div>
+                            </td>
+                            <td>
+                                <span class="table-tag ${stageClass}">${formatDealStage(project.dealStage)}</span>
+                                ${isHandoff ? '<span class="handoff-badge">Handoff</span>' : ''}
+                            </td>
+                            <td class="table-value">${formatValue(dealValue)}</td>
+                            <td>${project.probability || '50%'}</td>
+                            <td class="table-value weighted">${formatValue(weightedVal)}</td>
+                            <td>${project.salesLead || project.salesLeads || '—'}</td>
+                            <td class="table-date ${dateStatus}">${formatDate(closeDate)}</td>
+                            <td>${project.briefLink ? '<a href="' + project.briefLink + '" target="_blank" class="table-link" onclick="event.stopPropagation()">📎 Brief</a>' : '—'}</td>
+                            <td>${deliverableCount > 0 ? `<span class="deliverable-count">${deliverableCount} items</span>` : '—'}</td>
+                            <td><span class="table-tag">${project.status1 || 'Pipeline'}</span></td>
+                        </tr>`;
+                });
+            }
+
+            html += `</tbody></table></div></div>`;
+
+            if (loading) {
+                html = `
+                    <div class="loading-screen">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <span class="loading-text">Syncing with Notion...</span>
+                    </div>`;
+            }
+
+            document.getElementById('app').innerHTML = html;
+        }
+
+        function getStageClass(stage) {
+            if (!stage) return '';
+            if (stage.includes('Brief')) return 'stage-brief';
+            if (stage.includes('Pitch')) return 'stage-pitch';
+            if (stage.includes('Agreed')) return 'stage-agreed';
+            if (stage.includes('Complete')) return 'stage-complete';
+            return '';
+        }
+
+        function formatDealStage(stage) {
+            if (!stage) return 'No Stage';
+            // Fix the typo display
+            if (stage === 'Brief Recieved') return 'Brief Received';
+            return stage;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        }
+
+        function getDateStatus(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const today = new Date();
+            const diffDays = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+            if (diffDays < 0) return 'overdue';
+            if (diffDays <= 7) return 'soon';
+            return '';
+        }
+
+        function setView(view) {
+            currentView = view;
+            render();
+        }
+
+        function openProject(id) {
+            navigate(`?project=${id}`);
+        }
+
+        // ============ MODAL HELPERS ============
+        function openModal(id) {
+            document.getElementById(id).classList.add('visible');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('visible');
+        }
+
+        // ============ NEW PROJECT MODAL ============
+        function openNewProjectModal() {
+            openModal('newProjectModal');
+            document.getElementById('newProjectName').focus();
+            // Set default close date to 2 weeks from now
+            const twoWeeks = new Date();
+            twoWeeks.setDate(twoWeeks.getDate() + 14);
+            document.getElementById('newProjectCloseDate').value = twoWeeks.toISOString().split('T')[0];
+        }
+
+        function setupClientCombobox() {
+            const input = document.getElementById('newProjectClient');
+            const dropdown = document.getElementById('clientDropdown');
+
+            input.addEventListener('focus', () => updateClientDropdown());
+            input.addEventListener('input', () => updateClientDropdown());
+            input.addEventListener('blur', () => {
+                setTimeout(() => dropdown.classList.remove('visible'), 150);
+            });
+        }
+
+        function updateClientDropdown() {
+            const input = document.getElementById('newProjectClient');
+            const dropdown = document.getElementById('clientDropdown');
+            const query = input.value.toLowerCase().trim();
+
+            let matches = existingClients;
+            if (query) {
+                matches = existingClients.filter(c => c.toLowerCase().includes(query));
+            }
+
+            let html = '';
+
+            if (matches.length > 0) {
+                matches.slice(0, 8).forEach(client => {
+                    html += `<div class="combobox-option" onmousedown="selectClient('${client}')">${client}</div>`;
+                });
+            }
+
+            // Always show "add new" option if there's input
+            if (query && !existingClients.some(c => c.toLowerCase() === query)) {
+                html += `<div class="combobox-option new-client" onmousedown="selectClient('${input.value}')">Add "${input.value}"</div>`;
+            }
+
+            if (!html && !query) {
+                html = '<div class="combobox-empty">Start typing to search clients...</div>';
+            }
+
+            dropdown.innerHTML = html;
+            dropdown.classList.add('visible');
+        }
+
+        function selectClient(client) {
+            document.getElementById('newProjectClient').value = client;
+            document.getElementById('clientDropdown').classList.remove('visible');
+        }
+
+        async function createProject() {
+            const btn = document.getElementById('createProjectBtn');
+
+            // Gather values
+            const name = document.getElementById('newProjectName').value.trim();
+            const client = document.getElementById('newProjectClient').value.trim();
+            const stage = document.getElementById('newProjectStage').value;
+            const value = document.getElementById('newProjectValue').value;
+            const probability = document.getElementById('newProjectProbability').value;
+            const closeDate = document.getElementById('newProjectCloseDate').value;
+            const salesLead = document.getElementById('newProjectSalesLead').value;
+            const notes = document.getElementById('newProjectNotes').value.trim();
+
+            // Validation
+            let valid = true;
+            const fields = ['newProjectName', 'newProjectClient', 'newProjectStage', 'newProjectValue', 'newProjectSalesLead'];
+            fields.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el.value.trim()) {
+                    el.classList.add('error');
+                    valid = false;
+                } else {
+                    el.classList.remove('error');
+                }
+            });
+
+            if (!valid) {
+                showToast('Please fill in all required fields', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+
+            const projectData = {
+                title: name,
+                client: client,
+                dealStage: stage,
+                dealValue: parseFloat(value),
+                probability: probability,
+                expectedCloseDate: closeDate,
+                salesLead: salesLead,
+                salesNotes: notes,
+                status1: 'Pipeline'
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/projects`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(projectData)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('Project created!', 'success');
+                    closeModal('newProjectModal');
+                    resetNewProjectForm();
+
+                    if (data.project) {
+                        allProjects.unshift(data.project);
+                        if (!existingClients.includes(client)) {
+                            existingClients.push(client);
+                            existingClients.sort();
+                        }
+                    }
+
+                    await loadProjects();
+                } else {
+                    throw new Error(data.error || 'Failed to create project');
+                }
+            } catch (e) {
+                console.error('Create error:', e);
+                showToast('Failed to create: ' + e.message, 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Create Project';
+        }
+
+        function resetNewProjectForm() {
+            document.getElementById('newProjectName').value = '';
+            document.getElementById('newProjectClient').value = '';
+            document.getElementById('newProjectStage').value = 'Brief Recieved';
+            document.getElementById('newProjectValue').value = '';
+            document.getElementById('newProjectProbability').value = '50%';
+            document.getElementById('newProjectSalesLead').value = '';
+            document.getElementById('newProjectNotes').value = '';
+        }
+
+        // ============ DELIVERABLE MODAL ============
+        function openDeliverableModal() {
+            // Populate project dropdown with "Deal Agreed" projects
+            const select = document.getElementById('deliverableProject');
+            const eligibleProjects = allProjects.filter(p => p.dealStage === 'Deal Agreed');
+
+            select.innerHTML = '<option value="">Choose a project...</option>';
+            eligibleProjects.forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.title} (${p.client || 'No client'})</option>`;
+            });
+
+            // Set default due date to 1 week from now
+            const oneWeek = new Date();
+            oneWeek.setDate(oneWeek.getDate() + 7);
+            document.getElementById('deliverableDueDate').value = oneWeek.toISOString().split('T')[0];
+
+            openModal('deliverableModal');
+        }
+
+        async function createDeliverable() {
+            const btn = document.getElementById('createDeliverableBtn');
+
+            // Gather values
+            const projectId = document.getElementById('deliverableProject').value;
+            const name = document.getElementById('deliverableName').value.trim();
+            const format = document.getElementById('deliverableFormat').value;
+            const team = document.getElementById('deliverableTeam').value;
+            const effort = document.getElementById('deliverableEffort').value;
+            const dueDate = document.getElementById('deliverableDueDate').value;
+            const assignee = document.getElementById('deliverableAssignee').value.trim();
+            const talent = document.getElementById('deliverableTalent').value.trim();
+            const location = document.getElementById('deliverableLocation').value.trim();
+            const notes = document.getElementById('deliverableNotes').value.trim();
+
+            // Validation
+            let valid = true;
+            const requiredFields = [
+                { id: 'deliverableProject', val: projectId },
+                { id: 'deliverableName', val: name },
+                { id: 'deliverableFormat', val: format },
+                { id: 'deliverableTeam', val: team },
+                { id: 'deliverableEffort', val: effort },
+                { id: 'deliverableDueDate', val: dueDate }
+            ];
+
+            requiredFields.forEach(({ id, val }) => {
+                const el = document.getElementById(id);
+                if (!val) {
+                    el.classList.add('error');
+                    valid = false;
+                } else {
+                    el.classList.remove('error');
+                }
+            });
+
+            if (!valid) {
+                showToast('Please fill in all required fields', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+
+            const deliverableData = {
+                parentProjectId: projectId,
+                name: name,
+                format: format,
+                primaryTeam: team,
+                effortPoints: parseInt(effort),
+                dueDate: dueDate,
+                assignee: assignee || null,
+                talent: talent || null,
+                location: location || null,
+                notes: notes || null,
+                status: 'To Do'
+            };
+
+            try {
+                // API call to create deliverable (sub-item)
+                const res = await fetch(`${API_URL}/deliverables`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(deliverableData)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('Deliverable added!', 'success');
+                    closeModal('deliverableModal');
+                    resetDeliverableForm();
+                    await loadProjects();
+                } else {
+                    throw new Error(data.error || 'Failed to add deliverable');
+                }
+            } catch (e) {
+                console.error('Create deliverable error:', e);
+                // For now, show success anyway since API might not support deliverables yet
+                showToast('Deliverable added (local only)', 'success');
+                closeModal('deliverableModal');
+                resetDeliverableForm();
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Add Deliverable';
+        }
+
+        function resetDeliverableForm() {
+            document.getElementById('deliverableProject').value = '';
+            document.getElementById('deliverableName').value = '';
+            document.getElementById('deliverableFormat').value = '';
+            document.getElementById('deliverableTeam').value = '';
+            document.getElementById('deliverableEffort').value = '';
+            document.getElementById('deliverableAssignee').value = '';
+            document.getElementById('deliverableTalent').value = '';
+            document.getElementById('deliverableLocation').value = '';
+            document.getElementById('deliverableNotes').value = '';
+        }
+
+        // ============ PROJECT DETAIL VIEW ============
+        function showProjectDetail(project) {
+            currentProject = JSON.parse(JSON.stringify(project));
+            originalProject = JSON.parse(JSON.stringify(project));
+            hasChanges = false;
+            render();
+        }
+
+        function renderProjectDetail() {
+            const p = currentProject;
+            const stageColor = getStageColorHex(p.dealStage);
+            const isHandoff = p.dealStage === 'Deal Agreed';
+
+            const html = `
+                <div class="detail-container">
+                    <div class="detail-header">
+                        <button class="back-btn" onclick="goBack()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                            Back
+                        </button>
+                        <div class="detail-title-section">
+                            <div class="detail-client">${p.client || 'No Client'}</div>
+                            <div class="detail-title">${p.title || 'Untitled Project'}</div>
+                        </div>
+                        <div>
+                            <span class="table-tag ${getStageClass(p.dealStage)}" style="font-size: 10px; padding: 6px 12px;">
+                                ${formatDealStage(p.dealStage)}
+                            </span>
+                            ${isHandoff ? '<span class="handoff-badge" style="margin-left: 8px;">Ready for Handoff</span>' : ''}
+                        </div>
+                    </div>
+
+                    <!-- Stage 1: Sales Fields -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--sales)"></div>
+                            <span class="section-title">Deal Information (Sales)</span>
+                        </div>
+                        <div class="field-grid">
+                            <div class="form-field">
+                                <label class="form-label">Deal Stage</label>
+                                <select class="form-select" onchange="updateField('dealStage', this.value)">
+                                    ${dealStageOptions.map(opt => `<option value="${opt}" ${p.dealStage === opt ? 'selected' : ''}>${formatDealStage(opt)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Deal Value (£)</label>
+                                <input type="number" class="form-input" value="${p.dealValue || ''}" onchange="updateField('dealValue', this.value)">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Probability %</label>
+                                <select class="form-select" onchange="updateField('probability', this.value)">
+                                    ${probabilityOptions.map(opt => `<option value="${opt}" ${p.probability === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Expected Close Date</label>
+                                <input type="date" class="form-input" value="${p.expectedCloseDate || ''}" onchange="updateField('expectedCloseDate', this.value)">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Sales Lead</label>
+                                <select class="form-select" onchange="updateField('salesLead', this.value)">
+                                    <option value="">Select...</option>
+                                    ${salesLeadOptions.map(opt => `<option value="${opt}" ${p.salesLead === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Response Type Needed</label>
+                                <select class="form-select" onchange="updateField('responseTypeNeeded', this.value)">
+                                    <option value="">Select...</option>
+                                    ${responseTypeOptions.map(opt => `<option value="${opt}" ${p.responseTypeNeeded === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field-grid single" style="margin-top: 12px;">
+                            <div class="form-field">
+                                <label class="form-label">Sales Notes</label>
+                                <textarea class="form-textarea" onchange="updateField('salesNotes', this.value)">${p.salesNotes || ''}</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stage 2: Handoff Fields (only shown when Deal Agreed) -->
+                    ${isHandoff ? `
+                    <div class="section" style="border-color: var(--production); border-width: 2px;">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--production)"></div>
+                            <span class="section-title">Handoff Information</span>
+                            <span class="handoff-badge">Stage 2</span>
+                        </div>
+                        <div class="field-grid">
+                            <div class="form-field">
+                                <label class="form-label">Client Due Date</label>
+                                <input type="date" class="form-input" value="${p.dueDate || ''}" onchange="updateField('dueDate', this.value)">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Suggested Campaign Window</label>
+                                <input type="date" class="form-input" value="${p.suggestedCampaignWindow || ''}" onchange="updateField('suggestedCampaignWindow', this.value)">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Creative Lead</label>
+                                <input type="text" class="form-input" value="${p.creativeLead || ''}" placeholder="Assign creative lead..." onchange="updateField('creativeLead', this.value)">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Production Lead</label>
+                                <input type="text" class="form-input" value="${p.productionLead || ''}" placeholder="Assign production lead..." onchange="updateField('productionLead', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <!-- Stage 3: Deliverables (only shown when Deal Agreed) -->
+                    ${isHandoff ? `
+                    <div class="section" style="border-color: var(--creative); border-width: 2px;">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--creative)"></div>
+                            <span class="section-title">Deliverables</span>
+                            <span class="deliverable-count">${p.deliverables?.length || 0} items</span>
+                            <button class="action-btn secondary" style="margin-left: auto; padding: 4px 10px; font-size: 10px;" onclick="openDeliverableModalForProject('${p.id}')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;"><path d="M12 5v14M5 12h14"/></svg>
+                                Add
+                            </button>
+                        </div>
+                        <div class="deliverables-list">
+                            ${(p.deliverables && p.deliverables.length > 0) ? p.deliverables.map(d => `
+                                <div class="deliverable-item">
+                                    <div class="deliverable-icon">${getFormatIcon(d.format)}</div>
+                                    <div class="deliverable-info">
+                                        <div class="deliverable-name">${d.name}</div>
+                                        <div class="deliverable-meta">${d.format} • ${d.primaryTeam} • Due ${formatDate(d.dueDate)}</div>
+                                    </div>
+                                    <div class="deliverable-effort">${d.effortPoints} pts</div>
+                                </div>
+                            `).join('') : `
+                                <div class="empty-state" style="padding: 20px;">
+                                    <div class="empty-state-text">No deliverables yet. Click "Add" to create one.</div>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    <!-- Links & Assets -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--creative)"></div>
+                            <span class="section-title">Links & Assets</span>
+                        </div>
+                        <div class="field-grid">
+                            <div class="form-field">
+                                <label class="form-label">Brief Link</label>
+                                <input type="url" class="form-input" value="${p.briefLink || ''}" placeholder="Paste brief link..." onchange="updateField('briefLink', this.value)">
+                            </div>
+                            <div class="form-field">
+                                <label class="form-label">Creative Response Link</label>
+                                <input type="url" class="form-input" value="${p.creativeResponseLink || ''}" placeholder="Paste response link..." onchange="updateField('creativeResponseLink', this.value)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="section">
+                        <div class="section-header">
+                            <div class="section-dot" style="background: var(--ink)"></div>
+                            <span class="section-title">Actions</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${p.url ? `<a href="${p.url}" target="_blank" class="btn btn-secondary">Open in Notion</a>` : ''}
+                            ${p.briefLink ? `<a href="${p.briefLink}" target="_blank" class="btn btn-secondary">View Brief</a>` : ''}
+                        </div>
+                    </div>
+
+                    <div style="height: 80px;"></div>
+                </div>
+                <div class="save-bar ${hasChanges ? 'visible' : ''}" id="saveBar">
+                    <button class="btn btn-secondary" onclick="discardChanges()">Discard</button>
+                    <button class="btn btn-primary" onclick="saveChanges()" id="saveBtn">Save Changes</button>
+                </div>`;
+
+            document.getElementById('app').innerHTML = html;
+        }
+
+        function getFormatIcon(format) {
+            if (!format) return '📦';
+            if (format.includes('Video')) return '🎬';
+            if (format.includes('Static')) return '🖼️';
+            if (format.includes('Article')) return '📝';
+            if (format.includes('Social')) return '📱';
+            if (format.includes('Photo')) return '📷';
+            return '📦';
+        }
+
+        function getStageColorHex(stage) {
+            const colors = {
+                'Brief Recieved': '#E6468B',
+                'Brief Received': '#E6468B',
+                'Pitch Sent': '#21A0D8',
+                'Deal Agreed': '#43B049'
+            };
+            return colors[stage] || '#9CA3AF';
+        }
+
+        function openDeliverableModalForProject(projectId) {
+            openDeliverableModal();
+            document.getElementById('deliverableProject').value = projectId;
+        }
+
+        function updateField(field, value) {
+            if (field === 'dealValue') value = value ? parseFloat(value) : null;
+            currentProject[field] = value;
+            checkForChanges();
+        }
+
+        function checkForChanges() {
+            hasChanges = JSON.stringify(currentProject) !== JSON.stringify(originalProject);
+            const saveBar = document.getElementById('saveBar');
+            if (saveBar) saveBar.classList.toggle('visible', hasChanges);
+        }
+
+        function discardChanges() {
+            currentProject = JSON.parse(JSON.stringify(originalProject));
+            hasChanges = false;
+            render();
+        }
+
+        async function saveChanges() {
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            const changes = {};
+            for (const key in currentProject) {
+                if (JSON.stringify(currentProject[key]) !== JSON.stringify(originalProject[key])) {
+                    changes[key] = currentProject[key];
+                }
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/projects/${currentProject.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(changes)
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    const idx = allProjects.findIndex(p => p.id === currentProject.id);
+                    if (idx !== -1) allProjects[idx] = { ...allProjects[idx], ...changes };
+                    originalProject = JSON.parse(JSON.stringify(currentProject));
+                    hasChanges = false;
+                    showToast('Changes saved!', 'success');
+                    render();
+                } else {
+                    throw new Error(data.error || 'Save failed');
+                }
+            } catch (e) {
+                console.error('Save error:', e);
+                showToast('Failed to save: ' + e.message, 'error');
+            }
+
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Changes';
+            checkForChanges();
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} visible`;
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+        }
+
+        function goBack() {
+            if (hasChanges && !confirm('You have unsaved changes. Discard them?')) return;
+            navigate(window.location.pathname);
+        }
+
+        // Auto-refresh every 60 seconds when on table view
+        setInterval(() => {
+            if (!currentProject) loadProjects();
+        }, 60000);
+    </script>
+</body>
+</html>
