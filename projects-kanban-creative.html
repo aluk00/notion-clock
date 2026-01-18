@@ -954,7 +954,27 @@
         }
 
         function renderKanban() {
-            const filtered = allProjects.filter(p => p.creativeWorkflowStatus);
+            // Include all projects that are in pipeline/sales stages or have creative workflow status
+            // Default projects without creativeWorkflowStatus to "To Be Briefed" if they have dealStage
+            const filtered = allProjects.filter(p => {
+                // Include if has creativeWorkflowStatus
+                if (p.creativeWorkflowStatus) return true;
+                // Include if has relevant deal stage (excluding completed)
+                const dealStage = (p.dealStage || '').toLowerCase();
+                if (dealStage && !dealStage.includes('complete') && !dealStage.includes('lost')) {
+                    return true;
+                }
+                // Include if has status1 that's active
+                const status1 = (p.status1 || '').toLowerCase();
+                if (status1 && status1 !== 'complete' && status1 !== 'archived') {
+                    return true;
+                }
+                return false;
+            }).map(p => ({
+                ...p,
+                // Default creativeWorkflowStatus if not set
+                creativeWorkflowStatus: p.creativeWorkflowStatus || 'To Be Briefed'
+            }));
             const totalValue = filtered.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
             const valueStr = totalValue >= 1000 ? `£${Math.round(totalValue / 1000)}K` : `£${totalValue}`;
 

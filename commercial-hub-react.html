@@ -46,7 +46,7 @@
             border-radius: 16px;
             overflow: hidden;
             box-shadow: none;
-            max-width: 1680px;
+            max-width: 2184px; /* 30% wider than 1680px */
             margin: 0 auto;
         }
 
@@ -323,7 +323,7 @@
                 <span class="scope-badge active">Active Projects Only</span>
                 <span class="scope-badge" id="scope-total">0 projects</span>
             </div>
-            <span class="scope-help">Projects with Deal Stage: Deal Agreed, Campaign Complete, or Won</span>
+            <span class="scope-help">Production: Deal Agreed/Won/Complete or active workflow • Pipeline: Brief Received/Pitch Sent</span>
         </div>
 
         <div class="section-header">
@@ -497,7 +497,7 @@
 
                 rawProjects.forEach(p => {
                     const clientName = (p.client || 'Internal').trim();
-                    const stage = p.dealStage || 'Ideation';
+                    const stage = p.dealStage || '';
 
                     // More flexible matching for production projects (case-insensitive)
                     const productionKeywords = ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed', 'Complete', 'In Production', 'Active'];
@@ -505,16 +505,20 @@
                         stage.toLowerCase().includes(k.toLowerCase())
                     );
 
-                    if (isProduction) {
+                    // Also include projects with active production workflow status even without dealStage
+                    const hasActiveProductionStatus = p.productionWorkflowStatus &&
+                        !p.productionWorkflowStatus.toLowerCase().includes('not started');
+
+                    if (isProduction || hasActiveProductionStatus) {
                         if (!groupedProjects[clientName]) {
                             groupedProjects[clientName] = {
                                 type: 'production',
                                 client: clientName,
                                 title: p.title,
-                                status: p.productionWorkflowStatus,
+                                status: p.productionWorkflowStatus || 'Pre-Production',
                                 sales: formatPeople(p.salesLead),
                                 creative: formatPeople(p.creativeLead),
-                                dueDate: p.dueDate,
+                                dueDate: p.clientDueDate || p.internalDueDate || p.dueDate,
                                 deliverables: [],
                                 ids: [],
                                 mainId: p.id,
@@ -597,19 +601,32 @@
             rawProjects.forEach(p => {
                 const stage = p.dealStage || '';
                 const isInProduction = productionKeywords.some(k => stage.toLowerCase().includes(k.toLowerCase()));
-                if (!isInProduction) {
-                    counts.pipe++;
-                    const div = document.createElement('div');
-                    div.className = 'row grid-pipe';
-                    div.innerHTML = `
-                        <div><div class="cell-title">${p.client || 'Internal'}</div><div class="cell-sub">${p.title}</div></div>
-                        <div><span class="pill status-pitch"><span class="dot"></span>${p.dealStage || 'No Stage'}</span></div>
-                        <div class="cell-sub" style="color:var(--purple); font-weight:700;">${formatAssets(p.assetsNeeded)}</div>
-                        <div class="cell-sub">${formatPeople(p.salesLead)}</div>
-                        <div class="cell-meta">${formatDate(p.dueDate)}</div>
-                    `;
-                    pipeMount.appendChild(div);
-                }
+
+                // Also check if project is in production group by workflow status
+                const hasActiveProductionStatus = p.productionWorkflowStatus &&
+                    !p.productionWorkflowStatus.toLowerCase().includes('not started');
+
+                // Skip if already shown in production (either by deal stage or workflow status)
+                if (isInProduction || hasActiveProductionStatus) return;
+
+                // Skip archived/lost projects
+                const isArchived = stage.toLowerCase().includes('lost') ||
+                    stage.toLowerCase().includes('archived') ||
+                    (p.status1 || '').toLowerCase().includes('archived');
+                if (isArchived) return;
+
+                counts.pipe++;
+                const div = document.createElement('div');
+                div.className = 'row grid-pipe';
+                const dueDate = p.clientDueDate || p.internalDueDate || p.dueDate || p.expectedCloseDate;
+                div.innerHTML = `
+                    <div><div class="cell-title">${p.client || 'Internal'}</div><div class="cell-sub">${p.title}</div></div>
+                    <div><span class="pill status-pitch"><span class="dot"></span>${p.dealStage || p.status1 || 'Pipeline'}</span></div>
+                    <div class="cell-sub" style="color:var(--purple); font-weight:700;">${formatAssets(p.assetsNeeded)}</div>
+                    <div class="cell-sub">${formatPeople(p.salesLead)}</div>
+                    <div class="cell-meta">${formatDate(dueDate)}</div>
+                `;
+                pipeMount.appendChild(div);
             });
         }
 
