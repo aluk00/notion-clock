@@ -97,6 +97,26 @@
     async function fetchItems() {
         try {
             const response = await fetch(`${API_BASE}/rundown?date=${today}`);
+
+            // Handle HTTP errors first
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg = `API Error (${response.status})`;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    if (errorJson.error && errorJson.error.includes('not configured')) {
+                        errorMsg = 'Daily Rundown DB not configured. Add NOTION_DAILY_RUNDOWN_DB to Cloud Run.';
+                    } else if (errorJson.error) {
+                        errorMsg = errorJson.error;
+                    }
+                } catch (e) {
+                    errorMsg = errorText || `HTTP ${response.status}`;
+                }
+                console.error('API error:', errorMsg);
+                document.getElementById('columns').innerHTML = `<div class="empty" style="grid-column: 1/-1; padding: 60px 20px;">${errorMsg}</div>`;
+                return;
+            }
+
             const data = await response.json();
             if (data.success) {
                 items = data.items.sort((a, b) =>
@@ -105,18 +125,26 @@
                 render();
             } else {
                 console.error('API error:', data.error);
-                // Show specific error message
-                let errorMsg = 'Error loading data';
+                let errorMsg = data.error || 'Unknown error';
                 if (data.error && data.error.includes('not configured')) {
-                    errorMsg = 'Daily Rundown DB not configured in Cloud Run. Add NOTION_DAILY_RUNDOWN_DB env variable.';
-                } else if (data.error) {
-                    errorMsg = data.error;
+                    errorMsg = 'Daily Rundown DB not configured. Add NOTION_DAILY_RUNDOWN_DB to Cloud Run.';
                 }
                 document.getElementById('columns').innerHTML = `<div class="empty" style="grid-column: 1/-1; padding: 60px 20px;">${errorMsg}</div>`;
             }
         } catch (error) {
             console.error('Fetch error:', error);
-            document.getElementById('columns').innerHTML = '<div class="empty" style="grid-column: 1/-1; padding: 60px 20px;">Connection error - check console for details</div>';
+            // More helpful error message
+            let errorMsg = 'Connection error';
+            if (error.message) {
+                if (error.message.includes('Failed to fetch')) {
+                    errorMsg = 'Cannot reach API. Check if Cloud Run service is running.';
+                } else if (error.message.includes('CORS')) {
+                    errorMsg = 'CORS error - API not allowing this origin.';
+                } else {
+                    errorMsg = error.message;
+                }
+            }
+            document.getElementById('columns').innerHTML = `<div class="empty" style="grid-column: 1/-1; padding: 60px 20px;">${errorMsg}</div>`;
         }
     }
 
