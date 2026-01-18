@@ -565,8 +565,8 @@
                         <div class="day-number ${todayClass}">${day}</div>
                         ${dayEvents.slice(0, 3).map(e => `
                             <div class="event-card" onclick="window.selectEvent('${e.id}')">
-                                <div class="event-dot ${getStatusConfig(e.accreditationStatus).dot}"></div>
-                                <span class="event-title">${e.title || 'Untitled'}</span>
+                                <div class="event-dot ${getStatusConfig(e.accreditationStatus || e.accreditation).dot}"></div>
+                                <span class="event-title">${getEventTitle(e)}</span>
                             </div>
                         `).join('')}
                         ${dayEvents.length > 3 ? `<div class="more-events">+${dayEvents.length - 3} more</div>` : ''}
@@ -585,6 +585,21 @@
                 </div>
             `;
         }
+
+        // Helper function to get event title from various possible field names
+        const getEventTitle = (e) => {
+            return e.title || e.event || e.Event || e.name || e.Name || e.eventName || 'Untitled';
+        };
+
+        // Helper function to get event location from various possible field names
+        const getEventLocation = (e) => {
+            return e.location || e.Location || e.where || e.Where || e.venue || 'TBC';
+        };
+
+        // Helper function to get producer from various possible field names
+        const getEventProducer = (e) => {
+            return e.producer || e.Producer || e.subItemOwner || e.lead || e.assignedTo || 'Unassigned';
+        };
 
         function renderAgendaView() {
             if (events.length === 0) {
@@ -616,17 +631,17 @@
                     </thead>
                     <tbody>
                         ${sortedEvents.map(e => {
-                            const statusConfig = getStatusConfig(e.accreditationStatus);
+                            const statusConfig = getStatusConfig(e.accreditationStatus || e.accreditation || e.Accreditation);
                             return `
                                 <tr onclick="window.selectEvent('${e.id}')">
-                                    <td style="font-weight: 700;">${formatDate(e.date)}</td>
+                                    <td style="font-weight: 700;">${formatDate(e.date || e.Date)}</td>
                                     <td>
-                                        <div style="font-weight: 700; color: var(--ink);">${e.title || 'Untitled'}</div>
-                                        ${e.type ? `<div style="font-size: 10px; color: var(--ink-sub);">${e.type}</div>` : ''}
+                                        <div style="font-weight: 700; color: var(--ink);">${getEventTitle(e)}</div>
+                                        ${e.type || e.angleBucket ? `<div style="font-size: 10px; color: var(--ink-sub);">${e.type || e.angleBucket || ''}</div>` : ''}
                                     </td>
-                                    <td style="color: var(--ink-sub);">${e.location || 'TBC'}</td>
+                                    <td style="color: var(--ink-sub);">${getEventLocation(e)}</td>
                                     <td><span class="status-badge ${statusConfig.class}">${statusConfig.label}</span></td>
-                                    <td style="color: var(--ink-sub);">${e.producer || 'Unassigned'}</td>
+                                    <td style="color: var(--ink-sub);">${getEventProducer(e)}</td>
                                 </tr>
                             `;
                         }).join('')}
@@ -647,14 +662,14 @@
             }
 
             const e = selectedEvent;
-            const statusConfig = getStatusConfig(e.accreditationStatus);
+            const statusConfig = getStatusConfig(e.accreditationStatus || e.accreditation || e.Accreditation);
 
             return `
                 <div style="margin-bottom: 20px;">
                     <span class="status-badge ${statusConfig.class}">${statusConfig.label}</span>
                 </div>
-                <h2 style="font-size: 18px; font-weight: 900; color: var(--ink); margin-bottom: 8px;">${e.title || 'Untitled Event'}</h2>
-                <p style="font-size: 12px; color: var(--ink-sub); margin-bottom: 20px;">${formatFullDate(e.date)}</p>
+                <h2 style="font-size: 18px; font-weight: 900; color: var(--ink); margin-bottom: 8px;">${getEventTitle(e)}</h2>
+                <p style="font-size: 12px; color: var(--ink-sub); margin-bottom: 20px;">${formatFullDate(e.date || e.Date)}</p>
 
                 ${e.endDate ? `
                     <div class="form-group">
@@ -665,12 +680,12 @@
 
                 <div class="form-group">
                     <label class="form-label">Location</label>
-                    <div class="form-value">📍 ${e.location || 'TBC'}</div>
+                    <div class="form-value">📍 ${getEventLocation(e)}</div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Producer / Lead</label>
-                    <div class="form-value">👤 ${e.producer || 'Unassigned'}</div>
+                    <div class="form-value">👤 ${getEventProducer(e)}</div>
                 </div>
 
                 ${e.type ? `
