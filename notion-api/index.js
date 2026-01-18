@@ -1005,7 +1005,7 @@ app.get('/events', async (req, res) => {
             database_id: EVENTS_DB,
             filter,
             page_size: 100,
-            sorts: [{ property: 'DATE', direction: 'ascending' }]
+            sorts: [{ timestamp: 'created_time', direction: 'ascending' }]
         });
 
         const events = response.results.map(parseEventItem);
