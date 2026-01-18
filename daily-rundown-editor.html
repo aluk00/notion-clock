@@ -356,6 +356,25 @@
 
         try {
             const response = await fetch(`${API_BASE}/rundown?date=${getDateKey()}`);
+
+            // Handle HTTP errors first
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg = `API Error (${response.status})`;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMsg = errorJson.error || errorMsg;
+                } catch (e) {
+                    errorMsg = errorText || errorMsg;
+                }
+                console.error('API error:', errorMsg);
+                showToast(errorMsg);
+                items = [];
+                isLoading = false;
+                renderItems();
+                return;
+            }
+
             const data = await response.json();
 
             if (data.success) {
@@ -368,7 +387,16 @@
             }
         } catch (error) {
             console.error('Error fetching items:', error);
-            showToast('Failed to load items');
+            // More helpful error message
+            let errorMsg = 'Failed to load items';
+            if (error.message) {
+                if (error.message.includes('Failed to fetch')) {
+                    errorMsg = 'Cannot reach API - check Cloud Run';
+                } else {
+                    errorMsg = error.message;
+                }
+            }
+            showToast(errorMsg);
             items = [];
         }
 
