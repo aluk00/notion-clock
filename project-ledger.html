@@ -3,25 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Ledger | DMG Command Centre</title>
+    <title>Project Ledger | Quick Capture</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <!--
     ═══════════════════════════════════════════════════════════════════════════════
-    DMG COMMAND CENTRE - PROJECT LEDGER
-    Three-Stage Workflow: Quick Capture → Handoff → Deliverables
+    PROJECT LEDGER - Quick Intake Widget
+    Input only · 60 seconds or less
 
-    STAGE 1: Quick Capture (Sales Only) - 60 second entry
-    STAGE 2: Creative Handoff - When deal moves to "Deal Agreed"
-    STAGE 3: Deliverable Creation - Break into trackable deliverables
+    Actions:
+    - New Project (Sales quick capture)
+    - Add Episode (to existing project)
+    - Add Task (to existing episode)
+    - Request Graphics
 
     API: https://createnotionproject-223535956454.us-central1.run.app
     ═══════════════════════════════════════════════════════════════════════════════
     -->
     <style>
         :root {
-            /* Core Colors - Unified Design System */
+            /* Core Colors */
             --ink: #0F172A;
             --ink-sub: #64748B;
             --ink-muted: #94A3B8;
@@ -29,38 +31,20 @@
             --surface: #FFFFFF;
             --surface-alt: #F8FAFC;
 
-            /* Primary Brand */
+            /* Brand */
             --dmg-blue: #21A0D8;
             --dmg-blue-soft: rgba(33, 160, 216, 0.1);
             --dmg-blue-glow: rgba(33, 160, 216, 0.15);
 
-            /* Pillar Colors */
+            /* Action Colors */
+            --sales: #21A0D8;
+            --sales-soft: rgba(33, 160, 216, 0.1);
             --creative: #E6468B;
             --creative-soft: rgba(230, 70, 139, 0.1);
             --production: #43B049;
             --production-soft: rgba(67, 176, 73, 0.1);
-            --editorial: #E94B4B;
-            --editorial-soft: rgba(233, 75, 75, 0.1);
-            --social: #F2C316;
-            --social-soft: rgba(242, 195, 22, 0.1);
-            --sales: #21A0D8;
-            --sales-soft: rgba(33, 160, 216, 0.1);
-            --amber: #F59E0B;
-            --amber-soft: rgba(245, 158, 11, 0.1);
-
-            /* Stage Colors */
-            --stage-1: var(--sales);
-            --stage-1-soft: var(--sales-soft);
-            --stage-2: var(--creative);
-            --stage-2-soft: var(--creative-soft);
-            --stage-3: var(--production);
-            --stage-3-soft: var(--production-soft);
-
-            /* Deal Stage Colors */
-            --brief-received: #E6468B;
-            --pitch-sent: #21A0D8;
-            --deal-agreed: #43B049;
-            --campaign-complete: #F2C316;
+            --design: #9333EA;
+            --design-soft: rgba(147, 51, 234, 0.1);
 
             /* Layout */
             --radius: 16px;
@@ -75,35 +59,35 @@
             font-family: 'Inter', -apple-system, sans-serif;
             background: var(--surface);
             color: var(--ink);
-            min-height: 100vh;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Scrollbars */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
+        /* Container */
+        .container {
+            padding: 20px;
+            max-width: 480px;
+            margin: 0 auto;
+        }
 
-        /* Loading Screen */
-        .loading-screen {
+        /* Header */
+        .header {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 400px;
-            gap: 12px;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border);
         }
 
         .dot-grid {
             display: grid;
-            grid-template-columns: repeat(2, 6px);
-            gap: 3px;
+            grid-template-columns: repeat(2, 5px);
+            gap: 2px;
         }
 
         .dot-grid span {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
             background: var(--dmg-blue);
         }
@@ -118,37 +102,8 @@
             50% { opacity: 1; }
         }
 
-        .loading-text {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        /* Main Container */
-        .container {
-            padding: 16px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        /* Header */
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        .header-text {
+            flex: 1;
         }
 
         .header-label {
@@ -159,784 +114,77 @@
             letter-spacing: 0.05em;
         }
 
-        .header-stats {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .stat-badge {
-            font-size: 9px;
-            font-weight: 700;
-            padding: 5px 10px;
-            border-radius: 20px;
-            background: var(--surface-alt);
-            color: var(--ink-sub);
-            border: 1px solid var(--border);
-        }
-
-        .stat-badge strong {
-            color: var(--ink);
-            font-weight: 800;
-        }
-
-        .stat-badge.value {
-            background: var(--production-soft);
-            color: var(--production);
-            border-color: transparent;
-        }
-
-        /* New Project Button */
-        .new-project-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            background: var(--dmg-blue);
-            color: white;
-            border: none;
-            border-radius: var(--radius-xs);
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .new-project-btn:hover {
-            background: #1a8ac0;
-            transform: translateY(-1px);
-        }
-
-        .new-project-btn svg {
-            width: 14px;
-            height: 14px;
-        }
-
-        /* Filter Tabs */
-        .filter-tabs {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-
-        .filter-tab {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 9px;
-            font-weight: 700;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: var(--transition);
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-
-        .filter-tab:hover {
-            border-color: #CBD5E1;
-            background: var(--surface-alt);
-        }
-
-        .filter-tab.active {
-            background: var(--ink);
-            color: white;
-            border-color: var(--ink);
-        }
-
-        .filter-tab .count {
-            font-size: 8px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.2);
-        }
-
-        .filter-tab:not(.active) .count {
-            background: var(--surface-alt);
-            color: var(--ink-muted);
-        }
-
-        /* Table Container */
-        .table-container {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-
-        .project-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .project-table thead {
-            background: var(--surface-alt);
-        }
-
-        .project-table th {
-            padding: 12px 14px;
-            text-align: left;
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            border-bottom: 1px solid var(--border);
-            white-space: nowrap;
-        }
-
-        .project-table td {
-            padding: 12px 14px;
-            font-size: 11px;
-            border-bottom: 1px solid var(--border);
-            color: var(--ink);
-        }
-
-        .project-table tbody tr {
-            cursor: pointer;
-            transition: background 0.15s ease;
-        }
-
-        .project-table tbody tr:hover {
-            background: var(--surface-alt);
-        }
-
-        .project-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* Table Cell Styles */
-        .cell-title {
-            font-weight: 600;
-            color: var(--ink);
-            max-width: 200px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .cell-client {
-            font-size: 10px;
-            color: var(--ink-muted);
-            font-weight: 500;
-        }
-
-        .cell-value {
-            font-weight: 700;
-            color: var(--production);
-        }
-
-        .cell-link {
-            color: var(--dmg-blue);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .cell-link:hover {
-            text-decoration: underline;
-        }
-
-        /* Stage Pills */
-        .stage-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 9px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.02em;
-        }
-
-        .stage-pill.brief-received {
-            background: rgba(230, 70, 139, 0.1);
-            color: #E6468B;
-        }
-
-        .stage-pill.pitch-sent {
-            background: rgba(33, 160, 216, 0.1);
-            color: #21A0D8;
-        }
-
-        .stage-pill.deal-agreed {
-            background: rgba(67, 176, 73, 0.1);
-            color: #43B049;
-        }
-
-        .stage-pill.campaign-complete {
-            background: rgba(242, 195, 22, 0.1);
-            color: #D4A510;
-        }
-
-        .stage-pill.closed-lost {
-            background: rgba(233, 75, 75, 0.1);
-            color: #E94B4B;
-        }
-
-        /* Probability Pills */
-        .prob-pill {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 20px;
-            font-size: 9px;
-            font-weight: 700;
-            background: var(--surface-alt);
-            color: var(--ink-sub);
-        }
-
-        .prob-pill.high {
-            background: var(--production-soft);
-            color: var(--production);
-        }
-
-        .prob-pill.medium {
-            background: var(--amber-soft);
-            color: var(--amber);
-        }
-
-        .prob-pill.low {
-            background: var(--editorial-soft);
-            color: var(--editorial);
-        }
-
-        /* Status Badge */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 9px;
-            font-weight: 600;
-            background: var(--surface-alt);
-            color: var(--ink-sub);
-        }
-
-        .status-badge.needs-handoff {
-            background: var(--amber-soft);
-            color: var(--amber);
-        }
-
-        .status-badge.in-progress {
-            background: var(--dmg-blue-soft);
-            color: var(--dmg-blue);
-        }
-
-        .status-badge.complete {
-            background: var(--production-soft);
-            color: var(--production);
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-        }
-
-        .empty-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.4;
-        }
-
-        .empty-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--ink);
-            margin-bottom: 6px;
-        }
-
-        .empty-desc {
-            font-size: 12px;
-            color: var(--ink-sub);
-        }
-
-        /* ════════════════════════════════════════════════════════════════════════
-           DETAIL VIEW
-           ════════════════════════════════════════════════════════════════════════ */
-        .detail-container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .detail-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 14px;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .back-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border-radius: var(--radius-xs);
-            font-size: 10px;
-            font-weight: 600;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            cursor: pointer;
-            color: var(--ink-sub);
-            transition: var(--transition);
-            flex-shrink: 0;
-        }
-
-        .back-btn:hover {
-            background: var(--surface-alt);
-            border-color: #CBD5E1;
-        }
-
-        .detail-title-section {
-            flex: 1;
-        }
-
-        .detail-client {
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--ink-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            margin-bottom: 4px;
-        }
-
-        .detail-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--ink);
-            line-height: 1.2;
-            letter-spacing: -0.02em;
-        }
-
-        .detail-badges {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-shrink: 0;
-        }
-
-        /* Section Cards */
-        .section-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            margin-bottom: 12px;
-            overflow: hidden;
-            transition: var(--transition);
-        }
-
-        .section-card.locked {
-            opacity: 0.6;
-        }
-
-        .section-card.locked .section-body {
-            display: none;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 14px 18px;
-            background: var(--surface-alt);
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-        }
-
-        .section-card.locked .section-header {
-            cursor: default;
-        }
-
-        .section-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        .section-icon.stage-1 { background: var(--stage-1-soft); }
-        .section-icon.stage-2 { background: var(--stage-2-soft); }
-        .section-icon.stage-3 { background: var(--stage-3-soft); }
-
-        .section-meta {
-            flex: 1;
-        }
-
-        .section-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--ink);
-            margin-bottom: 2px;
-        }
-
-        .section-subtitle {
-            font-size: 10px;
-            font-weight: 500;
-            color: var(--ink-muted);
-        }
-
-        .section-status {
-            font-size: 9px;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 20px;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-
-        .section-status.unlocked {
-            background: var(--production-soft);
-            color: var(--production);
-        }
-
-        .section-status.locked {
-            background: var(--surface);
-            color: var(--ink-muted);
-            border: 1px solid var(--border);
-        }
-
-        .section-body {
-            padding: 18px;
-        }
-
-        /* Form Fields */
-        .field-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 14px;
-        }
-
-        @media (max-width: 600px) {
-            .field-grid { grid-template-columns: 1fr; }
-        }
-
-        .field-grid.cols-3 {
-            grid-template-columns: repeat(3, 1fr);
-        }
-
-        .field-grid.cols-4 {
-            grid-template-columns: repeat(4, 1fr);
-        }
-
-        .field-full {
-            grid-column: 1 / -1;
-        }
-
-        .field {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .field-label {
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-
-        .field-label .required {
-            color: var(--editorial);
-        }
-
-        .field-input, .field-select {
-            padding: 10px 12px;
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius-xs);
-            font-size: 12px;
-            font-weight: 500;
-            font-family: inherit;
-            background: var(--surface);
-            color: var(--ink);
-            outline: none;
-            transition: var(--transition);
-        }
-
-        .field-input:focus, .field-select:focus {
-            border-color: var(--dmg-blue);
-            box-shadow: 0 0 0 3px var(--dmg-blue-glow);
-        }
-
-        .field-input::placeholder {
-            color: var(--ink-muted);
-        }
-
-        .field-textarea {
-            padding: 10px 12px;
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius-xs);
-            font-size: 12px;
-            font-weight: 500;
-            font-family: inherit;
-            background: var(--surface);
-            color: var(--ink);
-            outline: none;
-            transition: var(--transition);
-            min-height: 80px;
-            resize: vertical;
-        }
-
-        .field-textarea:focus {
-            border-color: var(--dmg-blue);
-            box-shadow: 0 0 0 3px var(--dmg-blue-glow);
-        }
-
-        .field-static {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--ink);
-            padding: 10px 0;
-        }
-
-        .field-static.value {
-            color: var(--production);
-            font-weight: 700;
-        }
-
-        /* Link Field */
-        .link-field {
-            display: flex;
-            gap: 8px;
-        }
-
-        .link-field input {
-            flex: 1;
-        }
-
-        .link-btn {
-            padding: 10px 14px;
-            border-radius: var(--radius-xs);
-            font-size: 9px;
-            font-weight: 700;
-            border: 1px solid var(--border);
-            background: var(--surface);
-            cursor: pointer;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            transition: var(--transition);
-            text-decoration: none;
-            white-space: nowrap;
-        }
-
-        .link-btn:hover {
-            background: var(--dmg-blue);
-            color: white;
-            border-color: var(--dmg-blue);
-        }
-
-        .link-btn.has-link {
-            background: var(--dmg-blue);
-            color: white;
-            border-color: var(--dmg-blue);
-        }
-
-        /* Weighted Value Display */
-        .weighted-value {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            background: var(--production-soft);
-            border-radius: var(--radius-xs);
-            border-left: 3px solid var(--production);
-        }
-
-        .weighted-value-label {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-        }
-
-        .weighted-value-amount {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--production);
-        }
-
-        .weighted-value-calc {
-            font-size: 10px;
-            color: var(--ink-muted);
-        }
-
-        /* Deliverables List */
-        .deliverables-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .deliverable-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            background: var(--surface-alt);
-            border-radius: var(--radius-xs);
-            border: 1px solid transparent;
-            transition: var(--transition);
-        }
-
-        .deliverable-item:hover {
-            border-color: var(--border);
-        }
-
-        .deliverable-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .deliverable-info {
-            flex: 1;
-        }
-
-        .deliverable-name {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--ink);
-        }
-
-        .deliverable-meta {
+        .header-subtitle {
             font-size: 10px;
             color: var(--ink-muted);
             margin-top: 2px;
         }
 
-        .deliverable-status {
-            font-size: 9px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 20px;
-            background: var(--surface);
-            color: var(--ink-sub);
+        /* Action Grid */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
         }
 
-        .add-deliverable-btn {
+        .action-btn {
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 14px;
-            border: 2px dashed var(--border);
-            border-radius: var(--radius-xs);
-            background: transparent;
-            color: var(--ink-muted);
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .add-deliverable-btn:hover {
-            border-color: var(--dmg-blue);
-            color: var(--dmg-blue);
-            background: var(--dmg-blue-soft);
-        }
-
-        /* Action Bar */
-        .action-bar {
-            display: flex;
             gap: 10px;
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid var(--border);
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 10px 18px;
-            border-radius: var(--radius-xs);
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
+            padding: 24px 16px;
+            border-radius: var(--radius);
+            border: 1.5px solid var(--border);
+            background: var(--surface);
             cursor: pointer;
-            border: none;
             transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
             text-decoration: none;
         }
 
-        .btn-primary {
-            background: var(--production);
-            color: white;
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
         }
 
-        .btn-primary:hover {
-            background: #3a9d42;
-        }
-
-        .btn-secondary {
-            background: var(--surface);
-            color: var(--ink-sub);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--ink-muted);
-            color: var(--ink);
-        }
-
-        .btn-notion {
-            background: var(--ink);
-            color: white;
-            margin-left: auto;
-        }
-
-        .btn-notion:hover {
-            background: #1E293B;
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* Save Bar */
-        .save-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--surface);
-            border-top: 1px solid var(--border);
-            padding: 12px 20px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            z-index: 100;
-            opacity: 0;
-            transform: translateY(100%);
-            transition: var(--transition);
-        }
-
-        .save-bar.visible {
-            opacity: 1;
+        .action-btn:active {
             transform: translateY(0);
         }
 
-        /* ════════════════════════════════════════════════════════════════════════
-           MODAL
-           ════════════════════════════════════════════════════════════════════════ */
+        .action-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .action-btn.sales .action-icon { background: var(--sales-soft); }
+        .action-btn.creative .action-icon { background: var(--creative-soft); }
+        .action-btn.production .action-icon { background: var(--production-soft); }
+        .action-btn.design .action-icon { background: var(--design-soft); }
+
+        .action-btn:hover.sales { border-color: var(--sales); }
+        .action-btn:hover.creative { border-color: var(--creative); }
+        .action-btn:hover.production { border-color: var(--production); }
+        .action-btn:hover.design { border-color: var(--design); }
+
+        .action-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink);
+            text-align: center;
+        }
+
+        .action-desc {
+            font-size: 10px;
+            color: var(--ink-muted);
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        /* Modal */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -962,7 +210,7 @@
         .modal {
             background: var(--surface);
             width: 100%;
-            max-width: 540px;
+            max-width: 440px;
             max-height: 90vh;
             border-radius: var(--radius);
             overflow: hidden;
@@ -981,7 +229,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 18px 22px;
+            padding: 16px 20px;
             border-bottom: 1px solid var(--border);
             background: var(--surface-alt);
         }
@@ -993,18 +241,22 @@
         }
 
         .modal-icon {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            background: var(--dmg-blue-soft);
+            font-size: 16px;
         }
 
+        .modal-icon.sales { background: var(--sales-soft); }
+        .modal-icon.creative { background: var(--creative-soft); }
+        .modal-icon.production { background: var(--production-soft); }
+        .modal-icon.design { background: var(--design-soft); }
+
         .modal-title {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 700;
             color: var(--ink);
         }
@@ -1016,8 +268,8 @@
         }
 
         .modal-close {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             border: none;
             background: var(--surface);
@@ -1026,7 +278,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 16px;
             transition: var(--transition);
         }
 
@@ -1036,35 +288,82 @@
         }
 
         .modal-body {
-            padding: 22px;
+            padding: 20px;
             overflow-y: auto;
             flex: 1;
-        }
-
-        .modal-section-title {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 14px;
-            margin-top: 20px;
-        }
-
-        .modal-section-title:first-child {
-            margin-top: 0;
         }
 
         .modal-footer {
             display: flex;
             justify-content: flex-end;
             gap: 10px;
-            padding: 14px 22px;
+            padding: 14px 20px;
             border-top: 1px solid var(--border);
             background: var(--surface-alt);
         }
 
-        /* Client Combobox */
+        /* Form Fields */
+        .field {
+            margin-bottom: 14px;
+        }
+
+        .field:last-child {
+            margin-bottom: 0;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .field-row .field {
+            margin-bottom: 0;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        .field-label .required {
+            color: #E94B4B;
+        }
+
+        .field-input, .field-select, .field-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-xs);
+            font-size: 12px;
+            font-weight: 500;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--ink);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .field-input:focus, .field-select:focus, .field-textarea:focus {
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 3px var(--dmg-blue-glow);
+        }
+
+        .field-input::placeholder, .field-textarea::placeholder {
+            color: var(--ink-muted);
+        }
+
+        .field-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* Combobox */
         .combobox-wrapper {
             position: relative;
         }
@@ -1078,7 +377,7 @@
             border: 1.5px solid var(--dmg-blue);
             border-top: none;
             border-radius: 0 0 var(--radius-xs) var(--radius-xs);
-            max-height: 200px;
+            max-height: 180px;
             overflow-y: auto;
             z-index: 100;
             display: none;
@@ -1087,15 +386,10 @@
 
         .combobox-dropdown.show {
             display: block;
-            animation: dropIn 0.2s ease-out;
-        }
-
-        @keyframes dropIn {
-            from { opacity: 0; transform: translateY(-4px); }
         }
 
         .combobox-item {
-            padding: 10px 14px;
+            padding: 10px 12px;
             font-size: 12px;
             font-weight: 500;
             cursor: pointer;
@@ -1113,8 +407,52 @@
             font-weight: 600;
         }
 
-        .combobox-item.add-new::before {
-            content: '+ ';
+        .combobox-empty {
+            padding: 12px;
+            font-size: 11px;
+            color: var(--ink-muted);
+            text-align: center;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 16px;
+            border-radius: var(--radius-xs);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--dmg-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1a8ac0;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--ink-sub);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--ink-muted);
+            color: var(--ink);
         }
 
         /* Toast */
@@ -1138,20 +476,24 @@
         }
 
         .toast.success { background: var(--production); }
-        .toast.error { background: var(--editorial); }
+        .toast.error { background: #E94B4B; }
 
-        /* Responsive */
-        @media (max-width: 700px) {
-            .project-table th:nth-child(4),
-            .project-table td:nth-child(4),
-            .project-table th:nth-child(6),
-            .project-table td:nth-child(6) {
-                display: none;
-            }
+        /* Loading */
+        .loading-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 12px;
+        }
 
-            .field-grid.cols-4 {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        .loading-text {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
     </style>
 </head>
@@ -1159,11 +501,11 @@
     <div class="container" id="app">
         <div class="loading-screen">
             <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-            <span class="loading-text">Syncing with Notion...</span>
+            <span class="loading-text">Loading...</span>
         </div>
     </div>
 
-    <!-- Modal Overlay -->
+    <!-- Modal -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal" id="modal"></div>
     </div>
@@ -1177,61 +519,24 @@
         // ═══════════════════════════════════════════════════════════════════════════
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
-        // Deal Stage Options
-        const DEAL_STAGES = [
-            { value: 'Brief Recieved', label: 'Brief Received', color: 'brief-received' },
-            { value: 'Pitch Sent', label: 'Pitch Sent', color: 'pitch-sent' },
-            { value: 'Deal Agreed', label: 'Deal Agreed', color: 'deal-agreed' },
-            { value: 'Campaign Complete', label: 'Campaign Complete', color: 'campaign-complete' },
-            { value: 'Closed Lost', label: 'Closed Lost', color: 'closed-lost' }
-        ];
-
-        const PROBABILITY_OPTIONS = ['10%', '25%', '50%', '75%', '90%'];
-        const SALES_LEADS = ['Zach', 'Isobel'];
+        // Options
+        const DEAL_STAGES = ['Brief Received', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete', 'Closed Lost'];
         const VERTICALS = ['Spotlight', 'Trailblazers', 'Hub', 'Social-First', 'Custom'];
-        const RESPONSE_TYPES = ['Google Doc', 'PDF', 'Presentation', 'Video'];
-        const PRIORITY_OPTIONS = ['Low', 'Medium', 'High'];
+        const PROJECT_TYPES = ['Commercial', 'Editorial', 'Social', 'Internal'];
+        const FORMATS = ['Long-form Video', 'Short-form Video', 'Social Cut', 'BTS', 'Podcast', 'Article', 'Gallery'];
+        const DISCIPLINES = ['Creative', 'Edit', 'Design', 'Producer', 'Social', 'Creator'];
+        const ASSET_TYPES = ['Thumbnail', 'Social Card', 'Banner', 'Logo Treatment', 'Motion Graphics', 'Other'];
 
         // ═══════════════════════════════════════════════════════════════════════════
         // STATE
         // ═══════════════════════════════════════════════════════════════════════════
-        let allProjects = [];
+        let projects = [];
+        let episodes = [];
         let clients = [];
-        let currentView = 'list'; // 'list' or 'detail'
-        let currentProject = null;
-        let originalProject = null;
-        let hasChanges = false;
-        let currentFilter = 'all';
 
         // ═══════════════════════════════════════════════════════════════════════════
         // HELPERS
         // ═══════════════════════════════════════════════════════════════════════════
-        const formatCurrency = (val) => {
-            if (!val) return '';
-            const num = parseFloat(val);
-            if (num >= 1000000) return `£${(num / 1000000).toFixed(1)}M`;
-            if (num >= 1000) return `£${Math.round(num / 1000)}K`;
-            return `£${Math.round(num)}`;
-        };
-
-        const calculateWeightedValue = (dealValue, probability) => {
-            if (!dealValue || !probability) return 0;
-            const probNum = parseInt(probability) / 100;
-            return parseFloat(dealValue) * probNum;
-        };
-
-        const getStageClass = (stage) => {
-            const s = DEAL_STAGES.find(d => d.value === stage || d.label === stage);
-            return s ? s.color : '';
-        };
-
-        const getProbabilityClass = (prob) => {
-            const p = parseInt(prob) || 0;
-            if (p >= 75) return 'high';
-            if (p >= 50) return 'medium';
-            return 'low';
-        };
-
         const escapeHtml = (text) => {
             if (!text) return '';
             const div = document.createElement('div');
@@ -1246,774 +551,524 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         };
 
-        const isStage2Unlocked = (project) => {
-            const stage = project.dealStage || '';
-            return stage === 'Deal Agreed' || stage === 'Campaign Complete' || project.readyForHandoff;
-        };
-
-        const isStage3Unlocked = (project) => {
-            return project.creativeResponseApproved || project.projectStatus === 'In Progress';
-        };
-
-        const getProjectStatus = (project) => {
-            if (!isStage2Unlocked(project)) return { label: 'Needs Handoff', class: 'needs-handoff' };
-            if (!isStage3Unlocked(project)) return { label: 'In Progress', class: 'in-progress' };
-            return { label: 'Complete', class: 'complete' };
+        const closeModal = () => {
+            document.getElementById('modalOverlay').classList.remove('open');
         };
 
         // ═══════════════════════════════════════════════════════════════════════════
         // DATA LOADING
         // ═══════════════════════════════════════════════════════════════════════════
-        async function loadProjects() {
+        async function loadData() {
             try {
                 const res = await fetch(`${API_URL}/projects`);
                 const data = await res.json();
-                allProjects = data?.projects || [];
+                projects = data?.projects || [];
 
-                // Extract unique clients
+                // Extract clients and episodes
                 const clientSet = new Set();
-                allProjects.forEach(p => p.client && clientSet.add(p.client));
+                projects.forEach(p => {
+                    if (p.client) clientSet.add(p.client);
+                    if (p.episodes) episodes.push(...p.episodes.map(e => ({ ...e, projectTitle: p.title, projectId: p.id })));
+                });
                 clients = Array.from(clientSet).sort();
 
                 render();
             } catch (e) {
                 console.error('Load failed:', e);
-                document.getElementById('app').innerHTML = `
-                    <div class="header">
-                        <div class="header-left">
-                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                            <span class="header-label">Project Ledger</span>
-                        </div>
-                    </div>
-                    <div class="empty-state">
-                        <div class="empty-icon">&#x26A0;</div>
-                        <div class="empty-title">Connection Error</div>
-                        <div class="empty-desc">Unable to load projects. Please refresh to try again.</div>
-                    </div>
-                `;
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════════
-        // RENDER: LIST VIEW
-        // ═══════════════════════════════════════════════════════════════════════════
-        function render() {
-            if (currentView === 'detail' && currentProject) {
-                renderDetailView();
-            } else {
-                renderListView();
-            }
-        }
-
-        function renderListView() {
-            // Filter projects: include those with deal stage, deal value, or sales lead
-            const activeStages = ['Brief Recieved', 'Brief Received', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete'];
-            let filtered = allProjects.filter(p => {
-                return activeStages.includes(p.dealStage) ||
-                       (p.dealValue && parseFloat(p.dealValue) > 0) ||
-                       (p.salesLead || p.salesLeads);
-            });
-
-            // Apply filter
-            if (currentFilter !== 'all') {
-                filtered = filtered.filter(p => {
-                    const stage = p.dealStage || '';
-                    if (currentFilter === 'brief-received') return stage === 'Brief Recieved' || stage === 'Brief Received';
-                    if (currentFilter === 'pitch-sent') return stage === 'Pitch Sent';
-                    if (currentFilter === 'deal-agreed') return stage === 'Deal Agreed';
-                    if (currentFilter === 'complete') return stage === 'Campaign Complete';
-                    return true;
-                });
-            }
-
-            const totalValue = filtered.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
-            const weightedTotal = filtered.reduce((sum, p) => {
-                const prob = parseInt(p.probability || '50') / 100;
-                return sum + ((parseFloat(p.dealValue) || 0) * prob);
-            }, 0);
-
-            // Count by stage
-            const counts = {
-                all: allProjects.filter(p => activeStages.includes(p.dealStage) || (p.dealValue && parseFloat(p.dealValue) > 0)).length,
-                'brief-received': allProjects.filter(p => p.dealStage === 'Brief Recieved' || p.dealStage === 'Brief Received').length,
-                'pitch-sent': allProjects.filter(p => p.dealStage === 'Pitch Sent').length,
-                'deal-agreed': allProjects.filter(p => p.dealStage === 'Deal Agreed').length,
-                'complete': allProjects.filter(p => p.dealStage === 'Campaign Complete').length
-            };
-
-            document.getElementById('app').innerHTML = `
-                <div class="header">
-                    <div class="header-left">
-                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                        <span class="header-label">Project Ledger</span>
-                    </div>
-                    <div class="header-stats">
-                        <span class="stat-badge"><strong>${filtered.length}</strong> Projects</span>
-                        <span class="stat-badge value">${formatCurrency(totalValue)} Pipeline</span>
-                        <span class="stat-badge">${formatCurrency(weightedTotal)} Weighted</span>
-                        <button class="new-project-btn" onclick="openNewProjectModal()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            New Project
-                        </button>
-                    </div>
-                </div>
-
-                <div class="filter-tabs">
-                    <button class="filter-tab ${currentFilter === 'all' ? 'active' : ''}" onclick="setFilter('all')">
-                        All <span class="count">${counts.all}</span>
-                    </button>
-                    <button class="filter-tab ${currentFilter === 'brief-received' ? 'active' : ''}" onclick="setFilter('brief-received')">
-                        Brief Received <span class="count">${counts['brief-received']}</span>
-                    </button>
-                    <button class="filter-tab ${currentFilter === 'pitch-sent' ? 'active' : ''}" onclick="setFilter('pitch-sent')">
-                        Pitch Sent <span class="count">${counts['pitch-sent']}</span>
-                    </button>
-                    <button class="filter-tab ${currentFilter === 'deal-agreed' ? 'active' : ''}" onclick="setFilter('deal-agreed')">
-                        Deal Agreed <span class="count">${counts['deal-agreed']}</span>
-                    </button>
-                    <button class="filter-tab ${currentFilter === 'complete' ? 'active' : ''}" onclick="setFilter('complete')">
-                        Complete <span class="count">${counts.complete}</span>
-                    </button>
-                </div>
-
-                <div class="table-container">
-                    ${filtered.length > 0 ? `
-                        <table class="project-table">
-                            <thead>
-                                <tr>
-                                    <th>Project</th>
-                                    <th>Deal Stage</th>
-                                    <th>Value</th>
-                                    <th>Probability</th>
-                                    <th>Weighted</th>
-                                    <th>Sales Lead</th>
-                                    <th>Expected Close</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${filtered.map(p => {
-                                    const weighted = calculateWeightedValue(p.dealValue, p.probability || '50');
-                                    const status = getProjectStatus(p);
-                                    return `
-                                        <tr onclick="openProject('${p.id}')">
-                                            <td>
-                                                <div class="cell-title">${escapeHtml(p.title) || 'Untitled'}</div>
-                                                <div class="cell-client">${escapeHtml(p.client) || 'Internal'}</div>
-                                            </td>
-                                            <td>
-                                                <span class="stage-pill ${getStageClass(p.dealStage)}">${escapeHtml(p.dealStage) || '—'}</span>
-                                            </td>
-                                            <td class="cell-value">${formatCurrency(p.dealValue) || '—'}</td>
-                                            <td>
-                                                <span class="prob-pill ${getProbabilityClass(p.probability)}">${escapeHtml(p.probability) || '50%'}</span>
-                                            </td>
-                                            <td class="cell-value">${formatCurrency(weighted)}</td>
-                                            <td>${escapeHtml(p.salesLead || p.salesLeads) || '—'}</td>
-                                            <td>${p.expectedCloseDate || p.dueDate || '—'}</td>
-                                            <td><span class="status-badge ${status.class}">${status.label}</span></td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    ` : `
-                        <div class="empty-state">
-                            <div class="empty-icon">&#x1F4CB;</div>
-                            <div class="empty-title">No Projects Found</div>
-                            <div class="empty-desc">Click "New Project" to add your first project to the ledger.</div>
-                        </div>
-                    `}
-                </div>
-            `;
-        }
-
-        function setFilter(filter) {
-            currentFilter = filter;
-            render();
-        }
-
-        function openProject(id) {
-            const project = allProjects.find(p => p.id === id);
-            if (project) {
-                currentProject = JSON.parse(JSON.stringify(project));
-                originalProject = JSON.parse(JSON.stringify(project));
-                hasChanges = false;
-                currentView = 'detail';
-                window.history.pushState({}, '', `?project=${id}`);
                 render();
             }
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // RENDER: DETAIL VIEW (THREE-STAGE WORKFLOW)
+        // MAIN RENDER
         // ═══════════════════════════════════════════════════════════════════════════
-        function renderDetailView() {
-            const p = currentProject;
-            const stage2Unlocked = isStage2Unlocked(p);
-            const stage3Unlocked = isStage3Unlocked(p);
-            const weighted = calculateWeightedValue(p.dealValue, p.probability || '50');
-
+        function render() {
             document.getElementById('app').innerHTML = `
-                <div class="detail-container">
-                    <div class="detail-header">
-                        <button class="back-btn" onclick="goBack()">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                            Back
-                        </button>
-                        <div class="detail-title-section">
-                            <div class="detail-client">${escapeHtml(p.client) || 'Internal'}</div>
-                            <div class="detail-title">${escapeHtml(p.title) || 'Untitled Project'}</div>
-                        </div>
-                        <div class="detail-badges">
-                            <span class="stage-pill ${getStageClass(p.dealStage)}">${escapeHtml(p.dealStage) || 'No Stage'}</span>
-                        </div>
+                <div class="header">
+                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                    <div class="header-text">
+                        <div class="header-label">Project Ledger</div>
+                        <div class="header-subtitle">Quick capture · 60 seconds or less</div>
                     </div>
+                </div>
 
-                    <!-- STAGE 1: Deal Info (Quick Capture) -->
-                    <div class="section-card">
-                        <div class="section-header">
-                            <div class="section-icon stage-1">&#x1F4B0;</div>
-                            <div class="section-meta">
-                                <div class="section-title">Deal Info</div>
-                                <div class="section-subtitle">Stage 1 — Commercial essentials</div>
-                            </div>
-                            <span class="section-status unlocked">Active</span>
-                        </div>
-                        <div class="section-body">
-                            <div class="field-grid cols-4">
-                                <div class="field">
-                                    <label class="field-label">Deal Stage <span class="required">*</span></label>
-                                    <select class="field-select" onchange="updateField('dealStage', this.value)">
-                                        <option value="">Select...</option>
-                                        ${DEAL_STAGES.map(s => `<option value="${s.value}" ${p.dealStage === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
-                                    </select>
-                                </div>
-                                <div class="field">
-                                    <label class="field-label">Deal Value (£)</label>
-                                    <input type="number" class="field-input" value="${p.dealValue || ''}" placeholder="25000" onchange="updateField('dealValue', this.value)">
-                                </div>
-                                <div class="field">
-                                    <label class="field-label">Probability %</label>
-                                    <select class="field-select" onchange="updateField('probability', this.value)">
-                                        <option value="">Select...</option>
-                                        ${PROBABILITY_OPTIONS.map(prob => `<option value="${prob}" ${p.probability === prob ? 'selected' : ''}>${prob}</option>`).join('')}
-                                    </select>
-                                </div>
-                                <div class="field">
-                                    <label class="field-label">Weighted Value</label>
-                                    <div class="field-static value">${formatCurrency(weighted)}</div>
-                                </div>
-                            </div>
-                            <div class="field-grid" style="margin-top: 14px;">
-                                <div class="field">
-                                    <label class="field-label">Expected Close Date</label>
-                                    <input type="date" class="field-input" value="${p.expectedCloseDate || ''}" onchange="updateField('expectedCloseDate', this.value)">
-                                </div>
-                                <div class="field">
-                                    <label class="field-label">Sales Lead</label>
-                                    <select class="field-select" onchange="updateField('salesLead', this.value)">
-                                        <option value="">Select...</option>
-                                        ${SALES_LEADS.map(lead => `<option value="${lead}" ${(p.salesLead || p.salesLeads) === lead ? 'selected' : ''}>${lead}</option>`).join('')}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="field" style="margin-top: 14px;">
-                                <label class="field-label">Brief Link</label>
-                                <div class="link-field">
-                                    <input type="url" class="field-input" value="${escapeHtml(p.briefLink) || ''}" placeholder="Paste Google Doc / Drive link..." onchange="updateField('briefLink', this.value)">
-                                    ${p.briefLink ? `<a href="${escapeHtml(p.briefLink)}" target="_blank" class="link-btn has-link">Open</a>` : ''}
-                                </div>
-                            </div>
-                            <div class="field" style="margin-top: 14px;">
-                                <label class="field-label">Sales Notes</label>
-                                <textarea class="field-textarea" placeholder="Any initial context, client requests..." onchange="updateField('salesNotes', this.value)">${escapeHtml(p.salesNotes || p.notes) || ''}</textarea>
-                            </div>
-                        </div>
-                    </div>
+                <div class="action-grid">
+                    <button class="action-btn sales" onclick="openNewProjectModal()">
+                        <div class="action-icon">📋</div>
+                        <div class="action-label">New Project</div>
+                        <div class="action-desc">Sales quick capture</div>
+                    </button>
 
-                    <!-- STAGE 2: Handoff Info -->
-                    <div class="section-card ${!stage2Unlocked ? 'locked' : ''}">
-                        <div class="section-header">
-                            <div class="section-icon stage-2">&#x1F3AF;</div>
-                            <div class="section-meta">
-                                <div class="section-title">Handoff Info</div>
-                                <div class="section-subtitle">Stage 2 — ${stage2Unlocked ? 'Creative team details' : 'Unlocks when Deal Agreed'}</div>
-                            </div>
-                            <span class="section-status ${stage2Unlocked ? 'unlocked' : 'locked'}">${stage2Unlocked ? 'Unlocked' : 'Locked'}</span>
-                        </div>
-                        ${stage2Unlocked ? `
-                        <div class="section-body">
-                            <div class="field-grid">
-                                <div class="field">
-                                    <label class="field-label">Client Due Date</label>
-                                    <input type="date" class="field-input" value="${p.dueDate || ''}" onchange="updateField('dueDate', this.value)">
-                                </div>
-                                <div class="field">
-                                    <label class="field-label">Campaign Window</label>
-                                    <input type="date" class="field-input" value="${p.suggestedCampaignWindow || ''}" onchange="updateField('suggestedCampaignWindow', this.value)">
-                                </div>
-                            </div>
-                            <div class="field-grid" style="margin-top: 14px;">
-                                <div class="field">
-                                    <label class="field-label">Vertical</label>
-                                    <select class="field-select" onchange="updateField('vertical', this.value)">
-                                        <option value="">Select...</option>
-                                        ${VERTICALS.map(v => `<option value="${v}" ${p.vertical === v ? 'selected' : ''}>${v}</option>`).join('')}
-                                    </select>
-                                </div>
-                                <div class="field">
-                                    <label class="field-label">Response Type Needed</label>
-                                    <select class="field-select" onchange="updateField('responseTypeNeeded', this.value)">
-                                        <option value="">Select...</option>
-                                        ${RESPONSE_TYPES.map(r => `<option value="${r}" ${p.responseTypeNeeded === r ? 'selected' : ''}>${r}</option>`).join('')}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="field-grid" style="margin-top: 14px;">
-                                <div class="field">
-                                    <label class="field-label">Creative Lead</label>
-                                    <input type="text" class="field-input" value="${escapeHtml(p.creativeLead) || ''}" placeholder="Assign creative lead..." onchange="updateField('creativeLead', this.value)">
-                                </div>
-                                <div class="field">
-                                    <label class="field-label">Production Lead</label>
-                                    <input type="text" class="field-input" value="${escapeHtml(p.productionLead) || ''}" placeholder="Assign production lead..." onchange="updateField('productionLead', this.value)">
-                                </div>
-                            </div>
-                            <div class="field" style="margin-top: 14px;">
-                                <label class="field-label">Creative Response</label>
-                                <div class="link-field">
-                                    <input type="url" class="field-input" value="${escapeHtml(p.creativeResponseLink) || ''}" placeholder="Paste response link..." onchange="updateField('creativeResponseLink', this.value)">
-                                    ${p.creativeResponseLink ? `<a href="${escapeHtml(p.creativeResponseLink)}" target="_blank" class="link-btn has-link">Open</a>` : ''}
-                                </div>
-                            </div>
-                            <div class="field" style="margin-top: 14px;">
-                                <label class="field-label">Handoff Notes</label>
-                                <textarea class="field-textarea" placeholder="What did the client actually ask for?" onchange="updateField('handoffNotes', this.value)">${escapeHtml(p.handoffNotes || p.internalNotes) || ''}</textarea>
-                            </div>
-                        </div>
-                        ` : ''}
-                    </div>
+                    <button class="action-btn creative" onclick="openAddEpisodeModal()">
+                        <div class="action-icon">🎬</div>
+                        <div class="action-label">Add Episode</div>
+                        <div class="action-desc">To existing project</div>
+                    </button>
 
-                    <!-- STAGE 3: Deliverables -->
-                    <div class="section-card ${!stage3Unlocked ? 'locked' : ''}">
-                        <div class="section-header">
-                            <div class="section-icon stage-3">&#x1F4E6;</div>
-                            <div class="section-meta">
-                                <div class="section-title">Deliverables</div>
-                                <div class="section-subtitle">Stage 3 — ${stage3Unlocked ? 'Track individual deliverables' : 'Unlocks when response approved'}</div>
-                            </div>
-                            <span class="section-status ${stage3Unlocked ? 'unlocked' : 'locked'}">${stage3Unlocked ? 'Unlocked' : 'Locked'}</span>
-                        </div>
-                        ${stage3Unlocked ? `
-                        <div class="section-body">
-                            <div class="deliverables-list">
-                                ${(p.deliverables || []).map((d, i) => `
-                                    <div class="deliverable-item">
-                                        <div class="deliverable-dot" style="background: ${d.discipline === 'Creative' ? 'var(--creative)' : d.discipline === 'Edit' ? 'var(--editorial)' : 'var(--production)'}"></div>
-                                        <div class="deliverable-info">
-                                            <div class="deliverable-name">${escapeHtml(d.name) || 'Untitled Deliverable'}</div>
-                                            <div class="deliverable-meta">${escapeHtml(d.discipline)} • ${escapeHtml(d.format) || 'TBD'} • Due ${d.dueDate || 'TBD'}</div>
-                                        </div>
-                                        <span class="deliverable-status">${d.status || 'Pending'}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            <button class="add-deliverable-btn" onclick="openAddDeliverableModal()">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                Add Deliverable
-                            </button>
-                        </div>
-                        ` : ''}
-                    </div>
+                    <button class="action-btn production" onclick="openAddTaskModal()">
+                        <div class="action-icon">✅</div>
+                        <div class="action-label">Add Task</div>
+                        <div class="action-desc">Assign discipline task</div>
+                    </button>
 
-                    <!-- Action Bar -->
-                    <div class="action-bar">
-                        <button class="btn btn-secondary" onclick="discardChanges()" ${!hasChanges ? 'disabled' : ''}>Discard</button>
-                        <button class="btn btn-primary" onclick="saveChanges()" id="saveBtn" ${!hasChanges ? 'disabled' : ''}>Save Changes</button>
-                        ${p.url ? `<a href="${escapeHtml(p.url)}" target="_blank" class="btn btn-notion">Open in Notion</a>` : ''}
-                    </div>
-
-                    <div style="height: 40px;"></div>
+                    <button class="action-btn design" onclick="openRequestGraphicsModal()">
+                        <div class="action-icon">🎨</div>
+                        <div class="action-label">Request Graphics</div>
+                        <div class="action-desc">Design asset request</div>
+                    </button>
                 </div>
             `;
         }
 
-        function goBack() {
-            if (hasChanges && !confirm('You have unsaved changes. Discard them?')) return;
-            currentView = 'list';
-            currentProject = null;
-            originalProject = null;
-            hasChanges = false;
-            window.history.pushState({}, '', window.location.pathname);
-            render();
-        }
-
-        function updateField(field, value) {
-            if (field === 'dealValue') value = value ? parseFloat(value) : null;
-            currentProject[field] = value;
-            hasChanges = JSON.stringify(currentProject) !== JSON.stringify(originalProject);
-
-            // Re-render to update weighted value and unlock states
-            render();
-        }
-
-        function discardChanges() {
-            currentProject = JSON.parse(JSON.stringify(originalProject));
-            hasChanges = false;
-            render();
-        }
-
-        async function saveChanges() {
-            const saveBtn = document.getElementById('saveBtn');
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Saving...';
-
-            const changes = {};
-            for (const key in currentProject) {
-                if (JSON.stringify(currentProject[key]) !== JSON.stringify(originalProject[key])) {
-                    changes[key] = currentProject[key];
-                }
-            }
-
-            try {
-                const res = await fetch(`${API_URL}/projects/${currentProject.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(changes)
-                });
-                const data = await res.json();
-                if (data.success) {
-                    const idx = allProjects.findIndex(p => p.id === currentProject.id);
-                    if (idx !== -1) allProjects[idx] = { ...allProjects[idx], ...changes };
-                    originalProject = JSON.parse(JSON.stringify(currentProject));
-                    hasChanges = false;
-                    showToast('Changes saved!', 'success');
-                } else {
-                    throw new Error(data.error || 'Save failed');
-                }
-            } catch (e) {
-                console.error('Save error:', e);
-                showToast('Failed to save: ' + e.message, 'error');
-            }
-
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save Changes';
-            render();
-        }
-
         // ═══════════════════════════════════════════════════════════════════════════
-        // NEW PROJECT MODAL (Stage 1 Only - Quick Capture)
+        // MODAL 1: NEW PROJECT (Sales Quick Capture)
         // ═══════════════════════════════════════════════════════════════════════════
         function openNewProjectModal() {
             const modal = document.getElementById('modal');
-            const overlay = document.getElementById('modalOverlay');
-
             modal.innerHTML = `
                 <div class="modal-header">
                     <div class="modal-title-group">
-                        <div class="modal-icon">&#x1F4CB;</div>
+                        <div class="modal-icon sales">📋</div>
                         <div>
                             <div class="modal-title">New Project</div>
-                            <div class="modal-subtitle">Stage 1 — Quick Capture (under 60 seconds)</div>
+                            <div class="modal-subtitle">Sales quick capture</div>
                         </div>
                     </div>
-                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                    <button class="modal-close" onclick="closeModal()">×</button>
                 </div>
                 <div class="modal-body">
-                    <div class="modal-section-title">Project Details</div>
                     <div class="field">
                         <label class="field-label">Project Name <span class="required">*</span></label>
-                        <input type="text" class="field-input" id="newTitle" placeholder="e.g. Sky Vegas Q1 Campaign">
+                        <input type="text" class="field-input" id="projName" placeholder="e.g. Sky Vegas Q1 Campaign">
                     </div>
-                    <div class="field" style="margin-top: 14px;">
-                        <label class="field-label">Client / External Partner <span class="required">*</span></label>
+                    <div class="field">
+                        <label class="field-label">Client <span class="required">*</span></label>
                         <div class="combobox-wrapper">
-                            <input type="text" class="field-input" id="newClient" placeholder="Search or add new..." autocomplete="off" onfocus="showClientDropdown()" oninput="filterClients(this.value)">
-                            <div class="combobox-dropdown" id="clientDropdown">
-                                ${clients.map(c => `<div class="combobox-item" onclick="selectClient('${escapeHtml(c)}')">${escapeHtml(c)}</div>`).join('')}
-                                <div class="combobox-item add-new" id="addNewClient" style="display: none;" onclick="selectClient(document.getElementById('newClient').value)">Add new client</div>
-                            </div>
+                            <input type="text" class="field-input" id="projClient" placeholder="Search or add new..." autocomplete="off" onfocus="showDropdown('clientDropdown')" oninput="filterDropdown('clientDropdown', this.value, ${JSON.stringify(clients).replace(/"/g, '&quot;')})">
+                            <div class="combobox-dropdown" id="clientDropdown"></div>
                         </div>
                     </div>
-
-                    <div class="modal-section-title">Deal Information</div>
-                    <div class="field-grid">
+                    <div class="field-row">
                         <div class="field">
                             <label class="field-label">Deal Value (£) <span class="required">*</span></label>
-                            <input type="number" class="field-input" id="newDealValue" placeholder="25000">
+                            <input type="number" class="field-input" id="projValue" placeholder="25000">
                         </div>
                         <div class="field">
-                            <label class="field-label">Probability % <span class="required">*</span></label>
-                            <select class="field-select" id="newProbability">
+                            <label class="field-label">Deal Stage <span class="required">*</span></label>
+                            <select class="field-select" id="projStage">
                                 <option value="">Select...</option>
-                                ${PROBABILITY_OPTIONS.map(p => `<option value="${p}">${p}</option>`).join('')}
+                                ${DEAL_STAGES.map(s => `<option value="${s}">${s}</option>`).join('')}
                             </select>
                         </div>
                     </div>
-                    <div class="field-grid" style="margin-top: 14px;">
+                    <div class="field-row">
                         <div class="field">
-                            <label class="field-label">Expected Close Date <span class="required">*</span></label>
-                            <input type="date" class="field-input" id="newCloseDate">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Sales Lead <span class="required">*</span></label>
-                            <select class="field-select" id="newSalesLead">
+                            <label class="field-label">Vertical</label>
+                            <select class="field-select" id="projVertical">
                                 <option value="">Select...</option>
-                                ${SALES_LEADS.map(l => `<option value="${l}">${l}</option>`).join('')}
+                                ${VERTICALS.map(v => `<option value="${v}">${v}</option>`).join('')}
                             </select>
                         </div>
-                    </div>
-
-                    <div class="modal-section-title">Assets</div>
-                    <div class="field">
-                        <label class="field-label">Brief Link</label>
-                        <input type="url" class="field-input" id="newBriefLink" placeholder="Paste Google Doc / Drive link...">
-                    </div>
-
-                    <div class="modal-section-title">Notes (Optional)</div>
-                    <div class="field">
-                        <textarea class="field-textarea" id="newNotes" placeholder="Any initial context, client requests..."></textarea>
+                        <div class="field">
+                            <label class="field-label">Project Type</label>
+                            <select class="field-select" id="projType">
+                                <option value="">Select...</option>
+                                ${PROJECT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="createProject()">Create Project</button>
+                    <button class="btn btn-primary" id="submitBtn" onclick="submitNewProject()">Create Project</button>
                 </div>
             `;
-
-            overlay.classList.add('open');
-            document.getElementById('newTitle').focus();
-
-            // Close dropdown on outside click
-            document.addEventListener('click', handleOutsideClick);
+            document.getElementById('modalOverlay').classList.add('open');
+            document.getElementById('projName').focus();
         }
 
-        function handleOutsideClick(e) {
-            if (!e.target.closest('.combobox-wrapper')) {
-                document.getElementById('clientDropdown')?.classList.remove('show');
-            }
-        }
+        async function submitNewProject() {
+            const name = document.getElementById('projName').value.trim();
+            const client = document.getElementById('projClient').value.trim();
+            const value = document.getElementById('projValue').value;
+            const stage = document.getElementById('projStage').value;
 
-        function showClientDropdown() {
-            document.getElementById('clientDropdown').classList.add('show');
-        }
-
-        function filterClients(query) {
-            const dropdown = document.getElementById('clientDropdown');
-            const items = dropdown.querySelectorAll('.combobox-item:not(.add-new)');
-            const addNew = document.getElementById('addNewClient');
-            let hasMatch = false;
-
-            items.forEach(item => {
-                const match = item.textContent.toLowerCase().includes(query.toLowerCase());
-                item.style.display = match ? 'block' : 'none';
-                if (match) hasMatch = true;
-            });
-
-            // Show "Add new" option if no exact match
-            const exactMatch = clients.some(c => c.toLowerCase() === query.toLowerCase());
-            addNew.style.display = (query && !exactMatch) ? 'block' : 'none';
-            addNew.textContent = `Add "${query}"`;
-        }
-
-        function selectClient(client) {
-            document.getElementById('newClient').value = client;
-            document.getElementById('clientDropdown').classList.remove('show');
-        }
-
-        function closeModal() {
-            document.getElementById('modalOverlay').classList.remove('open');
-            document.removeEventListener('click', handleOutsideClick);
-        }
-
-        async function createProject() {
-            const title = document.getElementById('newTitle').value.trim();
-            const client = document.getElementById('newClient').value.trim();
-            const dealValue = document.getElementById('newDealValue').value;
-            const probability = document.getElementById('newProbability').value;
-            const closeDate = document.getElementById('newCloseDate').value;
-            const salesLead = document.getElementById('newSalesLead').value;
-            const briefLink = document.getElementById('newBriefLink').value.trim();
-            const notes = document.getElementById('newNotes').value.trim();
-
-            // Validation
-            if (!title || !client || !dealValue || !probability || !closeDate || !salesLead) {
-                showToast('Please fill in all required fields', 'error');
+            if (!name || !client || !value || !stage) {
+                showToast('Please fill required fields', 'error');
                 return;
             }
 
-            const btn = document.querySelector('.modal-footer .btn-primary');
+            const btn = document.getElementById('submitBtn');
             btn.disabled = true;
             btn.textContent = 'Creating...';
 
             try {
-                const payload = {
-                    title: title,
-                    client: client,
-                    dealValue: parseFloat(dealValue),
-                    probability: probability,
-                    expectedCloseDate: closeDate,
-                    salesLead: salesLead,
-                    briefLink: briefLink || null,
-                    notes: notes || null,
-                    dealStage: 'Brief Recieved',
-                    projectStatus: 'Not started'
-                };
-
                 const res = await fetch(`${API_URL}/projects`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        title: name,
+                        client: client,
+                        dealValue: parseFloat(value),
+                        dealStage: stage,
+                        vertical: document.getElementById('projVertical').value || null,
+                        projectType: document.getElementById('projType').value || null
+                    })
                 });
-
                 const data = await res.json();
                 if (data.success || data.id) {
                     showToast('Project created!', 'success');
                     closeModal();
-                    await loadProjects(); // Refresh list
+                    loadData();
                 } else {
-                    throw new Error(data.error || 'Creation failed');
+                    throw new Error(data.error || 'Failed');
                 }
             } catch (e) {
-                console.error('Create error:', e);
-                showToast('Failed to create: ' + e.message, 'error');
+                showToast('Error: ' + e.message, 'error');
                 btn.disabled = false;
                 btn.textContent = 'Create Project';
             }
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // ADD DELIVERABLE MODAL
+        // MODAL 2: ADD EPISODE
         // ═══════════════════════════════════════════════════════════════════════════
-        function openAddDeliverableModal() {
+        function openAddEpisodeModal() {
             const modal = document.getElementById('modal');
-            const overlay = document.getElementById('modalOverlay');
-
             modal.innerHTML = `
                 <div class="modal-header">
                     <div class="modal-title-group">
-                        <div class="modal-icon" style="background: var(--production-soft);">&#x1F4E6;</div>
+                        <div class="modal-icon creative">🎬</div>
                         <div>
-                            <div class="modal-title">Add Deliverable</div>
-                            <div class="modal-subtitle">Break project into trackable items</div>
+                            <div class="modal-title">Add Episode</div>
+                            <div class="modal-subtitle">To existing project</div>
                         </div>
                     </div>
-                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                    <button class="modal-close" onclick="closeModal()">×</button>
                 </div>
                 <div class="modal-body">
                     <div class="field">
-                        <label class="field-label">Deliverable Name <span class="required">*</span></label>
-                        <input type="text" class="field-input" id="delName" placeholder="e.g. Hero Video 60s">
+                        <label class="field-label">Parent Project <span class="required">*</span></label>
+                        <select class="field-select" id="epProject">
+                            <option value="">Select project...</option>
+                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)} ${p.client ? `(${escapeHtml(p.client)})` : ''}</option>`).join('')}
+                        </select>
                     </div>
-                    <div class="field-grid" style="margin-top: 14px;">
-                        <div class="field">
-                            <label class="field-label">Discipline</label>
-                            <select class="field-select" id="delDiscipline">
-                                <option value="">Select...</option>
-                                <option value="Creative">Creative</option>
-                                <option value="Design">Design</option>
-                                <option value="Edit">Edit</option>
-                                <option value="Producer">Producer</option>
-                                <option value="Creator">Creator</option>
-                            </select>
-                        </div>
+                    <div class="field">
+                        <label class="field-label">Episode Name <span class="required">*</span></label>
+                        <input type="text" class="field-input" id="epName" placeholder="e.g. Episode 1 - Behind the Scenes">
+                    </div>
+                    <div class="field-row">
                         <div class="field">
                             <label class="field-label">Format</label>
-                            <input type="text" class="field-input" id="delFormat" placeholder="e.g. MP4 1080p">
-                        </div>
-                    </div>
-                    <div class="field-grid" style="margin-top: 14px;">
-                        <div class="field">
-                            <label class="field-label">Complexity</label>
-                            <select class="field-select" id="delComplexity">
+                            <select class="field-select" id="epFormat">
                                 <option value="">Select...</option>
-                                <option value="Low">Low</option>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
+                                ${FORMATS.map(f => `<option value="${f}">${f}</option>`).join('')}
                             </select>
                         </div>
                         <div class="field">
                             <label class="field-label">Due Date</label>
-                            <input type="date" class="field-input" id="delDueDate">
+                            <input type="date" class="field-input" id="epDue">
                         </div>
-                    </div>
-                    <div class="field" style="margin-top: 14px;">
-                        <label class="field-label">Assigned To</label>
-                        <input type="text" class="field-input" id="delAssigned" placeholder="Team member name...">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="addDeliverable()">Add Deliverable</button>
+                    <button class="btn btn-primary" id="submitBtn" onclick="submitAddEpisode()">Add Episode</button>
                 </div>
             `;
-
-            overlay.classList.add('open');
-            document.getElementById('delName').focus();
+            document.getElementById('modalOverlay').classList.add('open');
         }
 
-        function addDeliverable() {
-            const name = document.getElementById('delName').value.trim();
-            if (!name) {
-                showToast('Please enter a deliverable name', 'error');
+        async function submitAddEpisode() {
+            const projectId = document.getElementById('epProject').value;
+            const name = document.getElementById('epName').value.trim();
+
+            if (!projectId || !name) {
+                showToast('Please fill required fields', 'error');
                 return;
             }
 
-            const deliverable = {
-                name: name,
-                discipline: document.getElementById('delDiscipline').value,
-                format: document.getElementById('delFormat').value,
-                complexity: document.getElementById('delComplexity').value,
-                dueDate: document.getElementById('delDueDate').value,
-                assignedTo: document.getElementById('delAssigned').value,
-                status: 'Pending'
-            };
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
 
-            if (!currentProject.deliverables) {
-                currentProject.deliverables = [];
-            }
-            currentProject.deliverables.push(deliverable);
-            hasChanges = true;
-
-            closeModal();
-            render();
-            showToast('Deliverable added', 'success');
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════════
-        // ROUTING
-        // ═══════════════════════════════════════════════════════════════════════════
-        function handleRouting() {
-            const params = new URLSearchParams(window.location.search);
-            const projectId = params.get('project');
-            if (projectId && allProjects.length > 0) {
-                const project = allProjects.find(p => p.id === projectId);
-                if (project) {
-                    currentProject = JSON.parse(JSON.stringify(project));
-                    originalProject = JSON.parse(JSON.stringify(project));
-                    currentView = 'detail';
-                    render();
-                    return;
+            try {
+                const res = await fetch(`${API_URL}/projects/${projectId}/episodes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        format: document.getElementById('epFormat').value || null,
+                        dueDate: document.getElementById('epDue').value || null
+                    })
+                });
+                const data = await res.json();
+                if (data.success || data.id) {
+                    showToast('Episode added!', 'success');
+                    closeModal();
+                    loadData();
+                } else {
+                    throw new Error(data.error || 'Failed');
                 }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Add Episode';
             }
-            currentView = 'list';
-            render();
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // INITIALIZE
+        // MODAL 3: ADD TASK
         // ═══════════════════════════════════════════════════════════════════════════
-        document.addEventListener('DOMContentLoaded', async () => {
-            await loadProjects();
-            handleRouting();
-            window.addEventListener('popstate', handleRouting);
+        function openAddTaskModal() {
+            const modal = document.getElementById('modal');
+            modal.innerHTML = `
+                <div class="modal-header">
+                    <div class="modal-title-group">
+                        <div class="modal-icon production">✅</div>
+                        <div>
+                            <div class="modal-title">Add Task</div>
+                            <div class="modal-subtitle">Assign discipline task</div>
+                        </div>
+                    </div>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="field">
+                        <label class="field-label">Parent Project <span class="required">*</span></label>
+                        <select class="field-select" id="taskProject" onchange="updateEpisodeDropdown()">
+                            <option value="">Select project...</option>
+                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Episode (Optional)</label>
+                        <select class="field-select" id="taskEpisode">
+                            <option value="">Select episode...</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Task Name <span class="required">*</span></label>
+                        <input type="text" class="field-input" id="taskName" placeholder="e.g. First cut review">
+                    </div>
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Discipline <span class="required">*</span></label>
+                            <select class="field-select" id="taskDiscipline">
+                                <option value="">Select...</option>
+                                ${DISCIPLINES.map(d => `<option value="${d}">${d}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Due Date</label>
+                            <input type="date" class="field-input" id="taskDue">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Assigned To</label>
+                        <input type="text" class="field-input" id="taskAssigned" placeholder="Team member name">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="submitBtn" onclick="submitAddTask()">Add Task</button>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('open');
+        }
+
+        function updateEpisodeDropdown() {
+            const projectId = document.getElementById('taskProject').value;
+            const episodeSelect = document.getElementById('taskEpisode');
+            const projectEpisodes = episodes.filter(e => e.projectId === projectId);
+
+            episodeSelect.innerHTML = '<option value="">Select episode...</option>' +
+                projectEpisodes.map(e => `<option value="${e.id}">${escapeHtml(e.name || e.title)}</option>`).join('');
+        }
+
+        async function submitAddTask() {
+            const projectId = document.getElementById('taskProject').value;
+            const name = document.getElementById('taskName').value.trim();
+            const discipline = document.getElementById('taskDiscipline').value;
+
+            if (!projectId || !name || !discipline) {
+                showToast('Please fill required fields', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+
+            try {
+                const episodeId = document.getElementById('taskEpisode').value;
+                const endpoint = episodeId
+                    ? `${API_URL}/episodes/${episodeId}/tasks`
+                    : `${API_URL}/projects/${projectId}/tasks`;
+
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        discipline: discipline,
+                        dueDate: document.getElementById('taskDue').value || null,
+                        assignedTo: document.getElementById('taskAssigned').value || null
+                    })
+                });
+                const data = await res.json();
+                if (data.success || data.id) {
+                    showToast('Task added!', 'success');
+                    closeModal();
+                    loadData();
+                } else {
+                    throw new Error(data.error || 'Failed');
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Add Task';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // MODAL 4: REQUEST GRAPHICS
+        // ═══════════════════════════════════════════════════════════════════════════
+        function openRequestGraphicsModal() {
+            const modal = document.getElementById('modal');
+            modal.innerHTML = `
+                <div class="modal-header">
+                    <div class="modal-title-group">
+                        <div class="modal-icon design">🎨</div>
+                        <div>
+                            <div class="modal-title">Request Graphics</div>
+                            <div class="modal-subtitle">Design asset request</div>
+                        </div>
+                    </div>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="field">
+                        <label class="field-label">Project <span class="required">*</span></label>
+                        <select class="field-select" id="gfxProject">
+                            <option value="">Select project...</option>
+                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field-row">
+                        <div class="field">
+                            <label class="field-label">Asset Type <span class="required">*</span></label>
+                            <select class="field-select" id="gfxType">
+                                <option value="">Select...</option>
+                                ${ASSET_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label class="field-label">Deadline <span class="required">*</span></label>
+                            <input type="date" class="field-input" id="gfxDeadline">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Brief Notes</label>
+                        <textarea class="field-textarea" id="gfxNotes" placeholder="Describe what you need..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="submitBtn" onclick="submitRequestGraphics()">Submit Request</button>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('open');
+        }
+
+        async function submitRequestGraphics() {
+            const projectId = document.getElementById('gfxProject').value;
+            const assetType = document.getElementById('gfxType').value;
+            const deadline = document.getElementById('gfxDeadline').value;
+
+            if (!projectId || !assetType || !deadline) {
+                showToast('Please fill required fields', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+
+            try {
+                const res = await fetch(`${API_URL}/design-requests`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        projectId: projectId,
+                        assetType: assetType,
+                        deadline: deadline,
+                        notes: document.getElementById('gfxNotes').value || null
+                    })
+                });
+                const data = await res.json();
+                if (data.success || data.id) {
+                    showToast('Request submitted!', 'success');
+                    closeModal();
+                } else {
+                    throw new Error(data.error || 'Failed');
+                }
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Submit Request';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // DROPDOWN HELPERS
+        // ═══════════════════════════════════════════════════════════════════════════
+        function showDropdown(id) {
+            const dropdown = document.getElementById(id);
+            dropdown.classList.add('show');
+        }
+
+        function filterDropdown(id, query, items) {
+            const dropdown = document.getElementById(id);
+            const filtered = items.filter(item =>
+                item.toLowerCase().includes(query.toLowerCase())
+            );
+
+            let html = filtered.map(item =>
+                `<div class="combobox-item" onclick="selectDropdownItem('${id}', '${escapeHtml(item)}')">${escapeHtml(item)}</div>`
+            ).join('');
+
+            if (query && !items.some(i => i.toLowerCase() === query.toLowerCase())) {
+                html += `<div class="combobox-item add-new" onclick="selectDropdownItem('${id}', '${escapeHtml(query)}')">+ Add "${escapeHtml(query)}"</div>`;
+            }
+
+            if (!html) {
+                html = '<div class="combobox-empty">No matches</div>';
+            }
+
+            dropdown.innerHTML = html;
+            dropdown.classList.add('show');
+        }
+
+        function selectDropdownItem(dropdownId, value) {
+            const dropdown = document.getElementById(dropdownId);
+            const input = dropdown.previousElementSibling;
+            input.value = value;
+            dropdown.classList.remove('show');
+        }
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.combobox-wrapper')) {
+                document.querySelectorAll('.combobox-dropdown').forEach(d => d.classList.remove('show'));
+            }
         });
 
-        // Auto-refresh every 60 seconds when on list view
-        setInterval(() => {
-            if (currentView === 'list') loadProjects();
-        }, 60000);
+        // ═══════════════════════════════════════════════════════════════════════════
+        // INIT
+        // ═══════════════════════════════════════════════════════════════════════════
+        document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
 </html>
