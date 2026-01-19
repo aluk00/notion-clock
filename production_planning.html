@@ -828,6 +828,22 @@
 
             try {
                 const response = await fetch(`${API_URL}/events`);
+
+                // Check if response is OK before parsing JSON
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorMsg = `Server error (${response.status})`;
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        if (errorData.error) errorMsg = errorData.error;
+                    } catch (parseErr) {
+                        // Response wasn't JSON (likely HTML error page)
+                        console.error('Non-JSON error response:', errorText.substring(0, 200));
+                        errorMsg = `Server returned ${response.status}. The /events endpoint may not be configured.`;
+                    }
+                    throw new Error(errorMsg);
+                }
+
                 const data = await response.json();
 
                 if (!data.success) {

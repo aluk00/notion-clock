@@ -665,8 +665,22 @@
         }
 
         function renderKanban() {
-            // Show all projects that have a productionWorkflowStatus set (not filtered by team)
-            const filtered = allProjects.filter(p => p.productionWorkflowStatus);
+            // Include all projects that have productionWorkflowStatus OR are in active pipeline stages
+            // Default projects without productionWorkflowStatus to "Not Started" if they have an active deal
+            const filtered = allProjects.filter(p => {
+                // Include if has productionWorkflowStatus
+                if (p.productionWorkflowStatus) return true;
+                // Include if has relevant deal stage (Deal Agreed or Campaign Complete - i.e., won deals)
+                const dealStage = (p.dealStage || '').toLowerCase();
+                if (dealStage.includes('agreed') || dealStage === 'campaign complete') {
+                    return true;
+                }
+                return false;
+            }).map(p => ({
+                ...p,
+                // Default productionWorkflowStatus if not set
+                productionWorkflowStatus: p.productionWorkflowStatus || 'Not Started'
+            }));
             const totalValue = filtered.reduce((sum, p) => sum + (parseFloat(p.dealValue) || 0), 0);
             const valueStr = totalValue >= 1000 ? `£${Math.round(totalValue / 1000)}K` : `£${totalValue}`;
 

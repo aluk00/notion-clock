@@ -71,6 +71,16 @@
         while (currentDate <= end) {
           const dateStr = currentDate.toISOString().split('T')[0];
           const response = await fetch(`${API_URL}/rundown?date=${dateStr}`);
+
+          // Check if response is OK before parsing JSON
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Error fetching rundown for ${dateStr}:`, response.status, errorText.substring(0, 200));
+            // Continue to next date instead of failing completely
+            currentDate.setDate(currentDate.getDate() + 1);
+            continue;
+          }
+
           const data = await response.json();
 
           if (data.success && data.items) {
