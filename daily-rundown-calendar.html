@@ -274,6 +274,9 @@
     const EditModal = ({ item, isOpen, onClose, onSave, onDelete }) => {
       const [formData, setFormData] = useState({});
       const [loading, setLoading] = useState(false);
+      const [isVisible, setIsVisible] = useState(false);
+      const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+      const modalRef = useRef(null);
 
       useEffect(() => {
         if (item) {
@@ -292,6 +295,35 @@
         }
       }, [item]);
 
+      useEffect(() => {
+        if (isOpen) {
+          requestAnimationFrame(() => setIsVisible(true));
+          document.body.style.overflow = 'hidden';
+        } else {
+          setIsVisible(false);
+          setShowDeleteConfirm(false);
+          document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+      }, [isOpen]);
+
+      useEffect(() => {
+        const handleEscape = (e) => {
+          if (e.key === 'Escape' && isOpen) handleClose();
+        };
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+      }, [isOpen]);
+
+      const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 200);
+      };
+
+      const handleBackdropClick = (e) => {
+        if (e.target === e.currentTarget) handleClose();
+      };
+
       if (!isOpen) return null;
 
       const handleChange = (name, value) => {
@@ -307,7 +339,7 @@
         setLoading(true);
         try {
           await onSave(item.id, formData);
-          onClose();
+          handleClose();
         } catch (error) {
           console.error(error);
           alert('Failed to save. Please try again.');
@@ -317,17 +349,16 @@
       };
 
       const handleDelete = async () => {
-        if (confirm('Are you sure you want to delete this item?')) {
-          setLoading(true);
-          try {
-            await onDelete(item.id);
-            onClose();
-          } catch (error) {
-            console.error(error);
-            alert('Failed to delete. Please try again.');
-          } finally {
-            setLoading(false);
-          }
+        setLoading(true);
+        try {
+          await onDelete(item.id);
+          handleClose();
+        } catch (error) {
+          console.error(error);
+          alert('Failed to delete. Please try again.');
+        } finally {
+          setLoading(false);
+          setShowDeleteConfirm(false);
         }
       };
 
@@ -360,55 +391,82 @@
         { value: 'done', label: 'Thumbnail Ready' }
       ];
 
+      const vertical = (formData.vertical || '').toUpperCase();
+      const verticalClass = VERTICAL_STYLES[vertical] || 'bg-gray-100 text-gray-600';
+
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 transition-all">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
-              <div>
-                <h2 className="text-sm font-extrabold uppercase tracking-widest text-ink">Edit Item</h2>
-                <p className="text-[10px] text-ink-sub mt-0.5 font-medium">Update details (syncs to Notion)</p>
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-200 ${isVisible ? 'bg-black/40 backdrop-blur-sm' : 'bg-transparent'}`}
+          onClick={handleBackdropClick}
+        >
+          <div
+            ref={modalRef}
+            className={`bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] transition-all duration-200 ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'}`}
+          >
+            {/* Header with item preview */}
+            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-white to-bg-soft">
+              <div className="flex justify-between items-start">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded ${verticalClass} tracking-wide`}>
+                      {vertical || 'MAIN'}
+                    </span>
+                    {formData.section && (
+                      <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-gray-100 text-gray-500">
+                        {formData.section}
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-base font-bold text-ink truncate pr-4">
+                    {formData.title || 'Untitled Item'}
+                  </h2>
+                  <p className="text-[10px] text-ink-sub mt-1 font-medium">
+                    Edit details below - changes sync to Notion
+                  </p>
+                </div>
+                <button
+                  onClick={handleClose}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-ink transition-all hover:rotate-90 duration-200"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-ink transition-colors"
-              >
-                ✕
-              </button>
             </div>
 
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 scroll-smooth">
               <div className="space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase text-ink-sub mb-1.5 tracking-wide">Content Title</label>
-                    <input
-                      type="text"
-                      name="title"
-                      value={formData.title || ''}
-                      onChange={handleInputChange}
-                      className="w-full text-sm font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all placeholder:text-gray-300"
-                      placeholder="e.g. Manchester United Match Analysis"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select
-                      label="Vertical"
-                      value={formData.vertical || ''}
-                      options={VERTICALS}
-                      onChange={(val) => handleChange('vertical', val)}
-                    />
-                    <Select
-                      label="Rundown Section"
-                      value={formData.section || ''}
-                      options={SECTIONS}
-                      onChange={(val) => handleChange('section', val)}
-                    />
-                  </div>
+                {/* Title Section */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-ink-sub mb-1.5 tracking-wide">Content Title</label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title || ''}
+                    onChange={handleInputChange}
+                    className="w-full text-sm font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all placeholder:text-gray-300"
+                    placeholder="e.g. Manchester United Match Analysis"
+                  />
                 </div>
 
-                <div className="p-4 bg-bg-soft rounded-lg border border-dashed border-gray-200 space-y-4">
-                  <div className="flex items-center gap-2 mb-1">
+                {/* Classification Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Select
+                    label="Vertical"
+                    value={formData.vertical || ''}
+                    options={VERTICALS}
+                    onChange={(val) => handleChange('vertical', val)}
+                  />
+                  <Select
+                    label="Rundown Section"
+                    value={formData.section || ''}
+                    options={SECTIONS}
+                    onChange={(val) => handleChange('section', val)}
+                  />
+                </div>
+
+                {/* Team Assignment */}
+                <div className="p-4 bg-bg-soft rounded-xl border border-gray-100 space-y-4">
+                  <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-editorial"></span>
                     <h3 className="text-[10px] font-bold uppercase text-ink tracking-widest">Team Assignment</h3>
                   </div>
@@ -420,7 +478,7 @@
                         name="creator"
                         value={formData.creator || ''}
                         onChange={handleInputChange}
-                        className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all"
+                        className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all"
                         placeholder="Creator name"
                       />
                     </div>
@@ -431,13 +489,14 @@
                         name="editor"
                         value={formData.editor || ''}
                         onChange={handleInputChange}
-                        className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all"
+                        className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all"
                         placeholder="Editor name"
                       />
                     </div>
                   </div>
                 </div>
 
+                {/* Status Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <Select
                     label="Status"
@@ -453,6 +512,7 @@
                   />
                 </div>
 
+                {/* Date & Link Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold uppercase text-ink-sub mb-1.5 tracking-wide">Planned Live Date</label>
@@ -477,53 +537,81 @@
                   </div>
                 </div>
 
+                {/* Notes */}
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-ink-sub mb-1.5 tracking-wide">Notes</label>
                   <textarea
                     name="notes"
                     value={formData.notes || ''}
                     onChange={handleInputChange}
-                    className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all min-h-[90px]"
+                    className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all min-h-[80px] resize-none"
                     placeholder="Add any context, edits, or blockers..."
                   />
                 </div>
 
+                {/* Notion Link */}
                 {item.url && (
-                  <div className="pt-2">
+                  <div className="flex items-center gap-2 pt-2">
+                    <svg className="w-3 h-3 text-ink-sub" viewBox="0 0 100 100" fill="currentColor">
+                      <path d="M6.017 4.313l55.333-4.087c6.797-.583 8.543-.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277-1.553 6.807-6.99 7.193L24.467 99.967c-4.08.193-6.023-.39-8.16-3.113L3.3 79.94c-2.333-3.113-3.3-5.443-3.3-8.167V11.113c0-3.497 1.553-6.413 6.017-6.8z" fillRule="evenodd"/>
+                    </svg>
                     <a
                       href={item.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs text-blue-600 underline"
+                      className="text-[10px] font-semibold text-ink-sub hover:text-editorial transition-colors"
                     >
-                      View in Notion
+                      Open in Notion
                     </a>
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between">
-              <button
-                onClick={handleDelete}
-                className="text-[11px] font-bold uppercase text-red-500 hover:text-red-600"
-                disabled={loading}
-              >
-                Delete
-              </button>
+              {!showDeleteConfirm ? (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="text-[11px] font-bold uppercase text-ink-sub hover:text-red-500 transition-colors"
+                  disabled={loading}
+                >
+                  Delete
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-red-500 font-semibold">Delete this item?</span>
+                  <button
+                    onClick={handleDelete}
+                    disabled={loading}
+                    className="px-2 py-1 text-[10px] font-bold uppercase bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-2 py-1 text-[10px] font-bold uppercase text-ink-sub hover:text-ink transition-colors"
+                  >
+                    No
+                  </button>
+                </div>
+              )}
               <div className="flex gap-2">
                 <button
-                  onClick={onClose}
-                  className="px-4 py-2 text-[11px] font-bold uppercase border border-gray-200 rounded-lg"
+                  onClick={handleClose}
+                  className="px-4 py-2 text-[11px] font-bold uppercase border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={loading}
-                  className="px-4 py-2 text-[11px] font-bold uppercase bg-editorial text-white rounded-lg"
+                  className="px-4 py-2 text-[11px] font-bold uppercase bg-editorial text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {loading ? 'Saving...' : 'Save'}
+                  {loading && (
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  )}
+                  {loading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </div>
@@ -533,6 +621,7 @@
     };
 
     const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const VISIBLE_ITEMS_COUNT = 5;
 
     const getWeekStart = (date) => {
       const d = new Date(date);
@@ -685,35 +774,51 @@
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-                {weekData.map((day, i) => (
-                  <div key={day.dateKey} className="min-h-[200px] md:min-h-[600px] flex flex-col">
-                    <div className={`p-3 text-center border-b border-gray-50 transition-colors ${isToday(day.date) ? 'bg-editorial/5' : 'bg-bg-soft'}`}>
-                      <div className="text-[9px] font-bold uppercase text-ink-sub tracking-widest mb-0.5">
-                        {WEEKDAYS[i]}
-                      </div>
-                      <div className={`text-lg font-black ${isToday(day.date) ? 'text-editorial' : 'text-ink'}`}>
-                        {day.date.getDate()}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 p-2 bg-white flex flex-col gap-2">
-                      {day.items.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-start pt-8 opacity-20 hover:opacity-40 transition-opacity">
-                          <div className="w-1 h-8 bg-gray-300 rounded-full mb-2"></div>
-                          <span className="text-[8px] font-bold uppercase">No Items</span>
+                {weekData.map((day, i) => {
+                  const hasMore = day.items.length > VISIBLE_ITEMS_COUNT;
+                  const hiddenCount = day.items.length - VISIBLE_ITEMS_COUNT;
+                  return (
+                    <div key={day.dateKey} className="min-h-[200px] md:min-h-[500px] md:max-h-[600px] flex flex-col">
+                      <div className={`p-3 text-center border-b border-gray-50 transition-colors flex-shrink-0 ${isToday(day.date) ? 'bg-editorial/5' : 'bg-bg-soft'}`}>
+                        <div className="text-[9px] font-bold uppercase text-ink-sub tracking-widest mb-0.5">
+                          {WEEKDAYS[i]}
                         </div>
-                      ) : (
-                        day.items.map((item) => (
-                          <RundownCard
-                            key={item.id}
-                            item={item}
-                            onClick={handleCardClick}
-                          />
-                        ))
+                        <div className={`text-lg font-black ${isToday(day.date) ? 'text-editorial' : 'text-ink'}`}>
+                          {day.date.getDate()}
+                        </div>
+                        {day.items.length > 0 && (
+                          <div className="text-[8px] font-bold text-ink-sub mt-1">
+                            {day.items.length} item{day.items.length !== 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 p-2 bg-white flex flex-col gap-2 overflow-y-auto custom-scrollbar scroll-smooth">
+                        {day.items.length === 0 ? (
+                          <div className="h-full flex flex-col items-center justify-start pt-8 opacity-20 hover:opacity-40 transition-opacity">
+                            <div className="w-1 h-8 bg-gray-300 rounded-full mb-2"></div>
+                            <span className="text-[8px] font-bold uppercase">No Items</span>
+                          </div>
+                        ) : (
+                          day.items.map((item) => (
+                            <RundownCard
+                              key={item.id}
+                              item={item}
+                              onClick={handleCardClick}
+                            />
+                          ))
+                        )}
+                      </div>
+                      {hasMore && (
+                        <div className="px-2 py-1.5 border-t border-gray-100 bg-gradient-to-t from-bg-soft to-white flex-shrink-0">
+                          <div className="text-center text-[8px] font-bold text-ink-sub uppercase tracking-wide">
+                            ↓ +{hiddenCount} more
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
