@@ -172,7 +172,42 @@ async function buildProjectProperties(data) {
     if (data.editorialLeadId) {
         props['EDITORIAL LEAD'] = { people: [{ id: data.editorialLeadId }] };
     }
-    
+
+    // Three-Stage Workflow Fields
+
+    // Stage 1: Sales fields
+    if (data.salesNotes !== undefined) {
+        props['SALES NOTES'] = { rich_text: data.salesNotes ? [{ text: { content: data.salesNotes } }] : [] };
+    }
+    if (data.probability !== undefined) {
+        props['PROBABILITY'] = data.probability ? { select: { name: data.probability } } : { select: null };
+    }
+    if (data.expectedCloseDate !== undefined) {
+        props['EXPECTED CLOSE DATE'] = { date: data.expectedCloseDate ? { start: data.expectedCloseDate } : null };
+    }
+
+    // URL fields
+    if (data.briefLink !== undefined) {
+        props['BRIEF LINK'] = { url: data.briefLink || null };
+    }
+    if (data.creativeResponseLink !== undefined) {
+        props['CREATIVE RESPONSE LINK'] = { url: data.creativeResponseLink || null };
+    }
+    if (data.frameIoLink !== undefined) {
+        props['FRAME.IO LINK'] = { url: data.frameIoLink || null };
+    }
+    if (data.driveFolder !== undefined) {
+        props['DRIVE FOLDER'] = { url: data.driveFolder || null };
+    }
+
+    // Stage 2: Handoff fields
+    if (data.responseTypeNeeded !== undefined) {
+        props['RESPONSE TYPE NEEDED'] = data.responseTypeNeeded ? { select: { name: data.responseTypeNeeded } } : { select: null };
+    }
+    if (data.suggestedCampaignWindow !== undefined) {
+        props['SUGGESTED CAMPAIGN WINDOW'] = { date: data.suggestedCampaignWindow ? { start: data.suggestedCampaignWindow } : null };
+    }
+
     return props;
 }
 
@@ -385,13 +420,23 @@ app.get('/projects', async (req, res) => {
                 creativeLead: parseProperty(props['CREATIVE LEAD']),
                 productionLead: parseProperty(props['PRODUCTION LEAD']),
                 editorialLead: parseProperty(props['EDITORIAL LEAD']),
+                // Three-Stage Workflow Fields
+                salesNotes: parseProperty(props['SALES NOTES']),
+                probability: parseProperty(props['PROBABILITY']),
+                expectedCloseDate: parseProperty(props['EXPECTED CLOSE DATE']),
+                briefLink: parseProperty(props['BRIEF LINK']),
+                creativeResponseLink: parseProperty(props['CREATIVE RESPONSE LINK']),
+                frameIoLink: parseProperty(props['FRAME.IO LINK']),
+                driveFolder: parseProperty(props['DRIVE FOLDER']),
+                responseTypeNeeded: parseProperty(props['RESPONSE TYPE NEEDED']),
+                suggestedCampaignWindow: parseProperty(props['SUGGESTED CAMPAIGN WINDOW']),
                 // Rollups from Deliverables
                 deliverableCount: parseProperty(props['DELIVERABLE COUNT']),
                 deliverablesComplete: parseProperty(props['DELIVERABLES COMPLETE']),
                 nextDeliverableDue: parseProperty(props['NEXT DELIVERABLE DUE'])
             };
         });
-        
+
         res.json({ success: true, projects, count: projects.length });
     } catch (error) {
         console.error('Error fetching projects:', error);
