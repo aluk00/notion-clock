@@ -291,7 +291,13 @@
         .modal-body {
             padding: 20px;
             overflow-y: auto;
+            overflow-x: visible;
             flex: 1;
+        }
+
+        /* Ensure field with combobox allows overflow */
+        .field.has-dropdown {
+            overflow: visible;
         }
 
         .modal-footer {
@@ -371,18 +377,23 @@
 
         .combobox-dropdown {
             position: absolute;
-            top: 100%;
+            top: calc(100% + 4px);
             left: 0;
             right: 0;
             background: var(--surface);
             border: 1.5px solid var(--dmg-blue);
-            border-top: none;
-            border-radius: 0 0 var(--radius-xs) var(--radius-xs);
-            max-height: 180px;
+            border-radius: var(--radius-xs);
+            max-height: 160px;
             overflow-y: auto;
-            z-index: 100;
+            z-index: 1001;
             display: none;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        /* When dropdown would overflow bottom, flip to top */
+        .combobox-dropdown.flip-up {
+            top: auto;
+            bottom: calc(100% + 4px);
         }
 
         .combobox-dropdown.show {
@@ -413,6 +424,141 @@
             font-size: 11px;
             color: var(--ink-muted);
             text-align: center;
+        }
+
+        /* Brief Upload Section */
+        .brief-section {
+            border: 1.5px dashed var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            background: var(--surface-alt);
+        }
+
+        .brief-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .brief-tab {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: var(--radius-xs);
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .brief-tab:hover {
+            border-color: var(--ink-muted);
+        }
+
+        .brief-tab.active {
+            border-color: var(--dmg-blue);
+            background: var(--dmg-blue-soft);
+            color: var(--dmg-blue);
+        }
+
+        .brief-content {
+            display: none;
+        }
+
+        .brief-content.active {
+            display: block;
+        }
+
+        .file-upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-xs);
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--surface);
+        }
+
+        .file-upload-zone:hover {
+            border-color: var(--dmg-blue);
+            background: var(--dmg-blue-soft);
+        }
+
+        .file-upload-zone.dragover {
+            border-color: var(--dmg-blue);
+            background: var(--dmg-blue-soft);
+        }
+
+        .file-upload-zone.has-file {
+            border-color: var(--production);
+            background: var(--production-soft);
+        }
+
+        .file-upload-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .file-upload-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+        }
+
+        .file-upload-hint {
+            font-size: 10px;
+            color: var(--ink-muted);
+            margin-top: 4px;
+        }
+
+        .file-name-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 12px;
+            background: var(--surface);
+            border-radius: var(--radius-xs);
+            border: 1.5px solid var(--production);
+        }
+
+        .file-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-remove {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: none;
+            background: var(--surface-alt);
+            color: var(--ink-sub);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .file-remove:hover {
+            background: #FEE2E2;
+            color: #E94B4B;
         }
 
         /* Buttons */
@@ -678,6 +824,35 @@
                             </select>
                         </div>
                     </div>
+                    <div class="field">
+                        <label class="field-label">Client Due Date</label>
+                        <input type="date" class="field-input" id="projDueDate">
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Brief / Reference</label>
+                        <div class="brief-section">
+                            <div class="brief-tabs">
+                                <button type="button" class="brief-tab active" onclick="switchBriefTab('url')">
+                                    🔗 URL Link
+                                </button>
+                                <button type="button" class="brief-tab" onclick="switchBriefTab('file')">
+                                    📄 Upload File
+                                </button>
+                            </div>
+                            <div class="brief-content active" id="briefUrlContent">
+                                <input type="url" class="field-input" id="projBriefUrl" placeholder="https://docs.google.com/... or any URL">
+                            </div>
+                            <div class="brief-content" id="briefFileContent">
+                                <div class="file-upload-zone" id="fileUploadZone" onclick="document.getElementById('projBriefFile').click()">
+                                    <div class="file-upload-icon">📁</div>
+                                    <div class="file-upload-text">Click to upload or drag & drop</div>
+                                    <div class="file-upload-hint">PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, Images (max 10MB)</div>
+                                </div>
+                                <input type="file" id="projBriefFile" style="display: none" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif" onchange="handleFileSelect(this)">
+                                <div id="fileNameDisplay" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
@@ -686,6 +861,97 @@
             `;
             document.getElementById('modalOverlay').classList.add('open');
             document.getElementById('projName').focus();
+            setupFileUploadDragDrop();
+        }
+
+        // Brief tab switching
+        function switchBriefTab(tab) {
+            const tabs = document.querySelectorAll('.brief-tab');
+            const contents = document.querySelectorAll('.brief-content');
+
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            if (tab === 'url') {
+                tabs[0].classList.add('active');
+                document.getElementById('briefUrlContent').classList.add('active');
+            } else {
+                tabs[1].classList.add('active');
+                document.getElementById('briefFileContent').classList.add('active');
+            }
+        }
+
+        // File upload handling
+        let selectedFile = null;
+
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            // Check file size (10MB max)
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('File too large. Max 10MB allowed.', 'error');
+                input.value = '';
+                return;
+            }
+
+            selectedFile = file;
+            updateFileDisplay(file);
+        }
+
+        function updateFileDisplay(file) {
+            const zone = document.getElementById('fileUploadZone');
+            const display = document.getElementById('fileNameDisplay');
+
+            if (file) {
+                zone.style.display = 'none';
+                display.style.display = 'flex';
+                display.innerHTML = `
+                    <div class="file-name-display">
+                        <span class="file-name">📄 ${escapeHtml(file.name)}</span>
+                        <button type="button" class="file-remove" onclick="removeFile()">×</button>
+                    </div>
+                `;
+            } else {
+                zone.style.display = 'block';
+                display.style.display = 'none';
+            }
+        }
+
+        function removeFile() {
+            selectedFile = null;
+            const input = document.getElementById('projBriefFile');
+            if (input) input.value = '';
+            updateFileDisplay(null);
+        }
+
+        function setupFileUploadDragDrop() {
+            setTimeout(() => {
+                const zone = document.getElementById('fileUploadZone');
+                if (!zone) return;
+
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('dragover');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('dragover');
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('dragover');
+                    const file = e.dataTransfer.files[0];
+                    if (file) {
+                        const input = document.getElementById('projBriefFile');
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        input.files = dt.files;
+                        handleFileSelect(input);
+                    }
+                });
+            }, 100);
         }
 
         async function submitNewProject() {
@@ -704,21 +970,45 @@
             btn.textContent = 'Creating...';
 
             try {
-                const res = await fetch(`${API_URL}/projects`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        title: name,
-                        client: client,
-                        dealValue: parseFloat(value),
-                        dealStage: stage,
-                        vertical: document.getElementById('projVertical').value || null,
-                        projectType: document.getElementById('projType').value || null
-                    })
-                });
+                // Get brief data
+                const briefUrl = document.getElementById('projBriefUrl')?.value?.trim() || null;
+                const dueDate = document.getElementById('projDueDate')?.value || null;
+
+                // Build request data
+                const projectData = {
+                    title: name,
+                    client: client,
+                    dealValue: parseFloat(value),
+                    dealStage: stage,
+                    vertical: document.getElementById('projVertical').value || null,
+                    projectType: document.getElementById('projType').value || null,
+                    clientDueDate: dueDate,
+                    briefUrl: briefUrl
+                };
+
+                // If there's a file selected, use FormData for multipart upload
+                let res;
+                if (selectedFile) {
+                    const formData = new FormData();
+                    formData.append('data', JSON.stringify(projectData));
+                    formData.append('briefFile', selectedFile);
+
+                    res = await fetch(`${API_URL}/projects`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                } else {
+                    res = await fetch(`${API_URL}/projects`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(projectData)
+                    });
+                }
+
                 const data = await res.json();
                 if (data.success || data.id) {
                     showToast('Project created!', 'success');
+                    selectedFile = null; // Reset file state
                     closeModal();
                     loadData();
                 } else {
@@ -1028,6 +1318,20 @@
         function showDropdown(id) {
             const dropdown = document.getElementById(id);
             dropdown.classList.add('show');
+
+            // Check if dropdown would overflow and flip if needed
+            setTimeout(() => {
+                const rect = dropdown.getBoundingClientRect();
+                const modalBody = dropdown.closest('.modal-body');
+                if (modalBody) {
+                    const modalRect = modalBody.getBoundingClientRect();
+                    if (rect.bottom > modalRect.bottom) {
+                        dropdown.classList.add('flip-up');
+                    } else {
+                        dropdown.classList.remove('flip-up');
+                    }
+                }
+            }, 10);
         }
 
         function filterDropdown(id, query, items) {
@@ -1050,6 +1354,20 @@
 
             dropdown.innerHTML = html;
             dropdown.classList.add('show');
+
+            // Check if dropdown would overflow and flip if needed
+            setTimeout(() => {
+                const rect = dropdown.getBoundingClientRect();
+                const modalBody = dropdown.closest('.modal-body');
+                if (modalBody) {
+                    const modalRect = modalBody.getBoundingClientRect();
+                    if (rect.bottom > modalRect.bottom) {
+                        dropdown.classList.add('flip-up');
+                    } else {
+                        dropdown.classList.remove('flip-up');
+                    }
+                }
+            }, 10);
         }
 
         function selectDropdownItem(dropdownId, value) {
