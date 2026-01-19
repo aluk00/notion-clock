@@ -67,11 +67,12 @@
         .header-actions { display: flex; gap: 8px; }
 
         /* KPIS */
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); background: var(--bg-soft); }
+        .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--border); background: var(--bg-soft); }
         .stat-item { padding: 16px 24px; border-right: 1px solid var(--border); }
         .stat-item:last-child { border-right: none; }
         .stat-label { font-size: 9px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
         .stat-value { font-size: 24px; font-weight: 900; letter-spacing: -0.03em; }
+        .stat-sub { font-size: 10px; font-weight: 600; color: var(--ink-sub); margin-top: 2px; }
 
         /* LISTS */
         .section-header { 
@@ -252,6 +253,34 @@
         .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1C1C1C; color: #FFF; padding: 10px 24px; border-radius: 30px; font-size: 12px; font-weight: 600; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 200; }
         .toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); }
 
+        /* Stage Pills */
+        .stage-indicator { display: flex; gap: 4px; align-items: center; }
+        .stage-dot { width: 8px; height: 8px; border-radius: 50%; background: #E5E7EB; }
+        .stage-dot.active { background: var(--dmg-blue); }
+        .stage-dot.complete { background: var(--success); }
+        .stage-dot.stage-1 { background: var(--dmg-blue); }
+        .stage-dot.stage-2 { background: #E6468B; }
+        .stage-dot.stage-3 { background: var(--success); }
+
+        /* Probability Badge */
+        .prob-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+        .prob-high { background: rgba(16, 185, 129, 0.1); color: #065F46; }
+        .prob-med { background: rgba(245, 158, 11, 0.1); color: #B45309; }
+        .prob-low { background: rgba(239, 68, 68, 0.1); color: #B91C1C; }
+
+        /* New Project Modal */
+        .modal-lg { width: 500px; }
+        .modal-section { margin-bottom: 16px; }
+        .modal-section-title { font-size: 9px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; margin-top: 20px; }
+        .modal-section-title:first-child { margin-top: 0; }
+        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .field { margin-bottom: 12px; }
+        .field:last-child { margin-bottom: 0; }
+
+        /* Value Display */
+        .value-display { font-size: 11px; font-weight: 700; color: var(--success); }
+        .weighted-calc { font-size: 9px; color: var(--ink-sub); font-weight: 500; }
+
         /* Scope Banner - Shows what user is viewing */
         .scope-banner {
             display: flex;
@@ -305,6 +334,7 @@
                 <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
             </div>
             <div class="header-actions">
+                <button class="btn btn-primary" onclick="openNewProjectModal()">+ New Project</button>
                 <button class="btn" onclick="loadData()">Refresh</button>
             </div>
         </div>
@@ -312,6 +342,7 @@
         <div class="stats-grid">
             <div class="stat-item"><span class="stat-label">In Production</span><div class="stat-value" style="color:var(--dmg-blue)" id="kpi-prod">0</div></div>
             <div class="stat-item"><span class="stat-label">Pipeline</span><div class="stat-value" id="kpi-pipe">0</div></div>
+            <div class="stat-item"><span class="stat-label">Pipeline Value</span><div class="stat-value" style="color:var(--success)" id="kpi-value">£0</div><div class="stat-sub" id="kpi-weighted">Weighted: £0</div></div>
             <div class="stat-item"><span class="stat-label">Live</span><div class="stat-value" style="color:var(--success)" id="kpi-live">0</div></div>
             <div class="stat-item"><span class="stat-label">Action</span><div class="stat-value" style="color:var(--danger)" id="kpi-action">0</div></div>
         </div>
@@ -347,7 +378,7 @@
             </div>
         </div>
         <div class="list-header grid-pipe">
-            <span>Client / Brief</span><span>Stage</span><span>Assets</span><span>Sales</span><span>Due</span>
+            <span>Client / Brief</span><span>Stage</span><span>Value / Prob</span><span>Sales</span><span>Due</span>
         </div>
         <div class="list-scroll" id="pipeline-list"></div>
 
@@ -423,6 +454,17 @@
             <div class="modal-header" id="modal-note-title">Add Note</div>
             <div class="modal-body" id="modal-note-body"></div>
             <div class="modal-footer"><button class="btn" onclick="closeModal('modal-note')">Cancel</button><button class="btn btn-primary" onclick="saveNote()">Save</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-project">
+        <div class="modal modal-lg">
+            <div class="modal-header">New Commercial Project</div>
+            <div class="modal-body" id="modal-project-body"></div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('modal-project')">Cancel</button>
+                <button class="btn btn-primary" id="btn-create-project" onclick="createProject()">Create Project</button>
+            </div>
         </div>
     </div>
 
@@ -571,8 +613,10 @@
         const prodMount = document.getElementById('production-list');
         const pipeMount = document.getElementById('pipeline-list');
         prodMount.innerHTML = ''; pipeMount.innerHTML = '';
-        
+
         let counts = { prod: 0, pipe: 0, live: 0, action: 0 };
+        let pipelineValue = 0;
+        let weightedValue = 0;
 
         Object.values(groupedProjects).forEach(group => {
             counts.prod++;
@@ -616,13 +660,26 @@
                 if (isArchived) return;
 
                 counts.pipe++;
+
+                // Calculate pipeline value
+                const dealVal = parseFloat(p.dealValue) || 0;
+                const prob = parseInt(p.probability) || 50; // Default 50%
+                pipelineValue += dealVal;
+                weightedValue += dealVal * (prob / 100);
+
+                // Determine probability class
+                const probClass = prob >= 75 ? 'prob-high' : prob >= 50 ? 'prob-med' : 'prob-low';
+
                 const div = document.createElement('div');
                 div.className = 'row grid-pipe';
                 const dueDate = p.clientDueDate || p.internalDueDate || p.dueDate || p.expectedCloseDate;
                 div.innerHTML = `
                     <div><div class="cell-title">${p.client || 'Internal'}</div><div class="cell-sub">${p.title}</div></div>
                     <div><span class="pill status-pitch"><span class="dot"></span>${p.dealStage || p.status1 || 'Pipeline'}</span></div>
-                    <div class="cell-sub" style="color:var(--purple); font-weight:700;">${formatAssets(p.assetsNeeded)}</div>
+                    <div class="cell-sub">
+                        ${dealVal > 0 ? `<span style="color:var(--success); font-weight:700;">${formatCurrency(dealVal)}</span>` : '--'}
+                        ${p.probability ? `<span class="prob-badge ${probClass}" style="margin-left:6px;">${p.probability}</span>` : ''}
+                    </div>
                     <div class="cell-sub">${formatPeople(p.salesLead)}</div>
                     <div class="cell-meta">${formatDate(dueDate)}</div>
                 `;
@@ -640,6 +697,8 @@
 
         document.getElementById('kpi-prod').innerText = counts.prod;
         document.getElementById('kpi-pipe').innerText = counts.pipe;
+        document.getElementById('kpi-value').innerText = formatCurrency(pipelineValue);
+        document.getElementById('kpi-weighted').innerText = `Weighted: ${formatCurrency(weightedValue)}`;
         document.getElementById('kpi-live').innerText = counts.live;
         document.getElementById('kpi-action').innerText = counts.action;
         document.getElementById('count-prod').innerText = counts.prod;
@@ -962,6 +1021,150 @@
         try { await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("meeting_notes").add(data); document.getElementById('modal-note').classList.remove('open'); loadNotes(); } catch(e) { alert("Error saving"); }
     };
     window.closeModal = (id) => document.getElementById(id).classList.remove('open');
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // NEW PROJECT MODAL
+    // ═══════════════════════════════════════════════════════════════════════════
+    const DEAL_STAGES = ['Brief Received', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete', 'Closed Lost'];
+    const VERTICALS = ['Spotlight', 'Trailblazers', 'Hub', 'Social-First', 'Custom'];
+    const PROBABILITIES = ['10%', '25%', '50%', '75%', '90%'];
+
+    window.openNewProjectModal = () => {
+        const body = document.getElementById('modal-project-body');
+        body.innerHTML = `
+            <div class="modal-section-title">Project Details</div>
+            <div class="field">
+                <label class="field-label">Project Name *</label>
+                <input class="field-input" type="text" id="np-title" placeholder="e.g. Sky Vegas Q1 Campaign">
+            </div>
+            <div class="field">
+                <label class="field-label">Client *</label>
+                <input class="field-input" type="text" id="np-client" placeholder="Client name">
+            </div>
+
+            <div class="modal-section-title">Deal Information</div>
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">Deal Value (£) *</label>
+                    <input class="field-input" type="number" id="np-value" placeholder="25000" oninput="updateWeightedPreview()">
+                </div>
+                <div class="field">
+                    <label class="field-label">Probability *</label>
+                    <select class="field-select" id="np-prob" onchange="updateWeightedPreview()">
+                        <option value="">Select...</option>
+                        ${PROBABILITIES.map(p => `<option value="${p}">${p}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">Deal Stage *</label>
+                    <select class="field-select" id="np-stage">
+                        <option value="">Select...</option>
+                        ${DEAL_STAGES.map(s => `<option value="${s}">${s}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label">Vertical</label>
+                    <select class="field-select" id="np-vertical">
+                        <option value="">Select...</option>
+                        ${VERTICALS.map(v => `<option value="${v}">${v}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div id="weighted-preview" style="padding:12px; background:#F0FDF4; border-radius:8px; border-left:3px solid var(--success); margin-top:8px; display:none;">
+                <div class="weighted-calc">Weighted Value</div>
+                <div class="value-display" id="weighted-value">£0</div>
+            </div>
+
+            <div class="modal-section-title">Timeline</div>
+            <div class="field-row">
+                <div class="field">
+                    <label class="field-label">Expected Close Date</label>
+                    <input class="field-input" type="date" id="np-close">
+                </div>
+                <div class="field">
+                    <label class="field-label">Sales Lead</label>
+                    <select class="field-select" id="np-sales">
+                        <option value="">Select...</option>
+                        ${SALES.map(s => `<option value="${s}">${s}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+        `;
+        document.getElementById('modal-project').classList.add('open');
+    };
+
+    window.updateWeightedPreview = () => {
+        const value = parseFloat(document.getElementById('np-value').value) || 0;
+        const prob = parseInt(document.getElementById('np-prob').value) || 0;
+        const weighted = value * (prob / 100);
+        const preview = document.getElementById('weighted-preview');
+        const display = document.getElementById('weighted-value');
+
+        if (value > 0 && prob > 0) {
+            preview.style.display = 'block';
+            display.textContent = formatCurrency(weighted);
+        } else {
+            preview.style.display = 'none';
+        }
+    };
+
+    window.createProject = async () => {
+        const title = document.getElementById('np-title').value.trim();
+        const client = document.getElementById('np-client').value.trim();
+        const value = document.getElementById('np-value').value;
+        const prob = document.getElementById('np-prob').value;
+        const stage = document.getElementById('np-stage').value;
+
+        if (!title || !client || !value || !prob || !stage) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        const btn = document.getElementById('btn-create-project');
+        btn.disabled = true;
+        btn.textContent = 'Creating...';
+
+        try {
+            const res = await fetch(`${API_URL}/projects`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title,
+                    client,
+                    dealValue: parseFloat(value),
+                    probability: prob,
+                    dealStage: stage,
+                    vertical: document.getElementById('np-vertical').value || null,
+                    expectedCloseDate: document.getElementById('np-close').value || null,
+                    salesLead: document.getElementById('np-sales').value || null
+                })
+            });
+            const data = await res.json();
+            if (data.success || data.id) {
+                showToast('Project Created!');
+                closeModal('modal-project');
+                loadData();
+            } else {
+                throw new Error(data.error || 'Failed to create');
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Create Project';
+        }
+    };
+
+    // Currency formatter
+    function formatCurrency(val) {
+        if (!val) return '£0';
+        const num = parseFloat(val);
+        if (num >= 1000000) return `£${(num / 1000000).toFixed(1)}M`;
+        if (num >= 1000) return `£${Math.round(num / 1000)}K`;
+        return `£${Math.round(num)}`;
+    }
     </script>
 </body>
 </html>
