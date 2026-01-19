@@ -30,6 +30,10 @@
             0%, 100% { opacity: 0.3; transform: scale(0.9); }
             50% { opacity: 1; transform: scale(1); }
         }
+        @keyframes slideOut {
+            0% { opacity: 1; transform: translateX(0); }
+            100% { opacity: 0; transform: translateX(100%); }
+        }
         .widget-container {
             display: flex;
             flex-direction: column;
@@ -95,7 +99,7 @@
             margin-bottom: 10px;
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
             cursor: pointer;
             transition: all 0.15s ease;
         }
@@ -104,9 +108,48 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.03);
         }
+        .card.completing {
+            animation: slideOut 0.4s ease forwards;
+            pointer-events: none;
+        }
         .card.overdue { border-left: 3px solid var(--danger); }
         .card.due-soon { border-left: 3px solid var(--warning); }
-        .card.no-date { border-left: 3px solid var(--ink-sub); opacity: 0.7; }
+
+        /* Checkbox */
+        .complete-checkbox {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .complete-checkbox:hover {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+        .complete-checkbox svg {
+            width: 12px;
+            height: 12px;
+            stroke: transparent;
+            stroke-width: 3;
+            transition: stroke 0.2s;
+        }
+        .complete-checkbox:hover svg {
+            stroke: var(--success);
+        }
+        .complete-checkbox.checking {
+            border-color: var(--success);
+            background: var(--success);
+        }
+        .complete-checkbox.checking svg {
+            stroke: white;
+        }
+
         .date-badge {
             min-width: 50px;
             text-align: center;
@@ -200,6 +243,29 @@
         .empty-icon { font-size: 40px; margin-bottom: 12px; }
         .empty-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--ink); }
         .empty-sub { font-size: 12px; }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--ink);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.visible {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
     </style>
 </head>
 <body>
@@ -217,9 +283,11 @@
         </div>
         <div class="list-container" id="list-container"></div>
     </div>
+    <div class="toast" id="toast"></div>
 
     <script>
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+        let briefsData = [];
 
         async function fetchData() {
             try {
@@ -229,15 +297,25 @@
                 const data = await res.json();
                 const projects = data.projects || [];
 
-                // Filter and map projects with client due dates
-                const briefs = projects
+                // Filter projects:
+                // - Must have a client due date
+                // - Exclude completed deals
+                // - Exclude projects already in "Sales Review" or "Complete" creative status
+                briefsData = projects
                     .filter(p => {
-                        // Must have a client due date
                         const hasDate = p.clientDueDate || p.dueDate;
-                        // Exclude completed deals
                         const dealStage = (p.dealStage || '').toLowerCase();
+                        const creativeStatus = (p.creativeWorkflowStatus || '').toLowerCase();
+
+                        // Exclude completed deals
                         const isComplete = dealStage.includes('complete') || dealStage.includes('lost');
-                        return hasDate && !isComplete;
+
+                        // Exclude briefs already sent (Sales Review or Complete)
+                        const briefSent = creativeStatus.includes('sales review') ||
+                                         creativeStatus.includes('complete') ||
+                                         creativeStatus.includes('sent');
+
+                        return hasDate && !isComplete && !briefSent;
                     })
                     .map(p => ({
                         id: p.id,
@@ -246,12 +324,12 @@
                         client: p.client || 'Internal',
                         dueDate: new Date(p.clientDueDate || p.dueDate),
                         dealStage: p.dealStage || '',
-                        briefLink: p.briefLink || p.creativeResponseLink || '',
-                        hasNoDate: false
+                        creativeStatus: p.creativeWorkflowStatus || '',
+                        briefLink: p.briefLink || p.creativeResponseLink || ''
                     }))
                     .sort((a, b) => a.dueDate - b.dueDate);
 
-                render(briefs);
+                render();
             } catch (err) {
                 console.error('Error loading data:', err);
                 document.getElementById('loader').innerHTML = `
@@ -262,19 +340,19 @@
             }
         }
 
-        function render(briefs) {
+        function render() {
             const container = document.getElementById('list-container');
             const countBadge = document.getElementById('count');
             document.getElementById('loader').style.display = 'none';
 
-            countBadge.textContent = `${briefs.length} briefs`;
+            countBadge.textContent = `${briefsData.length} briefs`;
 
-            if (briefs.length === 0) {
+            if (briefsData.length === 0) {
                 container.innerHTML = `
                     <div class="empty">
                         <div class="empty-icon">📋</div>
                         <div class="empty-title">No Briefs Due</div>
-                        <div class="empty-sub">All caught up! No projects with client due dates.</div>
+                        <div class="empty-sub">All caught up! No pending briefs.</div>
                     </div>
                 `;
                 return;
@@ -285,7 +363,7 @@
             const threeDaysFromNow = new Date(today);
             threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
 
-            container.innerHTML = briefs.map(item => {
+            container.innerHTML = briefsData.map(item => {
                 const day = item.dueDate.getDate();
                 const month = item.dueDate.toLocaleDateString('en-GB', { month: 'short' });
                 const isOverdue = item.dueDate < today;
@@ -296,7 +374,12 @@
                 else if (isDueSoon) cardClass += ' due-soon';
 
                 return `
-                    <div class="${cardClass}" onclick="window.open('${item.url}', '_blank')">
+                    <div class="${cardClass}" id="card-${item.id}" onclick="window.open('${item.url}', '_blank')">
+                        <div class="complete-checkbox" onclick="event.stopPropagation(); markBriefSent('${item.id}')" title="Mark brief as sent">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </div>
                         <div class="date-badge">
                             <span class="date-day">${day}</span>
                             <span class="date-month">${month}</span>
@@ -308,7 +391,7 @@
                         </div>
                         <div class="actions">
                             ${item.briefLink ? `
-                                <button class="icon-btn has-link" onclick="event.stopPropagation(); window.open('${item.briefLink}', '_blank')" title="Open Brief">
+                                <button class="icon-btn has-link" onclick="event.stopPropagation(); window.open('${item.briefLink}', '_blank')" title="Open Brief/Response">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                                         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
@@ -326,6 +409,55 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        async function markBriefSent(projectId) {
+            const card = document.getElementById(`card-${projectId}`);
+            const checkbox = card.querySelector('.complete-checkbox');
+
+            // Visual feedback
+            checkbox.classList.add('checking');
+
+            try {
+                // Update Notion: set creativeWorkflowStatus to "Sales Review"
+                const res = await fetch(`${API_URL}/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        creativeWorkflowStatus: 'Sales Review'
+                    })
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    throw new Error(errorData.error || `API error: ${res.status}`);
+                }
+
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error || 'Update failed');
+
+                // Animate out and remove
+                card.classList.add('completing');
+                showToast('Brief marked as sent!', 'success');
+
+                setTimeout(() => {
+                    // Remove from local data and re-render
+                    briefsData = briefsData.filter(b => b.id !== projectId);
+                    render();
+                }, 400);
+
+            } catch (err) {
+                console.error('Error marking brief sent:', err);
+                checkbox.classList.remove('checking');
+                showToast('Failed to update: ' + err.message, 'error');
+            }
+        }
+
+        function showToast(message, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} visible`;
+            setTimeout(() => toast.classList.remove('visible'), 3000);
         }
 
         // Load data on page load
