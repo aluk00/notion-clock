@@ -660,6 +660,34 @@
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const firebaseApp = initializeApp(firebaseConfig);
+        const storage = getStorage(firebaseApp);
+
+        // Expose storage functions globally for use in other scripts
+        window.firebaseStorage = {
+            uploadFile: async (file, path) => {
+                const storageRef = ref(storage, path);
+                const snapshot = await uploadBytes(storageRef, file);
+                return await getDownloadURL(snapshot.ref);
+            }
+        };
+    </script>
+
     <script>
         // ═══════════════════════════════════════════════════════════════════════════
         // CONFIGURATION
@@ -864,23 +892,6 @@
             setupFileUploadDragDrop();
         }
 
-        // Brief tab switching
-        function switchBriefTab(tab) {
-            const tabs = document.querySelectorAll('.brief-tab');
-            const contents = document.querySelectorAll('.brief-content');
-
-            tabs.forEach(t => t.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
-
-            if (tab === 'url') {
-                tabs[0].classList.add('active');
-                document.getElementById('briefUrlContent').classList.add('active');
-            } else {
-                tabs[1].classList.add('active');
-                document.getElementById('briefFileContent').classList.add('active');
-            }
-        }
-
         // File upload handling
         let selectedFile = null;
 
@@ -905,7 +916,7 @@
 
             if (file) {
                 zone.style.display = 'none';
-                display.style.display = 'flex';
+                display.style.display = 'block';
                 display.innerHTML = `
                     <div class="file-name-display">
                         <span class="file-name">📄 ${escapeHtml(file.name)}</span>
@@ -954,6 +965,23 @@
             }, 100);
         }
 
+        // Brief tab switching
+        function switchBriefTab(tab) {
+            const tabs = document.querySelectorAll('.brief-tab');
+            const contents = document.querySelectorAll('.brief-content');
+
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+
+            if (tab === 'url') {
+                tabs[0].classList.add('active');
+                document.getElementById('briefUrlContent').classList.add('active');
+            } else {
+                tabs[1].classList.add('active');
+                document.getElementById('briefFileContent').classList.add('active');
+            }
+        }
+
         async function submitNewProject() {
             const name = document.getElementById('projName').value.trim();
             const client = document.getElementById('projClient').value.trim();
@@ -970,9 +998,31 @@
             btn.textContent = 'Creating...';
 
             try {
-                // Get brief data
-                const briefUrl = document.getElementById('projBriefUrl')?.value?.trim() || null;
+                // Get brief data - URL or uploaded file
+                let briefLink = document.getElementById('projBriefUrl')?.value?.trim() || null;
                 const dueDate = document.getElementById('projDueDate')?.value || null;
+
+                // If file selected, upload to Firebase Storage first
+                if (selectedFile) {
+                    btn.textContent = 'Uploading file...';
+                    try {
+                        // Generate unique path: briefs/client-name/timestamp-filename
+                        const timestamp = Date.now();
+                        const safeName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                        const storagePath = `briefs/${client.replace(/[^a-zA-Z0-9]/g, '_')}/${timestamp}-${safeName}`;
+
+                        // Upload to Firebase Storage and get download URL
+                        briefLink = await window.firebaseStorage.uploadFile(selectedFile, storagePath);
+                    } catch (uploadError) {
+                        console.error('File upload error:', uploadError);
+                        showToast('Failed to upload file: ' + uploadError.message, 'error');
+                        btn.disabled = false;
+                        btn.textContent = 'Create Project';
+                        return;
+                    }
+                }
+
+                btn.textContent = 'Creating...';
 
                 // Build request data
                 const projectData = {
@@ -983,27 +1033,14 @@
                     vertical: document.getElementById('projVertical').value || null,
                     projectType: document.getElementById('projType').value || null,
                     clientDueDate: dueDate,
-                    briefUrl: briefUrl
+                    briefLink: briefLink
                 };
 
-                // If there's a file selected, use FormData for multipart upload
-                let res;
-                if (selectedFile) {
-                    const formData = new FormData();
-                    formData.append('data', JSON.stringify(projectData));
-                    formData.append('briefFile', selectedFile);
-
-                    res = await fetch(`${API_URL}/projects`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                } else {
-                    res = await fetch(`${API_URL}/projects`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(projectData)
-                    });
-                }
+                const res = await fetch(`${API_URL}/projects`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(projectData)
+                });
 
                 const data = await res.json();
                 if (data.success || data.id) {
