@@ -3,16 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Briefs Hub | DMG</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <title>Briefs Due | DMG</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
     <style>
         :root {
             --ink: #111827;
@@ -20,16 +12,12 @@
             --border: #E5E7EB;
             --white: #FFFFFF;
             --surface: #F9FAFB;
-            
-            /* Theme Colors */
             --hero-pink: #E6468B;
-            --hero-blue: #21A0D8;
-            --production-green: #43B049;
             --danger: #EF4444;
+            --warning: #F59E0B;
+            --success: #10B981;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background: var(--white);
@@ -38,14 +26,10 @@
             padding: 20px;
             overflow: hidden;
         }
-
-        /* --- Animation --- */
         @keyframes pulse {
             0%, 100% { opacity: 0.3; transform: scale(0.9); }
             50% { opacity: 1; transform: scale(1); }
         }
-
-        /* --- Layout --- */
         .widget-container {
             display: flex;
             flex-direction: column;
@@ -56,7 +40,6 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.04);
             overflow: hidden;
         }
-
         .header {
             display: flex;
             align-items: center;
@@ -65,11 +48,8 @@
             border-bottom: 1px solid var(--border);
             background: rgba(255,255,255,0.95);
             backdrop-filter: blur(8px);
-            min-height: 60px; /* Kept height for consistency */
         }
-
         .header-left { display: flex; align-items: center; gap: 12px; }
-        
         .dot-grid {
             display: grid;
             grid-template-columns: repeat(2, 5px);
@@ -85,33 +65,28 @@
         .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
         .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
         .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
-
-        .add-btn {
-            width: 32px; height: 32px;
-            border-radius: 8px;
-            background: var(--hero-pink);
-            color: white;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: 0.2s;
+        .title {
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
         }
-        .add-btn:hover { transform: scale(1.05); background: #d63d7e; }
-
-        /* --- List --- */
+        .count-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(230, 70, 139, 0.1);
+            color: var(--hero-pink);
+        }
         .list-container {
             flex: 1;
             overflow-y: auto;
             padding: 16px;
-            background: var(--white);
         }
-        
-        /* Custom Scrollbar */
         .list-container::-webkit-scrollbar { width: 5px; }
         .list-container::-webkit-scrollbar-track { background: transparent; }
         .list-container::-webkit-scrollbar-thumb { background: #f1f1f1; border-radius: 10px; }
-
         .card {
             background: var(--white);
             border: 1px solid var(--border);
@@ -123,573 +98,241 @@
             gap: 16px;
             cursor: pointer;
             transition: all 0.15s ease;
-            position: relative;
         }
-
         .card:hover {
             border-color: #D1D5DB;
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.03);
         }
-
-        /* Slide-off animation for completed items */
-        .card.completing {
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        .card.overdue { border-left: 3px solid var(--danger); }
+        .card.due-soon { border-left: 3px solid var(--warning); }
+        .card.no-date { border-left: 3px solid var(--ink-sub); opacity: 0.7; }
+        .date-badge {
+            min-width: 50px;
+            text-align: center;
+            padding: 8px;
+            background: var(--surface);
+            border-radius: 10px;
         }
-
-        /* Complete checkbox */
-        .complete-checkbox {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 2px solid var(--border);
+        .date-day {
+            display: block;
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--ink);
+            line-height: 1;
+        }
+        .date-month {
+            display: block;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        .card.overdue .date-badge { background: rgba(239, 68, 68, 0.1); }
+        .card.overdue .date-day { color: var(--danger); }
+        .card.due-soon .date-badge { background: rgba(245, 158, 11, 0.1); }
+        .card.due-soon .date-day { color: var(--warning); }
+        .info { flex: 1; min-width: 0; }
+        .client-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+        .project-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+        .deal-stage {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(33, 160, 216, 0.1);
+            color: #21A0D8;
+            margin-top: 4px;
+            display: inline-block;
+        }
+        .actions { display: flex; gap: 6px; }
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--white);
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-            background: var(--white);
+            transition: all 0.15s;
         }
-        .complete-checkbox:hover {
-            border-color: var(--production-green);
-            background: rgba(67, 176, 73, 0.1);
-        }
-        .complete-checkbox.completing {
-            border-color: var(--production-green);
-            background: var(--production-green);
-        }
-        .complete-checkbox svg {
-            width: 12px;
-            height: 12px;
-            stroke: white;
-            stroke-width: 3;
-            opacity: 0;
-            transform: scale(0.5);
-            transition: all 0.2s ease;
-        }
-        .complete-checkbox.completing svg {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        /* Source Indicator Bar */
-        .card::before {
-            content: '';
-            position: absolute;
-            left: 0; top: 0; bottom: 0;
-            width: 4px;
-            border-radius: 12px 0 0 12px;
-            background: var(--hero-pink); /* Default: Firebase */
-        }
-        .card.source-notion::before { background: var(--hero-blue); } /* Notion */
-
-        .date-badge {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-width: 46px; height: 46px;
-            background: var(--surface);
-            border-radius: 10px;
-            border: 1px solid var(--border);
-        }
-        .date-day { font-size: 16px; font-weight: 700; color: var(--ink); line-height: 1; }
-        .date-month { font-size: 9px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-top: 2px; }
-        
-        .card.overdue .date-badge { background: #FEF2F2; border-color: #FECACA; }
-        .card.overdue .date-day { color: var(--danger); }
-        .card.overdue .date-month { color: var(--danger); }
-
-        /* No date styling */
-        .card.no-date .date-badge { background: #F3F4F6; border-color: #E5E7EB; }
-        .card.no-date .date-day { font-size: 12px; color: var(--ink-sub); }
-        .card.no-date .date-month { color: var(--ink-sub); }
-
-        .info { flex: 1; min-width: 0; }
-        .client-name { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); letter-spacing: 0.03em; margin-bottom: 4px; }
-        .project-name { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        .actions { display: flex; align-items: center; gap: 6px; }
-
-        .icon-btn {
-            width: 28px; height: 28px;
-            border-radius: 6px;
-            display: flex; align-items: center; justify-content: center;
-            border: 1px solid transparent;
-            background: var(--surface);
-            color: var(--ink-sub);
-            transition: 0.2s;
-        }
-        .icon-btn:hover { background: #E5E7EB; color: var(--ink); }
-        
-        .icon-btn.has-link { background: #ECFDF5; color: var(--production-green); border-color: #D1FAE5; }
-        .icon-btn.has-link:hover { background: #D1FAE5; }
-
-        /* --- Sheet Modal (Slick Interaction) --- */
-        .sheet-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(2px);
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-            transition: 0.3s;
+        .icon-btn:hover { background: var(--surface); border-color: #D1D5DB; }
+        .icon-btn.has-link { background: rgba(230, 70, 139, 0.1); border-color: rgba(230, 70, 139, 0.2); }
+        .icon-btn.has-link:hover { background: rgba(230, 70, 139, 0.2); }
+        .icon-btn svg { stroke: var(--ink-sub); stroke-width: 2; }
+        .icon-btn.has-link svg { stroke: var(--hero-pink); }
+        .loading {
             display: flex;
-            align-items: flex-end; /* Sheet coming from bottom */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            gap: 12px;
         }
-        .sheet-overlay.active { opacity: 1; pointer-events: auto; }
-
-        .sheet {
-            background: var(--white);
-            width: 100%;
-            border-radius: 20px 20px 0 0;
-            padding: 24px;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
-            transform: translateY(100%);
-            transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            max-height: 80vh;
-            overflow-y: auto;
+        .loading-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            text-transform: uppercase;
         }
-        .sheet-overlay.active .sheet { transform: translateY(0); }
-
-        .sheet-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
-        .sheet-title { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
-        .sheet-sub { font-size: 11px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; }
-        
-        .form-group { margin-bottom: 16px; }
-        .label { font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; display: block; margin-bottom: 8px; }
-        .input {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            font-family: inherit;
-            font-size: 14px;
-            background: var(--surface);
-            color: var(--ink);
+        .empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--ink-sub);
         }
-        .input:focus { outline: none; border-color: var(--hero-pink); background: var(--white); }
-        .input:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
-
-        .btn-primary {
-            width: 100%;
-            padding: 14px;
-            background: var(--hero-pink);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 14px;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        .btn-primary:hover { background: #d63d7e; }
-
-        /* Loading */
-        .loading-screen {
-            position: absolute; inset: 0;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: var(--white);
-            z-index: 50;
-        }
-        .loading-text { margin-top: 12px; font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; }
-
+        .empty-icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--ink); }
+        .empty-sub { font-size: 12px; }
     </style>
 </head>
 <body>
-
     <div class="widget-container">
         <div class="header">
             <div class="header-left">
                 <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                </div>
-            <button class="add-btn" onclick="openNewBrief()">+</button>
-        </div>
-
-        <div class="list-container" id="list-container">
+                <h1 class="title">Briefs Due</h1>
             </div>
-        
-        <div class="loading-screen" id="loader">
+            <span class="count-badge" id="count">Loading...</span>
+        </div>
+        <div id="loader" class="loading">
             <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-            <div class="loading-text">Loading Data...</div>
+            <span class="loading-text">Loading projects...</span>
         </div>
-    </div>
-
-    <div class="sheet-overlay" id="sheet-overlay" onclick="handleOverlayClick(event)">
-        <div class="sheet">
-            <div class="sheet-header">
-                <div>
-                    <div class="sheet-title" id="sheet-title">Edit Brief</div>
-                    <div class="sheet-sub" id="sheet-sub">Client Name</div>
-                </div>
-                <button onclick="closeSheet()" style="background:none; border:none; font-size:24px; color:var(--ink-sub); cursor:pointer;">&times;</button>
-            </div>
-            
-            <form id="sheet-form">
-                <input type="hidden" id="f-id">
-                <input type="hidden" id="f-source">
-                
-                <div class="form-group">
-                    <label class="label">Client</label>
-                    <input type="text" id="f-client" class="input" placeholder="e.g. Sky Vegas">
-                </div>
-                
-                <div class="form-group">
-                    <label class="label">Brief Title</label>
-                    <input type="text" id="f-title" class="input" placeholder="Project Name">
-                </div>
-
-                <div class="form-group">
-                    <label class="label">Due Date</label>
-                    <input type="date" id="f-date" class="input">
-                </div>
-
-                <div class="form-group">
-                    <label class="label">Deck / Response Link</label>
-                    <input type="url" id="f-link" class="input" placeholder="Paste Drive, Slides, or PDF link...">
-                </div>
-
-                <button type="submit" class="btn-primary" id="save-btn">Save Changes</button>
-            </form>
-            
-            <div style="margin-top:16px; text-align:center;">
-                <a href="#" id="f-open-btn" target="_blank" style="display:none; font-size:12px; font-weight:600; color:var(--hero-pink); text-decoration:none;">
-                    Open Existing Link &#8599;
-                </a>
-            </div>
-        </div>
+        <div class="list-container" id="list-container"></div>
     </div>
 
     <script>
-        // --- 1. CONFIGURATION ---
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
-        const APP_ID = "dmg-command-centre-native";
-        const FIREBASE_CONFIG = {
-            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-            authDomain: "dmg-command-centre-native.firebaseapp.com",
-            projectId: "dmg-command-centre-native",
-            storageBucket: "dmg-command-centre-native.firebasestorage.app",
-            messagingSenderId: "223535956454",
-            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-        };
-        
-        // Paths
-        const BRIEFS_PATH = `artifacts/${APP_ID}/public/data/briefs_due`;
-        const LINKS_PATH = `artifacts/${APP_ID}/public/data/brief_links`;
 
-        // --- 2. INIT ---
-        firebase.initializeApp(FIREBASE_CONFIG);
-        const db = firebase.firestore();
-        const auth = firebase.auth();
-        let globalData = [];
-
-        auth.signInAnonymously()
-            .then(() => fetchData())
-            .catch(e => { console.error("Auth", e); fetchData(); });
-
-        // --- 3. FETCH DATA ---
         async function fetchData() {
             try {
-                // Parallel Fetch: 1. Firebase Briefs | 2. Firebase Links (for Notion) | 3. Notion Projects
-                const [fbSnapshot, linkSnapshot, apiRes] = await Promise.all([
-                    db.collection(BRIEFS_PATH).get(),
-                    db.collection(LINKS_PATH).get(),
-                    fetch(`${API_URL}/projects`).catch(e => ({ ok: false })) // Fail gracefully
-                ]);
+                const res = await fetch(`${API_URL}/projects`);
+                if (!res.ok) throw new Error(`API error: ${res.status}`);
 
-                // A. Process Firebase Manual Briefs
-                const fbItems = fbSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    source: 'firebase',
-                    ...doc.data(),
-                    dueDate: doc.data().dueDate?.toDate ? doc.data().dueDate.toDate() : new Date(doc.data().dueDate)
-                }));
+                const data = await res.json();
+                const projects = data.projects || [];
 
-                // B. Process Links Overlay
-                const linksMap = {};
-                linkSnapshot.docs.forEach(doc => {
-                    linksMap[doc.id] = doc.data().url;
-                });
-
-                // C. Process Notion Projects (from API)
-                let notionItems = [];
-                if (apiRes.ok) {
-                    const apiJson = await apiRes.json();
-                    notionItems = (apiJson.projects || []).map(p => {
-                        // Priority: Custom Link > Notion Field Link > Notion URL
-                        const customLink = linksMap[p.id];
-                        // Check multiple date fields - more comprehensive
-                        const dateVal = p.clientDueDate || p.internalDueDate || p.dueDate || p.expectedCloseDate || p.publishDate || p.liveDate;
-
-                        // Include projects even without dates if they have active deal stage
+                // Filter and map projects with client due dates
+                const briefs = projects
+                    .filter(p => {
+                        // Must have a client due date
+                        const hasDate = p.clientDueDate || p.dueDate;
+                        // Exclude completed deals
                         const dealStage = (p.dealStage || '').toLowerCase();
-                        const isActiveDeal = dealStage &&
-                            !dealStage.includes('complete') &&
-                            !dealStage.includes('lost') &&
-                            !dealStage.includes('archived');
+                        const isComplete = dealStage.includes('complete') || dealStage.includes('lost');
+                        return hasDate && !isComplete;
+                    })
+                    .map(p => ({
+                        id: p.id,
+                        url: p.url,
+                        title: p.title,
+                        client: p.client || 'Internal',
+                        dueDate: new Date(p.clientDueDate || p.dueDate),
+                        dealStage: p.dealStage || '',
+                        briefLink: p.briefLink || p.creativeResponseLink || '',
+                        hasNoDate: false
+                    }))
+                    .sort((a, b) => a.dueDate - b.dueDate);
 
-                        // Skip if no date AND no active deal stage
-                        if (!dateVal && !isActiveDeal) return null;
-
-                        return {
-                            id: p.id,
-                            source: 'notion',
-                            client: p.client,
-                            title: p.title,
-                            // Use date if available, otherwise set to 30 days from now for sorting
-                            dueDate: dateVal ? new Date(dateVal) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                            link: customLink || p.creativeResponseLink || p.briefLink,
-                            originalLink: p.creativeResponseLink || p.briefLink,
-                            status: p.dealStage || '',
-                            hasNoDate: !dateVal // Track if date was missing
-                        };
-                    }).filter(p => p && !p.status.toLowerCase().includes('complete'));
-                }
-
-                // D. Merge & Sort
-                globalData = [...fbItems, ...notionItems].sort((a,b) => a.dueDate - b.dueDate);
-
-                render();
+                render(briefs);
             } catch (err) {
-                console.error("Error loading data", err);
-                // Simple error indicator if totally failed
-                document.getElementById('loader').innerHTML = `<div style="color:red; font-size:11px;">Error Loading Data</div>`;
+                console.error('Error loading data:', err);
+                document.getElementById('loader').innerHTML = `
+                    <div style="color: var(--danger); font-size: 12px;">
+                        Error loading data. Check console.
+                    </div>
+                `;
             }
         }
 
-        // --- 4. RENDER ---
-        function render() {
+        function render(briefs) {
             const container = document.getElementById('list-container');
+            const countBadge = document.getElementById('count');
             document.getElementById('loader').style.display = 'none';
-            
-            if (globalData.length === 0) {
-                container.innerHTML = `<div style="text-align:center; color:var(--ink-sub); margin-top:40px; font-size:12px;">No active briefs.</div>`;
+
+            countBadge.textContent = `${briefs.length} briefs`;
+
+            if (briefs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-title">No Briefs Due</div>
+                        <div class="empty-sub">All caught up! No projects with client due dates.</div>
+                    </div>
+                `;
                 return;
             }
 
-            container.innerHTML = globalData.map(item => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const threeDaysFromNow = new Date(today);
+            threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+
+            container.innerHTML = briefs.map(item => {
                 const day = item.dueDate.getDate();
                 const month = item.dueDate.toLocaleDateString('en-GB', { month: 'short' });
-                const isOverdue = !item.hasNoDate && item.dueDate < new Date().setHours(0,0,0,0);
-                const noDateClass = item.hasNoDate ? 'no-date' : '';
+                const isOverdue = item.dueDate < today;
+                const isDueSoon = !isOverdue && item.dueDate <= threeDaysFromNow;
+
+                let cardClass = 'card';
+                if (isOverdue) cardClass += ' overdue';
+                else if (isDueSoon) cardClass += ' due-soon';
 
                 return `
-                <div class="card source-${item.source} ${isOverdue ? 'overdue' : ''} ${noDateClass}" id="card-${item.id}" onclick="openEditSheet('${item.id}')">
-                    <div class="complete-checkbox" onclick="event.stopPropagation(); markComplete('${item.id}', '${item.source}')" title="Mark as complete">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </div>
-                    <div class="date-badge">
-                        <span class="date-day">${item.hasNoDate ? 'TBD' : day}</span>
-                        <span class="date-month">${item.hasNoDate ? '' : month}</span>
-                    </div>
-                    <div class="info">
-                        <div class="client-name">${item.client || 'Internal'}</div>
-                        <div class="project-name">${item.title}</div>
-                    </div>
-                    <div class="actions">
-                        ${item.link ? `
-                            <button class="icon-btn has-link" onclick="event.stopPropagation(); window.open('${item.link}', '_blank')">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    <div class="${cardClass}" onclick="window.open('${item.url}', '_blank')">
+                        <div class="date-badge">
+                            <span class="date-day">${day}</span>
+                            <span class="date-month">${month}</span>
+                        </div>
+                        <div class="info">
+                            <div class="client-name">${item.client}</div>
+                            <div class="project-name">${item.title}</div>
+                            ${item.dealStage ? `<span class="deal-stage">${item.dealStage}</span>` : ''}
+                        </div>
+                        <div class="actions">
+                            ${item.briefLink ? `
+                                <button class="icon-btn has-link" onclick="event.stopPropagation(); window.open('${item.briefLink}', '_blank')" title="Open Brief">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                                    </svg>
+                                </button>
+                            ` : ''}
+                            <button class="icon-btn" onclick="event.stopPropagation(); window.open('${item.url}', '_blank')" title="Open in Notion">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    <polyline points="15 3 21 3 21 9"></polyline>
+                                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                                </svg>
                             </button>
-                        ` : ''}
-                        <button class="icon-btn" onclick="event.stopPropagation(); openEditSheet('${item.id}')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        </button>
+                        </div>
                     </div>
-                </div>
                 `;
             }).join('');
         }
 
-        // --- 5. INTERACTION (Sheet Modal) ---
-        
-        function openNewBrief() {
-            document.getElementById('sheet-title').textContent = "New Brief";
-            document.getElementById('sheet-sub').textContent = "Create Manual Entry";
-            document.getElementById('sheet-form').reset();
-            
-            // Enable fields for new entry
-            document.getElementById('f-id').value = "";
-            document.getElementById('f-source').value = "firebase";
-            document.getElementById('f-client').disabled = false;
-            document.getElementById('f-title').disabled = false;
-            document.getElementById('f-date').disabled = false;
-            document.getElementById('f-date').valueAsDate = new Date();
-            
-            document.getElementById('f-open-btn').style.display = 'none';
-            document.getElementById('sheet-overlay').classList.add('active');
-        }
+        // Load data on page load
+        fetchData();
 
-        function openEditSheet(id) {
-            const item = globalData.find(i => i.id === id);
-            if (!item) return;
-
-            document.getElementById('f-id').value = item.id;
-            document.getElementById('f-source').value = item.source;
-            document.getElementById('f-client').value = item.client || '';
-            document.getElementById('f-title').value = item.title || '';
-            document.getElementById('f-link').value = item.link || '';
-            
-            // Handle Date
-            if(item.dueDate) {
-                // Convert to YYYY-MM-DD for input
-                const iso = item.dueDate.toISOString().split('T')[0];
-                document.getElementById('f-date').value = iso;
-            }
-
-            if (item.source === 'notion') {
-                // Notion Mode: Read-only metadata, editable Link
-                document.getElementById('sheet-title').textContent = "Add Response Link";
-                document.getElementById('sheet-sub').textContent = "Notion Project";
-                
-                document.getElementById('f-client').disabled = true;
-                document.getElementById('f-title').disabled = true;
-                document.getElementById('f-date').disabled = true; // Date comes from Notion
-                
-                document.getElementById('f-link').placeholder = "Paste link to override/add...";
-            } else {
-                // Firebase Mode: Full Edit
-                document.getElementById('sheet-title').textContent = "Edit Brief";
-                document.getElementById('sheet-sub').textContent = "Manual Entry";
-                
-                document.getElementById('f-client').disabled = false;
-                document.getElementById('f-title').disabled = false;
-                document.getElementById('f-date').disabled = false;
-            }
-
-            // Show existing link button if present
-            const openBtn = document.getElementById('f-open-btn');
-            if (item.link) {
-                openBtn.href = item.link;
-                openBtn.style.display = 'inline-block';
-            } else {
-                openBtn.style.display = 'none';
-            }
-
-            document.getElementById('sheet-overlay').classList.add('active');
-        }
-
-        function closeSheet() {
-            document.getElementById('sheet-overlay').classList.remove('active');
-        }
-
-        function handleOverlayClick(e) {
-            if (e.target.id === 'sheet-overlay') closeSheet();
-        }
-
-        // --- 6. SAVE LOGIC ---
-        document.getElementById('sheet-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('save-btn');
-            const originalText = btn.textContent;
-            btn.textContent = "Saving...";
-            btn.disabled = true;
-
-            const id = document.getElementById('f-id').value;
-            const source = document.getElementById('f-source').value;
-            const linkVal = document.getElementById('f-link').value;
-
-            try {
-                if (source === 'notion') {
-                    // Logic: Save link to both Firebase (backup) AND Notion (master)
-
-                    // Save to Firebase as backup/cache
-                    await db.collection(LINKS_PATH).doc(id).set({
-                        url: linkVal,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    }, { merge: true });
-
-                    // Also update Notion via Cloud Run API if link has changed
-                    if (linkVal) {
-                        try {
-                            const notionRes = await fetch(`${API_URL}/projects/${id}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ creativeResponseLink: linkVal })
-                            });
-                            if (!notionRes.ok) {
-                                console.warn('Notion update failed, but Firebase saved');
-                            }
-                        } catch (notionErr) {
-                            console.warn('Notion update error:', notionErr);
-                        }
-                    }
-                } else {
-                    // Logic: Save/Update Brief in `briefs_due`
-                    const payload = {
-                        client: document.getElementById('f-client').value,
-                        title: document.getElementById('f-title').value,
-                        dueDate: new Date(document.getElementById('f-date').value),
-                        link: linkVal,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    };
-
-                    if (id) {
-                        await db.collection(BRIEFS_PATH).doc(id).update(payload);
-                    } else {
-                        payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                        await db.collection(BRIEFS_PATH).add(payload);
-                    }
-                }
-
-                closeSheet();
-                fetchData(); // Reload to see changes
-            } catch (err) {
-                alert("Error saving: " + err.message);
-                console.error(err);
-            }
-            
-            btn.textContent = originalText;
-            btn.disabled = false;
-        });
-
-        // --- 7. MARK COMPLETE LOGIC ---
-        async function markComplete(id, source) {
-            const card = document.getElementById(`card-${id}`);
-            const checkbox = card?.querySelector('.complete-checkbox');
-            if (!card || !checkbox) return;
-
-            // Visual feedback
-            checkbox.classList.add('completing');
-
-            try {
-                if (source === 'notion') {
-                    // Update Notion project via Cloud Run API
-                    const res = await fetch(`${API_URL}/projects/${id}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ dealStage: 'Campaign Complete' })
-                    });
-
-                    if (!res.ok) {
-                        const errData = await res.json().catch(() => ({}));
-                        throw new Error(errData.error || `HTTP ${res.status}`);
-                    }
-
-                    const data = await res.json();
-                    if (!data.success) throw new Error(data.error || 'Update failed');
-                } else {
-                    // Delete Firebase brief
-                    await db.collection(BRIEFS_PATH).doc(id).delete();
-                }
-
-                // Slide off animation
-                card.classList.add('completing');
-
-                // Remove from local data and re-render after animation
-                setTimeout(() => {
-                    globalData = globalData.filter(item => item.id !== id);
-                    render();
-                }, 400);
-
-            } catch (err) {
-                console.error('Complete error:', err);
-                checkbox.classList.remove('completing');
-                alert('Error marking complete: ' + err.message);
-            }
-        }
-
+        // Auto-refresh every 5 minutes
+        setInterval(fetchData, 5 * 60 * 1000);
     </script>
 </body>
 </html>
