@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily Rundown Calendar</title>
+  <title>Production Calendar | Shoots & Live Dates</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,7 +87,8 @@
             // Add dateKey to each item for grouping
             const itemsWithDate = data.items.map(item => ({
               ...item,
-              dateKey: dateStr
+              dateKey: dateStr,
+              entryType: 'rundown' // Regular rundown items
             }));
             allItems.push(...itemsWithDate);
           }
@@ -98,6 +99,71 @@
         return allItems;
       } catch (error) {
         console.error("Error fetching rundown items:", error);
+        return [];
+      }
+    };
+
+    // Fetch deliverables to get planned live dates and shoot dates
+    const fetchDeliverables = async (startDate, endDate) => {
+      try {
+        const response = await fetch(`${API_URL}/deliverables`);
+        if (!response.ok) {
+          console.error('Error fetching deliverables:', response.status);
+          return [];
+        }
+        const data = await response.json();
+        const deliverables = data.deliverables || [];
+        const calendarEntries = [];
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+
+        deliverables.forEach(d => {
+          const liveDate = d.liveDate || d.plannedLiveDate;
+          const shootDate = d.shootDate;
+
+          // Create entry for planned live date
+          if (liveDate) {
+            const liveDateObj = new Date(liveDate);
+            if (liveDateObj >= start && liveDateObj <= end) {
+              calendarEntries.push({
+                id: `${d.id}-live`,
+                originalId: d.id,
+                title: d.title || 'Untitled',
+                vertical: d.vertical || '',
+                client: d.client || '',
+                status: d.status || '',
+                url: d.url,
+                entryType: 'live',
+                dateKey: liveDate.split('T')[0],
+                liveLink: d.liveLink
+              });
+            }
+          }
+
+          // Create entry for shoot date
+          if (shootDate) {
+            const shootDateObj = new Date(shootDate);
+            if (shootDateObj >= start && shootDateObj <= end) {
+              calendarEntries.push({
+                id: `${d.id}-shoot`,
+                originalId: d.id,
+                title: d.title || 'Untitled',
+                vertical: d.vertical || '',
+                client: d.client || '',
+                status: d.status || '',
+                url: d.url,
+                entryType: 'shoot',
+                dateKey: shootDate.split('T')[0]
+              });
+            }
+          }
+        });
+
+        return calendarEntries;
+      } catch (error) {
+        console.error('Error fetching deliverables:', error);
         return [];
       }
     };
@@ -225,6 +291,31 @@
       '': 'border-gray-200'
     };
 
+    // Entry type styles for visual distinction
+    const ENTRY_TYPE_STYLES = {
+      live: {
+        badge: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+        icon: '▶',
+        label: 'GOING LIVE',
+        border: 'border-l-emerald-500',
+        bg: 'bg-emerald-50/30'
+      },
+      shoot: {
+        badge: 'bg-violet-100 text-violet-700 border border-violet-200',
+        icon: '🎬',
+        label: 'SHOOT',
+        border: 'border-l-violet-500',
+        bg: 'bg-violet-50/30'
+      },
+      rundown: {
+        badge: '',
+        icon: '',
+        label: '',
+        border: 'border-l-gray-200',
+        bg: 'bg-white'
+      }
+    };
+
     const RundownCard = ({ item, onClick }) => {
       const vertical = (item.vertical || '').toUpperCase();
       const verticalClass = VERTICAL_STYLES[vertical] || 'bg-gray-100 text-gray-600';
@@ -238,25 +329,47 @@
       const creator = item.creator || item.assignedCreator || '';
       const editor = item.editor || item.assignedEditor || '';
 
+      // Get entry type styling
+      const entryType = item.entryType || 'rundown';
+      const entryStyle = ENTRY_TYPE_STYLES[entryType] || ENTRY_TYPE_STYLES.rundown;
+      const isSpecialEntry = entryType === 'live' || entryType === 'shoot';
+
       return (
         <div
           onClick={() => onClick(item)}
-          className="p-2 bg-white rounded-lg border border-border shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] transition-all duration-200 flex gap-2 group cursor-pointer relative"
+          className={`p-2 rounded-lg border shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_4px_8px_rgba(0,0,0,0.06)] hover:-translate-y-[1px] transition-all duration-200 flex gap-2 group cursor-pointer relative border-l-[3px] ${entryStyle.border} ${entryStyle.bg} ${isSpecialEntry ? 'border-border' : 'bg-white border-border'}`}
         >
-          <div className={`w-[14px] h-[14px] mt-[2px] rounded-full border-[1.5px] flex items-center justify-center text-[8px] flex-shrink-0 ${statusClass}`}>
-            {statusIcon}
-          </div>
+          {isSpecialEntry ? (
+            <div className={`w-[18px] h-[18px] mt-[1px] rounded flex items-center justify-center text-[9px] flex-shrink-0 ${entryType === 'live' ? 'bg-emerald-500 text-white' : 'bg-violet-500 text-white'}`}>
+              {entryStyle.icon}
+            </div>
+          ) : (
+            <div className={`w-[14px] h-[14px] mt-[2px] rounded-full border-[1.5px] flex items-center justify-center text-[8px] flex-shrink-0 ${statusClass}`}>
+              {statusIcon}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap gap-1 mb-1 items-center">
+              {/* Show entry type badge for live/shoot entries */}
+              {isSpecialEntry && (
+                <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded tracking-wider ${entryStyle.badge}`}>
+                  {entryStyle.label}
+                </span>
+              )}
               <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded ${verticalClass} tracking-wide`}>
                 {vertical || 'MAIN'}
               </span>
-              {creator && (
+              {item.client && isSpecialEntry && (
+                <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">
+                  {item.client}
+                </span>
+              )}
+              {creator && !isSpecialEntry && (
                 <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">
                   {creator}
                 </span>
               )}
-              {editor && (
+              {editor && !isSpecialEntry && (
                 <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
                   ED: {editor}
                 </span>
@@ -720,14 +833,29 @@
           const startKey = formatDateKey(dates[0]);
           const endKey = formatDateKey(dates[6]);
 
-          const items = await fetchRundownItems(startKey, endKey);
+          // Fetch both rundown items and deliverables (for live/shoot dates)
+          const [rundownItems, deliverableEntries] = await Promise.all([
+            fetchRundownItems(startKey, endKey),
+            fetchDeliverables(startKey, endKey)
+          ]);
+
+          // Combine all items
+          const allItems = [...rundownItems, ...deliverableEntries];
 
           const data = dates.map(date => {
             const key = formatDateKey(date);
+            const dayItems = allItems.filter(i => i.dateKey === key || i.date === key);
+
+            // Sort items: shoots first, then live dates, then rundown items
+            dayItems.sort((a, b) => {
+              const order = { shoot: 0, live: 1, rundown: 2 };
+              return (order[a.entryType] || 2) - (order[b.entryType] || 2);
+            });
+
             return {
               date,
               dateKey: key,
-              items: items.filter(i => i.dateKey === key || i.date === key)
+              items: dayItems
             };
           });
 
@@ -776,6 +904,12 @@
       const isToday = (date) => formatDateKey(date) === formatDateKey(new Date());
 
       const handleCardClick = (item) => {
+        // For live/shoot entries from deliverables, open Notion directly
+        if ((item.entryType === 'live' || item.entryType === 'shoot') && item.url) {
+          window.open(item.url, '_blank');
+          return;
+        }
+        // For rundown items, open the edit modal
         setSelectedItem(item);
         setIsModalOpen(true);
       };
@@ -795,9 +929,22 @@
           <div className="bg-white rounded-2xl border border-border overflow-hidden max-w-[1400px] mx-auto transition-all duration-300 hover:shadow-xl">
             <div className="px-4 py-3 border-b border-border flex items-center gap-4 bg-white sticky top-0 z-10">
               <DotGrid />
-              <h1 className="flex-1 text-[13px] font-extrabold tracking-tight uppercase text-ink">
-                Editorial Production Calendar <span className="text-editorial mx-2">•</span> {formatWeekLabel()}
-              </h1>
+              <div className="flex-1">
+                <h1 className="text-[13px] font-extrabold tracking-tight uppercase text-ink">
+                  Production Calendar <span className="text-editorial mx-2">•</span> {formatWeekLabel()}
+                </h1>
+                <div className="flex gap-3 mt-1">
+                  <span className="flex items-center gap-1 text-[8px] font-bold text-gray-500">
+                    <span className="w-2 h-2 rounded bg-violet-500"></span> SHOOTS
+                  </span>
+                  <span className="flex items-center gap-1 text-[8px] font-bold text-gray-500">
+                    <span className="w-2 h-2 rounded bg-emerald-500"></span> GOING LIVE
+                  </span>
+                  <span className="flex items-center gap-1 text-[8px] font-bold text-gray-500">
+                    <span className="w-2 h-2 rounded-full border border-gray-300"></span> RUNDOWN
+                  </span>
+                </div>
+              </div>
 
               <div className="flex gap-1">
                 <button
