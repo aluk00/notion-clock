@@ -127,8 +127,14 @@
             );
         };
 
+        const INITIAL_VISIBLE = 5;
+
         const SectionColumn = ({ section, items }) => {
+            const [expanded, setExpanded] = useState(false);
             const sectionItems = items.filter(i => i.section === section);
+            const hasMore = sectionItems.length > INITIAL_VISIBLE;
+            const displayItems = expanded ? sectionItems : sectionItems.slice(0, INITIAL_VISIBLE);
+            const hiddenCount = sectionItems.length - INITIAL_VISIBLE;
 
             const getSectionColor = () => {
                 switch(section) {
@@ -153,16 +159,36 @@
                             {sectionItems.length}
                         </span>
                     </div>
-                    <div className="flex-1 p-3 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+                    <div className={`flex-1 p-3 custom-scrollbar flex flex-col gap-2 ${expanded ? 'overflow-y-auto max-h-[400px]' : 'overflow-hidden'}`}>
                         {sectionItems.length === 0 ? (
                             <div className="flex-1 flex flex-col items-center justify-center opacity-30 hover:opacity-50 transition-opacity py-8">
                                 <div className="w-1 h-10 bg-gray-200 rounded-full mb-3"></div>
                                 <span className="text-[9px] font-bold uppercase text-ink-sub tracking-widest">No items</span>
                             </div>
                         ) : (
-                            sectionItems.map((item) => (
-                                <RundownCard key={item.id} item={item} />
-                            ))
+                            <>
+                                {displayItems.map((item) => (
+                                    <RundownCard key={item.id} item={item} />
+                                ))}
+                                {hasMore && !expanded && (
+                                    <button
+                                        onClick={() => setExpanded(true)}
+                                        className="mt-1 py-2 text-[10px] font-bold text-ink-sub hover:text-editorial bg-gradient-to-t from-white via-white to-transparent transition-colors flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 hover:border-editorial/30"
+                                    >
+                                        <span>+{hiddenCount} more</span>
+                                        <span className="text-[8px]">▼</span>
+                                    </button>
+                                )}
+                                {expanded && hasMore && (
+                                    <button
+                                        onClick={() => setExpanded(false)}
+                                        className="mt-1 py-2 text-[10px] font-bold text-ink-sub hover:text-editorial transition-colors flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 hover:border-editorial/30 sticky bottom-0 bg-white"
+                                    >
+                                        <span>Show less</span>
+                                        <span className="text-[8px]">▲</span>
+                                    </button>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -308,7 +334,18 @@
                                 <span className="text-[9px] font-bold uppercase text-ink-sub tracking-wide">Pending</span>
                                 <span className="text-[11px] font-extrabold text-yellow-600">{pendingCount}</span>
                             </div>
-                            <div className="ml-auto flex items-center gap-1.5 text-[9px] text-ink-sub">
+                            <a
+                                href="https://dmgmedia.slack.com/archives/C09A92FRXCZ"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-auto flex items-center gap-1.5 text-[9px] text-ink-sub hover:text-editorial transition-colors group"
+                            >
+                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+                                </svg>
+                                <span className="font-semibold group-hover:underline">Updates Channel</span>
+                            </a>
+                            <div className="flex items-center gap-1.5 text-[9px] text-ink-sub">
                                 <svg className="w-3 h-3" viewBox="0 0 100 100" fill="currentColor">
                                     <path d="M6.017 4.313l55.333-4.087c6.797-.583 8.543-.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277-1.553 6.807-6.99 7.193L24.467 99.967c-4.08.193-6.023-.39-8.16-3.113L3.3 79.94c-2.333-3.113-3.3-5.443-3.3-8.167V11.113c0-3.497 1.553-6.413 6.017-6.8z" fillRule="evenodd"/>
                                 </svg>
