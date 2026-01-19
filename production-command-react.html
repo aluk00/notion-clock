@@ -47,6 +47,14 @@
 
         const APP_ID = "dmg-command-centre-native";
         const NOTION_API = 'https://us-central1-dmg-command-centre-native.cloudfunctions.net/api';
+        const RUNDOWN_API = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+        // Source types for visual distinction
+        const SOURCE_TYPES = {
+            FIREBASE: { label: 'Scheduled', color: '#43B049', icon: '📅' },
+            RUNDOWN: { label: 'Filming', color: '#E94B4B', icon: '🎬' },
+            EVENT: { label: 'Event', color: '#21A0D8', icon: '📍' }
+        };
 
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -251,13 +259,21 @@
             </button>
         );
 
-        // Shoot Detail Modal
+        // Shoot Detail Modal - Updated to handle different source types
         const ShootDetailModal = ({ shoot, project, allShoots, onClose, onOpenDesk }) => {
             if (!shoot) return null;
 
-            const title = project?.title || shoot.projectTitle || shoot.title || 'Untitled';
+            const source = shoot._source || 'FIREBASE';
+            const sourceColor = shoot._sourceColor || '#43B049';
+            const sourceLabel = shoot._sourceLabel || 'Scheduled';
+            const sourceIcon = shoot._sourceIcon || '📅';
+
+            const title = shoot._title || project?.title || shoot.projectTitle || shoot.title || 'Untitled';
             const client = project?.client || '';
             const projectShoots = project ? allShoots.filter(s => s.linkedProjectId === project.id) : [shoot];
+
+            // Get date from various fields
+            const shootDate = shoot.date || shoot.startDateTime || shoot.rundownDate;
 
             return (
                 <div className="modal-overlay" onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999}}>
@@ -265,7 +281,11 @@
                         {/* Header */}
                         <div style={{padding:'24px 28px', borderBottom:'1px solid #EAECEF', display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
                             <div>
-                                <div style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4}}>{client || 'DMG'}</div>
+                                <div style={{display:'flex', alignItems:'center', gap:6, marginBottom:4}}>
+                                    <span style={{fontSize:12}}>{sourceIcon}</span>
+                                    <span style={{fontSize:10, fontWeight:800, color:sourceColor, textTransform:'uppercase', letterSpacing:'0.1em'}}>{sourceLabel}</span>
+                                    {client && <span style={{fontSize:10, fontWeight:700, color:'#757575'}}>• {client}</span>}
+                                </div>
                                 <h2 style={{fontSize:20, fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.02em'}}>{title}</h2>
                             </div>
                             <button onClick={onClose} style={{background:'#F3F4F6', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}>
@@ -279,17 +299,73 @@
                             <div style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:24}}>
                                 {project?.status && <span className={`status-badge status-${getStatusColor(project.status)}`}>{project.status}</span>}
                                 {project?.dealStage && <span className={`status-badge status-${getStatusColor(project.dealStage)}`}>{project.dealStage}</span>}
-                                {!project && <span className="status-badge status-green">{shoot.format || 'SHOOT'}</span>}
+                                {source === 'RUNDOWN' && shoot.status && (
+                                    <span className={`status-badge status-${shoot.status === 'done' ? 'green' : shoot.status === 'blocked' ? 'yellow' : 'blue'}`}>
+                                        {shoot.status.toUpperCase()}
+                                    </span>
+                                )}
+                                {source === 'EVENT' && (shoot.accreditationStatus || shoot.accreditation) && (
+                                    <span className={`status-badge status-${(shoot.accreditationStatus || shoot.accreditation) === 'Approved' || (shoot.accreditationStatus || shoot.accreditation) === 'Confirmed' ? 'green' : 'blue'}`}>
+                                        {shoot.accreditationStatus || shoot.accreditation}
+                                    </span>
+                                )}
+                                {!project && source === 'FIREBASE' && <span className="status-badge status-green">{shoot.format || 'SHOOT'}</span>}
                             </div>
 
-                            {/* Shoot Info */}
-                            <div style={{marginBottom:24, padding:16, background:'#F0FDF4', borderRadius:16, borderLeft:'4px solid #43B049'}}>
-                                <div style={{fontSize:10, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8}}>Scheduled Shoot</div>
-                                <div style={{fontSize:16, fontWeight:900}}>
-                                    {new Date(shoot.date || shoot.startDateTime).toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}
+                            {/* Date/Event Info */}
+                            <div style={{marginBottom:24, padding:16, background: source === 'RUNDOWN' ? '#FEF2F2' : source === 'EVENT' ? '#EFF6FF' : '#F0FDF4', borderRadius:16, borderLeft:`4px solid ${sourceColor}`}}>
+                                <div style={{fontSize:10, fontWeight:800, color:sourceColor, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8}}>
+                                    {source === 'RUNDOWN' ? 'Filming Entry' : source === 'EVENT' ? 'Production Event' : 'Scheduled Shoot'}
                                 </div>
-                                <div style={{fontSize:11, fontWeight:700, color:'#757575', marginTop:4}}>{shoot.format || 'Production Day'}</div>
+                                <div style={{fontSize:16, fontWeight:900}}>
+                                    {shootDate ? new Date(shootDate).toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long', year:'numeric'}) : 'Date TBC'}
+                                </div>
+                                <div style={{fontSize:11, fontWeight:700, color:'#757575', marginTop:4}}>
+                                    {shoot._format || shoot.format || shoot.type || 'Production Day'}
+                                </div>
                             </div>
+
+                            {/* Rundown-specific info */}
+                            {source === 'RUNDOWN' && (
+                                <>
+                                    {shoot.vertical && (
+                                        <div style={{marginBottom:16}}>
+                                            <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8}}>Vertical</div>
+                                            <span style={{fontSize:12, fontWeight:700, padding:'6px 12px', background:'#F3F4F6', borderRadius:8}}>{shoot.vertical}</span>
+                                        </div>
+                                    )}
+                                    {shoot.creator && (
+                                        <div style={{marginBottom:16}}>
+                                            <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8}}>Creator</div>
+                                            <span style={{fontSize:12, fontWeight:700}}>{shoot.creator}</span>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {/* Event-specific info */}
+                            {source === 'EVENT' && (
+                                <>
+                                    {(shoot.location || shoot.Location) && (
+                                        <div style={{marginBottom:16}}>
+                                            <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8}}>Location</div>
+                                            <span style={{fontSize:12, fontWeight:700}}>📍 {shoot.location || shoot.Location}</span>
+                                        </div>
+                                    )}
+                                    {(shoot.producer || shoot.Producer || shoot.subItemOwner) && (
+                                        <div style={{marginBottom:16}}>
+                                            <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8}}>Producer / Lead</div>
+                                            <span style={{fontSize:12, fontWeight:700}}>👤 {shoot.producer || shoot.Producer || shoot.subItemOwner}</span>
+                                        </div>
+                                    )}
+                                    {shoot.description && (
+                                        <div style={{marginBottom:16}}>
+                                            <div style={{fontSize:10, fontWeight:800, color:'#757575', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8}}>Description</div>
+                                            <p style={{fontSize:12, lineHeight:1.5, color:'#374151'}}>{shoot.description}</p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
 
                             {/* Workflow Statuses */}
                             {project && (project.creativeWorkflowStatus || project.productionWorkflowStatus || project.socialWorkflowStatus) && (
@@ -384,6 +460,16 @@
 
                         {/* Footer */}
                         <div style={{padding:'16px 28px', borderTop:'1px solid #EAECEF', display:'flex', gap:12}}>
+                            {/* Notion link for events */}
+                            {source === 'EVENT' && shoot.url && (
+                                <a href={shoot.url} target="_blank" rel="noopener noreferrer" style={{
+                                    flex:1, padding:'12px', background:'#F3F4F6', borderRadius:10, textDecoration:'none',
+                                    fontSize:10, fontWeight:800, color:'#1C1C1C', textTransform:'uppercase', textAlign:'center'
+                                }}>
+                                    Open in Notion
+                                </a>
+                            )}
+                            {/* Notion link for projects */}
                             {project?.url && (
                                 <a href={project.url} target="_blank" rel="noopener noreferrer" style={{
                                     flex:1, padding:'12px', background:'#F3F4F6', borderRadius:10, textDecoration:'none',
@@ -392,7 +478,8 @@
                                     Open in Notion
                                 </a>
                             )}
-                            {project ? (
+                            {/* Open Project Desk for Firebase shoots with linked projects */}
+                            {source === 'FIREBASE' && project ? (
                                 <button onClick={() => { onClose(); onOpenDesk(project.id); }} style={{
                                     flex:1, padding:'12px', background:'#1C1C1C', borderRadius:10, border:'none',
                                     fontSize:10, fontWeight:800, color:'white', textTransform:'uppercase', cursor:'pointer'
@@ -413,6 +500,216 @@
             );
         };
 
+        // Add Shoot Modal
+        const AddShootModal = ({ show, onClose, projects, onAdd }) => {
+            const [selectedProjectId, setSelectedProjectId] = useState('');
+            const [shootDate, setShootDate] = useState('');
+            const [shootFormat, setShootFormat] = useState('Standard Shoot');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [saving, setSaving] = useState(false);
+
+            const filteredProjects = useMemo(() => {
+                if (!searchTerm) return projects;
+                const term = searchTerm.toLowerCase();
+                return projects.filter(p =>
+                    (p.title || '').toLowerCase().includes(term) ||
+                    (p.client || '').toLowerCase().includes(term)
+                );
+            }, [projects, searchTerm]);
+
+            const selectedProject = useMemo(() =>
+                projects.find(p => p.id === selectedProjectId),
+                [projects, selectedProjectId]
+            );
+
+            const handleSubmit = async () => {
+                if (!selectedProjectId || !shootDate) {
+                    alert('Please select a project and date');
+                    return;
+                }
+                setSaving(true);
+                try {
+                    await onAdd({
+                        linkedProjectId: selectedProjectId,
+                        projectTitle: selectedProject?.client ?
+                            `${selectedProject.client} - ${selectedProject.title}` :
+                            (selectedProject?.title || 'Production'),
+                        date: shootDate,
+                        startDateTime: shootDate,
+                        format: shootFormat,
+                        createdAt: new Date().toISOString()
+                    });
+                    setSelectedProjectId('');
+                    setShootDate('');
+                    setShootFormat('Standard Shoot');
+                    setSearchTerm('');
+                    onClose();
+                } catch (e) {
+                    alert('Failed to add shoot: ' + e.message);
+                }
+                setSaving(false);
+            };
+
+            if (!show) return null;
+
+            return (
+                <div className="modal-overlay" onClick={onClose} style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999}}>
+                    <div onClick={e => e.stopPropagation()} style={{background:'white', borderRadius:24, width:'100%', maxWidth:520, maxHeight:'90vh', overflow:'hidden', boxShadow:'0 25px 50px rgba(0,0,0,0.25)'}}>
+                        {/* Header */}
+                        <div style={{padding:'24px 28px', borderBottom:'1px solid #EAECEF', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                            <div>
+                                <h2 style={{fontSize:20, fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.02em'}}>Add New Shoot</h2>
+                                <p style={{fontSize:10, color:'#757575', fontWeight:600, marginTop:4, textTransform:'uppercase'}}>Schedule a shoot for an existing project</p>
+                            </div>
+                            <button onClick={onClose} style={{background:'#F3F4F6', border:'none', borderRadius:8, width:32, height:32, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div style={{padding:'24px 28px', maxHeight:'60vh', overflowY:'auto'}}>
+                            {/* Project Search & Selection */}
+                            <div style={{marginBottom:20}}>
+                                <div style={{fontSize:10, fontWeight:800, textTransform:'uppercase', color:'#757575', marginBottom:8, letterSpacing:'0.1em'}}>
+                                    Select Project from Master Ledger
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search projects..."
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    style={{width:'100%', padding:'12px 16px', background:'#F9FAFB', border:'1px solid #EAECEF', borderRadius:12, fontSize:12, fontWeight:600, marginBottom:12}}
+                                />
+                                <div style={{maxHeight:200, overflowY:'auto', border:'1px solid #EAECEF', borderRadius:12}}>
+                                    {filteredProjects.length === 0 ? (
+                                        <div style={{padding:16, textAlign:'center', color:'#9CA3AF', fontSize:11, fontWeight:600}}>
+                                            No projects found
+                                        </div>
+                                    ) : (
+                                        filteredProjects.map(p => (
+                                            <div
+                                                key={p.id}
+                                                onClick={() => setSelectedProjectId(p.id)}
+                                                style={{
+                                                    padding:'12px 16px', cursor:'pointer',
+                                                    background: selectedProjectId === p.id ? '#F0FDF4' : 'transparent',
+                                                    borderBottom:'1px solid #F3F4F6',
+                                                    transition:'background 0.15s'
+                                                }}
+                                            >
+                                                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between'}}>
+                                                    <div>
+                                                        <div style={{fontSize:12, fontWeight:800, textTransform:'uppercase', color:'#1C1C1C'}}>
+                                                            {p.title || 'Untitled'}
+                                                        </div>
+                                                        {p.client && (
+                                                            <div style={{fontSize:10, fontWeight:600, color:'#757575', marginTop:2}}>
+                                                                {p.client}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    {selectedProjectId === p.id && (
+                                                        <span style={{width:20, height:20, borderRadius:'50%', background:'#43B049', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:900}}>✓</span>
+                                                    )}
+                                                </div>
+                                                {(p.dueDate || p.status) && (
+                                                    <div style={{display:'flex', gap:8, marginTop:6}}>
+                                                        {p.dueDate && (
+                                                            <span style={{fontSize:9, padding:'2px 6px', background:'#DBEAFE', color:'#1E40AF', borderRadius:4, fontWeight:600}}>
+                                                                Due: {new Date(p.dueDate).toLocaleDateString('en-GB', {day:'numeric', month:'short'})}
+                                                            </span>
+                                                        )}
+                                                        {p.status && (
+                                                            <span style={{fontSize:9, padding:'2px 6px', background:'#F3F4F6', color:'#374151', borderRadius:4, fontWeight:600}}>
+                                                                {p.status}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Selected Project Display */}
+                            {selectedProject && (
+                                <div style={{marginBottom:20, padding:16, background:'#F0FDF4', borderRadius:12, borderLeft:'4px solid #43B049'}}>
+                                    <div style={{fontSize:9, fontWeight:800, color:'#43B049', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4}}>
+                                        Selected Project
+                                    </div>
+                                    <div style={{fontSize:14, fontWeight:900, textTransform:'uppercase'}}>
+                                        {selectedProject.client ? `${selectedProject.client} - ` : ''}{selectedProject.title}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Date Selection */}
+                            <div style={{marginBottom:20}}>
+                                <div style={{fontSize:10, fontWeight:800, textTransform:'uppercase', color:'#757575', marginBottom:8, letterSpacing:'0.1em'}}>
+                                    Shoot Date
+                                </div>
+                                <input
+                                    type="date"
+                                    value={shootDate}
+                                    onChange={e => setShootDate(e.target.value)}
+                                    style={{width:'100%', padding:'12px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:12, fontSize:12, fontWeight:600}}
+                                />
+                            </div>
+
+                            {/* Format Selection */}
+                            <div>
+                                <div style={{fontSize:10, fontWeight:800, textTransform:'uppercase', color:'#757575', marginBottom:8, letterSpacing:'0.1em'}}>
+                                    Shoot Type
+                                </div>
+                                <div style={{display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:8}}>
+                                    {['Standard Shoot', 'Recce', 'Travel Day', 'Live Stream'].map(format => (
+                                        <button
+                                            key={format}
+                                            onClick={() => setShootFormat(format)}
+                                            style={{
+                                                padding:'12px 16px', border:`2px solid ${shootFormat === format ? '#43B049' : '#EAECEF'}`,
+                                                background: shootFormat === format ? '#F0FDF4' : 'white',
+                                                borderRadius:10, cursor:'pointer',
+                                                fontSize:11, fontWeight:700, textTransform:'uppercase',
+                                                color: shootFormat === format ? '#43B049' : '#757575',
+                                                transition:'all 0.2s'
+                                            }}
+                                        >
+                                            {format}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{padding:'16px 28px', borderTop:'1px solid #EAECEF', display:'flex', gap:12}}>
+                            <button onClick={onClose} style={{
+                                flex:1, padding:'14px', background:'white', border:'1px solid #EAECEF', borderRadius:12,
+                                fontSize:11, fontWeight:800, textTransform:'uppercase', cursor:'pointer'
+                            }}>
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSubmit}
+                                disabled={!selectedProjectId || !shootDate || saving}
+                                style={{
+                                    flex:1, padding:'14px',
+                                    background: (!selectedProjectId || !shootDate || saving) ? '#E5E7EB' : '#43B049',
+                                    color: 'white', border:'none', borderRadius:12,
+                                    fontSize:11, fontWeight:800, textTransform:'uppercase', cursor:'pointer',
+                                    opacity: (!selectedProjectId || !shootDate || saving) ? 0.7 : 1
+                                }}
+                            >
+                                {saving ? 'Adding...' : 'Add Shoot'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // Main App
         const ProductionCommand = () => {
             const [view, setView] = useState('month');
@@ -422,7 +719,10 @@
 
             const [projects, setProjects] = useState([]);
             const [shoots, setShoots] = useState([]);
+            const [rundownItems, setRundownItems] = useState([]);
+            const [productionEvents, setProductionEvents] = useState([]);
             const [staff, setStaff] = useState([]);
+            const [showAddShootModal, setShowAddShootModal] = useState(false);
 
             const [selectedProjectId, setSelectedProjectId] = useState(null);
             const [productionRecord, setProductionRecord] = useState(null);
@@ -448,6 +748,14 @@
                         const projRes = await fetch(`${NOTION_API}/projects`).then(r => r.json());
                         console.log('Projects loaded:', projRes?.projects?.length || 0);
                         setProjects(projRes?.projects || []);
+
+                        // Fetch production events
+                        console.log('Fetching production events...');
+                        const eventsRes = await fetch(`${RUNDOWN_API}/events`).then(r => r.json());
+                        if (eventsRes.success) {
+                            console.log('Production events loaded:', eventsRes.events?.length || 0);
+                            setProductionEvents(eventsRes.events || []);
+                        }
 
                         const staffSnap = await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("staff_directory").get();
                         setStaff(staffSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.firstName || '').localeCompare(b.firstName || '')));
@@ -478,10 +786,48 @@
                 return () => unsub();
             }, [selectedProjectId, user]);
 
-            // CLICK HANDLER - logs and opens modal
+            // Load rundown items for visible date range (FILMING section)
+            useEffect(() => {
+                if (!user) return;
+                const loadRundownItems = async () => {
+                    const year = currentDate.getFullYear();
+                    const month = currentDate.getMonth();
+                    const startDate = new Date(year, month, 1);
+                    const endDate = new Date(year, month + 1, 0);
+
+                    const allItems = [];
+                    const datePromises = [];
+
+                    // Fetch rundown for each day in the month
+                    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                        const dateStr = d.toISOString().split('T')[0];
+                        datePromises.push(
+                            fetch(`${RUNDOWN_API}/rundown?date=${dateStr}`)
+                                .then(r => r.json())
+                                .then(data => {
+                                    if (data.success && data.items) {
+                                        // Only get FILMING items
+                                        const filmingItems = data.items.filter(i => i.section === 'FILMING');
+                                        filmingItems.forEach(item => {
+                                            allItems.push({ ...item, rundownDate: dateStr });
+                                        });
+                                    }
+                                })
+                                .catch(() => {}) // Silently fail for individual dates
+                        );
+                    }
+
+                    await Promise.all(datePromises);
+                    console.log('Rundown filming items loaded:', allItems.length);
+                    setRundownItems(allItems);
+                };
+
+                loadRundownItems();
+            }, [currentDate, user]);
+
+            // CLICK HANDLER - opens detail modal
             const openShootModal = (shoot) => {
-                console.log('🎯 SHOOT CLICKED:', shoot);
-                alert('Shoot clicked: ' + (shoot.projectTitle || shoot.title || 'Untitled')); // Debug alert
+                console.log('🎯 ITEM CLICKED:', shoot);
                 setSelectedShoot(shoot);
             };
 
@@ -575,14 +921,67 @@
                 setShowInitModal(false);
             };
 
-            // Calendar helpers
+            // Handle adding a new shoot from the modal
+            const handleAddShootFromModal = async (shootData) => {
+                await db.collection("artifacts").doc(APP_ID).collection("public").doc("data").collection("shoot_calendar_events").add(shootData);
+            };
+
+            // Calendar helpers - merge all sources with visual distinction
             const getShootsForDate = useCallback((date) => {
                 const dateStr = date.toISOString().split('T')[0];
-                return shoots.filter(s => {
+                const allItems = [];
+
+                // Firebase shoots (scheduled shoots)
+                shoots.filter(s => {
                     const targetDate = s.date || s.shootDate || s.dueDate || (s.startDateTime ? s.startDateTime.split('T')[0] : null);
                     return targetDate === dateStr;
+                }).forEach(s => {
+                    allItems.push({
+                        ...s,
+                        _source: 'FIREBASE',
+                        _sourceColor: SOURCE_TYPES.FIREBASE.color,
+                        _sourceLabel: SOURCE_TYPES.FIREBASE.label,
+                        _sourceIcon: SOURCE_TYPES.FIREBASE.icon,
+                        _title: s.projectTitle || s.title || 'Untitled',
+                        _format: s.format || 'Production'
+                    });
                 });
-            }, [shoots]);
+
+                // Rundown FILMING items
+                rundownItems.filter(r => r.rundownDate === dateStr).forEach(r => {
+                    allItems.push({
+                        ...r,
+                        id: r.id || `rundown-${r.title}-${dateStr}`,
+                        _source: 'RUNDOWN',
+                        _sourceColor: SOURCE_TYPES.RUNDOWN.color,
+                        _sourceLabel: SOURCE_TYPES.RUNDOWN.label,
+                        _sourceIcon: SOURCE_TYPES.RUNDOWN.icon,
+                        _title: r.title || 'Untitled',
+                        _format: r.vertical || 'Filming',
+                        _isDraggable: false
+                    });
+                });
+
+                // Production events
+                productionEvents.filter(e => {
+                    if (!e.date) return false;
+                    const eventDateStr = new Date(e.date).toISOString().split('T')[0];
+                    return eventDateStr === dateStr;
+                }).forEach(e => {
+                    allItems.push({
+                        ...e,
+                        _source: 'EVENT',
+                        _sourceColor: SOURCE_TYPES.EVENT.color,
+                        _sourceLabel: SOURCE_TYPES.EVENT.label,
+                        _sourceIcon: SOURCE_TYPES.EVENT.icon,
+                        _title: e.title || e.event || e.Event || e.name || 'Untitled',
+                        _format: e.type || e.accreditationStatus || 'Event',
+                        _isDraggable: false
+                    });
+                });
+
+                return allItems;
+            }, [shoots, rundownItems, productionEvents]);
 
             const calendarDays = useMemo(() => {
                 const year = currentDate.getFullYear(), month = currentDate.getMonth();
@@ -654,13 +1053,41 @@
             return (
                 <div style={{background:'white', borderRadius:20, border:'1px solid #EAECEF', overflow:'hidden', maxWidth:1200, margin:'0 auto'}}>
                     {/* Header */}
-                    <header style={{display:'flex', alignItems:'center', justifyContent:'flex-end', padding:'16px 24px', borderBottom:'1px solid #EAECEF', background:'white'}}>
-                        <button onClick={() => setShowInitModal(true)} style={{
-                            padding:'10px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:10,
-                            fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', cursor:'pointer'
-                        }}>
-                            + Initialise Project
-                        </button>
+                    <header style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 24px', borderBottom:'1px solid #EAECEF', background:'white'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:12}}>
+                            <DotGrid />
+                            <div>
+                                <h1 style={{fontSize:16, fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.02em'}}>Production Calendar</h1>
+                                <div style={{display:'flex', alignItems:'center', gap:8, marginTop:4}}>
+                                    <span style={{fontSize:9, fontWeight:700, color:'#43B049', display:'flex', alignItems:'center', gap:4}}>
+                                        <span style={{width:6, height:6, borderRadius:'50%', background:'#43B049'}}></span>
+                                        Scheduled
+                                    </span>
+                                    <span style={{fontSize:9, fontWeight:700, color:'#E94B4B', display:'flex', alignItems:'center', gap:4}}>
+                                        <span style={{width:6, height:6, borderRadius:'50%', background:'#E94B4B'}}></span>
+                                        Filming
+                                    </span>
+                                    <span style={{fontSize:9, fontWeight:700, color:'#21A0D8', display:'flex', alignItems:'center', gap:4}}>
+                                        <span style={{width:6, height:6, borderRadius:'50%', background:'#21A0D8'}}></span>
+                                        Events
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{display:'flex', gap:8}}>
+                            <button onClick={() => setShowAddShootModal(true)} style={{
+                                padding:'10px 16px', background:'#43B049', color:'white', border:'none', borderRadius:10,
+                                fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', cursor:'pointer'
+                            }}>
+                                + Add Shoot
+                            </button>
+                            <button onClick={() => setShowInitModal(true)} style={{
+                                padding:'10px 16px', background:'white', border:'1px solid #EAECEF', borderRadius:10,
+                                fontSize:10, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.08em', cursor:'pointer'
+                            }}>
+                                + Initialise Project
+                            </button>
+                        </div>
                     </header>
 
                     {/* Tabs */}
@@ -703,27 +1130,31 @@
                                             <div style={{fontSize:11, fontWeight:900, color: day.isToday ? '#43B049' : '#CCC', marginBottom:6}}>
                                                 {day.date.getDate()}
                                             </div>
-                                            {/* SHOOTS - Draggable */}
-                                            {dayItems.map(shoot => (
+                                            {/* ALL ITEMS - with source distinction */}
+                                            {dayItems.map(item => (
                                                 <div
-                                                    key={shoot.id}
-                                                    draggable
-                                                    onDragStart={(e) => handleDragStart(e, shoot)}
-                                                    onClick={() => openShootModal(shoot)}
+                                                    key={item.id}
+                                                    draggable={item._source === 'FIREBASE'}
+                                                    onDragStart={(e) => item._source === 'FIREBASE' && handleDragStart(e, item)}
+                                                    onClick={() => openShootModal(item)}
                                                     style={{
                                                         display:'block', width:'100%', textAlign:'left',
                                                         padding:'6px 8px', marginBottom:4,
                                                         background:'white', border:'1px solid #EAECEF',
-                                                        borderLeft:'4px solid #43B049', borderRadius:8,
-                                                        cursor: 'grab', transition:'all 0.2s',
-                                                        opacity: draggedShoot?.id === shoot.id ? 0.5 : 1
+                                                        borderLeft:`4px solid ${item._sourceColor}`, borderRadius:8,
+                                                        cursor: item._source === 'FIREBASE' ? 'grab' : 'pointer',
+                                                        transition:'all 0.2s',
+                                                        opacity: draggedShoot?.id === item.id ? 0.5 : 1
                                                     }}
                                                 >
-                                                    <div style={{fontSize:9, fontWeight:900, color:'#1C1C1C', textTransform:'uppercase', lineHeight:1.2, marginBottom:2}}>
-                                                        {shoot.projectTitle || shoot.title || 'Untitled'}
+                                                    <div style={{display:'flex', alignItems:'center', gap:4, marginBottom:2}}>
+                                                        <span style={{fontSize:8}}>{item._sourceIcon}</span>
+                                                        <span style={{fontSize:9, fontWeight:900, color:'#1C1C1C', textTransform:'uppercase', lineHeight:1.2, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                                                            {item._title}
+                                                        </span>
                                                     </div>
-                                                    <div style={{fontSize:7, fontWeight:700, color:'#43B049', textTransform:'uppercase'}}>
-                                                        {shoot.format || 'PRODUCTION'}
+                                                    <div style={{fontSize:7, fontWeight:700, color:item._sourceColor, textTransform:'uppercase'}}>
+                                                        {item._format}
                                                     </div>
                                                 </div>
                                             ))}
@@ -767,26 +1198,34 @@
                                                 </div>
                                             </div>
                                             <div style={{flex:1}}>
-                                                {dayItems.length > 0 ? dayItems.map(shoot => (
+                                                {dayItems.length > 0 ? dayItems.map(item => (
                                                     <div
-                                                        key={shoot.id}
-                                                        draggable
-                                                        onDragStart={(e) => handleDragStart(e, shoot)}
-                                                        onClick={() => openShootModal(shoot)}
+                                                        key={item.id}
+                                                        draggable={item._source === 'FIREBASE'}
+                                                        onDragStart={(e) => item._source === 'FIREBASE' && handleDragStart(e, item)}
+                                                        onClick={() => openShootModal(item)}
                                                         style={{
                                                             display:'block', width:'100%', textAlign:'left',
                                                             padding:16, marginBottom:8,
                                                             background:'#F9FAFB', border:'none',
-                                                            borderLeft:'4px solid #43B049', borderRadius:16,
-                                                            cursor:'grab',
-                                                            opacity: draggedShoot?.id === shoot.id ? 0.5 : 1
+                                                            borderLeft:`4px solid ${item._sourceColor}`, borderRadius:16,
+                                                            cursor: item._source === 'FIREBASE' ? 'grab' : 'pointer',
+                                                            opacity: draggedShoot?.id === item.id ? 0.5 : 1
                                                         }}
                                                     >
-                                                        <div style={{fontWeight:900, fontSize:14, textTransform:'uppercase', letterSpacing:'-0.02em', color:'#1C1C1C'}}>
-                                                            {shoot.projectTitle || shoot.title || 'Untitled'}
+                                                        <div style={{display:'flex', alignItems:'center', gap:6}}>
+                                                            <span style={{fontSize:14}}>{item._sourceIcon}</span>
+                                                            <div style={{fontWeight:900, fontSize:14, textTransform:'uppercase', letterSpacing:'-0.02em', color:'#1C1C1C'}}>
+                                                                {item._title}
+                                                            </div>
                                                         </div>
-                                                        <div style={{fontSize:10, fontWeight:700, color:'#43B049', textTransform:'uppercase', marginTop:4}}>
-                                                            {shoot.format || 'PRODUCTION'}
+                                                        <div style={{display:'flex', alignItems:'center', gap:8, marginTop:4}}>
+                                                            <span style={{fontSize:10, fontWeight:700, color:item._sourceColor, textTransform:'uppercase'}}>
+                                                                {item._format}
+                                                            </span>
+                                                            <span style={{fontSize:9, fontWeight:600, color:'#9CA3AF', textTransform:'uppercase'}}>
+                                                                {item._sourceLabel}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 )) : (
@@ -979,14 +1418,22 @@
 
                     {/* Shoot Detail Modal */}
                     {selectedShoot && (
-                        <ShootDetailModal 
+                        <ShootDetailModal
                             shoot={selectedShoot}
                             project={shootProject}
                             allShoots={shoots}
-                            onClose={() => setSelectedShoot(null)} 
+                            onClose={() => setSelectedShoot(null)}
                             onOpenDesk={handleOpenDesk}
                         />
                     )}
+
+                    {/* Add Shoot Modal */}
+                    <AddShootModal
+                        show={showAddShootModal}
+                        onClose={() => setShowAddShootModal(false)}
+                        projects={projects}
+                        onAdd={handleAddShootFromModal}
+                    />
 
                     {/* Init Modal */}
                     {showInitModal && (
