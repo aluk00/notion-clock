@@ -58,6 +58,7 @@
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
     const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+    const INITIAL_VISIBLE = 5;
 
     // Fetch rundown items from Notion API for a date range
     const fetchRundownItems = async (startDate, endDate) => {
@@ -274,6 +275,8 @@
     const EditModal = ({ item, isOpen, onClose, onSave, onDelete }) => {
       const [formData, setFormData] = useState({});
       const [loading, setLoading] = useState(false);
+      const [deleteConfirm, setDeleteConfirm] = useState(false);
+      const modalRef = useRef(null);
 
       useEffect(() => {
         if (item) {
@@ -289,8 +292,29 @@
             thumbnailStatus: item.thumbnailStatus || 'n/a',
             notes: item.notes || ''
           });
+          setDeleteConfirm(false);
         }
       }, [item]);
+
+      useEffect(() => {
+        const handleEscape = (e) => {
+          if (e.key === 'Escape') {
+            if (deleteConfirm) {
+              setDeleteConfirm(false);
+            } else {
+              onClose();
+            }
+          }
+        };
+        if (isOpen) {
+          document.addEventListener('keydown', handleEscape);
+          document.body.style.overflow = 'hidden';
+        }
+        return () => {
+          document.removeEventListener('keydown', handleEscape);
+          document.body.style.overflow = '';
+        };
+      }, [isOpen, onClose, deleteConfirm]);
 
       if (!isOpen) return null;
 
@@ -317,17 +341,20 @@
       };
 
       const handleDelete = async () => {
-        if (confirm('Are you sure you want to delete this item?')) {
-          setLoading(true);
-          try {
-            await onDelete(item.id);
-            onClose();
-          } catch (error) {
-            console.error(error);
-            alert('Failed to delete. Please try again.');
-          } finally {
-            setLoading(false);
-          }
+        if (!deleteConfirm) {
+          setDeleteConfirm(true);
+          return;
+        }
+        setLoading(true);
+        try {
+          await onDelete(item.id);
+          onClose();
+        } catch (error) {
+          console.error(error);
+          alert('Failed to delete. Please try again.');
+        } finally {
+          setLoading(false);
+          setDeleteConfirm(false);
         }
       };
 
@@ -360,20 +387,50 @@
         { value: 'done', label: 'Thumbnail Ready' }
       ];
 
+      const vertical = (formData.vertical || '').toUpperCase();
+      const verticalClass = VERTICAL_STYLES[vertical] || 'bg-gray-100 text-gray-600';
+      const status = (formData.status || '').toLowerCase();
+      const statusClass = STATUS_STYLES[status] || 'border-gray-200';
+
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 transition-all">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
-              <div>
-                <h2 className="text-sm font-extrabold uppercase tracking-widest text-ink">Edit Item</h2>
-                <p className="text-[10px] text-ink-sub mt-0.5 font-medium">Update details (syncs to Notion)</p>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200" />
+          <div
+            ref={modalRef}
+            className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 slide-in-from-bottom-4 duration-200"
+          >
+            {/* Header with item preview */}
+            <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-editorial/5 to-transparent">
+              <div className="flex justify-between items-start">
+                <div className="flex-1 pr-4">
+                  <div className="flex flex-wrap gap-1.5 mb-2 items-center">
+                    <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded ${verticalClass} tracking-wide`}>
+                      {vertical || 'MAIN'}
+                    </span>
+                    {formData.section && (
+                      <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                        {formData.section}
+                      </span>
+                    )}
+                    {status && (
+                      <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${status === 'done' ? 'bg-green-100 text-green-700' : status === 'pending' ? 'bg-yellow-100 text-yellow-700' : status === 'blocked' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {status}
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-sm font-bold text-ink leading-snug">{formData.title || 'Untitled'}</h2>
+                  <p className="text-[10px] text-ink-sub mt-1 font-medium">Edit details below (syncs to Notion)</p>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-ink transition-colors -mr-1 -mt-1"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-ink transition-colors"
-              >
-                ✕
-              </button>
             </div>
 
             <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
@@ -483,7 +540,7 @@
                     name="notes"
                     value={formData.notes || ''}
                     onChange={handleInputChange}
-                    className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all min-h-[90px]"
+                    className="w-full text-xs font-semibold text-ink border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-editorial/20 focus:border-editorial transition-all min-h-[90px] resize-none"
                     placeholder="Add any context, edits, or blockers..."
                   />
                 </div>
@@ -494,39 +551,125 @@
                       href={item.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs text-blue-600 underline"
+                      className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 transition-colors"
                     >
-                      View in Notion
+                      <svg className="w-3 h-3" viewBox="0 0 100 100" fill="currentColor">
+                        <path d="M6.017 4.313l55.333-4.087c6.797-.583 8.543-.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277-1.553 6.807-6.99 7.193L24.467 99.967c-4.08.193-6.023-.39-8.16-3.113L3.3 79.94c-2.333-3.113-3.3-5.443-3.3-8.167V11.113c0-3.497 1.553-6.413 6.017-6.8z" fillRule="evenodd"/>
+                      </svg>
+                      <span className="underline">View in Notion</span>
                     </a>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between">
-              <button
-                onClick={handleDelete}
-                className="text-[11px] font-bold uppercase text-red-500 hover:text-red-600"
-                disabled={loading}
-              >
-                Delete
-              </button>
+            <div className="px-6 py-4 border-t border-gray-100 bg-bg-soft flex items-center justify-between">
+              {deleteConfirm ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-red-600">Confirm delete?</span>
+                  <button
+                    onClick={handleDelete}
+                    className="px-3 py-1.5 text-[10px] font-bold uppercase bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    disabled={loading}
+                  >
+                    {loading ? 'Deleting...' : 'Yes, Delete'}
+                  </button>
+                  <button
+                    onClick={() => setDeleteConfirm(false)}
+                    className="px-3 py-1.5 text-[10px] font-bold uppercase text-ink-sub hover:text-ink transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleDelete}
+                  className="text-[11px] font-bold uppercase text-red-500 hover:text-red-600 transition-colors"
+                  disabled={loading}
+                >
+                  Delete
+                </button>
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 text-[11px] font-bold uppercase border border-gray-200 rounded-lg"
+                  className="px-4 py-2 text-[11px] font-bold uppercase border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={loading}
-                  className="px-4 py-2 text-[11px] font-bold uppercase bg-editorial text-white rounded-lg"
+                  className="px-4 py-2 text-[11px] font-bold uppercase bg-editorial text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : 'Save'}
+                  {loading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      );
+    };
+
+    const DayColumn = ({ day, weekdayLabel, isToday, onCardClick }) => {
+      const [expanded, setExpanded] = useState(false);
+      const hasMore = day.items.length > INITIAL_VISIBLE;
+      const displayItems = expanded ? day.items : day.items.slice(0, INITIAL_VISIBLE);
+      const hiddenCount = day.items.length - INITIAL_VISIBLE;
+
+      return (
+        <div className="min-h-[200px] md:min-h-[600px] flex flex-col">
+          <div className={`p-3 text-center border-b border-gray-50 transition-colors ${isToday ? 'bg-editorial/5' : 'bg-bg-soft'}`}>
+            <div className="text-[9px] font-bold uppercase text-ink-sub tracking-widest mb-0.5">
+              {weekdayLabel}
+            </div>
+            <div className={`text-lg font-black ${isToday ? 'text-editorial' : 'text-ink'}`}>
+              {day.date.getDate()}
+            </div>
+            {day.items.length > 0 && (
+              <div className="mt-1">
+                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-ink-sub">
+                  {day.items.length} item{day.items.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className={`flex-1 p-2 bg-white flex flex-col gap-2 ${expanded ? 'overflow-y-auto max-h-[500px] custom-scrollbar' : 'overflow-hidden'}`}>
+            {day.items.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-start pt-8 opacity-20 hover:opacity-40 transition-opacity">
+                <div className="w-1 h-8 bg-gray-300 rounded-full mb-2"></div>
+                <span className="text-[8px] font-bold uppercase">No Items</span>
+              </div>
+            ) : (
+              <>
+                {displayItems.map((item) => (
+                  <RundownCard
+                    key={item.id}
+                    item={item}
+                    onClick={onCardClick}
+                  />
+                ))}
+                {hasMore && !expanded && (
+                  <button
+                    onClick={() => setExpanded(true)}
+                    className="mt-1 py-2 text-[9px] font-bold text-ink-sub hover:text-editorial transition-colors flex items-center justify-center gap-1 rounded-lg border border-dashed border-gray-200 hover:border-editorial/30 bg-gradient-to-t from-white to-transparent"
+                  >
+                    <span>+{hiddenCount} more</span>
+                    <span className="text-[7px]">▼</span>
+                  </button>
+                )}
+                {expanded && hasMore && (
+                  <button
+                    onClick={() => setExpanded(false)}
+                    className="mt-1 py-2 text-[9px] font-bold text-ink-sub hover:text-editorial transition-colors flex items-center justify-center gap-1 rounded-lg border border-dashed border-gray-200 hover:border-editorial/30 sticky bottom-0 bg-white"
+                  >
+                    <span>Show less</span>
+                    <span className="text-[7px]">▲</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       );
@@ -686,33 +829,13 @@
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-gray-100">
                 {weekData.map((day, i) => (
-                  <div key={day.dateKey} className="min-h-[200px] md:min-h-[600px] flex flex-col">
-                    <div className={`p-3 text-center border-b border-gray-50 transition-colors ${isToday(day.date) ? 'bg-editorial/5' : 'bg-bg-soft'}`}>
-                      <div className="text-[9px] font-bold uppercase text-ink-sub tracking-widest mb-0.5">
-                        {WEEKDAYS[i]}
-                      </div>
-                      <div className={`text-lg font-black ${isToday(day.date) ? 'text-editorial' : 'text-ink'}`}>
-                        {day.date.getDate()}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 p-2 bg-white flex flex-col gap-2">
-                      {day.items.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-start pt-8 opacity-20 hover:opacity-40 transition-opacity">
-                          <div className="w-1 h-8 bg-gray-300 rounded-full mb-2"></div>
-                          <span className="text-[8px] font-bold uppercase">No Items</span>
-                        </div>
-                      ) : (
-                        day.items.map((item) => (
-                          <RundownCard
-                            key={item.id}
-                            item={item}
-                            onClick={handleCardClick}
-                          />
-                        ))
-                      )}
-                    </div>
-                  </div>
+                  <DayColumn
+                    key={day.dateKey}
+                    day={day}
+                    weekdayLabel={WEEKDAYS[i]}
+                    isToday={isToday(day.date)}
+                    onCardClick={handleCardClick}
+                  />
                 ))}
               </div>
             )}
