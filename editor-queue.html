@@ -4,157 +4,423 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Queue | DMG</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; --production: #43B049; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; color: var(--ink); }
-        .widget { background: #FFF; border: 1px solid var(--border); border-radius: 16px; max-width: 500px; overflow: hidden; }
-        .header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 2px; }
-        .dot-grid span { width: 5px; height: 5px; border-radius: 50%; background: var(--production); animation: pulse 2.5s infinite ease-in-out; }
-        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-        .title { font-size: 13px; font-weight: 800; }
-        .count { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: #DCFCE7; color: #166534; margin-left: auto; }
-        .list { max-height: 300px; overflow-y: auto; }
-        .item { padding: 14px 20px; border-bottom: 1px solid #F5F5F5; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.15s; }
-        .item:hover { background: var(--bg-soft); }
-        .item:last-child { border-bottom: none; }
-        .item-icon { width: 36px; height: 36px; border-radius: 10px; background: #DCFCE7; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-        .item-info { flex: 1; min-width: 0; }
-        .item-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .item-sub { font-size: 11px; color: var(--ink-sub); }
-        .item-priority { font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 99px; text-transform: uppercase; }
-        .priority-high { background: #FEE2E2; color: #B91C1C; }
-        .priority-medium { background: #FEF3C7; color: #B45309; }
-        .priority-low { background: #E5E5E5; color: #525252; }
-        .empty { padding: 50px 20px; text-align: center; }
-        .empty-icon { font-size: 40px; margin-bottom: 12px; }
-        .empty-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
-        .empty-sub { font-size: 12px; color: var(--ink-sub); }
-        .loading { display: flex; align-items: center; justify-content: center; padding: 50px; color: var(--ink-sub); font-size: 12px; }
-        .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--production); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        :root {
+            --production: #43B049;
+            --production-light: rgba(67, 176, 73, 0.1);
+            --urgent: #EF4444;
+            --warning: #F59E0B;
+            --success: #10B981;
+            --dmg-blue: #21A0D8;
+            --creative: #E6468B;
+            --editorial: #E94B4B;
+            --ink: #1C1C1C;
+            --ink-light: #6B7280;
+            --ink-muted: #9CA3AF;
+            --border: #E5E7EB;
+            --surface: #FFFFFF;
+            --surface-alt: #F9FAFB;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --radius-xs: 6px;
+            --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: transparent; color: var(--ink); padding: 16px; -webkit-font-smoothing: antialiased; }
+
+        .dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--editorial); }
+        .dots span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
+        .dots span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        .dots span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        .queue-label { font-size: 11px; font-weight: 700; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.05em; }
+        .stats { margin-left: auto; display: flex; gap: 16px; }
+        .stat { display: flex; align-items: center; gap: 6px; }
+        .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .stat-value { font-size: 12px; font-weight: 700; }
+        .stat-label { font-size: 10px; color: var(--ink-light); }
+
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tab { padding: 8px 14px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: var(--transition); }
+        .tab:hover { border-color: var(--ink-light); }
+        .tab.active { background: var(--ink); color: white; border-color: var(--ink); }
+
+        .columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        @media (max-width: 900px) { .columns { grid-template-columns: 1fr; } }
+
+        .column { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-height: 200px; }
+        .column.forecast { border-color: rgba(33, 160, 216, 0.3); background: rgba(33, 160, 216, 0.02); }
+        .column-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .column-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .column-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); }
+        .column-count { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--ink-light); background: var(--surface-alt); padding: 2px 8px; border-radius: 10px; }
+
+        .cards { display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto; }
+
+        .card { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; position: relative; transition: var(--transition); cursor: pointer; }
+        .card:hover { border-color: var(--ink-light); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+
+        .card-priority { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+        .card-priority.high { background: var(--urgent); }
+        .card-priority.medium { background: var(--warning); }
+        .card-priority.low { background: var(--success); }
+        .card-priority.forecast { background: var(--dmg-blue); }
+
+        .card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .card-type { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; background: rgba(233, 75, 75, 0.1); color: var(--editorial); }
+        .card-source { font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
+        .card-source.queue { background: rgba(67, 176, 73, 0.1); color: var(--production); }
+        .card-source.asset { background: rgba(233, 75, 75, 0.1); color: var(--editorial); }
+        .card-source.forecast { background: rgba(33, 160, 216, 0.1); color: var(--dmg-blue); }
+        .card-effort { font-size: 9px; font-weight: 600; color: var(--ink-light); margin-left: auto; }
+
+        .card-title { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.4; margin-bottom: 6px; }
+        .card-project { font-size: 10px; color: var(--ink-light); margin-bottom: 10px; }
+
+        .card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .card-due { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: var(--surface); }
+        .card-due.overdue { background: rgba(239, 68, 68, 0.1); color: var(--urgent); }
+        .card-due.soon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .card-live { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .card-client-due { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(33, 160, 216, 0.1); color: var(--dmg-blue); }
+        .card-feedback { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(139, 92, 246, 0.1); color: #7C3AED; }
+        .card-editor { font-size: 10px; color: var(--ink-light); margin-left: auto; }
+
+        .empty { text-align: center; padding: 40px 20px; color: var(--ink-light); font-size: 11px; font-weight: 500; }
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; gap: 12px; }
+        .loading-text { font-size: 11px; font-weight: 600; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.1em; }
     </style>
 </head>
 <body>
-    <div id="root"><div class="loading"><div class="spinner"></div>Loading...</div></div>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    <div class="top-bar">
+        <div class="dots"><span></span><span></span><span></span><span></span></div>
+        <span class="queue-label">Edit Queue</span>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-dot" style="background: var(--urgent)"></div>
+                <span class="stat-value" id="urgentCount">0</span>
+                <span class="stat-label">Urgent</span>
+            </div>
+            <div class="stat">
+                <div class="stat-dot" style="background: var(--dmg-blue)"></div>
+                <span class="stat-value" id="forecastCount">0</span>
+                <span class="stat-label">Forecasted</span>
+            </div>
+        </div>
+    </div>
 
-        const app = initializeApp({
-            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
-            authDomain: "dmg-command-centre-native.firebaseapp.com",
-            projectId: "dmg-command-centre-native",
-            storageBucket: "dmg-command-centre-native.appspot.com",
-            messagingSenderId: "223535956454",
-            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
-        });
-        const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
-        
-        let items = [], loading = true;
-        const root = document.getElementById('root');
+    <div class="tabs">
+        <div class="tab active" data-view="all" onclick="switchTab('all')">All</div>
+        <div class="tab" data-view="active" onclick="switchTab('active')">In Queue</div>
+        <div class="tab" data-view="forecast" onclick="switchTab('forecast')">Forecasted</div>
+    </div>
 
-        function render() {
-            if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading queue...</div></div>`; return; }
+    <div class="columns" id="columns">
+        <div class="loading">
+            <div class="dots"><span></span><span></span><span></span><span></span></div>
+            <span class="loading-text">Loading queue...</span>
+        </div>
+    </div>
 
-            root.innerHTML = `
-                <div class="widget">
-                    <div class="header">
-                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                        <h2 class="title">Edit Queue</h2>
-                        <span class="count">${items.length} in queue</span>
-                    </div>
-                    ${items.length === 0 ? `
-                        <div class="empty">
-                            <div class="empty-icon">🎬</div>
-                            <div class="empty-title">Queue Empty</div>
-                            <div class="empty-sub">No edits pending. Add items to the edit_queue collection in Firebase.</div>
-                        </div>
-                    ` : `
-                        <div class="list">
-                            ${items.map(item => {
-                                const dueDate = item.dueDate || item.deliveryDue || item.internalDueDate || '';
-                                const liveDate = item.liveDate || item.goLiveDate || item.plannedLiveDate || '';
-                                const clientDue = item.clientDueDate || item.feedbackDue || item.dueDate || '';
-                                const feedbackStatus = item.feedbackStatus || '';
-                                const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
-                                const isOverdue = (d) => d && new Date(d) < new Date();
-                                const isDueSoon = (d) => { if (!d) return false; const diff = (new Date(d) - new Date()) / (1000*60*60*24); return diff >= 0 && diff <= 2; };
-                                return `
-                                <div class="item" onclick="window.open('${item.url || '#'}', '_blank')">
-                                    <div class="item-icon">🎬</div>
-                                    <div class="item-info">
-                                        <div class="item-title">${item.title || 'Untitled Edit'}</div>
-                                        <div class="item-sub">${item.editor || 'Unassigned'} • ${item.clientName || item.projectTitle || 'Project'}</div>
-                                        <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
-                                            ${clientDue ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: ${isOverdue(clientDue) ? '#FEE2E2' : isDueSoon(clientDue) ? '#FEF3C7' : '#E5E5E5'}; color: ${isOverdue(clientDue) ? '#B91C1C' : isDueSoon(clientDue) ? '#B45309' : '#525252'};">Client: ${formatDate(clientDue)}</span>` : ''}
-                                            ${liveDate ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #DCFCE7; color: #166534;">Live: ${formatDate(liveDate)}</span>` : ''}
-                                            ${feedbackStatus ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #DBEAFE; color: #1E40AF;">${feedbackStatus}</span>` : ''}
-                                        </div>
-                                    </div>
-                                    <span class="item-priority priority-${(item.priority || 'low').toLowerCase()}">${item.priority || 'Low'}</span>
-                                </div>
-                            `}).join('')}
-                        </div>
-                    `}
-                </div>
-            `;
-        }
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                // Listen to edit_queue - now synced from Commercial Hub
-                onSnapshot(collection(db, "artifacts", appId, "public", "data", "edit_queue"), snap => {
-                    items = []; snap.forEach(d => items.push({ id: d.id, ...d.data() }));
-                    // Sort by priority: high > medium > low
-                    const priorityOrder = { high: 0, medium: 1, low: 2 };
-                    items.sort((a, b) => (priorityOrder[a.priority?.toLowerCase()] || 2) - (priorityOrder[b.priority?.toLowerCase()] || 2));
-                    loading = false; render();
-                }, e => { console.error(e); loading = false; render(); });
+    const firebaseConfig = {
+        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+        authDomain: "dmg-command-centre-native.firebaseapp.com",
+        projectId: "dmg-command-centre-native",
+        storageBucket: "dmg-command-centre-native.firebasestorage.app",
+        messagingSenderId: "223535956454",
+        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const APP_ID = "dmg-command-centre-native";
+    const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
-                // Also listen to asset_metadata for additional edit tasks
-                onSnapshot(collection(db, "artifacts", appId, "public", "data", "asset_metadata"), snap => {
-                    const assets = [];
-                    snap.forEach(d => {
-                        const data = d.data();
-                        // Include assets in edit phase that have an editor assigned
-                        if (data.editor && ['Edit', 'Filming', 'Review'].includes(data.status)) {
-                            // Check if not already in edit_queue
-                            if (!items.some(i => i.id === d.id)) {
-                                assets.push({
-                                    id: d.id,
-                                    title: data.assetTitle || 'Untitled',
-                                    editor: data.editor,
-                                    format: data.assetFormat,
-                                    priority: data.deliveryDue && new Date(data.deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium',
-                                    dueDate: data.deliveryDue,
-                                    liveDate: data.liveDate || data.plannedLiveDate,
-                                    feedbackDue: data.feedbackDue,
-                                    feedbackStatus: data.feedbackStatus,
-                                    status: data.status,
-                                    clientName: data.clientName,
-                                    projectTitle: data.projectTitle,
-                                    source: 'asset-metadata'
-                                });
-                            }
-                        }
-                    });
-                    // Merge and re-sort
-                    const editQueueIds = new Set(items.filter(i => i.source !== 'asset-metadata').map(i => i.id));
-                    const newItems = [...items.filter(i => i.source !== 'asset-metadata'), ...assets.filter(a => !editQueueIds.has(a.id))];
-                    const priorityOrder = { high: 0, medium: 1, low: 2 };
-                    newItems.sort((a, b) => (priorityOrder[a.priority?.toLowerCase()] || 2) - (priorityOrder[b.priority?.toLowerCase()] || 2));
-                    items = newItems;
-                    render();
-                }, e => console.error(e));
-            } else {
-                signInAnonymously(auth).catch(e => { loading = false; render(); });
+    const COLUMNS = [
+        { key: 'forecast', title: 'Forecasted', color: 'var(--dmg-blue)', filter: i => i.source === 'forecast', isForecast: true },
+        { key: 'filming', title: 'Filming / Pre-Edit', color: 'var(--warning)', filter: i => i.source !== 'forecast' && (i.status === 'Filming' || i.status === 'Not Started') },
+        { key: 'editing', title: 'In Edit', color: 'var(--editorial)', filter: i => i.source !== 'forecast' && (i.status === 'Edit' || i.status === 'In Progress') },
+        { key: 'review', title: 'Review', color: 'var(--production)', filter: i => i.source !== 'forecast' && (i.status === 'Review' || i.status === 'Done') }
+    ];
+
+    let editQueueItems = [];
+    let assetMetadataItems = [];
+    let forecastedProjects = [];
+    let currentView = 'all';
+
+    function isOverdue(dateStr) {
+        if (!dateStr) return false;
+        return new Date(dateStr) < new Date();
+    }
+
+    function isDueSoon(dateStr) {
+        if (!dateStr) return false;
+        const due = new Date(dateStr);
+        const now = new Date();
+        const diff = (due - now) / (1000 * 60 * 60 * 24);
+        return diff >= 0 && diff <= 2;
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        const now = new Date();
+        const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+        if (diff < 0) return `${Math.abs(diff)}d overdue`;
+        if (diff === 0) return 'Today';
+        if (diff === 1) return 'Tomorrow';
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    }
+
+    function getPriority(item) {
+        if (item.source === 'forecast') return 'forecast';
+        const p = (item.priority || '').toLowerCase();
+        if (p === 'high' || p === 'urgent') return 'high';
+        if (p === 'medium') return 'medium';
+        return 'low';
+    }
+
+    function normaliseEditQueueItem(item) {
+        return {
+            id: item.id,
+            source: 'queue',
+            title: item.title || 'Untitled Edit',
+            project: item.clientName || item.projectTitle || '',
+            editor: item.editor || 'Unassigned',
+            status: item.status || 'Edit',
+            priority: item.priority || 'Medium',
+            dueDate: item.dueDate || item.deliveryDue,
+            liveDate: item.liveDate || item.goLiveDate,
+            clientDueDate: item.clientDueDate || item.feedbackDue,
+            feedbackStatus: item.feedbackStatus,
+            url: item.url,
+            effort: item.effortPTS || 0
+        };
+    }
+
+    function normaliseAssetMetadata(item) {
+        const priority = item.deliveryDue && new Date(item.deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium';
+        return {
+            id: item.id,
+            source: 'asset',
+            title: item.assetTitle || 'Untitled',
+            project: item.clientName || item.projectTitle || '',
+            editor: item.editor || 'Unassigned',
+            status: item.status || 'Edit',
+            priority: priority,
+            dueDate: item.deliveryDue,
+            liveDate: item.liveDate || item.plannedLiveDate,
+            clientDueDate: item.feedbackDue,
+            feedbackStatus: item.feedbackStatus,
+            format: item.assetFormat,
+            effort: item.effortPTS || 0
+        };
+    }
+
+    function normaliseForecastProject(project) {
+        // Calculate estimated edit work based on deliverables
+        const movingAssets = project.movingAssetCount || 0;
+        const estimatedEffort = movingAssets * 4; // ~4 hours per video asset
+
+        return {
+            id: project.id,
+            source: 'forecast',
+            title: project.title || 'Untitled Project',
+            project: project.client || '',
+            editor: 'Unassigned',
+            status: 'Forecasted',
+            priority: project.priority || 'Medium',
+            dueDate: project.internalDueDate || project.dueDate,
+            liveDate: project.liveDate,
+            shootDate: project.shootDate,
+            clientDueDate: project.dueDate,
+            dealStage: project.dealStage,
+            productionStatus: project.productionWorkflowStatus,
+            movingAssets: movingAssets,
+            effort: estimatedEffort,
+            url: project.url
+        };
+    }
+
+    function getAllItems() {
+        // Merge all sources, avoiding duplicates
+        const items = [];
+        const seenIds = new Set();
+
+        // Add edit queue items
+        editQueueItems.forEach(item => {
+            if (!seenIds.has(item.id)) {
+                items.push(normaliseEditQueueItem(item));
+                seenIds.add(item.id);
             }
         });
-    </script>
+
+        // Add asset metadata items (only if editor assigned and in edit phase)
+        assetMetadataItems.forEach(item => {
+            if (!seenIds.has(item.id) && item.editor && ['Edit', 'Filming', 'Review'].includes(item.status)) {
+                items.push(normaliseAssetMetadata(item));
+                seenIds.add(item.id);
+            }
+        });
+
+        // Add forecasted projects
+        forecastedProjects.forEach(project => {
+            if (!seenIds.has(project.id)) {
+                items.push(normaliseForecastProject(project));
+                seenIds.add(project.id);
+            }
+        });
+
+        return items;
+    }
+
+    function render() {
+        let items = getAllItems();
+
+        // Filter based on current view
+        if (currentView === 'active') {
+            items = items.filter(i => i.source !== 'forecast');
+        } else if (currentView === 'forecast') {
+            items = items.filter(i => i.source === 'forecast');
+        }
+
+        const urgent = items.filter(i => getPriority(i) === 'high').length;
+        const forecast = items.filter(i => i.source === 'forecast').length;
+
+        document.getElementById('urgentCount').textContent = urgent;
+        document.getElementById('forecastCount').textContent = forecast;
+
+        // Filter columns based on view
+        let visibleColumns = COLUMNS;
+        if (currentView === 'active') {
+            visibleColumns = COLUMNS.filter(c => !c.isForecast);
+        } else if (currentView === 'forecast') {
+            visibleColumns = COLUMNS.filter(c => c.isForecast);
+        }
+
+        document.getElementById('columns').innerHTML = visibleColumns.map(col => {
+            const colItems = items.filter(col.filter);
+            colItems.sort((a, b) => {
+                // Forecasts sort by shoot date, then due date
+                if (col.isForecast) {
+                    if (a.shootDate && b.shootDate) return new Date(a.shootDate) - new Date(b.shootDate);
+                    if (a.shootDate) return -1;
+                    if (b.shootDate) return 1;
+                }
+                // Regular items sort by priority then due date
+                const pOrder = { high: 0, medium: 1, low: 2, forecast: 3 };
+                if (pOrder[getPriority(a)] !== pOrder[getPriority(b)]) return pOrder[getPriority(a)] - pOrder[getPriority(b)];
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                return new Date(a.dueDate) - new Date(b.dueDate);
+            });
+
+            return `
+                <div class="column ${col.isForecast ? 'forecast' : ''}">
+                    <div class="column-header">
+                        <div class="column-dot" style="background: ${col.color}"></div>
+                        <span class="column-title">${col.title}</span>
+                        <span class="column-count">${colItems.length}</span>
+                    </div>
+                    <div class="cards">
+                        ${colItems.length === 0 ? '<div class="empty">No items</div>' : colItems.map(item => {
+                            const overdue = isOverdue(item.dueDate);
+                            const soon = isDueSoon(item.dueDate);
+                            const isForecast = item.source === 'forecast';
+                            return `
+                                <div class="card" onclick="${item.url ? `window.open('${item.url}', '_blank')` : ''}">
+                                    <div class="card-priority ${getPriority(item)}"></div>
+                                    <div class="card-top">
+                                        <span class="card-type">${isForecast ? 'Video' : (item.format || 'Edit')}</span>
+                                        <span class="card-source ${item.source}">${item.source === 'queue' ? 'QUEUE' : (item.source === 'asset' ? 'ASSET' : 'FORECAST')}</span>
+                                        ${item.effort ? `<span class="card-effort">${item.effort} ${isForecast ? 'hrs est' : 'pts'}</span>` : ''}
+                                    </div>
+                                    <div class="card-title">${item.title}</div>
+                                    ${item.project ? `<div class="card-project">${item.project}</div>` : ''}
+                                    <div class="card-meta">
+                                        ${isForecast && item.shootDate ? `<span class="card-due ${isOverdue(item.shootDate) ? 'overdue' : (isDueSoon(item.shootDate) ? 'soon' : '')}">Shoot: ${formatDate(item.shootDate)}</span>` : ''}
+                                        ${isForecast && item.movingAssets ? `<span class="card-client-due">${item.movingAssets} video${item.movingAssets > 1 ? 's' : ''}</span>` : ''}
+                                        ${!isForecast && item.dueDate ? `<span class="card-due ${overdue ? 'overdue' : (soon ? 'soon' : '')}">${formatDate(item.dueDate)}</span>` : ''}
+                                        ${!isForecast && item.clientDueDate ? `<span class="card-client-due">Client: ${formatDate(item.clientDueDate)}</span>` : ''}
+                                        ${!isForecast && item.liveDate ? `<span class="card-live">Live: ${formatDate(item.liveDate)}</span>` : ''}
+                                        ${item.feedbackStatus ? `<span class="card-feedback">${item.feedbackStatus}</span>` : ''}
+                                        <span class="card-editor">${item.editor}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.switchTab = (view) => {
+        currentView = view;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`.tab[data-view="${view}"]`).classList.add('active');
+        render();
+    };
+
+    async function loadForecastedProjects() {
+        try {
+            const res = await fetch(`${API_URL}/projects`);
+            const data = await res.json();
+            const projects = data?.projects || [];
+
+            // Filter for won projects that have video deliverables and aren't yet in active editing
+            forecastedProjects = projects.filter(p => {
+                // Must be a won deal
+                const dealStage = (p.dealStage || '').toLowerCase();
+                const isWon = dealStage.includes('agreed') || dealStage === 'campaign complete';
+                if (!isWon) return false;
+
+                // Must have video deliverables (movingAssetCount > 0) OR productionWorkflowStatus indicates pre-edit
+                const hasVideo = (p.movingAssetCount || 0) > 0;
+                const prodStatus = (p.productionWorkflowStatus || '').toLowerCase();
+                const isPreEdit = !prodStatus || prodStatus === 'not started' || prodStatus === 'to be briefed' || prodStatus === 'in progress';
+
+                // Exclude if already in active editing (check if we have actual edit queue items for this project)
+                const hasActiveEdits = editQueueItems.some(i => i.projectTitle === p.title || i.clientName === p.client);
+
+                return hasVideo && isPreEdit && !hasActiveEdits;
+            });
+
+            render();
+        } catch (err) {
+            console.error('Failed to load forecasted projects', err);
+        }
+    }
+
+    signInAnonymously(auth).then(async () => {
+        // Listen to edit_queue
+        onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "edit_queue"), (snap) => {
+            editQueueItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            render();
+        });
+
+        // Listen to asset_metadata
+        onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "asset_metadata"), (snap) => {
+            assetMetadataItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            render();
+        });
+
+        // Load forecasted projects from API
+        await loadForecastedProjects();
+    });
+
+    // Refresh forecasted projects every 60 seconds
+    setInterval(loadForecastedProjects, 60000);
+</script>
 </body>
 </html>
