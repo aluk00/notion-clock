@@ -263,10 +263,32 @@
     function render() {
         let items = [];
         if (currentView === 'all' || currentView === 'deliverables') {
-            const designDeliverables = deliverables.filter(d =>
-                (d.staticAssetsNeeded?.length > 0 || d.staticAssetCount > 0) &&
-                d.status !== 'Live' && d.status !== 'Published'
-            ).map(normaliseDeliverable);
+            // Include deliverables that need design work:
+            // - Has staticAssetsNeeded or staticAssetCount, OR
+            // - Has discipline = 'Design', OR
+            // - Has designTaskType set, OR
+            // - Title contains design-related keywords
+            // Exclude Live/Published items
+            const designKeywords = ['thumbnail', 'graphic', 'design', 'asset', 'social'];
+            const designDeliverables = deliverables.filter(d => {
+                // Always exclude completed items
+                if (d.status === 'Live' || d.status === 'Published' || d.status === 'Complete') return false;
+
+                // Include if has design assets
+                if (d.staticAssetsNeeded?.length > 0 || d.staticAssetCount > 0) return true;
+
+                // Include if discipline is Design
+                if (d.discipline === 'Design') return true;
+
+                // Include if has designTaskType
+                if (d.designTaskType) return true;
+
+                // Include if title contains design keywords
+                const title = (d.title || '').toLowerCase();
+                if (designKeywords.some(k => title.includes(k))) return true;
+
+                return false;
+            }).map(normaliseDeliverable);
             items = items.concat(designDeliverables);
         }
         if (currentView === 'all' || currentView === 'quick') {

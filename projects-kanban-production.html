@@ -675,17 +675,17 @@
         }
 
         function renderKanban() {
-            // Include all projects that have productionWorkflowStatus OR are in active pipeline stages
-            // Default projects without productionWorkflowStatus to "Not Started" if they have an active deal
+            // Include ALL projects from Master Ledger
+            // Only exclude archived/cancelled projects
             const filtered = allProjects.filter(p => {
-                // Include if has productionWorkflowStatus
-                if (p.productionWorkflowStatus) return true;
-                // Include if has relevant deal stage (Deal Agreed or Campaign Complete - i.e., won deals)
+                const status1 = (p.status1 || p.projectStatus || '').toLowerCase();
                 const dealStage = (p.dealStage || '').toLowerCase();
-                if (dealStage.includes('agreed') || dealStage === 'campaign complete') {
-                    return true;
+                // Exclude cancelled, archived, or lost projects
+                if (status1.includes('cancelled') || status1.includes('archived') ||
+                    dealStage.includes('lost') || dealStage.includes('archived')) {
+                    return false;
                 }
-                return false;
+                return true;
             }).map(p => ({
                 ...p,
                 // Default productionWorkflowStatus if not set

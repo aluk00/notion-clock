@@ -540,8 +540,15 @@
                 rawProjects.forEach(p => {
                     const clientName = (p.client || 'Internal').trim();
                     const stage = p.dealStage || '';
+                    const status1 = (p.status1 || p.projectStatus || '').toLowerCase();
 
-                    // More flexible matching for production projects (case-insensitive)
+                    // Skip archived/cancelled/lost projects
+                    if (status1.includes('cancelled') || status1.includes('archived') ||
+                        stage.toLowerCase().includes('lost') || stage.toLowerCase().includes('archived')) {
+                        return;
+                    }
+
+                    // Production projects: Deal Agreed/Won/Complete OR has active workflow status
                     const productionKeywords = ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed', 'Complete', 'In Production', 'Active'];
                     const isProduction = productionKeywords.some(k =>
                         stage.toLowerCase().includes(k.toLowerCase())
@@ -551,7 +558,10 @@
                     const hasActiveProductionStatus = p.productionWorkflowStatus &&
                         !p.productionWorkflowStatus.toLowerCase().includes('not started');
 
-                    if (isProduction || hasActiveProductionStatus) {
+                    // Also include if STATUS 1 is Active
+                    const isActiveStatus1 = status1.includes('active');
+
+                    if (isProduction || hasActiveProductionStatus || isActiveStatus1) {
                         if (!groupedProjects[clientName]) {
                             groupedProjects[clientName] = {
                                 type: 'production',
@@ -644,20 +654,29 @@
             const productionKeywords = ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed', 'Complete', 'In Production', 'Active'];
             rawProjects.forEach(p => {
                 const stage = p.dealStage || '';
+                const status1 = (p.status1 || p.projectStatus || '').toLowerCase();
+                const clientName = (p.client || 'Internal').trim();
+
+                // Skip archived/cancelled/lost projects
+                if (status1.includes('cancelled') || status1.includes('archived') ||
+                    stage.toLowerCase().includes('lost') || stage.toLowerCase().includes('archived')) {
+                    return;
+                }
+
                 const isInProduction = productionKeywords.some(k => stage.toLowerCase().includes(k.toLowerCase()));
 
                 // Also check if project is in production group by workflow status
                 const hasActiveProductionStatus = p.productionWorkflowStatus &&
                     !p.productionWorkflowStatus.toLowerCase().includes('not started');
 
-                // Skip if already shown in production (either by deal stage or workflow status)
-                if (isInProduction || hasActiveProductionStatus) return;
+                // Also check if STATUS 1 is Active
+                const isActiveStatus1 = status1.includes('active');
 
-                // Skip archived/lost projects
-                const isArchived = stage.toLowerCase().includes('lost') ||
-                    stage.toLowerCase().includes('archived') ||
-                    (p.status1 || '').toLowerCase().includes('archived');
-                if (isArchived) return;
+                // Skip if already shown in production (either by deal stage, workflow status, or STATUS 1)
+                if (isInProduction || hasActiveProductionStatus || isActiveStatus1) return;
+
+                // Skip if already in production group by client name
+                if (groupedProjects[clientName]) return;
 
                 counts.pipe++;
 
