@@ -267,12 +267,15 @@
             // - Has staticAssetsNeeded or staticAssetCount, OR
             // - Has discipline = 'Design', OR
             // - Has designTaskType set, OR
-            // - Title contains design-related keywords
+            // - Title contains design-related keywords, OR
+            // - Status indicates it's in production (not yet complete)
             // Exclude Live/Published items
             const designKeywords = ['thumbnail', 'graphic', 'design', 'asset', 'social'];
+            const activeStatuses = ['not started', 'in progress', 'with design', 'pre-production', 'briefed', 'to be briefed', 'stakeholder review'];
             const designDeliverables = deliverables.filter(d => {
                 // Always exclude completed items
-                if (d.status === 'Live' || d.status === 'Published' || d.status === 'Complete') return false;
+                const status = (d.status || '').toLowerCase();
+                if (status === 'live' || status === 'published' || status === 'complete' || status === 'done') return false;
 
                 // Include if has design assets
                 if (d.staticAssetsNeeded?.length > 0 || d.staticAssetCount > 0) return true;
@@ -286,6 +289,13 @@
                 // Include if title contains design keywords
                 const title = (d.title || '').toLowerCase();
                 if (designKeywords.some(k => title.includes(k))) return true;
+
+                // Include if status indicates active work (fallback for project-level items)
+                if (activeStatuses.some(s => status.includes(s))) return true;
+
+                // Include ALL items if this is from /projects fallback (no specific design fields but still active)
+                // This ensures projects show up even without explicit design tagging
+                if (d.projectTitle && !status.includes('cancelled') && !status.includes('archived')) return true;
 
                 return false;
             }).map(normaliseDeliverable);
@@ -374,9 +384,44 @@
 
     async function loadDeliverables() {
         try {
+            // Try /deliverables first
             const res = await fetch(`${API_URL}/deliverables`);
             const data = await res.json();
-            deliverables = data.deliverables || data.projects || [];
+            let items = data.deliverables || data.projects || [];
+
+            // If no deliverables, also try /projects to get project-level items that need design
+            if (items.length === 0) {
+                console.log('[Designer Queue] No deliverables found, trying /projects endpoint');
+                const projRes = await fetch(`${API_URL}/projects`);
+                const projData = await projRes.json();
+                if (projData.projects && projData.projects.length > 0) {
+                    // Convert projects to deliverable-like items for design work
+                    items = projData.projects.filter(p => {
+                        // Include projects that might need design work
+                        const status = (p.status1 || p.status || p.projectStatus || '').toLowerCase();
+                        return !status.includes('cancelled') && !status.includes('archived') && status !== 'live' && status !== 'complete';
+                    }).map(p => ({
+                        id: p.id,
+                        title: p.title,
+                        projectTitle: p.client || p.title,
+                        status: p.productionWorkflowStatus || p.status || 'Not Started',
+                        staticAssetCount: p.staticAssetCount || 0,
+                        staticAssetsNeeded: p.staticAssetsNeeded || [],
+                        discipline: p.discipline,
+                        designTaskType: p.designTaskType,
+                        dueDate: p.dueDate || p.clientDueDate || p.internalDueDate,
+                        liveDate: p.plannedLiveDate || p.liveDate,
+                        clientDueDate: p.clientDueDate,
+                        feedbackStatus: p.feedbackStatus,
+                        feedbackDue: p.feedbackDue,
+                        graphicDesigner: p.graphicDesigner || p.assignedTo,
+                        assetsNeeded: p.assetsNeeded
+                    }));
+                }
+            }
+
+            deliverables = items;
+            console.log('[Designer Queue] Loaded', deliverables.length, 'items');
             render();
         } catch (err) { console.error('Failed to load deliverables', err); }
     }
