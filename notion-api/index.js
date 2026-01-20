@@ -986,6 +986,25 @@ app.post('/rundown/carry-over', async (req, res) => {
 // EVENTS & ACCREDITATION ENDPOINTS
 // ============================================
 
+// HELPER: Find and parse the title property from a Notion page
+// Notion databases always have exactly one property with type 'title'
+function getTitleFromPage(props) {
+    // First try common title property names
+    const commonTitleNames = ['Event', 'Name', 'Title', 'name', 'title'];
+    for (const name of commonTitleNames) {
+        if (props[name]?.type === 'title') {
+            return parseProperty(props[name]);
+        }
+    }
+    // Fallback: search all properties for the title type
+    for (const [key, value] of Object.entries(props)) {
+        if (value?.type === 'title') {
+            return parseProperty(value);
+        }
+    }
+    return null;
+}
+
 // HELPER: Parse event item from Notion page
 // Maps to "Events & Accreditation Production + Planning" database schema
 function parseEventItem(page) {
@@ -996,11 +1015,14 @@ function parseEventItem(page) {
     const startDate = dateValue?.start || null;
     const endDate = dateValue?.end || null;
 
+    // Get the title - try specific property first, then fallback to finding title by type
+    const eventTitle = parseProperty(props['Event']) || getTitleFromPage(props);
+
     return {
         id: page.id,
         url: page.url,
-        title: parseProperty(props['Event']),
-        event: parseProperty(props['Event']),
+        title: eventTitle,
+        event: eventTitle,
         date: startDate,
         endDate: endDate,
         type: parseProperty(props['Angle Bucket']),
@@ -1067,8 +1089,7 @@ app.get('/events', async (req, res) => {
         const response = await notion.databases.query({
             database_id: EVENTS_DB,
             filter,
-            page_size: 100,
-            sorts: [{ property: 'Date', direction: 'ascending' }]
+            page_size: 100
         });
 
         const events = response.results.map(parseEventItem);

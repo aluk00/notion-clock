@@ -8,6 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <style>
         :root {
             --dmg-blue: #21a0d8;
@@ -60,7 +64,7 @@
             padding: 20px;
         }
         .detail-panel {
-            width: 380px;
+            width: 420px;
             background: #FFF;
             border-left: 1px solid var(--border);
             display: flex;
@@ -319,7 +323,6 @@
 
         .panel-body {
             flex: 1;
-            padding: 20px;
             overflow-y: auto;
         }
         .panel-footer {
@@ -349,6 +352,52 @@
             color: #FFF;
         }
         .panel-btn.primary:hover { background: #3a9d42; }
+
+        /* Panel Tabs */
+        .panel-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-soft);
+        }
+        .panel-tab {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            cursor: pointer;
+            transition: all 0.15s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        .panel-tab.active {
+            background: #FFF;
+            color: var(--team-production);
+            border-bottom-color: var(--team-production);
+        }
+        .panel-tab:hover:not(.active) { color: var(--ink); }
+        .panel-tab .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 6px;
+            background: var(--border);
+            border-radius: 99px;
+            font-size: 10px;
+            margin-left: 6px;
+        }
+        .panel-tab.active .badge {
+            background: var(--team-production);
+            color: #FFF;
+        }
+
+        .tab-content {
+            padding: 20px;
+        }
 
         /* Empty State */
         .empty-state {
@@ -391,6 +440,7 @@
         .status-badge.blue { background: #DBEAFE; color: #1D4ED8; }
         .status-badge.green { background: #DCFCE7; color: #166534; }
         .status-badge.red { background: #FEE2E2; color: #B91C1C; }
+        .status-badge.purple { background: #F3E8FF; color: #7C3AED; }
 
         /* Loading */
         .loading {
@@ -428,6 +478,30 @@
             font-size: 13px;
             color: var(--ink);
             line-height: 1.5;
+        }
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--team-production);
+        }
+        .form-input::placeholder {
+            color: var(--ink-sub);
+        }
+        textarea.form-input {
+            resize: vertical;
+            min-height: 80px;
+        }
+        select.form-input {
+            cursor: pointer;
+            background: #FFF;
         }
 
         /* Error state */
@@ -467,6 +541,306 @@
             cursor: pointer;
         }
         .retry-btn:hover { background: #3a9d42; }
+
+        /* Ideas */
+        .idea-card {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            transition: all 0.15s;
+        }
+        .idea-card:hover {
+            border-color: var(--team-production);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .idea-card.expanded {
+            border-color: var(--team-production);
+        }
+        .idea-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .idea-checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .idea-checkbox.draft { border-color: var(--ink-sub); }
+        .idea-checkbox.pending_review { border-color: var(--warning); background: #FEF3C7; }
+        .idea-checkbox.approved { border-color: var(--success); background: var(--success); color: #FFF; }
+        .idea-checkbox.converted { border-color: var(--dmg-blue); background: var(--dmg-blue); color: #FFF; }
+        .idea-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .idea-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+            margin-bottom: 4px;
+        }
+        .idea-meta {
+            font-size: 11px;
+            color: var(--ink-sub);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .idea-format {
+            background: var(--bg-soft);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+        .idea-details {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+            display: none;
+        }
+        .idea-card.expanded .idea-details {
+            display: block;
+        }
+        .idea-description {
+            font-size: 12px;
+            color: var(--ink-sub);
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .idea-links {
+            margin-bottom: 12px;
+        }
+        .idea-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--dmg-blue);
+            text-decoration: none;
+            margin-bottom: 6px;
+        }
+        .idea-link:hover { text-decoration: underline; }
+        .idea-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .idea-file {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: var(--bg-soft);
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--ink);
+        }
+        .idea-file-icon {
+            font-size: 14px;
+        }
+        .idea-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .idea-action-btn {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            background: #FFF;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .idea-action-btn:hover {
+            border-color: var(--team-production);
+            color: var(--team-production);
+        }
+        .idea-action-btn.convert {
+            background: var(--team-production);
+            border-color: var(--team-production);
+            color: #FFF;
+        }
+        .idea-action-btn.convert:hover {
+            background: #3a9d42;
+        }
+
+        /* Comments */
+        .comments-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .comments-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .comment {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .comment-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--bg-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            flex-shrink: 0;
+        }
+        .comment-body {
+            flex: 1;
+        }
+        .comment-author {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+        .comment-time {
+            font-size: 10px;
+            color: var(--ink-sub);
+            margin-left: 8px;
+        }
+        .comment-text {
+            font-size: 12px;
+            color: var(--ink);
+            line-height: 1.5;
+            margin-top: 4px;
+        }
+        .comment-input-wrap {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .comment-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: inherit;
+        }
+        .comment-input:focus {
+            outline: none;
+            border-color: var(--team-production);
+        }
+        .comment-submit {
+            padding: 10px 16px;
+            background: var(--team-production);
+            border: none;
+            border-radius: 8px;
+            color: #FFF;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .comment-submit:hover { background: #3a9d42; }
+
+        /* Add Idea Form */
+        .add-idea-form {
+            background: var(--bg-soft);
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .add-idea-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .add-idea-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+        .file-upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-bottom: 12px;
+        }
+        .file-upload-area:hover {
+            border-color: var(--team-production);
+            background: #FFF;
+        }
+        .file-upload-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .file-upload-text {
+            font-size: 12px;
+            color: var(--ink-sub);
+        }
+        .file-upload-text strong {
+            color: var(--team-production);
+        }
+        .uploaded-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .uploaded-file {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 11px;
+        }
+        .uploaded-file-remove {
+            cursor: pointer;
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        /* Link input group */
+        .link-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .link-input-row {
+            display: flex;
+            gap: 8px;
+        }
+        .link-input-row .form-input:first-child {
+            width: 120px;
+            flex-shrink: 0;
+        }
+        .link-input-row .form-input:last-child {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -478,8 +852,30 @@
     </div>
 
     <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627",
+            measurementId: "G-5HNGPRJGZY"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // ============================================
+        // CONSTANTS
+        // ============================================
         const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -493,15 +889,42 @@
             'Denied': { label: 'Denied', class: 'red', dot: 'status-red' }
         };
 
+        const IDEA_STATUS_CONFIG = {
+            'draft': { label: 'Draft', class: 'none' },
+            'pending_review': { label: 'Pending Review', class: 'amber' },
+            'approved': { label: 'Approved', class: 'green' },
+            'in_production': { label: 'In Production', class: 'purple' },
+            'converted': { label: 'Converted', class: 'blue' }
+        };
+
+        const FORMAT_OPTIONS = [
+            '9:16 Video',
+            '16:9 Video',
+            'Stills',
+            'Thumbnail',
+            'Gallery',
+            'Article Pitch'
+        ];
+
+        // ============================================
+        // STATE
+        // ============================================
         let events = [];
         let currentDate = new Date();
         let currentView = 'agenda';
         let selectedEvent = null;
+        let selectedTab = 'details';
         let isLoading = true;
         let error = null;
+        let eventIdeas = {};
+        let expandedIdeaId = null;
+        let showAddIdeaForm = false;
+        let pendingFiles = [];
         const root = document.getElementById('root');
 
-        // Calendar helpers
+        // ============================================
+        // HELPERS
+        // ============================================
         const daysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
         const firstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
@@ -510,14 +933,6 @@
                 if (!e.date) return false;
                 const eventDate = new Date(e.date);
                 return eventDate.toDateString() === date.toDateString();
-            });
-        };
-
-        const getEventsForMonth = (month) => {
-            return events.filter(e => {
-                if (!e.date) return false;
-                const eventDate = new Date(e.date);
-                return eventDate.getMonth() === month && eventDate.getFullYear() === currentDate.getFullYear();
             });
         };
 
@@ -542,7 +957,208 @@
             return STATUS_CONFIG[status] || { label: status || 'Unknown', class: 'none', dot: 'status-none' };
         };
 
-        // Render functions
+        const getEventTitle = (e) => {
+            return e.title || e.event || e.Event || e.name || e.Name || e.eventName || 'Untitled';
+        };
+
+        const getEventLocation = (e) => {
+            return e.location || e.Location || e.where || e.Where || e.venue || 'TBC';
+        };
+
+        const getEventProducer = (e) => {
+            return e.producer || e.Producer || e.subItemOwner || e.lead || e.assignedTo || 'Unassigned';
+        };
+
+        const timeAgo = (timestamp) => {
+            if (!timestamp) return '';
+            const seconds = Math.floor((new Date() - timestamp.toDate()) / 1000);
+            if (seconds < 60) return 'just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            return `${Math.floor(seconds / 86400)}d ago`;
+        };
+
+        const getInitials = (name) => {
+            if (!name) return '?';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        };
+
+        const getFileIcon = (type) => {
+            if (type?.startsWith('image/')) return '🖼️';
+            if (type?.includes('pdf')) return '📄';
+            if (type?.includes('video')) return '🎬';
+            return '📎';
+        };
+
+        // ============================================
+        // FIREBASE OPERATIONS
+        // ============================================
+        async function loadIdeasForEvent(eventId) {
+            try {
+                const snapshot = await db.collection('event_ideas')
+                    .doc(eventId)
+                    .collection('ideas')
+                    .orderBy('createdAt', 'desc')
+                    .get();
+
+                const ideas = [];
+                for (const doc of snapshot.docs) {
+                    const ideaData = { id: doc.id, ...doc.data() };
+
+                    // Load comments
+                    const commentsSnapshot = await db.collection('event_ideas')
+                        .doc(eventId)
+                        .collection('ideas')
+                        .doc(doc.id)
+                        .collection('comments')
+                        .orderBy('timestamp', 'asc')
+                        .get();
+                    ideaData.comments = commentsSnapshot.docs.map(c => ({ id: c.id, ...c.data() }));
+
+                    // Load files
+                    const filesSnapshot = await db.collection('event_ideas')
+                        .doc(eventId)
+                        .collection('ideas')
+                        .doc(doc.id)
+                        .collection('files')
+                        .get();
+                    ideaData.files = filesSnapshot.docs.map(f => ({ id: f.id, ...f.data() }));
+
+                    ideas.push(ideaData);
+                }
+
+                eventIdeas[eventId] = ideas;
+                return ideas;
+            } catch (err) {
+                console.error('Error loading ideas:', err);
+                return [];
+            }
+        }
+
+        async function createIdea(eventId, ideaData) {
+            try {
+                const docRef = await db.collection('event_ideas')
+                    .doc(eventId)
+                    .collection('ideas')
+                    .add({
+                        ...ideaData,
+                        status: 'draft',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        createdBy: { name: 'Current User' } // TODO: Replace with actual user
+                    });
+
+                // Upload files if any
+                if (pendingFiles.length > 0) {
+                    for (const file of pendingFiles) {
+                        const fileRef = storage.ref(`event_ideas/${eventId}/${docRef.id}/${file.name}`);
+                        await fileRef.put(file);
+                        const url = await fileRef.getDownloadURL();
+
+                        await db.collection('event_ideas')
+                            .doc(eventId)
+                            .collection('ideas')
+                            .doc(docRef.id)
+                            .collection('files')
+                            .add({
+                                name: file.name,
+                                url: url,
+                                type: file.type,
+                                size: file.size,
+                                uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                    }
+                }
+
+                pendingFiles = [];
+                await loadIdeasForEvent(eventId);
+                showAddIdeaForm = false;
+                render();
+            } catch (err) {
+                console.error('Error creating idea:', err);
+                alert('Failed to create idea: ' + err.message);
+            }
+        }
+
+        async function updateIdeaStatus(eventId, ideaId, newStatus) {
+            try {
+                await db.collection('event_ideas')
+                    .doc(eventId)
+                    .collection('ideas')
+                    .doc(ideaId)
+                    .update({ status: newStatus });
+
+                await loadIdeasForEvent(eventId);
+                render();
+            } catch (err) {
+                console.error('Error updating idea status:', err);
+            }
+        }
+
+        async function addComment(eventId, ideaId, text) {
+            try {
+                await db.collection('event_ideas')
+                    .doc(eventId)
+                    .collection('ideas')
+                    .doc(ideaId)
+                    .collection('comments')
+                    .add({
+                        text: text,
+                        author: { name: 'Current User' }, // TODO: Replace with actual user
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                await loadIdeasForEvent(eventId);
+                render();
+            } catch (err) {
+                console.error('Error adding comment:', err);
+            }
+        }
+
+        async function convertToDeliverable(eventId, ideaId) {
+            const idea = eventIdeas[eventId]?.find(i => i.id === ideaId);
+            if (!idea) return;
+
+            try {
+                // Create Master Ledger entry via API
+                const response = await fetch(`${API_URL}/projects`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: idea.title,
+                        projectType: 'Content',
+                        notes: idea.description
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Update idea status and link
+                    await db.collection('event_ideas')
+                        .doc(eventId)
+                        .collection('ideas')
+                        .doc(ideaId)
+                        .update({
+                            status: 'converted',
+                            convertedDeliverableId: data.id,
+                            convertedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+
+                    await loadIdeasForEvent(eventId);
+                    render();
+                    alert('Successfully created deliverable!');
+                } else {
+                    throw new Error(data.error || 'Failed to create deliverable');
+                }
+            } catch (err) {
+                console.error('Error converting to deliverable:', err);
+                alert('Failed to convert: ' + err.message);
+            }
+        }
+
+        // ============================================
+        // RENDER FUNCTIONS
+        // ============================================
         function renderCalendarView() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
@@ -586,21 +1202,6 @@
             `;
         }
 
-        // Helper function to get event title from various possible field names
-        const getEventTitle = (e) => {
-            return e.title || e.event || e.Event || e.name || e.Name || e.eventName || 'Untitled';
-        };
-
-        // Helper function to get event location from various possible field names
-        const getEventLocation = (e) => {
-            return e.location || e.Location || e.where || e.Where || e.venue || 'TBC';
-        };
-
-        // Helper function to get producer from various possible field names
-        const getEventProducer = (e) => {
-            return e.producer || e.Producer || e.subItemOwner || e.lead || e.assignedTo || 'Unassigned';
-        };
-
         function renderAgendaView() {
             if (events.length === 0) {
                 return `
@@ -626,12 +1227,13 @@
                             <th>Event</th>
                             <th>Location</th>
                             <th>Accreditation</th>
-                            <th>Producer</th>
+                            <th>Ideas</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${sortedEvents.map(e => {
                             const statusConfig = getStatusConfig(e.accreditationStatus || e.accreditation || e.Accreditation);
+                            const ideaCount = eventIdeas[e.id]?.length || 0;
                             return `
                                 <tr onclick="window.selectEvent('${e.id}')">
                                     <td style="font-weight: 700;">${formatDate(e.date || e.Date)}</td>
@@ -641,7 +1243,7 @@
                                     </td>
                                     <td style="color: var(--ink-sub);">${getEventLocation(e)}</td>
                                     <td><span class="status-badge ${statusConfig.class}">${statusConfig.label}</span></td>
-                                    <td style="color: var(--ink-sub);">${getEventProducer(e)}</td>
+                                    <td>${ideaCount > 0 ? `<span class="status-badge purple">${ideaCount} idea${ideaCount !== 1 ? 's' : ''}</span>` : '<span style="color: var(--ink-sub); font-size: 11px;">-</span>'}</td>
                                 </tr>
                             `;
                         }).join('')}
@@ -650,17 +1252,7 @@
             `;
         }
 
-        function renderDetailPanel() {
-            if (!selectedEvent) {
-                return `
-                    <div class="empty-state">
-                        <div class="empty-icon">👆</div>
-                        <div class="empty-title">Select an Event</div>
-                        <div class="empty-sub">Click on any event to view its details from Notion.</div>
-                    </div>
-                `;
-            }
-
+        function renderDetailsTab() {
             const e = selectedEvent;
             const statusConfig = getStatusConfig(e.accreditationStatus || e.accreditation || e.Accreditation);
 
@@ -688,40 +1280,238 @@
                     <div class="form-value">👤 ${getEventProducer(e)}</div>
                 </div>
 
-                ${e.type ? `
+                ${e.type || e.angleBucket ? `
                     <div class="form-group">
-                        <label class="form-label">Event Type</label>
-                        <div class="form-value">${e.type}</div>
+                        <label class="form-label">Angle Bucket</label>
+                        <div class="form-value">${e.type || e.angleBucket}</div>
                     </div>
                 ` : ''}
 
-                ${e.team ? `
+                ${e.coveragePriority || e.priority ? `
                     <div class="form-group">
-                        <label class="form-label">Team</label>
-                        <div class="form-value">${e.team}</div>
+                        <label class="form-label">Coverage Priority</label>
+                        <div class="form-value">${e.coveragePriority || e.priority}</div>
                     </div>
                 ` : ''}
 
-                ${e.status ? `
+                ${e.idea ? `
                     <div class="form-group">
-                        <label class="form-label">Status</label>
-                        <div class="form-value">${e.status}</div>
+                        <label class="form-label">Idea / Notes</label>
+                        <div class="form-value">${e.idea}</div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function renderIdeasTab() {
+            const e = selectedEvent;
+            const ideas = eventIdeas[e.id] || [];
+
+            return `
+                ${showAddIdeaForm ? renderAddIdeaForm() : `
+                    <button class="panel-btn" onclick="window.toggleAddIdeaForm()" style="width: 100%; margin-bottom: 16px;">
+                        + Add Content Idea
+                    </button>
+                `}
+
+                ${ideas.length === 0 && !showAddIdeaForm ? `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <div class="empty-icon">💡</div>
+                        <div class="empty-title">No Ideas Yet</div>
+                        <div class="empty-sub">Add content ideas for this event. Ideas can be reviewed and converted to deliverables.</div>
                     </div>
                 ` : ''}
 
-                ${e.description ? `
+                ${ideas.map(idea => renderIdeaCard(idea, e.id)).join('')}
+            `;
+        }
+
+        function renderAddIdeaForm() {
+            return `
+                <div class="add-idea-form">
+                    <div class="add-idea-header">
+                        <span class="add-idea-title">New Content Idea</span>
+                        <button class="close-btn" onclick="window.toggleAddIdeaForm()">✕</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Title *</label>
+                        <input type="text" class="form-input" id="idea-title" placeholder="e.g., Street interviews with fancy hats">
+                    </div>
+
                     <div class="form-group">
                         <label class="form-label">Description</label>
-                        <div class="form-value">${e.description}</div>
+                        <textarea class="form-input" id="idea-description" placeholder="Describe the content idea, approach, and key talking points..."></textarea>
                     </div>
-                ` : ''}
 
-                ${e.deliverables ? `
                     <div class="form-group">
-                        <label class="form-label">Deliverables</label>
-                        <div class="form-value">${e.deliverables}</div>
+                        <label class="form-label">Format</label>
+                        <select class="form-input" id="idea-format">
+                            <option value="">Select format...</option>
+                            ${FORMAT_OPTIONS.map(f => `<option value="${f}">${f}</option>`).join('')}
+                        </select>
                     </div>
-                ` : ''}
+
+                    <div class="form-group">
+                        <label class="form-label">Links (optional)</label>
+                        <div class="link-inputs">
+                            <div class="link-input-row">
+                                <input type="text" class="form-input" id="link-label-1" placeholder="Label">
+                                <input type="url" class="form-input" id="link-url-1" placeholder="https://...">
+                            </div>
+                            <div class="link-input-row">
+                                <input type="text" class="form-input" id="link-label-2" placeholder="Label">
+                                <input type="url" class="form-input" id="link-url-2" placeholder="https://...">
+                            </div>
+                            <div class="link-input-row">
+                                <input type="text" class="form-input" id="link-label-3" placeholder="Label">
+                                <input type="url" class="form-input" id="link-url-3" placeholder="https://...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Files</label>
+                        <div class="file-upload-area" onclick="document.getElementById('file-input').click()">
+                            <div class="file-upload-icon">📁</div>
+                            <div class="file-upload-text">
+                                <strong>Click to upload</strong> or drag and drop<br>
+                                Images, PDFs, documents
+                            </div>
+                        </div>
+                        <input type="file" id="file-input" multiple style="display: none;" onchange="window.handleFileSelect(event)">
+                        <div class="uploaded-files" id="uploaded-files">
+                            ${pendingFiles.map((f, i) => `
+                                <div class="uploaded-file">
+                                    ${getFileIcon(f.type)} ${f.name}
+                                    <span class="uploaded-file-remove" onclick="window.removeFile(${i})">×</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button class="panel-btn" onclick="window.toggleAddIdeaForm()">Cancel</button>
+                        <button class="panel-btn primary" onclick="window.submitIdea()">Create Idea</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderIdeaCard(idea, eventId) {
+            const statusConfig = IDEA_STATUS_CONFIG[idea.status] || IDEA_STATUS_CONFIG.draft;
+            const isExpanded = expandedIdeaId === idea.id;
+
+            return `
+                <div class="idea-card ${isExpanded ? 'expanded' : ''}">
+                    <div class="idea-header" onclick="window.toggleIdeaExpand('${idea.id}')">
+                        <div class="idea-checkbox ${idea.status}">
+                            ${idea.status === 'approved' || idea.status === 'converted' ? '✓' : ''}
+                        </div>
+                        <div class="idea-content">
+                            <div class="idea-title">${idea.title}</div>
+                            <div class="idea-meta">
+                                ${idea.format ? `<span class="idea-format">${idea.format}</span>` : ''}
+                                <span class="status-badge ${statusConfig.class}">${statusConfig.label}</span>
+                                <span>${timeAgo(idea.createdAt)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="idea-details">
+                        ${idea.description ? `
+                            <div class="idea-description">${idea.description}</div>
+                        ` : ''}
+
+                        ${idea.links?.filter(l => l.url).length > 0 ? `
+                            <div class="idea-links">
+                                ${idea.links.filter(l => l.url).map(link => `
+                                    <a href="${link.url}" target="_blank" class="idea-link">
+                                        🔗 ${link.label || link.url}
+                                    </a>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+
+                        ${idea.files?.length > 0 ? `
+                            <div class="idea-files">
+                                ${idea.files.map(file => `
+                                    <a href="${file.url}" target="_blank" class="idea-file">
+                                        <span class="idea-file-icon">${getFileIcon(file.type)}</span>
+                                        ${file.name}
+                                    </a>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+
+                        <div class="idea-actions">
+                            ${idea.status === 'draft' ? `
+                                <button class="idea-action-btn" onclick="window.updateIdeaStatus('${eventId}', '${idea.id}', 'pending_review')">
+                                    Submit for Review
+                                </button>
+                            ` : ''}
+                            ${idea.status === 'approved' ? `
+                                <button class="idea-action-btn convert" onclick="window.convertToDeliverable('${eventId}', '${idea.id}')">
+                                    Convert to Deliverable
+                                </button>
+                            ` : ''}
+                            ${idea.status === 'converted' && idea.convertedDeliverableId ? `
+                                <a href="https://notion.so/${idea.convertedDeliverableId.replace(/-/g, '')}" target="_blank" class="idea-action-btn">
+                                    View in Master Ledger
+                                </a>
+                            ` : ''}
+                        </div>
+
+                        <div class="comments-section">
+                            <div class="comments-title">Comments (${idea.comments?.length || 0})</div>
+
+                            ${(idea.comments || []).map(comment => `
+                                <div class="comment">
+                                    <div class="comment-avatar">${getInitials(comment.author?.name)}</div>
+                                    <div class="comment-body">
+                                        <span class="comment-author">${comment.author?.name || 'Unknown'}</span>
+                                        <span class="comment-time">${timeAgo(comment.timestamp)}</span>
+                                        <div class="comment-text">${comment.text}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+
+                            <div class="comment-input-wrap">
+                                <input type="text" class="comment-input" id="comment-input-${idea.id}" placeholder="Add a comment...">
+                                <button class="comment-submit" onclick="window.submitComment('${eventId}', '${idea.id}')">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDetailPanel() {
+            if (!selectedEvent) {
+                return `
+                    <div class="empty-state">
+                        <div class="empty-icon">👆</div>
+                        <div class="empty-title">Select an Event</div>
+                        <div class="empty-sub">Click on any event to view its details and content ideas.</div>
+                    </div>
+                `;
+            }
+
+            const ideas = eventIdeas[selectedEvent.id] || [];
+            const ideaCount = ideas.length;
+
+            return `
+                <div class="panel-tabs">
+                    <button class="panel-tab ${selectedTab === 'details' ? 'active' : ''}" onclick="window.setTab('details')">
+                        Details
+                    </button>
+                    <button class="panel-tab ${selectedTab === 'ideas' ? 'active' : ''}" onclick="window.setTab('ideas')">
+                        Ideas <span class="badge">${ideaCount}</span>
+                    </button>
+                </div>
+                <div class="tab-content">
+                    ${selectedTab === 'details' ? renderDetailsTab() : renderIdeasTab()}
+                </div>
             `;
         }
 
@@ -785,7 +1575,7 @@
                             </div>
                             ${selectedEvent && selectedEvent.url ? `
                                 <div class="panel-footer">
-                                    <a href="${selectedEvent.url}" target="_blank" class="panel-btn primary">Open in Notion</a>
+                                    <a href="${selectedEvent.url}" target="_blank" class="panel-btn">Open in Notion</a>
                                 </div>
                             ` : ''}
                         </div>
@@ -794,7 +1584,9 @@
             `;
         }
 
-        // Event handlers
+        // ============================================
+        // EVENT HANDLERS
+        // ============================================
         window.prevMonth = () => {
             currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
             render();
@@ -810,17 +1602,100 @@
             render();
         };
 
-        window.selectEvent = (id) => {
-            selectedEvent = events.find(e => e.id === id);
+        window.setTab = (tab) => {
+            selectedTab = tab;
             render();
+        };
+
+        window.selectEvent = async (id) => {
+            selectedEvent = events.find(e => e.id === id);
+            selectedTab = 'details';
+            expandedIdeaId = null;
+            showAddIdeaForm = false;
+            pendingFiles = [];
+            render();
+
+            // Load ideas for this event
+            if (selectedEvent) {
+                await loadIdeasForEvent(selectedEvent.id);
+                render();
+            }
         };
 
         window.closePanel = () => {
             selectedEvent = null;
+            selectedTab = 'details';
+            expandedIdeaId = null;
+            showAddIdeaForm = false;
+            pendingFiles = [];
             render();
         };
 
-        // Load events from Notion API
+        window.toggleAddIdeaForm = () => {
+            showAddIdeaForm = !showAddIdeaForm;
+            if (!showAddIdeaForm) {
+                pendingFiles = [];
+            }
+            render();
+        };
+
+        window.toggleIdeaExpand = (ideaId) => {
+            expandedIdeaId = expandedIdeaId === ideaId ? null : ideaId;
+            render();
+        };
+
+        window.handleFileSelect = (event) => {
+            const files = Array.from(event.target.files);
+            pendingFiles = [...pendingFiles, ...files];
+            render();
+        };
+
+        window.removeFile = (index) => {
+            pendingFiles.splice(index, 1);
+            render();
+        };
+
+        window.submitIdea = async () => {
+            const title = document.getElementById('idea-title')?.value?.trim();
+            const description = document.getElementById('idea-description')?.value?.trim();
+            const format = document.getElementById('idea-format')?.value;
+
+            if (!title) {
+                alert('Please enter a title for your idea');
+                return;
+            }
+
+            const links = [];
+            for (let i = 1; i <= 3; i++) {
+                const label = document.getElementById(`link-label-${i}`)?.value?.trim();
+                const url = document.getElementById(`link-url-${i}`)?.value?.trim();
+                if (url) {
+                    links.push({ label: label || url, url });
+                }
+            }
+
+            await createIdea(selectedEvent.id, {
+                title,
+                description,
+                format,
+                links
+            });
+        };
+
+        window.submitComment = async (eventId, ideaId) => {
+            const input = document.getElementById(`comment-input-${ideaId}`);
+            const text = input?.value?.trim();
+            if (!text) return;
+
+            await addComment(eventId, ideaId, text);
+        };
+
+        window.updateIdeaStatus = updateIdeaStatus;
+        window.convertToDeliverable = convertToDeliverable;
+
+        // ============================================
+        // LOAD DATA
+        // ============================================
         window.loadEvents = async () => {
             isLoading = true;
             error = null;
@@ -829,7 +1704,6 @@
             try {
                 const response = await fetch(`${API_URL}/events`);
 
-                // Check if response is OK before parsing JSON
                 if (!response.ok) {
                     const errorText = await response.text();
                     let errorMsg = `Server error (${response.status})`;
@@ -837,7 +1711,6 @@
                         const errorData = JSON.parse(errorText);
                         if (errorData.error) errorMsg = errorData.error;
                     } catch (parseErr) {
-                        // Response wasn't JSON (likely HTML error page)
                         console.error('Non-JSON error response:', errorText.substring(0, 200));
                         errorMsg = `Server returned ${response.status}. The /events endpoint may not be configured.`;
                     }
@@ -853,6 +1726,12 @@
                 events = data.events || [];
                 isLoading = false;
                 error = null;
+
+                // Pre-load idea counts for agenda view
+                for (const event of events) {
+                    loadIdeasForEvent(event.id).catch(console.error);
+                }
+
                 render();
             } catch (e) {
                 console.error('Load error:', e);
