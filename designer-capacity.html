@@ -323,6 +323,7 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
     const APP_ID = "dmg-command-centre-native";
+    const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
     // Effort points fallback per task type when no effortPTS is provided
     const EFFORT = {
@@ -337,7 +338,52 @@
     let designers = [];
     let requests = [];
     let dailyRundowns = [];
+    let apiDeliverables = [];
     let currentDesigner = null;
+
+    // Fetch deliverables from Cloud Run API (canonical Notion data)
+    async function loadApiDeliverables() {
+        try {
+            let res = await fetch(`${API_URL}/deliverables`);
+            let data = await res.json();
+            let deliverables = data.deliverables || data.projects || [];
+
+            if (deliverables.length === 0) {
+                res = await fetch(`${API_URL}/projects`);
+                data = await res.json();
+                deliverables = data.projects || [];
+            }
+
+            // Filter for design-related items
+            apiDeliverables = deliverables.filter(d => {
+                const status = (d.status || d.productionWorkflowStatus || '').toLowerCase();
+                const discipline = (d.discipline || '').toLowerCase();
+                if (status === 'live' || status === 'published' || status === 'complete' || status === 'done') return false;
+                if (d.staticAssetsNeeded?.length > 0 || d.staticAssetCount > 0) return true;
+                if (discipline === 'design') return true;
+                if (d.graphicDesigner) return true;
+                if (d.designTaskType) return true;
+                return false;
+            }).map(d => ({
+                id: d.id,
+                title: d.title,
+                headline: d.title,
+                designerId: null, // Will match by name
+                designerName: d.graphicDesigner || d.assignedTo,
+                effortPTS: d.effortPTS || d.effortPts || EFFORT[d.designTaskType] || 2,
+                assetType: d.designTaskType || 'Design',
+                deadline: d.dueDate || d.clientDueDate,
+                liveDate: d.plannedLiveDate || d.liveDate,
+                status: d.status || 'Not Started',
+                source: 'api'
+            }));
+
+            console.log('[Designer Capacity] Loaded', apiDeliverables.length, 'items from API');
+            render();
+        } catch (err) {
+            console.error('[Designer Capacity] Failed to load API deliverables', err);
+        }
+    }
 
     function getInitials(name) {
         return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -529,25 +575,55 @@
         // Calculate workload per designer based on assigned tasks
         const workload = {};
         const tasksByDesigner = {};
+        const seenIds = {};
         designers.forEach(d => {
             workload[d.id] = { tasks: 0, effort: 0, weeklyCapacity: getWeeklyCapacity(d) };
             tasksByDesigner[d.id] = [];
+            seenIds[d.id] = new Set();
         });
 
-        // Only count tasks that are In Progress or Not Started and assigned to a designer
+        // Count tasks from Firebase design_requests
         requests.forEach(r => {
             if (r.designerId && workload[r.designerId] && r.status !== 'Done') {
                 const effort = getEffortPoints(r);
                 workload[r.designerId].tasks++;
                 workload[r.designerId].effort += effort;
+                seenIds[r.designerId].add(r.id);
                 tasksByDesigner[r.designerId].push({
                     title: r.headline || r.title || 'Untitled',
                     type: r.assetType,
                     effortPTS: effort,
                     dueDate: r.deadline,
                     liveDate: r.liveDate,
-                    status: r.status
+                    status: r.status,
+                    source: 'firebase'
                 });
+            }
+        });
+
+        // Count tasks from API deliverables (match by designer name)
+        apiDeliverables.forEach(item => {
+            if (item.designerName) {
+                // Find designer by name
+                const designer = designers.find(d =>
+                    `${d.firstName} ${d.lastName}` === item.designerName ||
+                    d.firstName === item.designerName
+                );
+                if (designer && workload[designer.id] && !seenIds[designer.id].has(item.id)) {
+                    const effort = item.effortPTS || EFFORT[item.assetType] || 2;
+                    workload[designer.id].tasks++;
+                    workload[designer.id].effort += effort;
+                    seenIds[designer.id].add(item.id);
+                    tasksByDesigner[designer.id].push({
+                        title: item.title || 'Untitled',
+                        type: item.assetType,
+                        effortPTS: effort,
+                        dueDate: item.deadline,
+                        liveDate: item.liveDate,
+                        status: item.status,
+                        source: 'api'
+                    });
+                }
             }
         });
 
@@ -640,6 +716,10 @@
     }
 
     signInAnonymously(auth).then(async () => {
+        // Load API deliverables (canonical Notion data)
+        loadApiDeliverables();
+        setInterval(loadApiDeliverables, 60000); // Refresh every minute
+
         // Load staff and filter for designers
         const staffSnap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "staff_directory"));
         const allStaff = staffSnap.docs.map(d => ({ id: d.id, ...d.data() }));
