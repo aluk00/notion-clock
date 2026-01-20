@@ -349,6 +349,11 @@ function buildRundownProperties(data) {
         props['MASTER LEDGER ITEM'] = { relation: data.masterLedgerItemIds.map(id => ({ id })) };
     }
 
+    // Planned Live Date field
+    if (data.plannedLiveDate !== undefined) {
+        props['PLANNED LIVE DATE'] = { date: data.plannedLiveDate ? { start: data.plannedLiveDate } : null };
+    }
+
     return props;
 }
 
@@ -370,6 +375,7 @@ function parseRundownItem(page) {
         url: page.url,
         title: parseProperty(props['TITLE']),
         date: parseProperty(props['DATE']),
+        plannedLiveDate: parseProperty(props['PLANNED LIVE DATE']),
         section: parseProperty(props['SECTION']),
         vertical: parseProperty(props['VERTICAL']),
         creator: parseProperty(props['CREATOR']),

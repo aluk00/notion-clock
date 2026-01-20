@@ -319,6 +319,15 @@
                 }
             };
             addArea.appendChild(input);
+
+            // Add planned live date input
+            const dateRow = document.createElement('div');
+            dateRow.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-top: 4px;';
+            dateRow.innerHTML = `
+                <label style="font-size: 10px; font-weight: 700; color: var(--ink-light); text-transform: uppercase;">Live Date:</label>
+                <input type="date" id="livedate-${id}" class="styled-input" style="flex: 1; padding: 8px 10px; font-size: 11px;">
+            `;
+            addArea.appendChild(dateRow);
         });
     }
 
@@ -340,6 +349,7 @@
                         <div class="item-meta">
                             <span class="tag item-vertical ${(i.vertical || '').toLowerCase()}">${i.vertical || ''}</span>
                             ${i.creator ? `<span class="tag tag-creator">${i.creator}</span>` : ''}
+                            ${i.plannedLiveDate ? `<span class="tag" style="background: rgba(233, 75, 75, 0.1); color: var(--editorial);">📅 ${new Date(i.plannedLiveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
                         </div>
                         <div class="item-title">${i.title}</div>
                     </div>
@@ -378,10 +388,11 @@
 
     window.addItem = async (section) => {
         const id = section.replace(' ', '-');
-        const input = document.querySelector(`#add-${id} input`);
+        const input = document.querySelector(`#add-${id} input.styled-input:not([type="date"])`);
         const title = input.value.trim();
         const vertical = document.getElementById(`vert-${id}-trigger`).dataset.value;
         const creator = document.getElementById(`creator-${id}-trigger`).dataset.value;
+        const plannedLiveDate = document.getElementById(`livedate-${id}`)?.value || null;
 
         if (!title || !vertical) {
             showToast("Title and Vertical required");
@@ -398,6 +409,7 @@
                     section,
                     vertical,
                     creator: creator || undefined,
+                    plannedLiveDate: plannedLiveDate || undefined,
                     status: ''
                 })
             });
@@ -408,6 +420,8 @@
                 items.push(data.item);
                 renderItems();
                 input.value = '';
+                const dateInput = document.getElementById(`livedate-${id}`);
+                if (dateInput) dateInput.value = '';
                 showToast('Item created');
             } else {
                 showToast(`Error: ${data.error}`);
