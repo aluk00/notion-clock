@@ -102,6 +102,26 @@
         .empty { text-align: center; padding: 40px 0; color: var(--ink-light); font-size: 11px; font-weight: 500; font-style: italic; }
         .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: white; padding: 12px 24px; border-radius: 50px; font-size: 12px; font-weight: 700; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 1000; }
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.success { background: var(--done); }
+        .toast.info { background: #21A0D8; }
+
+        /* Design Queue Badge */
+        .design-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 8px; font-weight: 800; text-transform: uppercase;
+            padding: 2px 6px; border-radius: 4px;
+            background: rgba(67, 176, 73, 0.15); color: #43B049;
+            letter-spacing: 0.03em;
+        }
+        .design-badge::before { content: '→'; }
+
+        /* Column hint for GOING LIVE */
+        .column-hint {
+            font-size: 9px; color: var(--ink-light); font-weight: 500;
+            padding: 8px 10px; margin-top: -8px; margin-bottom: 8px;
+            background: rgba(67, 176, 73, 0.08); border-radius: 6px;
+            border-left: 2px solid var(--done);
+        }
     </style>
 </head>
 <body>
@@ -127,7 +147,22 @@
     <div class="columns" id="columns"></div>
     <div class="toast" id="toast">Update Successful</div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
+    // Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+        authDomain: "dmg-command-centre-native.firebaseapp.com",
+        projectId: "dmg-command-centre-native",
+        storageBucket: "dmg-command-centre-native.firebasestorage.app",
+        messagingSenderId: "223535956454",
+        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const APP_ID = "dmg-command-centre-native";
+
     // Notion API configuration
     const API_BASE = 'https://createnotionproject-223535956454.us-central1.run.app';
 
@@ -141,6 +176,57 @@
     let draggedId = null;
     let isLoading = false;
     let refreshInterval = null;
+
+    // Sync item to design_requests collection if it needs design work
+    async function syncToDesignQueue(item, showNotification = false) {
+        // Items in GOING LIVE or with planned live dates need design (thumbnails, etc.)
+        const needsDesign = item.section === 'GOING LIVE' || item.plannedLiveDate;
+
+        if (!needsDesign) return;
+
+        try {
+            const designRequest = {
+                assetType: 'Thumbnail',
+                headline: item.title,
+                notes: `From Daily Rundown - ${item.section}`,
+                seriesName: item.vertical || '',
+                priority: item.plannedLiveDate ? 'Tomorrow' : 'Standard',
+                deadline: item.plannedLiveDate || item.date,
+                sourceType: 'daily_rundown',
+                sourceId: item.id,
+                status: 'Not Started',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            await db.collection('artifacts').doc(APP_ID).collection('public')
+                .collection('data').collection('design_requests').doc(item.id).set(designRequest, { merge: true });
+
+            console.log('Synced to design queue:', item.title);
+
+            // Show user feedback when explicitly requested (e.g., drag-drop to GOING LIVE)
+            if (showNotification) {
+                showToast('Added to Designer Queue for thumbnail', 'info');
+            }
+        } catch (error) {
+            console.error('Error syncing to design queue:', error);
+        }
+    }
+
+    // Remove item from design queue when it's deleted or moved out of GOING LIVE
+    async function removeFromDesignQueue(itemId, showNotification = false) {
+        try {
+            await db.collection('artifacts').doc(APP_ID).collection('public')
+                .collection('data').collection('design_requests').doc(itemId).delete();
+            console.log('Removed from design queue:', itemId);
+
+            if (showNotification) {
+                showToast('Removed from Designer Queue', 'info');
+            }
+        } catch (error) {
+            console.error('Error removing from design queue:', error);
+        }
+    }
 
     // --- DATE MANAGEMENT ---
     window.changeDate = (days) => {
@@ -289,6 +375,7 @@
                 <div class="column-header">
                     <div class="column-dot"></div><span class="column-title">${s}</span><span class="column-count" id="count-${s.replace(' ', '-')}">0</span>
                 </div>
+                ${s === 'GOING LIVE' ? '<div class="column-hint">Items here automatically go to the Designer Queue for thumbnail creation</div>' : ''}
                 <div class="quick-add" id="add-${s.replace(' ', '-')}"></div>
                 <div class="items" id="items-${s.replace(' ', '-')}"></div>
             </div>
@@ -322,10 +409,11 @@
 
             // Add planned live date input
             const dateRow = document.createElement('div');
+            const sectionId = s.replace(' ', '-');
             dateRow.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-top: 4px;';
             dateRow.innerHTML = `
                 <label style="font-size: 10px; font-weight: 700; color: var(--ink-light); text-transform: uppercase;">Live Date:</label>
-                <input type="date" id="livedate-${id}" class="styled-input" style="flex: 1; padding: 8px 10px; font-size: 11px;">
+                <input type="date" id="livedate-${sectionId}" class="styled-input" style="flex: 1; padding: 8px 10px; font-size: 11px;">
             `;
             addArea.appendChild(dateRow);
         });
@@ -342,7 +430,10 @@
                 return;
             }
 
-            list.innerHTML = sectionItems.length === 0 ? '<div class="empty">Empty</div>' : sectionItems.map(i => `
+            list.innerHTML = sectionItems.length === 0 ? '<div class="empty">Empty</div>' : sectionItems.map(i => {
+                // Items in GOING LIVE or with a live date are sent to Design Queue
+                const inDesignQueue = i.section === 'GOING LIVE' || i.plannedLiveDate;
+                return `
                 <div class="item" draggable="true" ondragstart="window.draggedId='${i.id}'">
                     <div class="item-status ${i.status || ''}" onclick="window.cycleStatus('${i.id}', '${i.status || ''}')">${i.status ? STATUS_ICONS[i.status] : ''}</div>
                     <div class="item-content">
@@ -350,12 +441,13 @@
                             <span class="tag item-vertical ${(i.vertical || '').toLowerCase()}">${i.vertical || ''}</span>
                             ${i.creator ? `<span class="tag tag-creator">${i.creator}</span>` : ''}
                             ${i.plannedLiveDate ? `<span class="tag" style="background: rgba(233, 75, 75, 0.1); color: var(--editorial);">📅 ${new Date(i.plannedLiveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>` : ''}
+                            ${inDesignQueue ? `<span class="design-badge" title="This item appears in the Designer Queue">Design Queue</span>` : ''}
                         </div>
                         <div class="item-title">${i.title}</div>
                     </div>
                     <button class="item-delete" onclick="window.deleteItem('${i.id}')">×</button>
                 </div>
-            `).join('');
+            `}).join('');
         });
     }
 
@@ -423,6 +515,9 @@
                 const dateInput = document.getElementById(`livedate-${id}`);
                 if (dateInput) dateInput.value = '';
                 showToast('Item created');
+
+                // Sync to design queue if needed
+                await syncToDesignQueue(data.item);
             } else {
                 showToast(`Error: ${data.error}`);
             }
@@ -444,9 +539,18 @@
             return;
         }
 
+        const oldSection = item.section;
+
         // Optimistic update
         item.section = section;
         renderItems();
+
+        // Sync to design queue if moved to GOING LIVE, remove if moved away
+        if (section === 'GOING LIVE' && oldSection !== 'GOING LIVE') {
+            await syncToDesignQueue(item, true); // Show notification
+        } else if (oldSection === 'GOING LIVE' && section !== 'GOING LIVE' && !item.plannedLiveDate) {
+            await removeFromDesignQueue(item.id, true); // Show notification
+        }
 
         try {
             const response = await fetch(`${API_BASE}/rundown/${window.draggedId}`, {
@@ -536,6 +640,10 @@
     window.deleteItem = async (id) => {
         if (!confirm('Delete item?')) return;
 
+        // Check if item was in design queue
+        const item = items.find(i => i.id === id);
+        const wasInDesignQueue = item && (item.section === 'GOING LIVE' || item.plannedLiveDate);
+
         // Optimistic update
         items = items.filter(i => i.id !== id);
         renderItems();
@@ -549,6 +657,10 @@
 
             if (data.success) {
                 showToast('Item deleted');
+                // Remove from design queue if it was there
+                if (wasInDesignQueue) {
+                    await removeFromDesignQueue(id);
+                }
             } else {
                 showToast(`Error: ${data.error}`);
                 fetchItems();
@@ -560,11 +672,11 @@
         }
     };
 
-    function showToast(m) {
+    function showToast(m, type = '') {
         const t = document.getElementById('toast');
         t.textContent = m;
-        t.classList.add('show');
-        setTimeout(() => t.classList.remove('show'), 2000);
+        t.className = 'toast show' + (type ? ` ${type}` : '');
+        setTimeout(() => { t.className = 'toast'; }, 2500);
     }
 
     // Auto-refresh every 30 seconds
