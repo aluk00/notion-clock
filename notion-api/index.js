@@ -1089,8 +1089,7 @@ app.get('/events', async (req, res) => {
         const response = await notion.databases.query({
             database_id: EVENTS_DB,
             filter,
-            page_size: 100,
-            sorts: [{ property: 'Date', direction: 'ascending' }]
+            page_size: 100
         });
 
         const events = response.results.map(parseEventItem);
