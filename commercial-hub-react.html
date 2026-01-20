@@ -514,14 +514,34 @@
         }
     });
 
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
+
     async function loadData() {
         try {
             console.log('[Commercial Hub] Fetching from:', `${API_URL}/projects`);
-            const res = await fetch(`${API_URL}/projects`);
+
+            // Add timeout to prevent hanging requests
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            const res = await fetch(`${API_URL}/projects`, { signal: controller.signal });
+            clearTimeout(timeoutId);
 
             if (!res.ok) {
+                // Handle specific HTTP errors with actionable messages
+                if (res.status === 403) {
+                    throw new Error('API_ACCESS_DENIED');
+                } else if (res.status === 404) {
+                    throw new Error('API_NOT_FOUND');
+                } else if (res.status >= 500) {
+                    throw new Error(`SERVER_ERROR:${res.status}`);
+                }
                 throw new Error(`HTTP ${res.status}: ${res.statusText}`);
             }
+
+            // Reset retry count on success
+            retryCount = 0;
 
             const data = await res.json();
             console.log('[Commercial Hub] API response:', { success: data.success, count: data.projects?.length || 0 });
@@ -600,11 +620,51 @@
             }
         } catch (e) {
             console.error("[Commercial Hub] Load Error:", e);
+
+            let errorTitle = 'Failed to connect to API';
+            let errorDetail = e.message || 'Check console for details';
+            let showRetry = true;
+            let autoRetry = false;
+
+            // Handle specific error types with actionable messages
+            if (e.message === 'API_ACCESS_DENIED') {
+                errorTitle = 'API Access Denied (403)';
+                errorDetail = 'The Cloud Run service requires redeployment with --allow-unauthenticated flag';
+                showRetry = true;
+            } else if (e.message === 'API_NOT_FOUND') {
+                errorTitle = 'API Endpoint Not Found (404)';
+                errorDetail = 'The API service may not be deployed. Check Cloud Run deployment.';
+            } else if (e.message?.startsWith('SERVER_ERROR')) {
+                errorTitle = 'Server Error';
+                errorDetail = 'The API server encountered an error. It may be restarting.';
+                autoRetry = retryCount < MAX_RETRIES;
+            } else if (e.name === 'AbortError') {
+                errorTitle = 'Request Timeout';
+                errorDetail = 'The API took too long to respond. The service may be cold-starting.';
+                autoRetry = retryCount < MAX_RETRIES;
+            } else if (e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError')) {
+                errorTitle = 'Network Error';
+                errorDetail = 'Unable to reach the API. Check your internet connection.';
+                autoRetry = retryCount < MAX_RETRIES;
+            }
+
+            // Auto-retry for transient errors with exponential backoff
+            if (autoRetry) {
+                retryCount++;
+                const delay = Math.pow(2, retryCount) * 1000;
+                document.getElementById('production-list').innerHTML = `
+                    <div class="loading" style="flex-direction: column; gap: 8px;">
+                        <div style="color:var(--ink-sub)">Retrying in ${delay/1000}s... (attempt ${retryCount}/${MAX_RETRIES})</div>
+                    </div>`;
+                setTimeout(loadData, delay);
+                return;
+            }
+
             document.getElementById('production-list').innerHTML = `
-                <div class="loading" style="color:var(--danger); flex-direction: column; gap: 8px;">
-                    <div>Failed to connect to API</div>
-                    <div style="font-size: 10px; color: var(--ink-sub);">${e.message || 'Check console for details'}</div>
-                    <button class="btn btn-primary" style="margin-top: 8px;" onclick="loadData()">Retry</button>
+                <div class="loading" style="color:var(--danger); flex-direction: column; gap: 8px; text-align: center;">
+                    <div style="font-weight: 600;">${errorTitle}</div>
+                    <div style="font-size: 10px; color: var(--ink-sub); max-width: 280px;">${errorDetail}</div>
+                    ${showRetry ? '<button class="btn btn-primary" style="margin-top: 8px;" onclick="retryCount=0; loadData()">Retry</button>' : ''}
                 </div>`;
         }
     }
