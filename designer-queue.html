@@ -166,6 +166,8 @@
     let quickRequests = [];
     let commercialHubItems = [];
     let forecastedProjects = [];
+    let forecastedDeliverables = [];
+    let dailyRundowns = [];
     let staff = {};
     let currentView = 'all';
 
@@ -274,6 +276,7 @@
         return {
             id: project.id,
             source: 'forecast',
+            sourceType: 'project',
             title: project.title || 'Untitled Project',
             project: project.client || '',
             type: 'Design',
@@ -288,6 +291,51 @@
             staticAssets: staticAssets,
             effort: estimatedEffort,
             url: project.url
+        };
+    }
+
+    function normaliseForecastDeliverable(d) {
+        // Individual deliverable that needs design work
+        const staticAssets = d.staticAssetCount || d.staticAssetsNeeded?.length || 1;
+        const estimatedEffort = d.designEffort || (staticAssets * 2);
+
+        return {
+            id: d.id,
+            source: 'forecast',
+            sourceType: 'deliverable',
+            title: d.title || 'Untitled Deliverable',
+            project: d.projectTitle || d.project || '',
+            type: (d.staticAssetsNeeded && d.staticAssetsNeeded[0]) || 'Graphic',
+            designer: d.graphicDesigner || 'Unassigned',
+            status: 'Forecasted',
+            priority: d.priorityLevel || d.priority || 'Medium',
+            dueDate: d.dueDate,
+            liveDate: d.liveDate || d.goLiveDate || d.plannedLiveDate,
+            clientDueDate: d.clientDueDate || d.deliveryDue,
+            productionStatus: d.productionStatus || d.status,
+            staticAssets: staticAssets,
+            effort: estimatedEffort,
+            url: d.url
+        };
+    }
+
+    function normaliseDailyRundown(r) {
+        // Daily rundown item that needs a thumbnail
+        return {
+            id: r.id,
+            source: 'forecast',
+            sourceType: 'rundown',
+            title: r.title || 'Untitled Rundown',
+            project: r.vertical || r.section || '',
+            type: 'Thumbnail',
+            designer: 'Unassigned',
+            status: 'Forecasted',
+            priority: r.dateKey && new Date(r.dateKey) < new Date(Date.now() + 2*24*60*60*1000) ? 'Urgent' : 'Medium',
+            dueDate: r.dateKey,
+            liveDate: r.dateKey,
+            thumbnailStatus: r.thumbnailStatus,
+            creator: r.creator,
+            effort: 0.5
         };
     }
 
@@ -328,12 +376,32 @@
             });
         }
 
-        // Forecasted projects
+        // Forecasted projects (project-level estimates)
         if (currentView === 'all' || currentView === 'forecast') {
             forecastedProjects.forEach(p => {
-                if (!seenIds.has(p.id)) {
+                if (!seenIds.has(`project-${p.id}`)) {
                     items.push(normaliseForecastProject(p));
-                    seenIds.add(p.id);
+                    seenIds.add(`project-${p.id}`);
+                }
+            });
+        }
+
+        // Forecasted deliverables (specific items from master ledger)
+        if (currentView === 'all' || currentView === 'forecast') {
+            forecastedDeliverables.forEach(d => {
+                if (!seenIds.has(`deliverable-${d.id}`)) {
+                    items.push(normaliseForecastDeliverable(d));
+                    seenIds.add(`deliverable-${d.id}`);
+                }
+            });
+        }
+
+        // Daily rundowns needing thumbnails
+        if (currentView === 'all' || currentView === 'forecast') {
+            dailyRundowns.forEach(r => {
+                if (!seenIds.has(`rundown-${r.id}`)) {
+                    items.push(normaliseDailyRundown(r));
+                    seenIds.add(`rundown-${r.id}`);
                 }
             });
         }
@@ -389,7 +457,9 @@
                             const overdue = isOverdue(item.dueDate);
                             const soon = isDueSoon(item.dueDate);
                             const isForecast = item.source === 'forecast';
-                            const sourceLabel = { notion: 'DEL', quick: 'QR', 'commercial-hub': 'HUB', forecast: 'FORECAST' }[item.source] || item.source;
+                            const sourceLabel = isForecast
+                                ? ({ project: 'PROJECT', deliverable: 'DEL', rundown: 'RUNDOWN' }[item.sourceType] || 'FORECAST')
+                                : ({ notion: 'DEL', quick: 'QR', 'commercial-hub': 'HUB' }[item.source] || item.source);
                             return `
                                 <div class="card" ${item.url ? `onclick="window.open('${item.url}', '_blank')"` : ''}>
                                     <div class="card-priority ${getPriority(item)}"></div>
@@ -466,6 +536,43 @@
         }
     }
 
+    async function loadForecastedDeliverables() {
+        try {
+            const res = await fetch(`${API_URL}/deliverables`);
+            const data = await res.json();
+            const allDeliverables = data?.deliverables || data?.projects || [];
+
+            // Filter for deliverables that need design work and aren't yet active
+            forecastedDeliverables = allDeliverables.filter(d => {
+                // Must have static assets OR have a graphic designer field
+                const hasStatic = (d.staticAssetCount || 0) > 0 ||
+                    (d.staticAssetsNeeded?.length || 0) > 0 ||
+                    d.graphicDesigner;
+
+                if (!hasStatic) return false;
+
+                // Must not be complete/live
+                const status = (d.productionStatus || d.status || '').toLowerCase();
+                const isComplete = status === 'live' || status === 'published' || status === 'complete' || status === 'assets approved';
+                if (isComplete) return false;
+
+                // Must be in early stages (not yet in active design)
+                const isPreDesign = !status || status === 'not started' || status === 'to be briefed' ||
+                    status === 'in progress' || status === 'in production';
+
+                // Exclude if we already have this in quick requests or commercial hub
+                const hasActiveWork = quickRequests.some(r => r.headline === d.title) ||
+                    commercialHubItems.some(a => a.assetTitle === d.title);
+
+                return isPreDesign && !hasActiveWork;
+            });
+
+            render();
+        } catch (err) {
+            console.error('Failed to load forecasted deliverables', err);
+        }
+    }
+
     async function loadStaff() {
         const snap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "staff_directory"));
         snap.docs.forEach(d => { const data = d.data(); staff[d.id] = `${data.firstName} ${data.lastName}`; });
@@ -475,6 +582,7 @@
         await loadStaff();
         await loadDeliverables();
         await loadForecastedProjects();
+        await loadForecastedDeliverables();
 
         // Listen to design requests (quick requests)
         onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), (snap) => {
@@ -493,11 +601,34 @@
             );
             render();
         });
+
+        // Listen to daily rundowns for items needing thumbnails
+        onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "daily_rundowns"), (snap) => {
+            const allRundowns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            // Filter for rundowns that need thumbnails (not ready, future dates)
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            dailyRundowns = allRundowns.filter(r => {
+                // Must need a thumbnail
+                const needsThumbnail = !r.thumbnailReady && r.thumbnailStatus !== 'Ready' && r.thumbnailStatus !== 'Done';
+                if (!needsThumbnail) return false;
+
+                // Must be upcoming or recent (within 7 days)
+                if (r.dateKey) {
+                    const rundownDate = new Date(r.dateKey);
+                    const daysDiff = (rundownDate - now) / (1000 * 60 * 60 * 24);
+                    return daysDiff >= -1 && daysDiff <= 7; // Yesterday to 7 days ahead
+                }
+                return true;
+            });
+            render();
+        });
     });
 
-    // Refresh deliverables and forecasted projects every 60 seconds
+    // Refresh forecasted data every 60 seconds
     setInterval(loadDeliverables, 60000);
     setInterval(loadForecastedProjects, 60000);
+    setInterval(loadForecastedDeliverables, 60000);
 </script>
 </body>
 </html>

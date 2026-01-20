@@ -156,6 +156,7 @@
     let editQueueItems = [];
     let assetMetadataItems = [];
     let forecastedProjects = [];
+    let forecastedDeliverables = [];
     let currentView = 'all';
 
     function isOverdue(dateStr) {
@@ -235,6 +236,7 @@
         return {
             id: project.id,
             source: 'forecast',
+            sourceType: 'project',
             title: project.title || 'Untitled Project',
             project: project.client || '',
             editor: 'Unassigned',
@@ -249,6 +251,30 @@
             movingAssets: movingAssets,
             effort: estimatedEffort,
             url: project.url
+        };
+    }
+
+    function normaliseForecastDeliverable(d) {
+        // Individual deliverable that needs video editing
+        const movingAssets = d.movingAssetCount || d.movingAssetsNeeded?.length || 1;
+        const estimatedEffort = d.editorEffort || (movingAssets * 4);
+
+        return {
+            id: d.id,
+            source: 'forecast',
+            sourceType: 'deliverable',
+            title: d.title || 'Untitled Deliverable',
+            project: d.projectTitle || d.project || '',
+            editor: d.videoEditor || 'Unassigned',
+            status: 'Forecasted',
+            priority: d.priorityLevel || d.priority || 'Medium',
+            dueDate: d.dueDate,
+            liveDate: d.liveDate || d.goLiveDate || d.plannedLiveDate,
+            clientDueDate: d.clientDueDate || d.deliveryDue,
+            productionStatus: d.productionStatus || d.status,
+            movingAssets: movingAssets,
+            effort: estimatedEffort,
+            url: d.url
         };
     }
 
@@ -273,11 +299,19 @@
             }
         });
 
-        // Add forecasted projects
+        // Add forecasted projects (project-level estimates)
         forecastedProjects.forEach(project => {
-            if (!seenIds.has(project.id)) {
+            if (!seenIds.has(`project-${project.id}`)) {
                 items.push(normaliseForecastProject(project));
-                seenIds.add(project.id);
+                seenIds.add(`project-${project.id}`);
+            }
+        });
+
+        // Add forecasted deliverables (specific items from master ledger)
+        forecastedDeliverables.forEach(d => {
+            if (!seenIds.has(`deliverable-${d.id}`)) {
+                items.push(normaliseForecastDeliverable(d));
+                seenIds.add(`deliverable-${d.id}`);
             }
         });
 
@@ -342,13 +376,14 @@
                                     <div class="card-priority ${getPriority(item)}"></div>
                                     <div class="card-top">
                                         <span class="card-type">${isForecast ? 'Video' : (item.format || 'Edit')}</span>
-                                        <span class="card-source ${item.source}">${item.source === 'queue' ? 'QUEUE' : (item.source === 'asset' ? 'ASSET' : 'FORECAST')}</span>
+                                        <span class="card-source ${item.source}">${item.source === 'queue' ? 'QUEUE' : (item.source === 'asset' ? 'ASSET' : (item.sourceType === 'deliverable' ? 'DEL' : 'PROJECT'))}</span>
                                         ${item.effort ? `<span class="card-effort">${item.effort} ${isForecast ? 'hrs est' : 'pts'}</span>` : ''}
                                     </div>
                                     <div class="card-title">${item.title}</div>
                                     ${item.project ? `<div class="card-project">${item.project}</div>` : ''}
                                     <div class="card-meta">
                                         ${isForecast && item.shootDate ? `<span class="card-due ${isOverdue(item.shootDate) ? 'overdue' : (isDueSoon(item.shootDate) ? 'soon' : '')}">Shoot: ${formatDate(item.shootDate)}</span>` : ''}
+                                        ${isForecast && item.dueDate && !item.shootDate ? `<span class="card-due ${isOverdue(item.dueDate) ? 'overdue' : (isDueSoon(item.dueDate) ? 'soon' : '')}">Due: ${formatDate(item.dueDate)}</span>` : ''}
                                         ${isForecast && item.movingAssets ? `<span class="card-client-due">${item.movingAssets} video${item.movingAssets > 1 ? 's' : ''}</span>` : ''}
                                         ${!isForecast && item.dueDate ? `<span class="card-due ${overdue ? 'overdue' : (soon ? 'soon' : '')}">${formatDate(item.dueDate)}</span>` : ''}
                                         ${!isForecast && item.clientDueDate ? `<span class="card-client-due">Client: ${formatDate(item.clientDueDate)}</span>` : ''}
@@ -402,6 +437,43 @@
         }
     }
 
+    async function loadForecastedDeliverables() {
+        try {
+            const res = await fetch(`${API_URL}/deliverables`);
+            const data = await res.json();
+            const deliverables = data?.deliverables || data?.projects || [];
+
+            // Filter for deliverables that need video editing and aren't yet in active work
+            forecastedDeliverables = deliverables.filter(d => {
+                // Must have video/moving assets OR have a video editor field
+                const hasVideo = (d.movingAssetCount || 0) > 0 ||
+                    (d.movingAssetsNeeded?.length || 0) > 0 ||
+                    d.videoEditor;
+
+                if (!hasVideo) return false;
+
+                // Must not be complete/live
+                const status = (d.productionStatus || d.status || '').toLowerCase();
+                const isComplete = status === 'live' || status === 'published' || status === 'complete' || status === 'assets approved';
+                if (isComplete) return false;
+
+                // Must be in early stages (not yet in active editing)
+                const isPreEdit = !status || status === 'not started' || status === 'to be briefed' ||
+                    status === 'in progress' || status === 'in production';
+
+                // Exclude if we already have this in edit queue or asset metadata
+                const hasActiveEdit = editQueueItems.some(i => i.title === d.title) ||
+                    assetMetadataItems.some(a => a.assetTitle === d.title);
+
+                return isPreEdit && !hasActiveEdit;
+            });
+
+            render();
+        } catch (err) {
+            console.error('Failed to load forecasted deliverables', err);
+        }
+    }
+
     signInAnonymously(auth).then(async () => {
         // Listen to edit_queue
         onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "edit_queue"), (snap) => {
@@ -415,12 +487,14 @@
             render();
         });
 
-        // Load forecasted projects from API
+        // Load forecasted projects and deliverables from API
         await loadForecastedProjects();
+        await loadForecastedDeliverables();
     });
 
-    // Refresh forecasted projects every 60 seconds
+    // Refresh forecasted data every 60 seconds
     setInterval(loadForecastedProjects, 60000);
+    setInterval(loadForecastedDeliverables, 60000);
 </script>
 </body>
 </html>
