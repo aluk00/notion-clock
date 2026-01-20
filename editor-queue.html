@@ -54,29 +54,77 @@
             appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
         });
         const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
-        
-        let items = [], loading = true;
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+        let items = [], rundownItems = [], loading = true;
+
+        // Fetch rundown items that need editing (FILMING or done filming)
+        async function loadRundownItems() {
+            try {
+                const dates = [];
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date();
+                    d.setDate(d.getDate() + i);
+                    dates.push(d.toISOString().split('T')[0]);
+                }
+
+                const allItems = [];
+                for (const date of dates) {
+                    const res = await fetch(`${API_URL}/rundown?date=${date}`);
+                    const data = await res.json();
+                    if (data.success && data.items) {
+                        // Include items in FILMING or INTERNAL sections that need editing
+                        const editItems = data.items.filter(item =>
+                            (item.section === 'FILMING' || item.section === 'INTERNAL') &&
+                            item.status !== 'done'
+                        );
+                        allItems.push(...editItems);
+                    }
+                }
+                rundownItems = allItems.map(r => ({
+                    id: r.id,
+                    title: r.title || 'Untitled',
+                    editor: r.creator || 'Unassigned',
+                    priority: r.plannedLiveDate && new Date(r.plannedLiveDate) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium',
+                    dueDate: r.plannedLiveDate || r.date,
+                    liveDate: r.plannedLiveDate,
+                    status: r.section,
+                    projectTitle: r.vertical || 'Daily Rundown',
+                    source: 'rundown',
+                    url: r.url
+                }));
+                render();
+            } catch (err) {
+                console.error('Failed to load rundown items', err);
+            }
+        }
         const root = document.getElementById('root');
 
         function render() {
             if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading queue...</div></div>`; return; }
+
+            // Merge items with rundown items, avoiding duplicates
+            const existingIds = new Set(items.map(i => i.id));
+            const allItems = [...items, ...rundownItems.filter(r => !existingIds.has(r.id))];
+            const priorityOrder = { high: 0, medium: 1, low: 2 };
+            allItems.sort((a, b) => (priorityOrder[a.priority?.toLowerCase()] || 2) - (priorityOrder[b.priority?.toLowerCase()] || 2));
 
             root.innerHTML = `
                 <div class="widget">
                     <div class="header">
                         <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
                         <h2 class="title">Edit Queue</h2>
-                        <span class="count">${items.length} in queue</span>
+                        <span class="count">${allItems.length} in queue</span>
                     </div>
-                    ${items.length === 0 ? `
+                    ${allItems.length === 0 ? `
                         <div class="empty">
                             <div class="empty-icon">🎬</div>
                             <div class="empty-title">Queue Empty</div>
-                            <div class="empty-sub">No edits pending. Add items to the edit_queue collection in Firebase.</div>
+                            <div class="empty-sub">No edits pending. Add items via Daily Rundown or Commercial Hub.</div>
                         </div>
                     ` : `
                         <div class="list">
-                            ${items.map(item => {
+                            ${allItems.map(item => {
                                 const dueDate = item.dueDate || item.deliveryDue || item.internalDueDate || '';
                                 const liveDate = item.liveDate || item.goLiveDate || item.plannedLiveDate || '';
                                 const clientDue = item.clientDueDate || item.feedbackDue || item.dueDate || '';
@@ -89,7 +137,10 @@
                                     <div class="item-icon">🎬</div>
                                     <div class="item-info">
                                         <div class="item-title">${item.title || 'Untitled Edit'}</div>
-                                        <div class="item-sub">${item.editor || 'Unassigned'} • ${item.clientName || item.projectTitle || 'Project'}</div>
+                                        <div class="item-sub">
+                                            ${item.editor || 'Unassigned'} • ${item.clientName || item.projectTitle || 'Project'}
+                                            ${item.source === 'rundown' ? '<span style="font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: rgba(233, 75, 75, 0.1); color: #E94B4B; margin-left: 4px;">RUN</span>' : ''}
+                                        </div>
                                         <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
                                             ${clientDue ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: ${isOverdue(clientDue) ? '#FEE2E2' : isDueSoon(clientDue) ? '#FEF3C7' : '#E5E5E5'}; color: ${isOverdue(clientDue) ? '#B91C1C' : isDueSoon(clientDue) ? '#B45309' : '#525252'};">Client: ${formatDate(clientDue)}</span>` : ''}
                                             ${liveDate ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #DCFCE7; color: #166534;">Live: ${formatDate(liveDate)}</span>` : ''}
@@ -107,6 +158,10 @@
 
         onAuthStateChanged(auth, user => {
             if (user) {
+                // Load rundown items
+                loadRundownItems();
+                setInterval(loadRundownItems, 60000); // Refresh every minute
+
                 // Listen to edit_queue - now synced from Commercial Hub
                 onSnapshot(collection(db, "artifacts", appId, "public", "data", "edit_queue"), snap => {
                     items = []; snap.forEach(d => items.push({ id: d.id, ...d.data() }));

@@ -127,7 +127,22 @@
     <div class="columns" id="columns"></div>
     <div class="toast" id="toast">Update Successful</div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
+    // Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+        authDomain: "dmg-command-centre-native.firebaseapp.com",
+        projectId: "dmg-command-centre-native",
+        storageBucket: "dmg-command-centre-native.firebasestorage.app",
+        messagingSenderId: "223535956454",
+        appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const APP_ID = "dmg-command-centre-native";
+
     // Notion API configuration
     const API_BASE = 'https://createnotionproject-223535956454.us-central1.run.app';
 
@@ -141,6 +156,48 @@
     let draggedId = null;
     let isLoading = false;
     let refreshInterval = null;
+
+    // Sync item to design_requests collection if it needs design work
+    async function syncToDesignQueue(item) {
+        // Items in GOING LIVE or with planned live dates need design (thumbnails, etc.)
+        const needsDesign = item.section === 'GOING LIVE' || item.plannedLiveDate;
+
+        if (!needsDesign) return;
+
+        try {
+            const designRequest = {
+                assetType: 'Thumbnail',
+                headline: item.title,
+                notes: `From Daily Rundown - ${item.section}`,
+                seriesName: item.vertical || '',
+                priority: item.plannedLiveDate ? 'Tomorrow' : 'Standard',
+                deadline: item.plannedLiveDate || item.date,
+                sourceType: 'daily_rundown',
+                sourceId: item.id,
+                status: 'Not Started',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            await db.collection('artifacts').doc(APP_ID).collection('public')
+                .collection('data').collection('design_requests').doc(item.id).set(designRequest, { merge: true });
+
+            console.log('Synced to design queue:', item.title);
+        } catch (error) {
+            console.error('Error syncing to design queue:', error);
+        }
+    }
+
+    // Remove item from design queue when it's deleted or moved out of GOING LIVE
+    async function removeFromDesignQueue(itemId) {
+        try {
+            await db.collection('artifacts').doc(APP_ID).collection('public')
+                .collection('data').collection('design_requests').doc(itemId).delete();
+            console.log('Removed from design queue:', itemId);
+        } catch (error) {
+            console.error('Error removing from design queue:', error);
+        }
+    }
 
     // --- DATE MANAGEMENT ---
     window.changeDate = (days) => {
@@ -322,10 +379,11 @@
 
             // Add planned live date input
             const dateRow = document.createElement('div');
+            const sectionId = s.replace(' ', '-');
             dateRow.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-top: 4px;';
             dateRow.innerHTML = `
                 <label style="font-size: 10px; font-weight: 700; color: var(--ink-light); text-transform: uppercase;">Live Date:</label>
-                <input type="date" id="livedate-${id}" class="styled-input" style="flex: 1; padding: 8px 10px; font-size: 11px;">
+                <input type="date" id="livedate-${sectionId}" class="styled-input" style="flex: 1; padding: 8px 10px; font-size: 11px;">
             `;
             addArea.appendChild(dateRow);
         });
@@ -423,6 +481,9 @@
                 const dateInput = document.getElementById(`livedate-${id}`);
                 if (dateInput) dateInput.value = '';
                 showToast('Item created');
+
+                // Sync to design queue if needed
+                await syncToDesignQueue(data.item);
             } else {
                 showToast(`Error: ${data.error}`);
             }
@@ -444,9 +505,18 @@
             return;
         }
 
+        const oldSection = item.section;
+
         // Optimistic update
         item.section = section;
         renderItems();
+
+        // Sync to design queue if moved to GOING LIVE, remove if moved away
+        if (section === 'GOING LIVE' && oldSection !== 'GOING LIVE') {
+            await syncToDesignQueue(item);
+        } else if (oldSection === 'GOING LIVE' && section !== 'GOING LIVE' && !item.plannedLiveDate) {
+            await removeFromDesignQueue(item.id);
+        }
 
         try {
             const response = await fetch(`${API_BASE}/rundown/${window.draggedId}`, {
@@ -536,6 +606,10 @@
     window.deleteItem = async (id) => {
         if (!confirm('Delete item?')) return;
 
+        // Check if item was in design queue
+        const item = items.find(i => i.id === id);
+        const wasInDesignQueue = item && (item.section === 'GOING LIVE' || item.plannedLiveDate);
+
         // Optimistic update
         items = items.filter(i => i.id !== id);
         renderItems();
@@ -549,6 +623,10 @@
 
             if (data.success) {
                 showToast('Item deleted');
+                // Remove from design queue if it was there
+                if (wasInDesignQueue) {
+                    await removeFromDesignQueue(id);
+                }
             } else {
                 showToast(`Error: ${data.error}`);
                 fetchItems();

@@ -69,6 +69,7 @@
         .card-source { font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
         .card-source.notion { background: rgba(33, 160, 216, 0.1); color: #21A0D8; }
         .card-source.quick { background: rgba(230, 70, 139, 0.1); color: #E6468B; }
+        .card-source.rundown { background: rgba(233, 75, 75, 0.1); color: #E94B4B; }
         .card-effort { font-size: 9px; font-weight: 600; color: var(--ink-light); margin-left: auto; }
 
         .card-title { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.4; margin-bottom: 6px; }
@@ -109,6 +110,7 @@
         <div class="tab active" data-view="all" onclick="switchTab('all')">All</div>
         <div class="tab" data-view="deliverables" onclick="switchTab('deliverables')">Deliverables</div>
         <div class="tab" data-view="quick" onclick="switchTab('quick')">Quick Requests</div>
+        <div class="tab" data-view="rundown" onclick="switchTab('rundown')">Daily Rundown</div>
     </div>
 
     <div class="columns" id="columns">
@@ -145,6 +147,7 @@
 
     let deliverables = [];
     let quickRequests = [];
+    let rundownItems = [];
     let staff = {};
     let currentView = 'all';
 
@@ -229,6 +232,24 @@
         };
     }
 
+    function normaliseRundownItem(r) {
+        // Rundown items in GOING LIVE need thumbnails/design
+        return {
+            id: r.id,
+            source: 'rundown',
+            title: r.title || 'Untitled',
+            project: r.vertical || '',
+            type: 'Thumbnail',
+            effort: 0.5,
+            dueDate: r.plannedLiveDate || r.date,
+            liveDate: r.plannedLiveDate || '',
+            clientDueDate: '',
+            designer: r.creator || 'Unassigned',
+            status: r.status === 'done' ? 'Ready for Review' : (r.status === 'pending' ? 'In Progress' : 'With Design'),
+            priority: r.plannedLiveDate && new Date(r.plannedLiveDate) < new Date(Date.now() + 2*24*60*60*1000) ? 'Urgent' : 'Standard'
+        };
+    }
+
     function render() {
         let items = [];
         if (currentView === 'all' || currentView === 'deliverables') {
@@ -241,6 +262,15 @@
         if (currentView === 'all' || currentView === 'quick') {
             const qr = quickRequests.filter(r => r.status !== 'Done').map(normaliseQuickRequest);
             items = items.concat(qr);
+        }
+
+        // Include rundown items (GOING LIVE items needing thumbnails)
+        if (currentView === 'all' || currentView === 'rundown') {
+            const existingIds = new Set(items.map(i => i.id));
+            const rundown = rundownItems
+                .filter(r => !existingIds.has(r.id) && r.status !== 'done')
+                .map(normaliseRundownItem);
+            items = items.concat(rundown);
         }
 
         // Include commercial hub design items (thumbnails needed)
@@ -282,7 +312,7 @@
                                     <div class="card-priority ${getPriority(item)}"></div>
                                     <div class="card-top">
                                         <span class="card-type">${item.type}</span>
-                                        <span class="card-source ${item.source}">${item.source === 'notion' ? 'DEL' : 'QR'}</span>
+                                        <span class="card-source ${item.source}">${item.source === 'notion' ? 'DEL' : (item.source === 'rundown' ? 'RUN' : 'QR')}</span>
                                         <span class="card-effort">${item.effort} pts</span>
                                     </div>
                                     <div class="card-title">${item.title}</div>
@@ -319,6 +349,35 @@
         } catch (err) { console.error('Failed to load deliverables', err); }
     }
 
+    async function loadRundownItems() {
+        try {
+            // Get today and next 7 days of rundown items
+            const dates = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() + i);
+                dates.push(d.toISOString().split('T')[0]);
+            }
+
+            const allItems = [];
+            for (const date of dates) {
+                const res = await fetch(`${API_URL}/rundown?date=${date}`);
+                const data = await res.json();
+                if (data.success && data.items) {
+                    // Only include items in GOING LIVE section or with planned live date
+                    const designItems = data.items.filter(item =>
+                        item.section === 'GOING LIVE' || item.plannedLiveDate
+                    );
+                    allItems.push(...designItems);
+                }
+            }
+            rundownItems = allItems;
+            render();
+        } catch (err) {
+            console.error('Failed to load rundown items', err);
+        }
+    }
+
     async function loadStaff() {
         const snap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "staff_directory"));
         snap.docs.forEach(d => { const data = d.data(); staff[d.id] = `${data.firstName} ${data.lastName}`; });
@@ -327,6 +386,7 @@
     signInAnonymously(auth).then(async () => {
         await loadStaff();
         await loadDeliverables();
+        await loadRundownItems();
 
         // Listen to design requests (quick requests)
         onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "design_requests"), (snap) => {
@@ -364,7 +424,10 @@
         });
     });
 
-    setInterval(loadDeliverables, 60000);
+    setInterval(() => {
+        loadDeliverables();
+        loadRundownItems();
+    }, 60000);
 </script>
 </body>
 </html>
