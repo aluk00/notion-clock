@@ -109,8 +109,9 @@
             appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
         });
         const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
-        let staff = [], editQueue = [], assetMetadata = [], dailyRundowns = [], loading = true;
+        let staff = [], editQueue = [], assetMetadata = [], dailyRundowns = [], apiDeliverables = [], loading = true;
         let currentEditor = null;
         const root = document.getElementById('root');
 
@@ -128,7 +129,48 @@
 
         const getTeamColor = (team) => teamColors[team] || '#43B049';
 
-        // Calculate workload per editor from edit_queue and asset_metadata
+        // Fetch deliverables from Cloud Run API (canonical Notion data)
+        async function loadApiDeliverables() {
+            try {
+                let res = await fetch(`${API_URL}/deliverables`);
+                let data = await res.json();
+                let deliverables = data.deliverables || data.projects || [];
+
+                if (deliverables.length === 0) {
+                    res = await fetch(`${API_URL}/projects`);
+                    data = await res.json();
+                    deliverables = data.projects || [];
+                }
+
+                // Filter for editor-related items
+                apiDeliverables = deliverables.filter(d => {
+                    const status = (d.status || d.productionWorkflowStatus || '').toLowerCase();
+                    const discipline = (d.discipline || '').toLowerCase();
+                    if (status === 'live' || status === 'published' || status === 'complete' || status === 'done') return false;
+                    if (d.movingAssetsNeeded?.length > 0 || d.movingAssetCount > 0) return true;
+                    if (discipline === 'editor') return true;
+                    if (d.videoEditor) return true;
+                    return false;
+                }).map(d => ({
+                    id: d.id,
+                    title: d.title,
+                    editor: d.videoEditor || d.assignedTo,
+                    effortPTS: d.effortPTS || d.effortPts || 0,
+                    dueDate: d.dueDate || d.clientDueDate,
+                    liveDate: d.plannedLiveDate || d.liveDate,
+                    clientName: d.client,
+                    status: d.status || d.productionWorkflowStatus,
+                    source: 'api'
+                }));
+
+                console.log('[Editor Capacity] Loaded', apiDeliverables.length, 'items from API');
+                render();
+            } catch (err) {
+                console.error('[Editor Capacity] Failed to load API deliverables', err);
+            }
+        }
+
+        // Calculate workload per editor from edit_queue, asset_metadata, and API
         function getWeeklyCapacity(editor) {
             return Number(editor.weeklyCapacityPTS ?? editor.weeklyCapacityPts ?? editor.maxHoursPerWeek ?? 40);
         }
@@ -143,6 +185,7 @@
             let taskCount = 0;
             let effortPoints = 0;
             let tasks = [];
+            const seenIds = new Set();
 
             // Count from edit_queue (synced from Commercial Hub)
             editQueue.forEach(item => {
@@ -150,33 +193,55 @@
                     const effort = getEffortPoints(item);
                     taskCount++;
                     effortPoints += effort;
+                    seenIds.add(item.id);
                     tasks.push({
                         title: item.title,
                         client: item.clientName,
                         dueDate: item.dueDate,
                         liveDate: item.liveDate,
                         status: item.status,
-                        effortPTS: effort
+                        effortPTS: effort,
+                        source: 'firebase'
                     });
                 }
             });
 
             // Count from asset_metadata where editor is assigned
             assetMetadata.forEach(asset => {
-                // Avoid double counting if already in edit_queue
                 if (asset.editor === editorName &&
-                    !editQueue.some(q => q.id === asset.id) &&
+                    !seenIds.has(asset.id) &&
                     asset.status !== 'Live' && asset.status !== 'Approved') {
                     const effort = getEffortPoints(asset);
                     taskCount++;
                     effortPoints += effort;
+                    seenIds.add(asset.id);
                     tasks.push({
                         title: asset.assetTitle,
                         client: asset.clientName,
                         dueDate: asset.deliveryDue,
                         liveDate: asset.liveDate || asset.plannedLiveDate,
                         status: asset.status,
-                        effortPTS: effort
+                        effortPTS: effort,
+                        source: 'firebase'
+                    });
+                }
+            });
+
+            // Count from API deliverables (canonical Notion data)
+            apiDeliverables.forEach(item => {
+                if (item.editor === editorName && !seenIds.has(item.id)) {
+                    const effort = item.effortPTS || 0;
+                    taskCount++;
+                    effortPoints += effort;
+                    seenIds.add(item.id);
+                    tasks.push({
+                        title: item.title,
+                        client: item.clientName,
+                        dueDate: item.dueDate,
+                        liveDate: item.liveDate,
+                        status: item.status,
+                        effortPTS: effort,
+                        source: 'api'
                     });
                 }
             });
@@ -429,6 +494,10 @@
 
         onAuthStateChanged(auth, user => {
             if (user) {
+                // Load API deliverables (canonical Notion data)
+                loadApiDeliverables();
+                setInterval(loadApiDeliverables, 60000); // Refresh every minute
+
                 // Listen to staff directory
                 onSnapshot(collection(db, "artifacts", appId, "public", "data", "staff_directory"), snap => {
                     staff = []; snap.forEach(d => staff.push({ id: d.id, ...d.data() }));

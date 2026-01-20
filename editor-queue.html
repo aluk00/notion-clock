@@ -58,7 +58,63 @@
         const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
-        let items = [], rundownItems = [], loading = true;
+        let items = [], rundownItems = [], apiDeliverables = [], loading = true;
+
+        // Fetch deliverables from Cloud Run API (canonical Notion data)
+        async function loadApiDeliverables() {
+            try {
+                // Try /deliverables first
+                let res = await fetch(`${API_URL}/deliverables`);
+                let data = await res.json();
+                let deliverables = data.deliverables || data.projects || [];
+
+                // If empty, try /projects
+                if (deliverables.length === 0) {
+                    res = await fetch(`${API_URL}/projects`);
+                    data = await res.json();
+                    deliverables = data.projects || [];
+                }
+
+                // Filter for items that need editing
+                apiDeliverables = deliverables.filter(d => {
+                    const status = (d.status || d.productionWorkflowStatus || '').toLowerCase();
+                    const discipline = (d.discipline || '').toLowerCase();
+                    // Include if:
+                    // - Has video/moving assets needed
+                    // - Or discipline is Editor
+                    // - Or status is in edit phase
+                    // - Exclude completed items
+                    if (status === 'live' || status === 'published' || status === 'complete' || status === 'done') return false;
+
+                    if (d.movingAssetsNeeded?.length > 0 || d.movingAssetCount > 0) return true;
+                    if (discipline === 'editor') return true;
+                    if (status.includes('edit') || status.includes('filming') || status.includes('review')) return true;
+                    if (d.videoEditor) return true;
+
+                    return false;
+                }).map(d => ({
+                    id: d.id,
+                    title: d.title,
+                    editor: d.videoEditor || d.assignedTo || 'Unassigned',
+                    priority: d.dueDate && new Date(d.dueDate) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium',
+                    dueDate: d.dueDate || d.clientDueDate || d.internalDueDate,
+                    liveDate: d.plannedLiveDate || d.liveDate,
+                    clientDueDate: d.clientDueDate,
+                    feedbackDue: d.feedbackDue,
+                    feedbackStatus: d.feedbackStatus,
+                    status: d.status || d.productionWorkflowStatus || 'Not Started',
+                    clientName: d.client,
+                    projectTitle: d.projectTitle || d.client,
+                    source: 'api',
+                    url: d.url
+                }));
+
+                console.log('[Editor Queue] Loaded', apiDeliverables.length, 'items from API');
+                render();
+            } catch (err) {
+                console.error('[Editor Queue] Failed to load API deliverables', err);
+            }
+        }
 
         // Fetch rundown items that need editing (FILMING or done filming)
         async function loadRundownItems() {
@@ -105,9 +161,14 @@
         function render() {
             if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading queue...</div></div>`; return; }
 
-            // Merge items with rundown items, avoiding duplicates
+            // Merge all data sources, avoiding duplicates
+            // Priority: Firebase edit_queue > API deliverables > Rundown items
             const existingIds = new Set(items.map(i => i.id));
-            const allItems = [...items, ...rundownItems.filter(r => !existingIds.has(r.id))];
+            const allItems = [
+                ...items,
+                ...apiDeliverables.filter(d => !existingIds.has(d.id)),
+                ...rundownItems.filter(r => !existingIds.has(r.id) && !apiDeliverables.some(d => d.id === r.id))
+            ];
             const priorityOrder = { high: 0, medium: 1, low: 2 };
             allItems.sort((a, b) => (priorityOrder[a.priority?.toLowerCase()] || 2) - (priorityOrder[b.priority?.toLowerCase()] || 2));
 
@@ -117,7 +178,7 @@
                         <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
                         <div>
                             <h2 class="title">Edit Queue</h2>
-                            <div class="source-legend"><span style="color: #E94B4B;">RUN</span> = Daily Rundown (Filming/Internal)</div>
+                            <div class="source-legend"><span style="color: #21A0D8;">API</span> = Master Ledger &nbsp; <span style="color: #E94B4B;">RUN</span> = Daily Rundown</div>
                         </div>
                         <span class="count">${allItems.length} in queue</span>
                     </div>
@@ -145,6 +206,7 @@
                                         <div class="item-sub">
                                             ${item.editor || 'Unassigned'} • ${item.clientName || item.projectTitle || 'Project'}
                                             ${item.source === 'rundown' ? '<span style="font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: rgba(233, 75, 75, 0.1); color: #E94B4B; margin-left: 4px;">RUN</span>' : ''}
+                                            ${item.source === 'api' ? '<span style="font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: rgba(33, 160, 216, 0.1); color: #21A0D8; margin-left: 4px;">API</span>' : ''}
                                         </div>
                                         <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
                                             ${clientDue ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: ${isOverdue(clientDue) ? '#FEE2E2' : isDueSoon(clientDue) ? '#FEF3C7' : '#E5E5E5'}; color: ${isOverdue(clientDue) ? '#B91C1C' : isDueSoon(clientDue) ? '#B45309' : '#525252'};">Client: ${formatDate(clientDue)}</span>` : ''}
@@ -163,9 +225,17 @@
 
         onAuthStateChanged(auth, user => {
             if (user) {
+                // Load API deliverables (canonical Notion data)
+                loadApiDeliverables();
+
                 // Load rundown items
                 loadRundownItems();
-                setInterval(loadRundownItems, 60000); // Refresh every minute
+
+                // Refresh both every minute
+                setInterval(() => {
+                    loadApiDeliverables();
+                    loadRundownItems();
+                }, 60000);
 
                 // Listen to edit_queue - now synced from Commercial Hub
                 onSnapshot(collection(db, "artifacts", appId, "public", "data", "edit_queue"), snap => {
