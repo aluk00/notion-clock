@@ -1,0 +1,216 @@
+{
+  "name": "Deal Agreed - Create Episodes & Tasks",
+  "flow": [
+    {
+      "id": 1,
+      "module": "notion:watchDatabaseItems",
+      "version": 1,
+      "parameters": {
+        "limit": 10,
+        "select": "update",
+        "watchBy": "data_source",
+        "__IMTCONN__": 4706454,
+        "data_source": "2eb950e6-ee58-81c7-953c-000b6ae77c74"
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0,
+          "name": "Watch Master Ledger (Updates)"
+        }
+      },
+      "filter": {
+        "name": "Deal Agreed & Has Deliverables",
+        "conditions": [
+          [
+            {
+              "a": "{{1.properties_value.`DEAL STAGE`.name}}",
+              "b": "Deal Agreed",
+              "o": "text:equal"
+            },
+            {
+              "a": "{{1.properties_value.`AGREED CONTENT DELIVERABLES (FOR AI)`}}",
+              "b": "",
+              "o": "text:notequal"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "module": "util:TextParser",
+      "version": 2,
+      "parameters": {},
+      "mapper": {
+        "text": "{{1.properties_value.`AGREED CONTENT DELIVERABLES (FOR AI)`}}",
+        "pattern": "(.+)",
+        "global": true,
+        "sensitive": false,
+        "multiline": true
+      },
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0,
+          "name": "Split Deliverables by Line"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "module": "flow:Iterator",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "array": "{{2.array}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 600,
+          "y": 0,
+          "name": "Iterate Each Deliverable Line"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "module": "util:TextParser",
+      "version": 2,
+      "parameters": {},
+      "mapper": {
+        "text": "{{3.value}}",
+        "pattern": "^(\\d+)x\\s+(.+)$",
+        "global": false,
+        "sensitive": false,
+        "multiline": false
+      },
+      "metadata": {
+        "designer": {
+          "x": 900,
+          "y": 0,
+          "name": "Parse 'Nx Description'"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "module": "flow:Repeater",
+      "version": 1,
+      "parameters": {},
+      "mapper": {
+        "repeats": "{{4.$1}}"
+      },
+      "metadata": {
+        "designer": {
+          "x": 1200,
+          "y": 0,
+          "name": "Repeat N Times"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "module": "notion:createDataSourceItem",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": 4706454
+      },
+      "mapper": {
+        "select": "list",
+        "data_source": "2eb950e6-ee58-81c7-953c-000b6ae77c74",
+        "fields": {
+          "title": "{{4.$2}} {{5.i}}",
+          "EBq%5D": ["{{1.id}}"],
+          "Mb%7Ch": {
+            "start": "{{1.properties_value.`PLANNED LIVE DATE`.start}}",
+            "includeTime": false
+          },
+          "PzIO": "Not Started"
+        }
+      },
+      "metadata": {
+        "designer": {
+          "x": 1500,
+          "y": 0,
+          "name": "Create Layer 2 Episode"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "module": "notion:createDataSourceItem",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": 4706454
+      },
+      "mapper": {
+        "select": "list",
+        "data_source": "2eb950e6-ee58-81c7-953c-000b6ae77c74",
+        "fields": {
+          "title": "📹 Edit – {{4.$2}} {{5.i}}",
+          "EBq%5D": ["{{6.id}}"],
+          "Mb%7Ch": {
+            "start": "{{1.properties_value.`PLANNED LIVE DATE`.start}}",
+            "includeTime": false
+          },
+          "PzIO": "Not Started",
+          "I%5BF%3A": "Editor"
+        }
+      },
+      "metadata": {
+        "designer": {
+          "x": 1800,
+          "y": -100,
+          "name": "Create Layer 3 Edit Task"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "module": "notion:createDataSourceItem",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": 4706454
+      },
+      "mapper": {
+        "select": "list",
+        "data_source": "2eb950e6-ee58-81c7-953c-000b6ae77c74",
+        "fields": {
+          "title": "🎨 Thumbnail – {{4.$2}} {{5.i}}",
+          "EBq%5D": ["{{6.id}}"],
+          "Mb%7Ch": {
+            "start": "{{1.properties_value.`PLANNED LIVE DATE`.start}}",
+            "includeTime": false
+          },
+          "PzIO": "Not Started",
+          "I%5BF%3A": "Design"
+        }
+      },
+      "metadata": {
+        "designer": {
+          "x": 1800,
+          "y": 100,
+          "name": "Create Layer 3 Thumbnail Task"
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false
+    },
+    "designer": {
+      "orphans": []
+    }
+  }
+}
