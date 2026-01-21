@@ -295,6 +295,23 @@
         }
         .loading-text { margin-top: 12px; font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; }
 
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 14px 20px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            z-index: 2000;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .toast.visible { transform: translateX(0); }
+        .toast.success { background: var(--production-green); color: white; }
+        .toast.error { background: var(--danger); color: white; }
+
     </style>
 </head>
 <body>
@@ -315,6 +332,8 @@
             <div class="loading-text">Loading Data...</div>
         </div>
     </div>
+
+    <div class="toast" id="toast"></div>
 
     <div class="sheet-overlay" id="sheet-overlay" onclick="handleOverlayClick(event)">
         <div class="sheet">
@@ -580,6 +599,13 @@
             document.getElementById('sheet-overlay').classList.remove('active');
         }
 
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} visible`;
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+        }
+
         function handleOverlayClick(e) {
             if (e.target.id === 'sheet-overlay') closeSheet();
         }
@@ -640,9 +666,10 @@
                 }
 
                 closeSheet();
+                showToast('Changes saved!', 'success');
                 fetchData(); // Reload to see changes
             } catch (err) {
-                alert("Error saving: " + err.message);
+                showToast('Error saving: ' + err.message, 'error');
                 console.error(err);
             }
             

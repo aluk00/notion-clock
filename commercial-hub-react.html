@@ -411,7 +411,7 @@
         <div class="sb-body">
             <div style="margin-bottom:20px;">
                 <label class="field-label">Overall Campaign Status</label>
-                <select class="field-select" id="sb-status-main">
+                <select class="field-select" id="sb-status-main" onchange="markAsChanged()">
                     <option>Not Started</option>
                     <option>Pre-Production</option>
                     <option>Shoot</option>
@@ -444,8 +444,8 @@
         </div>
 
         <div class="sb-actions">
-            <button class="btn" onclick="closeSidebar()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveAllAssetData()">Save Updates</button>
+            <button class="btn" onclick="closeSidebar()">Discard</button>
+            <button class="btn btn-primary" onclick="saveAllAssetData()">Save Changes</button>
         </div>
     </div>
 
@@ -488,6 +488,7 @@
     } catch(e) { console.error(e); }
 
     let groupedProjects = {}, selectedClient = null, assetMetadata = {}, currentNoteType = '', projects = [];
+    let hasUnsavedChanges = false;
     const TALENT = ["Mimi Yates", "Dan Quinnell", "Prashan Leigh", "Henry Williams", "Dine Mourad", "Alex Hobbs", "Kaylee Abrahams", "Ellie Beetham", "Sophia Stanford", "Kayla Brantley", "Brooklyn DeGumbia"];
     const PRODUCERS = ["Alex Biddle", "Sophie", "Hugo", "Ellie", "Dan Q"];
     const SALES = ["Zach", "Isobel", "Maxine", "Daniel", "Sarah"];
@@ -737,6 +738,8 @@
         selectedClient = groupedProjects[clientName];
         if(!selectedClient) return;
 
+        hasUnsavedChanges = false;
+
         document.getElementById('sb-client').innerText = selectedClient.client;
         document.getElementById('sb-project').innerText = "Consolidated Campaign View";
         document.getElementById('sb-status-main').value = selectedClient.status || 'Not Started';
@@ -784,43 +787,43 @@
                             <div class="asset-title">${d.title}</div>
                             <div class="asset-meta">${d.format || 'Asset'}</div>
                         </div>
-                        <select class="status-select" id="status-${d.id}" style="border-color:var(--border);">
+                        <select class="status-select" id="status-${d.id}" style="border-color:var(--border);" onchange="markAsChanged()">
                             ${STATUSES.map(s => `<option ${s === d.status ? 'selected' : ''}>${s}</option>`).join('')}
                         </select>
                     </div>
 
                     <div class="grid-2">
-                        <div><label class="field-label">Creator / Talent</label><select class="field-select" id="creator-${d.id}"><option value="">Select...</option>${TALENT.map(t => `<option ${t===creatorVal?'selected':''}>${t}</option>`).join('')}</select></div>
-                        <div><label class="field-label">Video Editor</label><input class="field-input" type="text" placeholder="Assignee" value="${editorVal}" id="editor-${d.id}"></div>
+                        <div><label class="field-label">Creator / Talent</label><select class="field-select" id="creator-${d.id}" onchange="markAsChanged()"><option value="">Select...</option>${TALENT.map(t => `<option ${t===creatorVal?'selected':''}>${t}</option>`).join('')}</select></div>
+                        <div><label class="field-label">Video Editor</label><input class="field-input" type="text" placeholder="Assignee" value="${editorVal}" id="editor-${d.id}" onchange="markAsChanged()"></div>
                     </div>
 
                     <div class="grid-2">
-                        <div><label class="field-label">Producer</label><select class="field-select" id="prod-${d.id}"><option value="">Select...</option>${PRODUCERS.map(p => `<option ${p===producerVal?'selected':''}>${p}</option>`).join('')}</select></div>
-                        <div><label class="field-label">Location</label><input class="field-input" type="text" placeholder="e.g. Manchester" value="${meta.location || ''}" id="loc-${d.id}"></div>
+                        <div><label class="field-label">Producer</label><select class="field-select" id="prod-${d.id}" onchange="markAsChanged()"><option value="">Select...</option>${PRODUCERS.map(p => `<option ${p===producerVal?'selected':''}>${p}</option>`).join('')}</select></div>
+                        <div><label class="field-label">Location</label><input class="field-input" type="text" placeholder="e.g. Manchester" value="${meta.location || ''}" id="loc-${d.id}" onchange="markAsChanged()"></div>
                     </div>
 
                     <div class="grid-2">
-                        <div><label class="field-label">Sales Lead</label><select class="field-select" id="sales-${d.id}"><option value="">Select...</option>${SALES.map(s => `<option ${s===salesVal?'selected':''}>${s}</option>`).join('')}</select></div>
+                        <div><label class="field-label">Sales Lead</label><select class="field-select" id="sales-${d.id}" onchange="markAsChanged()"><option value="">Select...</option>${SALES.map(s => `<option ${s===salesVal?'selected':''}>${s}</option>`).join('')}</select></div>
                         <div><label class="field-label">Creative Lead</label><input class="field-input" type="text" value="${selectedClient.creative || '--'}" disabled style="background:#EEE; cursor:not-allowed;"></div>
                     </div>
 
                     <div class="grid-2">
-                        <div><label class="field-label">Shoot Date</label><input class="field-input" type="date" value="${meta.shootDate || ''}" id="shootDate-${d.id}"></div>
-                        <div><label class="field-label">Shoot Time</label><input class="field-input" type="text" placeholder="e.g. 2pm" value="${meta.shootTime || ''}" id="shootTime-${d.id}"></div>
+                        <div><label class="field-label">Shoot Date</label><input class="field-input" type="date" value="${meta.shootDate || ''}" id="shootDate-${d.id}" onchange="markAsChanged()"></div>
+                        <div><label class="field-label">Shoot Time</label><input class="field-input" type="text" placeholder="e.g. 2pm" value="${meta.shootTime || ''}" id="shootTime-${d.id}" onchange="markAsChanged()"></div>
                     </div>
 
                     <div class="grid-2">
-                        <div><label class="field-label">Delivery Due (Client)</label><input class="field-input" type="date" value="${meta.deliveryDue || feedbackDue || ''}" id="delivery-${d.id}"></div>
-                        <div><label class="field-label">Planned Live Date</label><input class="field-input" type="date" value="${plannedLiveDate || meta.liveDate || ''}" id="live-${d.id}"></div>
+                        <div><label class="field-label">Delivery Due (Client)</label><input class="field-input" type="date" value="${meta.deliveryDue || feedbackDue || ''}" id="delivery-${d.id}" onchange="markAsChanged()"></div>
+                        <div><label class="field-label">Planned Live Date</label><input class="field-input" type="date" value="${plannedLiveDate || meta.liveDate || ''}" id="live-${d.id}" onchange="markAsChanged()"></div>
                     </div>
 
                     <div class="grid-2">
-                        <div><label class="field-label">Feedback Status</label><select class="field-select" id="feedbackStatus-${d.id}"><option value="">Select...</option>${FEEDBACK_STATUSES.map(fs => `<option ${fs===feedbackStatus?'selected':''}>${fs}</option>`).join('')}</select></div>
-                        <div><label class="field-label">Feedback Due Date</label><input class="field-input" type="date" value="${feedbackDue || ''}" id="feedbackDue-${d.id}"></div>
+                        <div><label class="field-label">Feedback Status</label><select class="field-select" id="feedbackStatus-${d.id}" onchange="markAsChanged()"><option value="">Select...</option>${FEEDBACK_STATUSES.map(fs => `<option ${fs===feedbackStatus?'selected':''}>${fs}</option>`).join('')}</select></div>
+                        <div><label class="field-label">Feedback Due Date</label><input class="field-input" type="date" value="${feedbackDue || ''}" id="feedbackDue-${d.id}" onchange="markAsChanged()"></div>
                     </div>
 
-                    <div style="margin-bottom:12px;"><label class="check-pill ${meta.thumbnailReady?'checked':''}" onclick="this.classList.toggle('checked')"><input type="checkbox" id="thumb-${d.id}" ${meta.thumbnailReady?'checked':''}>Thumbnail Uploaded</label></div>
-                    <div><label class="field-label">Feedback / Status Notes</label><textarea class="notes-area" id="note-${d.id}" placeholder="e.g. Waiting for client feedback...">${meta.notes || ''}</textarea></div>
+                    <div style="margin-bottom:12px;"><label class="check-pill ${meta.thumbnailReady?'checked':''}" onclick="this.classList.toggle('checked'); markAsChanged()"><input type="checkbox" id="thumb-${d.id}" ${meta.thumbnailReady?'checked':''} onchange="markAsChanged()">Thumbnail Uploaded</label></div>
+                    <div><label class="field-label">Feedback / Status Notes</label><textarea class="notes-area" id="note-${d.id}" placeholder="e.g. Waiting for client feedback..." onchange="markAsChanged()">${meta.notes || ''}</textarea></div>
                 </div>`;
             }).join('');
         }
@@ -964,9 +967,10 @@
             }
             
             // Show Success
+            hasUnsavedChanges = false;
             const toast = document.getElementById('toast');
-            toast.innerText = "Saved";
-            toast.classList.add('visible'); 
+            toast.innerText = "Changes saved!";
+            toast.classList.add('visible');
             setTimeout(()=>toast.classList.remove('visible'), 3000);
             
             // Close Sidebar
@@ -1006,7 +1010,17 @@
         } catch(e) { alert('API Error'); }
     };
 
-    window.closeSidebar = () => { document.getElementById('overlay').classList.remove('open'); document.getElementById('sidebar').classList.remove('open'); };
+    window.closeSidebar = () => {
+        if (hasUnsavedChanges && !confirm('You have unsaved changes. Discard them?')) return;
+        hasUnsavedChanges = false;
+        document.getElementById('overlay').classList.remove('open');
+        document.getElementById('sidebar').classList.remove('open');
+    };
+
+    // Track changes in sidebar form
+    function markAsChanged() {
+        hasUnsavedChanges = true;
+    }
 
     // UTILS
     function formatPeople(val) { if(!val) return '--'; if(Array.isArray(val)) return val.map(p => p.name || p).join(', '); return val; }
