@@ -624,22 +624,53 @@
 
         async function loadProject() {
             try {
-                // Fetch project
+                // Fetch all projects
                 const projRes = await fetch(`${API_URL}/projects`);
                 const projData = await projRes.json();
 
                 if (!projData.success) throw new Error('Failed to fetch projects');
 
+                // First try to find project directly by ID
                 project = projData.projects.find(p => p.id === projectId);
+
+                // If not found, the ID might be a deliverable/episode ID
+                // Try to find it through deliverables and get its parent project
+                if (!project) {
+                    try {
+                        const delRes = await fetch(`${API_URL}/deliverables`);
+                        const delData = await delRes.json();
+                        const allDeliverables = delData.deliverables || [];
+
+                        // Look for a deliverable with this ID
+                        const deliverable = allDeliverables.find(d => d.id === projectId);
+
+                        if (deliverable && deliverable.projectId) {
+                            // Found the deliverable, now get its parent project
+                            project = projData.projects.find(p => p.id === deliverable.projectId);
+                        }
+
+                        // Also check if ID matches any episode within projects
+                        if (!project) {
+                            for (const p of projData.projects) {
+                                if (p.episodes && p.episodes.some(ep => ep.id === projectId)) {
+                                    project = p;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Could not search deliverables:', e);
+                    }
+                }
 
                 if (!project) {
                     showError('Project not found', 'The requested project could not be found.');
                     return;
                 }
 
-                // Fetch deliverables for this project
+                // Fetch deliverables for this project (use the actual project ID)
                 try {
-                    const delRes = await fetch(`${API_URL}/deliverables/project/${projectId}`);
+                    const delRes = await fetch(`${API_URL}/deliverables/project/${project.id}`);
                     const delData = await delRes.json();
                     deliverables = delData.deliverables || [];
                 } catch (e) {
