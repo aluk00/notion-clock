@@ -284,6 +284,187 @@
         .toast.show { transform: translateX(-50%) translateY(0); }
         .toast.error { background: var(--full); }
         .toast.success { background: var(--production); }
+
+        /* ===== PROJECT DETAIL VIEW ===== */
+        .project-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .project-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .project-detail {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            width: 95%;
+            max-width: 900px;
+            max-height: 90vh;
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            z-index: 2001;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        .project-detail.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .project-detail-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--surface-alt) 0%, var(--surface) 100%);
+        }
+
+        .project-back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            color: var(--ink-light);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .project-back-btn:hover {
+            background: var(--surface-alt);
+            border-color: #D1D5DB;
+            color: var(--ink);
+        }
+        .project-back-btn svg { width: 14px; height: 14px; }
+
+        .project-title-section { flex: 1; }
+        .project-client-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+        .project-title-main {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--ink);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        .project-status-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .project-detail-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 700px) {
+            .project-detail-content { grid-template-columns: 1fr; }
+        }
+
+        .detail-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .detail-section-title {
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--ink-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .detail-section-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .detail-field {
+            margin-bottom: 12px;
+        }
+        .detail-field:last-child { margin-bottom: 0; }
+        .detail-field-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-light);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+        .detail-field-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .detail-field-value.empty { color: var(--ink-light); font-style: italic; }
+
+        .detail-actions {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .detail-action-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            cursor: pointer;
+            color: var(--ink);
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .detail-action-btn:hover {
+            background: var(--production);
+            color: white;
+            border-color: var(--production);
+        }
+        .detail-action-btn.primary {
+            background: var(--production);
+            color: white;
+            border-color: var(--production);
+        }
     </style>
 </head>
 <body>
@@ -303,6 +484,10 @@
     <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
         <div class="modal" id="modal"></div>
     </div>
+
+    <div class="project-overlay" id="projectOverlay" onclick="closeProjectDetail()"></div>
+    <div class="project-detail" id="projectDetail"></div>
+
     <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -434,6 +619,90 @@
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
+    // Store projects data for detail view
+    let allProjectsData = [];
+
+    // Project Detail View Functions
+    window.openProjectDetail = function(taskData) {
+        const detail = document.getElementById('projectDetail');
+        const statusColor = getStatusColor(taskData.status);
+
+        detail.innerHTML = `
+            <div class="project-detail-header">
+                <button class="project-back-btn" onclick="closeProjectDetail()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    Back
+                </button>
+                <div class="project-title-section">
+                    <div class="project-client-name">${taskData.type || 'Design Task'}</div>
+                    <div class="project-title-main">${taskData.title || 'Untitled'}</div>
+                </div>
+                <div class="project-status-badge" style="background: ${statusColor}15; color: ${statusColor}">${taskData.status || 'Not Started'}</div>
+            </div>
+
+            <div class="project-detail-content">
+                <div class="detail-section">
+                    <div class="detail-section-title">
+                        <div class="detail-section-dot" style="background: var(--production)"></div>
+                        Task Details
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Task Type</div>
+                        <div class="detail-field-value">${taskData.type || 'Design'}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Status</div>
+                        <div class="detail-field-value">${taskData.status || 'Not Started'}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Effort Points</div>
+                        <div class="detail-field-value">${taskData.effortPTS || 0} PTS</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Source</div>
+                        <div class="detail-field-value">${taskData.source === 'api' ? 'Master Ledger' : 'Quick Request'}</div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">
+                        <div class="detail-section-dot" style="background: #F59E0B"></div>
+                        Key Dates
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Due Date</div>
+                        <div class="detail-field-value ${!taskData.dueDate ? 'empty' : ''}">${taskData.dueDate ? new Date(taskData.dueDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Live Date</div>
+                        <div class="detail-field-value ${!taskData.liveDate ? 'empty' : ''}">${taskData.liveDate ? new Date(taskData.liveDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-actions">
+                ${taskData.url ? `<a href="${taskData.url}" target="_blank" class="detail-action-btn primary">View in Notion</a>` : ''}
+                <button class="detail-action-btn" onclick="closeProjectDetail()">Close</button>
+            </div>
+        `;
+
+        document.getElementById('projectOverlay').classList.add('visible');
+        detail.classList.add('visible');
+    };
+
+    window.closeProjectDetail = function() {
+        document.getElementById('projectOverlay').classList.remove('visible');
+        document.getElementById('projectDetail').classList.remove('visible');
+    };
+
+    function getStatusColor(status) {
+        const statusLower = (status || '').toLowerCase();
+        if (statusLower.includes('done') || statusLower.includes('complete') || statusLower.includes('live')) return '#43B049';
+        if (statusLower.includes('progress') || statusLower.includes('edit')) return '#F59E0B';
+        if (statusLower.includes('review')) return '#21A0D8';
+        return '#9CA3AF';
+    }
+
     // Close modal
     window.closeModal = function() {
         document.getElementById('modalOverlay').classList.remove('active');
@@ -552,8 +821,8 @@
                     </div>
                     ${designerData.taskList.length === 0 ?
                         '<div class="modal-empty">No active tasks assigned</div>' :
-                        designerData.taskList.map(t => `
-                            <div class="modal-task">
+                        designerData.taskList.map((t, idx) => `
+                            <div class="modal-task" style="cursor: pointer; transition: all 0.15s ease;" onclick="openProjectDetail(${JSON.stringify(t).replace(/"/g, '&quot;')})" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
                                 <div class="modal-task-title">${t.title || 'Untitled'}</div>
                                 <div class="modal-task-meta">
                                     ${t.type ? `<span class="modal-tag type">${t.type}</span>` : ''}

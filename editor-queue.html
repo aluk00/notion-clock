@@ -38,10 +38,195 @@
         .loading { display: flex; align-items: center; justify-content: center; padding: 50px; color: var(--ink-sub); font-size: 12px; }
         .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--production); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== PROJECT DETAIL VIEW ===== */
+        .project-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .project-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .project-detail {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            width: 95%;
+            max-width: 900px;
+            max-height: 90vh;
+            background: #FFF;
+            border-radius: 16px;
+            overflow: hidden;
+            z-index: 1001;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        .project-detail.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .project-detail-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--bg-soft) 0%, #FFF 100%);
+        }
+
+        .project-back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid var(--border);
+            background: #FFF;
+            cursor: pointer;
+            color: var(--ink-sub);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .project-back-btn:hover {
+            background: var(--bg-soft);
+            border-color: #D1D5DB;
+            color: var(--ink);
+        }
+        .project-back-btn svg { width: 14px; height: 14px; }
+
+        .project-title-section { flex: 1; }
+        .project-client-name {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+        .project-title-main {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--ink);
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        .project-status-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .project-detail-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 700px) {
+            .project-detail-content { grid-template-columns: 1fr; }
+        }
+
+        .detail-section {
+            background: #FFF;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .detail-section-title {
+            font-size: 10px;
+            font-weight: 800;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .detail-section-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .detail-field {
+            margin-bottom: 12px;
+        }
+        .detail-field:last-child { margin-bottom: 0; }
+        .detail-field-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+        .detail-field-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .detail-field-value.empty { color: var(--ink-sub); font-style: italic; }
+
+        .detail-actions {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .detail-action-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid var(--border);
+            background: #FFF;
+            cursor: pointer;
+            color: var(--ink);
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .detail-action-btn:hover {
+            background: var(--production);
+            color: white;
+            border-color: var(--production);
+        }
+        .detail-action-btn.primary {
+            background: var(--production);
+            color: white;
+            border-color: var(--production);
+        }
     </style>
 </head>
 <body>
     <div id="root"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+
+    <div class="project-overlay" id="projectOverlay" onclick="closeProjectDetail()"></div>
+    <div class="project-detail" id="projectDetail"></div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -59,6 +244,107 @@
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
         let items = [], rundownItems = [], apiDeliverables = [], loading = true;
+
+        // Project Detail View Functions
+        window.openProjectDetail = function(itemData) {
+            const detail = document.getElementById('projectDetail');
+            const statusColor = getStatusColor(itemData.status);
+
+            detail.innerHTML = `
+                <div class="project-detail-header">
+                    <button class="project-back-btn" onclick="closeProjectDetail()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        Back
+                    </button>
+                    <div class="project-title-section">
+                        <div class="project-client-name">${itemData.clientName || itemData.projectTitle || 'Edit Task'}</div>
+                        <div class="project-title-main">${itemData.title || 'Untitled Edit'}</div>
+                    </div>
+                    <div class="project-status-badge" style="background: ${statusColor}15; color: ${statusColor}">${itemData.priority || 'Medium'}</div>
+                </div>
+
+                <div class="project-detail-content">
+                    <div class="detail-section">
+                        <div class="detail-section-title">
+                            <div class="detail-section-dot" style="background: var(--production)"></div>
+                            Task Details
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Editor</div>
+                            <div class="detail-field-value">${itemData.editor || 'Unassigned'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Client</div>
+                            <div class="detail-field-value ${!itemData.clientName ? 'empty' : ''}">${itemData.clientName || 'Not specified'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Project</div>
+                            <div class="detail-field-value ${!itemData.projectTitle ? 'empty' : ''}">${itemData.projectTitle || 'Not specified'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Priority</div>
+                            <div class="detail-field-value">${itemData.priority || 'Medium'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Status</div>
+                            <div class="detail-field-value">${itemData.status || 'Not Started'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Source</div>
+                            <div class="detail-field-value">${itemData.source === 'api' ? 'Master Ledger' : itemData.source === 'rundown' ? 'Daily Rundown' : 'Edit Queue'}</div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <div class="detail-section-title">
+                            <div class="detail-section-dot" style="background: #F59E0B"></div>
+                            Key Dates
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Client Due Date</div>
+                            <div class="detail-field-value ${!itemData.clientDueDate && !itemData.dueDate ? 'empty' : ''}">${(itemData.clientDueDate || itemData.dueDate) ? new Date(itemData.clientDueDate || itemData.dueDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Live Date</div>
+                            <div class="detail-field-value ${!itemData.liveDate ? 'empty' : ''}">${itemData.liveDate ? new Date(itemData.liveDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}</div>
+                        </div>
+                        ${itemData.feedbackDue ? `
+                        <div class="detail-field">
+                            <div class="detail-field-label">Feedback Due</div>
+                            <div class="detail-field-value">${new Date(itemData.feedbackDue).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                        </div>
+                        ` : ''}
+                        ${itemData.feedbackStatus ? `
+                        <div class="detail-field">
+                            <div class="detail-field-label">Feedback Status</div>
+                            <div class="detail-field-value">${itemData.feedbackStatus}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <div class="detail-actions">
+                    ${itemData.url ? `<a href="${itemData.url}" target="_blank" class="detail-action-btn primary">View in Notion</a>` : ''}
+                    <button class="detail-action-btn" onclick="closeProjectDetail()">Close</button>
+                </div>
+            `;
+
+            document.getElementById('projectOverlay').classList.add('visible');
+            detail.classList.add('visible');
+        };
+
+        window.closeProjectDetail = function() {
+            document.getElementById('projectOverlay').classList.remove('visible');
+            document.getElementById('projectDetail').classList.remove('visible');
+        };
+
+        function getStatusColor(status) {
+            const statusLower = (status || '').toLowerCase();
+            if (statusLower.includes('high') || statusLower.includes('urgent')) return '#EF4444';
+            if (statusLower.includes('medium')) return '#F59E0B';
+            if (statusLower.includes('low')) return '#22C55E';
+            return '#9CA3AF';
+        }
 
         // Fetch deliverables from Cloud Run API (canonical Notion data)
         // This is optional - widget still works with just Firebase data
@@ -212,8 +498,9 @@
                                 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
                                 const isOverdue = (d) => d && new Date(d) < new Date();
                                 const isDueSoon = (d) => { if (!d) return false; const diff = (new Date(d) - new Date()) / (1000*60*60*24); return diff >= 0 && diff <= 2; };
+                                const itemData = JSON.stringify(item).replace(/"/g, '&quot;');
                                 return `
-                                <div class="item" onclick="window.open('${item.url || '#'}', '_blank')">
+                                <div class="item" onclick="openProjectDetail(${itemData})" style="cursor: pointer;">
                                     <div class="item-icon">🎬</div>
                                     <div class="item-info">
                                         <div class="item-title">${item.title || 'Untitled Edit'}</div>
