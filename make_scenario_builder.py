@@ -32,7 +32,10 @@ import requests
 # Make.com API token
 API_TOKEN = os.environ.get("MAKE_API_TOKEN", "c0b114a4-034d-417f-ac80-46b6e89f2f82")
 
-# Scenario ID (from URL: https://us1.make.com/scenarios/4205682)
+# Team ID (from URL: https://eu1.make.com/692247/scenarios/...)
+TEAM_ID = os.environ.get("MAKE_TEAM_ID", "692247")
+
+# Scenario ID (from URL: https://eu1.make.com/692247/scenarios/4205682)
 SCENARIO_ID = os.environ.get("MAKE_SCENARIO_ID", "4205682")
 
 # Notion Connection ID (found in existing Notion modules)
@@ -104,15 +107,16 @@ class MakeComClient:
     ) -> dict[str, Any]:
         """Make an API request with retry logic."""
         url = f"{BASE_URL}{endpoint}"
+        params = {"teamId": TEAM_ID}
 
         for attempt in range(retries):
             try:
                 if method == "GET":
-                    response = self.session.get(url, timeout=30)
+                    response = self.session.get(url, params=params, timeout=30)
                 elif method == "POST":
-                    response = self.session.post(url, json=data, timeout=30)
+                    response = self.session.post(url, params=params, json=data, timeout=30)
                 elif method == "PATCH":
-                    response = self.session.patch(url, json=data, timeout=30)
+                    response = self.session.patch(url, params=params, json=data, timeout=30)
                 else:
                     raise ValueError(f"Unsupported method: {method}")
 
