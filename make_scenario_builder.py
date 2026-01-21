@@ -26,29 +26,23 @@ from typing import Any
 import requests
 
 # =============================================================================
-# CONFIGURATION - Fill these in before running
+# CONFIGURATION
 # =============================================================================
 
-# Your Make.com API token (get from Make.com > Profile > API)
-# Can also be set via MAKE_API_TOKEN environment variable
-API_TOKEN = os.environ.get("MAKE_API_TOKEN", "YOUR_API_TOKEN_HERE")
+# Make.com API token
+API_TOKEN = os.environ.get("MAKE_API_TOKEN", "c0b114a4-034d-417f-ac80-46b6e89f2f82")
 
-# Your scenario ID (from URL: https://us1.make.com/scenarios/XXXXXX)
-# Can also be set via MAKE_SCENARIO_ID environment variable
-SCENARIO_ID = os.environ.get("MAKE_SCENARIO_ID", "YOUR_SCENARIO_ID_HERE")
+# Scenario ID (from URL: https://us1.make.com/scenarios/4205682)
+SCENARIO_ID = os.environ.get("MAKE_SCENARIO_ID", "4205682")
 
-# Connection IDs (inspect existing modules in Make.com to find these)
-# You can find these by:
-#   1. GET /scenarios/{scenarioId} to see current structure
-#   2. Look at existing Notion/HTTP modules for their connection IDs
-# Can also be set via MAKE_NOTION_CONNECTION_ID environment variable
-NOTION_CONNECTION_ID = os.environ.get("MAKE_NOTION_CONNECTION_ID", "YOUR_NOTION_CONNECTION_ID_HERE")
-# HTTP connection (usually not needed, HTTP modules don't require connection)
+# Notion Connection ID (found in existing Notion modules)
+NOTION_CONNECTION_ID = os.environ.get("MAKE_NOTION_CONNECTION_ID", "4706454")
+
+# HTTP connection (not needed for HTTP modules)
 HTTP_CONNECTION_ID = os.environ.get("MAKE_HTTP_CONNECTION_ID", "")
 
-# Notion Data Source ID (the database you're adding items to)
-# Can also be set via MAKE_NOTION_DATA_SOURCE_ID environment variable
-NOTION_DATA_SOURCE_ID = os.environ.get("MAKE_NOTION_DATA_SOURCE_ID", "YOUR_NOTION_DATA_SOURCE_ID_HERE")
+# Notion Data Source ID (DMG New Media | Master Projects & Production Data Ledger)
+NOTION_DATA_SOURCE_ID = os.environ.get("MAKE_NOTION_DATA_SOURCE_ID", "2eb950e6-ee58-81c7-953c-000b6ae77c74")
 
 # =============================================================================
 # ROUTE CONFIGURATION
