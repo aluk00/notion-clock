@@ -130,17 +130,65 @@
         .note-label { font-size: 9px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 4px; display: block; }
 
         /* SIDEBAR */
-        .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.2); backdrop-filter: blur(2px); opacity: 0; pointer-events: none; transition: 0.2s; z-index: 100; }
-        .sidebar-overlay.open { opacity: 1; pointer-events: all; }
-        .sidebar { 
-            position: fixed; top: 0; right: 0; bottom: 0; width: 600px; max-width: 95vw;
-            background: var(--bg-soft); transform: translateX(100%); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
-            z-index: 101; border-left: 1px solid var(--border); display: flex; flex-direction: column; 
-            box-shadow: none;
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease, backdrop-filter 0.35s ease;
+            z-index: 100;
         }
-        .sidebar.open { 
-            transform: translateX(0); 
-            box-shadow: none;
+        .sidebar-overlay.open { opacity: 1; pointer-events: all; }
+        .sidebar {
+            position: fixed; top: 0; right: 0; bottom: 0; width: 600px; max-width: 95vw;
+            background: var(--bg-soft);
+            transform: translateX(100%);
+            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+            z-index: 101;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -20px 0 60px rgba(0, 0, 0, 0.15);
+        }
+        .sidebar.open {
+            transform: translateX(0);
+        }
+        .sidebar.closing {
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        /* Row click feedback */
+        .row {
+            position: relative;
+            overflow: hidden;
+        }
+        .row:active {
+            transform: scale(0.99);
+            transition: transform 0.1s ease;
+        }
+        .row::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, var(--dmg-blue) 0%, transparent 70%);
+            opacity: 0;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .row.ripple::after {
+            animation: rowRipple 0.4s ease-out forwards;
+        }
+        @keyframes rowRipple {
+            0% { width: 0; height: 0; opacity: 0.2; }
+            100% { width: 500px; height: 500px; opacity: 0; }
         }
 
         .sb-header { padding: 24px 32px; background: var(--white); border-bottom: 1px solid var(--border); }
@@ -249,6 +297,44 @@
         .loading { display: flex; align-items: center; justify-content: center; padding: 60px; color: var(--ink-sub); font-size: 12px; font-weight: 600; text-transform: uppercase; }
         .spinner { width: 16px; height: 16px; border: 2px solid #E5E7EB; border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Skeleton loading for sidebar */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+        .skeleton-card {
+            height: 180px;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        .skeleton-loading {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 20px 0;
+        }
+
+        /* Asset card animations */
+        .asset-card {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeSlideUp 0.4s ease forwards;
+        }
+        .asset-card:nth-child(1) { animation-delay: 0.05s; }
+        .asset-card:nth-child(2) { animation-delay: 0.1s; }
+        .asset-card:nth-child(3) { animation-delay: 0.15s; }
+        .asset-card:nth-child(4) { animation-delay: 0.2s; }
+        .asset-card:nth-child(5) { animation-delay: 0.25s; }
+        @keyframes fadeSlideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1C1C1C; color: #FFF; padding: 10px 24px; border-radius: 30px; font-size: 12px; font-weight: 600; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 200; }
         .toast.visible { opacity: 1; transform: translateX(-50%) translateY(-10px); }
@@ -639,7 +725,13 @@
             
             const row = document.createElement('div');
             row.className = 'row grid-prod';
-            row.onclick = () => openSidebar(group.client);
+            row.onclick = (e) => {
+                row.classList.add('ripple');
+                setTimeout(() => {
+                    row.classList.remove('ripple');
+                    openSidebar(group.client);
+                }, 150);
+            };
             
             row.innerHTML = `
                 <div>
@@ -745,7 +837,13 @@
         document.getElementById('sb-status-main').value = selectedClient.status || 'Not Started';
 
         const content = document.getElementById('sb-content');
-        content.innerHTML = '<div class="loading"><div class="spinner"></div>Loading deliverables...</div>';
+        content.innerHTML = `
+            <div class="skeleton-loading">
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+            </div>
+        `;
 
         document.getElementById('overlay').classList.add('open');
         document.getElementById('sidebar').classList.add('open');
@@ -1011,16 +1109,18 @@
     };
 
     window.closeSidebar = () => {
-        if (hasUnsavedChanges && !confirm('You have unsaved changes. Discard them?')) return;
-        hasUnsavedChanges = false;
-        document.getElementById('overlay').classList.remove('open');
-        document.getElementById('sidebar').classList.remove('open');
-    };
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
 
-    // Track changes in sidebar form
-    function markAsChanged() {
-        hasUnsavedChanges = true;
-    }
+        // Add closing animation
+        sidebar.classList.add('closing');
+
+        // Wait for animation then fully close
+        setTimeout(() => {
+            overlay.classList.remove('open');
+            sidebar.classList.remove('open', 'closing');
+        }, 280);
+    };
 
     // UTILS
     function formatPeople(val) { if(!val) return '--'; if(Array.isArray(val)) return val.map(p => p.name || p).join(', '); return val; }
