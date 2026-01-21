@@ -393,10 +393,11 @@ function parseRundownItem(page) {
 // ============================================
 app.get('/projects', async (req, res) => {
     try {
+        // Note: Removed sort by (INTERNAL) DUE DATE as property may not exist
+        // Sorting is now done client-side to avoid breaking when Notion schema changes
         const response = await notion.databases.query({
             database_id: PROJECTS_DB,
-            page_size: 100,
-            sorts: [{ property: '(INTERNAL) DUE DATE', direction: 'ascending' }]
+            page_size: 100
         });
         
         const projects = response.results.map(page => {

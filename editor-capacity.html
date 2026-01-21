@@ -129,17 +129,30 @@
 
         const getTeamColor = (team) => teamColors[team] || '#43B049';
 
-        // Fetch deliverables from Cloud Run API (canonical Notion data)
+        // Fetch deliverables from Cloud Run API (optional enhancement)
+        // Widget works fine with just Firebase data if API is unavailable
         async function loadApiDeliverables() {
             try {
-                let res = await fetch(`${API_URL}/deliverables`);
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 10000);
+
+                let res = await fetch(`${API_URL}/deliverables`, { signal: controller.signal });
+                clearTimeout(timeout);
+
+                if (!res.ok) {
+                    console.warn('[Editor Capacity] API returned', res.status, '- using Firebase data only');
+                    return;
+                }
+
                 let data = await res.json();
                 let deliverables = data.deliverables || data.projects || [];
 
                 if (deliverables.length === 0) {
-                    res = await fetch(`${API_URL}/projects`);
-                    data = await res.json();
-                    deliverables = data.projects || [];
+                    const projRes = await fetch(`${API_URL}/projects`);
+                    if (projRes.ok) {
+                        data = await projRes.json();
+                        deliverables = data.projects || [];
+                    }
                 }
 
                 // Filter for editor-related items
@@ -166,7 +179,8 @@
                 console.log('[Editor Capacity] Loaded', apiDeliverables.length, 'items from API');
                 render();
             } catch (err) {
-                console.error('[Editor Capacity] Failed to load API deliverables', err);
+                // Silently fail - widget works with just Firebase data
+                console.warn('[Editor Capacity] API unavailable, using Firebase data only');
             }
         }
 

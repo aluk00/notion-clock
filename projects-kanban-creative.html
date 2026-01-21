@@ -924,7 +924,16 @@
 
         async function loadProjects() {
             try {
-                const res = await fetch(`${API_URL}/projects`);
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 15000);
+
+                const res = await fetch(`${API_URL}/projects`, { signal: controller.signal });
+                clearTimeout(timeout);
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+
                 const data = await res.json();
                 allProjects = data?.projects || [];
                 loading = false;
@@ -932,7 +941,21 @@
             } catch (e) {
                 console.error('Load failed:', e);
                 loading = false;
-                render();
+                document.getElementById('app').innerHTML = `
+                    <div class="kanban-container">
+                        <div class="header">
+                            <div class="header-left">
+                                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                                <span class="header-label">Brief Response Status</span>
+                            </div>
+                        </div>
+                        <div style="text-align: center; padding: 60px 20px;">
+                            <div style="font-size: 32px; margin-bottom: 16px;">⚠️</div>
+                            <div style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">Failed to connect to API</div>
+                            <div style="font-size: 12px; color: var(--ink-muted); margin-bottom: 16px;">${e.message || 'Network error'}</div>
+                            <button onclick="location.reload()" style="padding: 10px 20px; background: var(--creative); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">Retry</button>
+                        </div>
+                    </div>`;
             }
         }
 

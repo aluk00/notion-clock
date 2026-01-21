@@ -384,8 +384,19 @@
 
     async function loadDeliverables() {
         try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+
             // Try /deliverables first
-            const res = await fetch(`${API_URL}/deliverables`);
+            const res = await fetch(`${API_URL}/deliverables`, { signal: controller.signal });
+            clearTimeout(timeout);
+
+            if (!res.ok) {
+                console.warn('[Designer Queue] API returned', res.status, '- using Firebase data only');
+                render();
+                return;
+            }
+
             const data = await res.json();
             let items = data.deliverables || data.projects || [];
 
@@ -393,41 +404,50 @@
             if (items.length === 0) {
                 console.log('[Designer Queue] No deliverables found, trying /projects endpoint');
                 const projRes = await fetch(`${API_URL}/projects`);
-                const projData = await projRes.json();
-                if (projData.projects && projData.projects.length > 0) {
-                    // Convert projects to deliverable-like items for design work
-                    items = projData.projects.filter(p => {
-                        // Include projects that might need design work
-                        const status = (p.status1 || p.status || p.projectStatus || '').toLowerCase();
-                        return !status.includes('cancelled') && !status.includes('archived') && status !== 'live' && status !== 'complete';
-                    }).map(p => ({
-                        id: p.id,
-                        title: p.title,
-                        projectTitle: p.client || p.title,
-                        status: p.productionWorkflowStatus || p.status || 'Not Started',
-                        staticAssetCount: p.staticAssetCount || 0,
-                        staticAssetsNeeded: p.staticAssetsNeeded || [],
-                        discipline: p.discipline,
-                        designTaskType: p.designTaskType,
-                        dueDate: p.dueDate || p.clientDueDate || p.internalDueDate,
-                        liveDate: p.plannedLiveDate || p.liveDate,
-                        clientDueDate: p.clientDueDate,
-                        feedbackStatus: p.feedbackStatus,
-                        feedbackDue: p.feedbackDue,
-                        graphicDesigner: p.graphicDesigner || p.assignedTo,
-                        assetsNeeded: p.assetsNeeded
-                    }));
+                if (projRes.ok) {
+                    const projData = await projRes.json();
+                    if (projData.projects && projData.projects.length > 0) {
+                        // Convert projects to deliverable-like items for design work
+                        items = projData.projects.filter(p => {
+                            // Include projects that might need design work
+                            const status = (p.status1 || p.status || p.projectStatus || '').toLowerCase();
+                            return !status.includes('cancelled') && !status.includes('archived') && status !== 'live' && status !== 'complete';
+                        }).map(p => ({
+                            id: p.id,
+                            title: p.title,
+                            projectTitle: p.client || p.title,
+                            status: p.productionWorkflowStatus || p.status || 'Not Started',
+                            staticAssetCount: p.staticAssetCount || 0,
+                            staticAssetsNeeded: p.staticAssetsNeeded || [],
+                            discipline: p.discipline,
+                            designTaskType: p.designTaskType,
+                            dueDate: p.dueDate || p.clientDueDate || p.internalDueDate,
+                            liveDate: p.plannedLiveDate || p.liveDate,
+                            clientDueDate: p.clientDueDate,
+                            feedbackStatus: p.feedbackStatus,
+                            feedbackDue: p.feedbackDue,
+                            graphicDesigner: p.graphicDesigner || p.assignedTo,
+                            assetsNeeded: p.assetsNeeded
+                        }));
+                    }
                 }
             }
 
             deliverables = items;
             console.log('[Designer Queue] Loaded', deliverables.length, 'items');
             render();
-        } catch (err) { console.error('Failed to load deliverables', err); }
+        } catch (err) {
+            // Silently fail - widget works with just Firebase data
+            console.warn('[Designer Queue] API unavailable, using Firebase data only');
+            render();
+        }
     }
 
     async function loadRundownItems() {
         try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+
             // Get today and next 7 days of rundown items
             const dates = [];
             for (let i = 0; i < 7; i++) {
@@ -438,20 +458,25 @@
 
             const allItems = [];
             for (const date of dates) {
-                const res = await fetch(`${API_URL}/rundown?date=${date}`);
-                const data = await res.json();
-                if (data.success && data.items) {
-                    // Only include items in GOING LIVE section or with planned live date
-                    const designItems = data.items.filter(item =>
-                        item.section === 'GOING LIVE' || item.plannedLiveDate
-                    );
-                    allItems.push(...designItems);
-                }
+                try {
+                    const res = await fetch(`${API_URL}/rundown?date=${date}`, { signal: controller.signal });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    if (data.success && data.items) {
+                        // Only include items in GOING LIVE section or with planned live date
+                        const designItems = data.items.filter(item =>
+                            item.section === 'GOING LIVE' || item.plannedLiveDate
+                        );
+                        allItems.push(...designItems);
+                    }
+                } catch (e) { /* skip failed date */ }
             }
+            clearTimeout(timeout);
+
             rundownItems = allItems;
             render();
         } catch (err) {
-            console.error('Failed to load rundown items', err);
+            console.warn('[Designer Queue] Rundown API unavailable');
         }
     }
 

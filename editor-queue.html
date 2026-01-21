@@ -61,36 +61,42 @@
         let items = [], rundownItems = [], apiDeliverables = [], loading = true;
 
         // Fetch deliverables from Cloud Run API (canonical Notion data)
+        // This is optional - widget still works with just Firebase data
         async function loadApiDeliverables() {
             try {
-                // Try /deliverables first
-                let res = await fetch(`${API_URL}/deliverables`);
+                // Try /deliverables first with timeout
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 10000);
+
+                let res = await fetch(`${API_URL}/deliverables`, { signal: controller.signal });
+                clearTimeout(timeout);
+
+                if (!res.ok) {
+                    console.warn('[Editor Queue] API returned', res.status, '- using Firebase data only');
+                    return;
+                }
+
                 let data = await res.json();
                 let deliverables = data.deliverables || data.projects || [];
 
                 // If empty, try /projects
                 if (deliverables.length === 0) {
-                    res = await fetch(`${API_URL}/projects`);
-                    data = await res.json();
-                    deliverables = data.projects || [];
+                    const projRes = await fetch(`${API_URL}/projects`, { signal: controller.signal });
+                    if (projRes.ok) {
+                        data = await projRes.json();
+                        deliverables = data.projects || [];
+                    }
                 }
 
                 // Filter for items that need editing
                 apiDeliverables = deliverables.filter(d => {
                     const status = (d.status || d.productionWorkflowStatus || '').toLowerCase();
                     const discipline = (d.discipline || '').toLowerCase();
-                    // Include if:
-                    // - Has video/moving assets needed
-                    // - Or discipline is Editor
-                    // - Or status is in edit phase
-                    // - Exclude completed items
                     if (status === 'live' || status === 'published' || status === 'complete' || status === 'done') return false;
-
                     if (d.movingAssetsNeeded?.length > 0 || d.movingAssetCount > 0) return true;
                     if (discipline === 'editor') return true;
                     if (status.includes('edit') || status.includes('filming') || status.includes('review')) return true;
                     if (d.videoEditor) return true;
-
                     return false;
                 }).map(d => ({
                     id: d.id,
@@ -112,13 +118,17 @@
                 console.log('[Editor Queue] Loaded', apiDeliverables.length, 'items from API');
                 render();
             } catch (err) {
-                console.error('[Editor Queue] Failed to load API deliverables', err);
+                // Silently fail - widget works fine with just Firebase data
+                console.warn('[Editor Queue] API unavailable, using Firebase data only');
             }
         }
 
-        // Fetch rundown items that need editing (FILMING or done filming)
+        // Fetch rundown items that need editing (optional enhancement)
         async function loadRundownItems() {
             try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 10000);
+
                 const dates = [];
                 for (let i = 0; i < 7; i++) {
                     const d = new Date();
@@ -128,17 +138,21 @@
 
                 const allItems = [];
                 for (const date of dates) {
-                    const res = await fetch(`${API_URL}/rundown?date=${date}`);
-                    const data = await res.json();
-                    if (data.success && data.items) {
-                        // Include items in FILMING or INTERNAL sections that need editing
-                        const editItems = data.items.filter(item =>
-                            (item.section === 'FILMING' || item.section === 'INTERNAL') &&
-                            item.status !== 'done'
-                        );
-                        allItems.push(...editItems);
-                    }
+                    try {
+                        const res = await fetch(`${API_URL}/rundown?date=${date}`, { signal: controller.signal });
+                        if (!res.ok) continue;
+                        const data = await res.json();
+                        if (data.success && data.items) {
+                            const editItems = data.items.filter(item =>
+                                (item.section === 'FILMING' || item.section === 'INTERNAL') &&
+                                item.status !== 'done'
+                            );
+                            allItems.push(...editItems);
+                        }
+                    } catch (e) { /* skip failed date */ }
                 }
+                clearTimeout(timeout);
+
                 rundownItems = allItems.map(r => ({
                     id: r.id,
                     title: r.title || 'Untitled',
@@ -153,7 +167,7 @@
                 }));
                 render();
             } catch (err) {
-                console.error('Failed to load rundown items', err);
+                console.warn('[Editor Queue] Rundown API unavailable');
             }
         }
         const root = document.getElementById('root');
