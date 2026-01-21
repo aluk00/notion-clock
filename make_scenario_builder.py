@@ -30,7 +30,7 @@ import requests
 # =============================================================================
 
 # Make.com API token
-API_TOKEN = os.environ.get("MAKE_API_TOKEN", "c0b114a4-034d-417f-ac80-46b6e89f2f82")
+API_TOKEN = os.environ.get("MAKE_API_TOKEN", "4e62c75c-e903-4e99-b5ad-7651073eea08")
 
 # Team ID (from URL: https://eu1.make.com/692247/scenarios/...)
 TEAM_ID = os.environ.get("MAKE_TEAM_ID", "692247")
