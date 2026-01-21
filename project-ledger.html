@@ -533,6 +533,21 @@
             border-color: var(--ink-muted);
             color: var(--ink);
         }
+        .success-btn.notion-link {
+            width: 36px;
+            padding: 0;
+            background: var(--surface-alt);
+            color: var(--ink-muted);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .success-btn.notion-link:hover {
+            background: var(--dmg-blue);
+            color: white;
+            border-color: var(--dmg-blue);
+        }
 
         /* Loading */
         .loading-screen {
@@ -619,10 +634,12 @@
         };
 
         // Show success modal with project link
-        const showSuccessModal = (projectId, projectName) => {
+        const showSuccessModal = (projectId, projectName, notionUrl) => {
             const modal = document.getElementById('modal');
             // Build URL for project view - using commercial hub with project query param
             const projectUrl = `commercial-hub-react.html?project=${projectId}`;
+            // Fallback Notion URL construction if not provided
+            const projectNotionUrl = notionUrl || `https://notion.so/${projectId.replace(/-/g, '')}`;
 
             modal.innerHTML = `
                 <div class="success-content">
@@ -632,6 +649,9 @@
                     <div class="success-actions">
                         <a href="${projectUrl}" class="success-btn primary" target="_blank">
                             <span>📋</span> View Project Page
+                        </a>
+                        <a href="${projectNotionUrl}" class="success-btn notion-link" target="_blank" title="Open in Notion">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                         </a>
                         <button class="success-btn secondary" onclick="closeModal()">Close</button>
                     </div>
@@ -803,7 +823,7 @@
                 const data = await res.json();
                 if (data.success || data.id) {
                     // Show success modal with view project link
-                    showSuccessModal(data.id, name);
+                    showSuccessModal(data.id, name, data.url);
                     loadData();
                 } else {
                     throw new Error(data.error || 'Failed');
