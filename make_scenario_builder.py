@@ -79,7 +79,7 @@ ROUTES = {
 # API CONFIGURATION
 # =============================================================================
 
-BASE_URL = "https://us1.make.com/api/v2"
+BASE_URL = "https://eu1.make.com/api/v2"
 
 
 class MakeComClient:
