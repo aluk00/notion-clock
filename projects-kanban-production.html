@@ -221,17 +221,49 @@
             position: relative;
             transition: var(--transition);
             user-select: none;
+            overflow: hidden;
         }
         .project-card:hover {
             border-color: var(--ink-light);
             transform: translateY(-2px);
             box-shadow: 0 4px 20px rgba(0,0,0,0.04);
         }
+        .project-card:active:not(.dragging) {
+            transform: scale(0.97);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: all 0.1s ease;
+        }
+        .project-card.opening {
+            transform: scale(0.95);
+            opacity: 0.7;
+            transition: all 0.15s ease;
+        }
         .project-card.dragging {
             opacity: 0.5;
             transform: rotate(2deg) scale(1.02);
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
             cursor: grabbing;
+        }
+        /* Ripple effect */
+        .project-card::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, var(--production) 0%, transparent 70%);
+            opacity: 0;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .project-card.ripple::after {
+            animation: rippleEffect 0.5s ease-out forwards;
+        }
+        @keyframes rippleEffect {
+            0% { width: 0; height: 0; opacity: 0.3; }
+            100% { width: 300px; height: 300px; opacity: 0; }
         }
         .project-card::before {
             content: '';
@@ -735,7 +767,7 @@
                         const dueDate = (config.stage === 'Ready for Social' && project.dueDate) ? project.dueDate : (project.internalDueDate || project.dueDate || '');
                         
                         html += `
-                            <div class="project-card" data-id="${project.id}" data-team="${team}" draggable="true" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" onclick="openProject('${project.id}')">
+                            <div class="project-card" data-id="${project.id}" data-team="${team}" draggable="true" ondragstart="handleDragStart(event)" ondragend="handleDragEnd(event)" onclick="openProject('${project.id}', event)">
                                 <div class="card-title">${project.title || 'Untitled'}</div>
                                 <div class="card-meta" style="flex-direction: column; gap: 3px; align-items: flex-start;">
                                     ${dueDate ? `<span class="card-tag" style="font-size: 7px;">Due: ${dueDate}</span>` : ''}
@@ -758,7 +790,21 @@
         }
 
         function setView(view) { currentView = view; render(); }
-        function openProject(id) { navigate(`?project=${id}`); }
+        function openProject(id, event) {
+            // Add ripple effect and opening animation
+            if (event) {
+                const card = event.target.closest('.project-card');
+                if (card) {
+                    card.classList.add('ripple', 'opening');
+                    setTimeout(() => {
+                        card.classList.remove('ripple', 'opening');
+                        navigate(`?project=${id}`);
+                    }, 150);
+                    return;
+                }
+            }
+            navigate(`?project=${id}`);
+        }
 
         function handleDragStart(e) {
             draggedCard = e.target;
