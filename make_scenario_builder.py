@@ -18,6 +18,7 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 import time
 from typing import Any
@@ -29,20 +30,25 @@ import requests
 # =============================================================================
 
 # Your Make.com API token (get from Make.com > Profile > API)
-API_TOKEN = "YOUR_API_TOKEN_HERE"
+# Can also be set via MAKE_API_TOKEN environment variable
+API_TOKEN = os.environ.get("MAKE_API_TOKEN", "YOUR_API_TOKEN_HERE")
 
 # Your scenario ID (from URL: https://us1.make.com/scenarios/XXXXXX)
-SCENARIO_ID = "YOUR_SCENARIO_ID_HERE"
+# Can also be set via MAKE_SCENARIO_ID environment variable
+SCENARIO_ID = os.environ.get("MAKE_SCENARIO_ID", "YOUR_SCENARIO_ID_HERE")
 
 # Connection IDs (inspect existing modules in Make.com to find these)
 # You can find these by:
 #   1. GET /scenarios/{scenarioId} to see current structure
 #   2. Look at existing Notion/HTTP modules for their connection IDs
-NOTION_CONNECTION_ID = "YOUR_NOTION_CONNECTION_ID_HERE"
-HTTP_CONNECTION_ID = "YOUR_HTTP_CONNECTION_ID_HERE"  # May not be needed for HTTP modules
+# Can also be set via MAKE_NOTION_CONNECTION_ID environment variable
+NOTION_CONNECTION_ID = os.environ.get("MAKE_NOTION_CONNECTION_ID", "YOUR_NOTION_CONNECTION_ID_HERE")
+# HTTP connection (usually not needed, HTTP modules don't require connection)
+HTTP_CONNECTION_ID = os.environ.get("MAKE_HTTP_CONNECTION_ID", "")
 
 # Notion Data Source ID (the database you're adding items to)
-NOTION_DATA_SOURCE_ID = "YOUR_NOTION_DATA_SOURCE_ID_HERE"
+# Can also be set via MAKE_NOTION_DATA_SOURCE_ID environment variable
+NOTION_DATA_SOURCE_ID = os.environ.get("MAKE_NOTION_DATA_SOURCE_ID", "YOUR_NOTION_DATA_SOURCE_ID_HERE")
 
 # =============================================================================
 # ROUTE CONFIGURATION
