@@ -560,7 +560,16 @@
         // ═══════════════════════════════════════════════════════════════════════════
         async function loadData() {
             try {
-                const res = await fetch(`${API_URL}/projects`);
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 15000);
+
+                const res = await fetch(`${API_URL}/projects`, { signal: controller.signal });
+                clearTimeout(timeout);
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
                 const data = await res.json();
                 projects = data?.projects || [];
 
@@ -575,7 +584,20 @@
                 render();
             } catch (e) {
                 console.error('Load failed:', e);
-                render();
+                document.getElementById('app').innerHTML = `
+                    <div class="header">
+                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                        <div class="header-text">
+                            <div class="header-label">Project Ledger</div>
+                            <div class="header-subtitle">Quick project intake</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
+                        <div style="font-size: 13px; font-weight: 700; margin-bottom: 6px;">Failed to connect to API</div>
+                        <div style="font-size: 11px; color: var(--ink-muted); margin-bottom: 16px;">${e.message || 'Network error'}</div>
+                        <button class="btn btn-primary" onclick="loadData()">Retry</button>
+                    </div>`;
             }
         }
 
