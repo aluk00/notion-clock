@@ -626,6 +626,8 @@
     window.openProjectDetail = function(taskData) {
         const detail = document.getElementById('projectDetail');
         const statusColor = getStatusColor(taskData.status);
+        const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set';
+        const formatCurrency = (val) => val ? `£${Number(val).toLocaleString()}` : 'Not set';
 
         detail.innerHTML = `
             <div class="project-detail-header">
@@ -634,13 +636,14 @@
                     Back
                 </button>
                 <div class="project-title-section">
-                    <div class="project-client-name">${taskData.type || 'Design Task'}</div>
+                    <div class="project-client-name">${taskData.client || taskData.type || 'Design Task'}</div>
                     <div class="project-title-main">${taskData.title || 'Untitled'}</div>
                 </div>
                 <div class="project-status-badge" style="background: ${statusColor}15; color: ${statusColor}">${taskData.status || 'Not Started'}</div>
             </div>
 
             <div class="project-detail-content">
+                <!-- Task Details Section -->
                 <div class="detail-section">
                     <div class="detail-section-title">
                         <div class="detail-section-dot" style="background: var(--production)"></div>
@@ -664,6 +667,31 @@
                     </div>
                 </div>
 
+                <!-- Team Section -->
+                <div class="detail-section">
+                    <div class="detail-section-title">
+                        <div class="detail-section-dot" style="background: #9333EA"></div>
+                        Team
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Designer</div>
+                        <div class="detail-field-value">${taskData.designer || taskData.assignedTo || 'Unassigned'}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Creative Lead</div>
+                        <div class="detail-field-value ${!taskData.creativeLead ? 'empty' : ''}">${taskData.creativeLead || 'Not assigned'}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Sales Lead</div>
+                        <div class="detail-field-value ${!taskData.salesLead ? 'empty' : ''}">${taskData.salesLead || 'Not assigned'}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Producer</div>
+                        <div class="detail-field-value ${!taskData.producer ? 'empty' : ''}">${taskData.producer || 'Not assigned'}</div>
+                    </div>
+                </div>
+
+                <!-- Key Dates Section -->
                 <div class="detail-section">
                     <div class="detail-section-title">
                         <div class="detail-section-dot" style="background: #F59E0B"></div>
@@ -671,17 +699,72 @@
                     </div>
                     <div class="detail-field">
                         <div class="detail-field-label">Due Date</div>
-                        <div class="detail-field-value ${!taskData.dueDate ? 'empty' : ''}">${taskData.dueDate ? new Date(taskData.dueDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}</div>
+                        <div class="detail-field-value ${!taskData.dueDate ? 'empty' : ''}">${formatDate(taskData.dueDate)}</div>
                     </div>
                     <div class="detail-field">
                         <div class="detail-field-label">Live Date</div>
-                        <div class="detail-field-value ${!taskData.liveDate ? 'empty' : ''}">${taskData.liveDate ? new Date(taskData.liveDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}</div>
+                        <div class="detail-field-value ${!taskData.liveDate ? 'empty' : ''}">${formatDate(taskData.liveDate)}</div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Feedback Due</div>
+                        <div class="detail-field-value ${!taskData.feedbackDue ? 'empty' : ''}">${formatDate(taskData.feedbackDue)}</div>
                     </div>
                 </div>
+
+                <!-- Budget Section (if available) -->
+                ${taskData.budget || taskData.dealValue ? `
+                <div class="detail-section">
+                    <div class="detail-section-title">
+                        <div class="detail-section-dot" style="background: #22C55E"></div>
+                        Budget
+                    </div>
+                    <div class="detail-field">
+                        <div class="detail-field-label">Project Budget</div>
+                        <div class="detail-field-value">${formatCurrency(taskData.budget || taskData.dealValue)}</div>
+                    </div>
+                    ${taskData.designBudget ? `
+                    <div class="detail-field">
+                        <div class="detail-field-label">Design Allocation</div>
+                        <div class="detail-field-value">${formatCurrency(taskData.designBudget)}</div>
+                    </div>` : ''}
+                </div>` : ''}
+
+                <!-- Deliverables Section (if available) -->
+                ${taskData.deliverables && taskData.deliverables.length > 0 ? `
+                <div class="detail-section" style="grid-column: 1 / -1;">
+                    <div class="detail-section-title">
+                        <div class="detail-section-dot" style="background: #21A0D8"></div>
+                        Deliverables
+                        <span style="font-size: 9px; background: #E5E5E5; padding: 2px 8px; border-radius: 10px; margin-left: auto;">${taskData.deliverables.length}</span>
+                    </div>
+                    <div style="display: grid; gap: 8px;">
+                        ${taskData.deliverables.map(d => `
+                            <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-alt); border-radius: 8px; cursor: pointer; transition: all 0.15s ease;" onclick="window.open('${d.url || '#'}', '_blank')" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
+                                <div style="width: 8px; height: 8px; border-radius: 50%; background: ${getStatusColor(d.status)};"></div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${d.title || 'Untitled'}</div>
+                                    <div style="font-size: 10px; color: var(--ink-light);">${d.format || d.type || 'Asset'} • ${d.status || 'Not Started'}</div>
+                                </div>
+                                ${d.budget ? `<div style="font-size: 11px; font-weight: 700; color: #22C55E;">${formatCurrency(d.budget)}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>` : ''}
+
+                <!-- Notes Section -->
+                ${taskData.notes ? `
+                <div class="detail-section" style="grid-column: 1 / -1;">
+                    <div class="detail-section-title">
+                        <div class="detail-section-dot" style="background: var(--ink-light)"></div>
+                        Notes
+                    </div>
+                    <div style="font-size: 12px; color: var(--ink-light); line-height: 1.5; white-space: pre-wrap;">${taskData.notes}</div>
+                </div>` : ''}
             </div>
 
             <div class="detail-actions">
                 ${taskData.url ? `<a href="${taskData.url}" target="_blank" class="detail-action-btn primary">View in Notion</a>` : ''}
+                <a href="commercial-hub-react.html?project=${taskData.projectId || taskData.id || ''}" target="_blank" class="detail-action-btn" style="background: #E5E5E5;">Open in Hub</a>
                 <button class="detail-action-btn" onclick="closeProjectDetail()">Close</button>
             </div>
         `;
@@ -1054,6 +1137,20 @@
             requests = [...requests.filter(r => r.source !== 'commercial-hub'), ...newAssets];
             render();
         });
+    });
+
+    // Close modals on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            // Close project detail view if open
+            if (document.getElementById('projectOverlay').classList.contains('visible')) {
+                closeProjectDetail();
+            }
+            // Close designer modal if open
+            else if (document.getElementById('modalOverlay').classList.contains('active')) {
+                closeModal();
+            }
+        }
     });
 </script>
 

@@ -478,6 +478,62 @@
         .toast.success { background: var(--production); }
         .toast.error { background: #E94B4B; }
 
+        /* Success Modal */
+        .success-content {
+            text-align: center;
+            padding: 30px 20px;
+        }
+        .success-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .success-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+            margin-bottom: 8px;
+        }
+        .success-message {
+            font-size: 13px;
+            color: var(--ink-sub);
+            margin-bottom: 24px;
+        }
+        .success-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .success-btn {
+            padding: 12px 20px;
+            border-radius: var(--radius-xs);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .success-btn.primary {
+            background: var(--dmg-blue);
+            color: white;
+        }
+        .success-btn.primary:hover {
+            background: #1a8ac0;
+        }
+        .success-btn.secondary {
+            background: var(--surface);
+            color: var(--ink-sub);
+            border: 1px solid var(--border);
+        }
+        .success-btn.secondary:hover {
+            border-color: var(--ink-muted);
+            color: var(--ink);
+        }
+
         /* Loading */
         .loading-screen {
             display: flex;
@@ -506,7 +562,7 @@
     </div>
 
     <!-- Modal -->
-    <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
         <div class="modal" id="modal"></div>
     </div>
 
@@ -553,6 +609,35 @@
 
         const closeModal = () => {
             document.getElementById('modalOverlay').classList.remove('open');
+        };
+
+        const handleOverlayClick = (e) => {
+            // Close modal when clicking directly on overlay (not on modal content)
+            if (e.target.id === 'modalOverlay') {
+                closeModal();
+            }
+        };
+
+        // Show success modal with project link
+        const showSuccessModal = (projectId, projectName) => {
+            const modal = document.getElementById('modal');
+            // Build URL for project view - using commercial hub with project query param
+            const projectUrl = `commercial-hub-react.html?project=${projectId}`;
+
+            modal.innerHTML = `
+                <div class="success-content">
+                    <div class="success-icon">🥳</div>
+                    <div class="success-title">Project Created!</div>
+                    <div class="success-message">"${escapeHtml(projectName)}" has been added to the ledger.</div>
+                    <div class="success-actions">
+                        <a href="${projectUrl}" class="success-btn primary" target="_blank">
+                            <span>📋</span> View Project Page
+                        </a>
+                        <button class="success-btn secondary" onclick="closeModal()">Close</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('open');
         };
 
         // ═══════════════════════════════════════════════════════════════════════════
@@ -717,8 +802,8 @@
                 });
                 const data = await res.json();
                 if (data.success || data.id) {
-                    showToast('Project created!', 'success');
-                    closeModal();
+                    // Show success modal with view project link
+                    showSuccessModal(data.id, name);
                     loadData();
                 } else {
                     throw new Error(data.error || 'Failed');
@@ -1062,6 +1147,13 @@
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.combobox-wrapper')) {
                 document.querySelectorAll('.combobox-dropdown').forEach(d => d.classList.remove('show'));
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
             }
         });
 

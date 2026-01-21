@@ -249,6 +249,8 @@
         window.openProjectDetail = function(itemData) {
             const detail = document.getElementById('projectDetail');
             const statusColor = getStatusColor(itemData.status);
+            const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set';
+            const formatCurrency = (val) => val ? `£${Number(val).toLocaleString()}` : 'Not set';
 
             detail.innerHTML = `
                 <div class="project-detail-header">
@@ -264,22 +266,11 @@
                 </div>
 
                 <div class="project-detail-content">
+                    <!-- Task Details Section -->
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <div class="detail-section-dot" style="background: var(--production)"></div>
                             Task Details
-                        </div>
-                        <div class="detail-field">
-                            <div class="detail-field-label">Editor</div>
-                            <div class="detail-field-value">${itemData.editor || 'Unassigned'}</div>
-                        </div>
-                        <div class="detail-field">
-                            <div class="detail-field-label">Client</div>
-                            <div class="detail-field-value ${!itemData.clientName ? 'empty' : ''}">${itemData.clientName || 'Not specified'}</div>
-                        </div>
-                        <div class="detail-field">
-                            <div class="detail-field-label">Project</div>
-                            <div class="detail-field-value ${!itemData.projectTitle ? 'empty' : ''}">${itemData.projectTitle || 'Not specified'}</div>
                         </div>
                         <div class="detail-field">
                             <div class="detail-field-label">Priority</div>
@@ -290,11 +281,66 @@
                             <div class="detail-field-value">${itemData.status || 'Not Started'}</div>
                         </div>
                         <div class="detail-field">
+                            <div class="detail-field-label">Format</div>
+                            <div class="detail-field-value ${!itemData.format ? 'empty' : ''}">${itemData.format || 'Not specified'}</div>
+                        </div>
+                        <div class="detail-field">
                             <div class="detail-field-label">Source</div>
                             <div class="detail-field-value">${itemData.source === 'api' ? 'Master Ledger' : itemData.source === 'rundown' ? 'Daily Rundown' : 'Edit Queue'}</div>
                         </div>
                     </div>
 
+                    <!-- Team Section -->
+                    <div class="detail-section">
+                        <div class="detail-section-title">
+                            <div class="detail-section-dot" style="background: #9333EA"></div>
+                            Team
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Video Editor</div>
+                            <div class="detail-field-value">${itemData.editor || 'Unassigned'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Creative Lead</div>
+                            <div class="detail-field-value ${!itemData.creativeLead ? 'empty' : ''}">${itemData.creativeLead || 'Not assigned'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Sales Lead</div>
+                            <div class="detail-field-value ${!itemData.salesLead ? 'empty' : ''}">${itemData.salesLead || 'Not assigned'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Producer</div>
+                            <div class="detail-field-value ${!itemData.producer ? 'empty' : ''}">${itemData.producer || 'Not assigned'}</div>
+                        </div>
+                    </div>
+
+                    <!-- Project Info Section -->
+                    <div class="detail-section">
+                        <div class="detail-section-title">
+                            <div class="detail-section-dot" style="background: #21A0D8"></div>
+                            Project Info
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Client</div>
+                            <div class="detail-field-value ${!itemData.clientName ? 'empty' : ''}">${itemData.clientName || 'Not specified'}</div>
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Project</div>
+                            <div class="detail-field-value ${!itemData.projectTitle ? 'empty' : ''}">${itemData.projectTitle || 'Not specified'}</div>
+                        </div>
+                        ${itemData.budget || itemData.dealValue ? `
+                        <div class="detail-field">
+                            <div class="detail-field-label">Project Budget</div>
+                            <div class="detail-field-value" style="color: #22C55E; font-weight: 700;">${formatCurrency(itemData.budget || itemData.dealValue)}</div>
+                        </div>` : ''}
+                        ${itemData.editBudget ? `
+                        <div class="detail-field">
+                            <div class="detail-field-label">Edit Allocation</div>
+                            <div class="detail-field-value" style="color: #22C55E;">${formatCurrency(itemData.editBudget)}</div>
+                        </div>` : ''}
+                    </div>
+
+                    <!-- Key Dates Section -->
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <div class="detail-section-dot" style="background: #F59E0B"></div>
@@ -302,29 +348,59 @@
                         </div>
                         <div class="detail-field">
                             <div class="detail-field-label">Client Due Date</div>
-                            <div class="detail-field-value ${!itemData.clientDueDate && !itemData.dueDate ? 'empty' : ''}">${(itemData.clientDueDate || itemData.dueDate) ? new Date(itemData.clientDueDate || itemData.dueDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}</div>
+                            <div class="detail-field-value ${!itemData.clientDueDate && !itemData.dueDate ? 'empty' : ''}">${formatDate(itemData.clientDueDate || itemData.dueDate)}</div>
                         </div>
                         <div class="detail-field">
                             <div class="detail-field-label">Live Date</div>
-                            <div class="detail-field-value ${!itemData.liveDate ? 'empty' : ''}">${itemData.liveDate ? new Date(itemData.liveDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set'}</div>
+                            <div class="detail-field-value ${!itemData.liveDate ? 'empty' : ''}">${formatDate(itemData.liveDate)}</div>
                         </div>
-                        ${itemData.feedbackDue ? `
                         <div class="detail-field">
                             <div class="detail-field-label">Feedback Due</div>
-                            <div class="detail-field-value">${new Date(itemData.feedbackDue).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                            <div class="detail-field-value ${!itemData.feedbackDue ? 'empty' : ''}">${formatDate(itemData.feedbackDue)}</div>
                         </div>
-                        ` : ''}
                         ${itemData.feedbackStatus ? `
                         <div class="detail-field">
                             <div class="detail-field-label">Feedback Status</div>
                             <div class="detail-field-value">${itemData.feedbackStatus}</div>
-                        </div>
-                        ` : ''}
+                        </div>` : ''}
                     </div>
+
+                    <!-- Deliverables Section (if available) -->
+                    ${itemData.deliverables && itemData.deliverables.length > 0 ? `
+                    <div class="detail-section" style="grid-column: 1 / -1;">
+                        <div class="detail-section-title">
+                            <div class="detail-section-dot" style="background: #E6468B"></div>
+                            Related Deliverables
+                            <span style="font-size: 9px; background: #E5E5E5; padding: 2px 8px; border-radius: 10px; margin-left: auto;">${itemData.deliverables.length}</span>
+                        </div>
+                        <div style="display: grid; gap: 8px;">
+                            ${itemData.deliverables.map(d => `
+                                <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-soft); border-radius: 8px; cursor: pointer; transition: all 0.15s ease;" onclick="window.open('${d.url || '#'}', '_blank')" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
+                                    <div style="width: 8px; height: 8px; border-radius: 50%; background: ${getStatusColor(d.status)};"></div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${d.title || 'Untitled'}</div>
+                                        <div style="font-size: 10px; color: var(--ink-sub);">${d.format || d.type || 'Asset'} • ${d.status || 'Not Started'}</div>
+                                    </div>
+                                    ${d.budget ? `<div style="font-size: 11px; font-weight: 700; color: #22C55E;">${formatCurrency(d.budget)}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>` : ''}
+
+                    <!-- Notes Section -->
+                    ${itemData.notes ? `
+                    <div class="detail-section" style="grid-column: 1 / -1;">
+                        <div class="detail-section-title">
+                            <div class="detail-section-dot" style="background: var(--ink-sub)"></div>
+                            Notes
+                        </div>
+                        <div style="font-size: 12px; color: var(--ink-sub); line-height: 1.5; white-space: pre-wrap;">${itemData.notes}</div>
+                    </div>` : ''}
                 </div>
 
                 <div class="detail-actions">
                     ${itemData.url ? `<a href="${itemData.url}" target="_blank" class="detail-action-btn primary">View in Notion</a>` : ''}
+                    <a href="commercial-hub-react.html?project=${itemData.projectId || itemData.id || ''}" target="_blank" class="detail-action-btn" style="background: #E5E5E5;">Open in Hub</a>
                     <button class="detail-action-btn" onclick="closeProjectDetail()">Close</button>
                 </div>
             `;
@@ -584,6 +660,15 @@
                 }, e => console.error(e));
             } else {
                 signInAnonymously(auth).catch(e => { loading = false; render(); });
+            }
+        });
+
+        // Close project detail on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (document.getElementById('projectOverlay').classList.contains('visible')) {
+                    closeProjectDetail();
+                }
             }
         });
     </script>
