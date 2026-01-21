@@ -1,0 +1,308 @@
+{
+  "name": "Master Ledger | Deal Agreed → Episodes → Tasks",
+  "flow": [
+    {
+      "id": 1,
+      "module": "notion:watchDatabaseItems",
+      "version": 1,
+      "parameters": {
+        "__IMTCONN__": 0,
+        "select": "updated",
+        "watchBy": "data_source",
+        "data_source": "MASTER_LEDGER_DATA_SOURCE_ID",
+        "limit": 50
+      },
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 0,
+          "y": 0,
+          "name": "Watch Master Ledger (Updated Items)"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "module": "builtin:BasicRouter",
+      "version": 1,
+      "parameters": {},
+      "mapper": {},
+      "metadata": {
+        "designer": {
+          "x": 300,
+          "y": 0,
+          "name": "Router: Project Type"
+        }
+      },
+      "routes": [
+        {
+          "name": "🎯 SHORT TERM CAMPAIGN",
+          "filter": {
+            "name": "Deal Agreed + 🎯 SHORT TERM CAMPAIGN",
+            "conditions": [
+              {
+                "a": "{{1.properties_value.`DEAL STAGE`}}",
+                "o": "equal",
+                "b": "Deal Agreed"
+              },
+              {
+                "a": "{{1.properties_value.`PROJECT TYPE`}}",
+                "o": "equal",
+                "b": "🎯 SHORT TERM CAMPAIGN"
+              }
+            ]
+          },
+          "flow": [
+            {
+              "id": 3,
+              "module": "tools:TextParser",
+              "version": 1,
+              "parameters": {
+                "text": "{{1.properties_value.`AGREED CONTENT DELIVERABLES (FOR AI)`}}",
+                "pattern": "[^\\r\\n]+",
+                "global": true,
+                "sensitive": false,
+                "multiline": true
+              },
+              "mapper": {},
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 0,
+                  "name": "Split Deliverables by Line"
+                }
+              },
+              "interface": [
+                {
+                  "name": "array",
+                  "type": "array",
+                  "label": "Lines",
+                  "spec": {
+                    "type": "collection",
+                    "spec": [
+                      {
+                        "name": "$1",
+                        "type": "text",
+                        "label": "Line"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "id": 4,
+              "module": "builtin:Iterator",
+              "version": 1,
+              "parameters": {
+                "array": "{{3.array}}"
+              },
+              "mapper": {},
+              "metadata": {
+                "designer": {
+                  "x": 900,
+                  "y": 0,
+                  "name": "Iterate Each Deliverable Line"
+                }
+              }
+            },
+            {
+              "id": 5,
+              "module": "tools:TextParser",
+              "version": 1,
+              "parameters": {
+                "text": "{{4.value.$1}}",
+                "pattern": "^\\s*(\\d+)\\s*[xX]\\s*(.+?)\\s*$",
+                "global": false,
+                "sensitive": false,
+                "multiline": false
+              },
+              "mapper": {},
+              "metadata": {
+                "designer": {
+                  "x": 1200,
+                  "y": 0,
+                  "name": "Parse 'Nx Description'"
+                }
+              },
+              "interface": [
+                {
+                  "name": "$1",
+                  "type": "text",
+                  "label": "Count"
+                },
+                {
+                  "name": "$2",
+                  "type": "text",
+                  "label": "Description"
+                }
+              ]
+            },
+            {
+              "id": 6,
+              "module": "builtin:Repeater",
+              "version": 1,
+              "parameters": {
+                "repeats": "{{if(empty(5.$1); 1; toNumber(5.$1))}}"
+              },
+              "mapper": {},
+              "metadata": {
+                "designer": {
+                  "x": 1500,
+                  "y": 0,
+                  "name": "Repeat N Times"
+                }
+              }
+            },
+            {
+              "id": 7,
+              "module": "notion:createDataSourceItem",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": 0
+              },
+              "mapper": {
+                "fields": {
+                  "title": "{{if(empty(5.$2); 4.value.$1; 5.$2)}} {{6.i}}",
+                  "PzIO": "Not Started",
+                  "I%5BF%3A": "Episode",
+                  "Mb%7Ch": {
+                    "start": "{{1.properties_value.`PLANNED LIVE DATE`.start}}",
+                    "includeTime": false
+                  },
+                  "EBq%5D": [
+                    "{{1.id}}"
+                  ]
+                },
+                "select": "list",
+                "data_source": "MASTER_TASKS_DATA_SOURCE_ID"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 1800,
+                  "y": 0,
+                  "name": "Create Layer 2 Episode"
+                }
+              }
+            },
+            {
+              "id": 8,
+              "module": "notion:createDataSourceItem",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": 0
+              },
+              "mapper": {
+                "fields": {
+                  "title": "Edit - {{if(empty(5.$2); 4.value.$1; 5.$2)}} {{6.i}}",
+                  "PzIO": "Not Started",
+                  "I%5BF%3A": "Editor",
+                  "Mb%7Ch": {
+                    "start": "{{1.properties_value.`PLANNED LIVE DATE`.start}}",
+                    "includeTime": false
+                  },
+                  "EBq%5D": [
+                    "{{7.id}}"
+                  ]
+                },
+                "select": "list",
+                "data_source": "MASTER_TASKS_DATA_SOURCE_ID"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2100,
+                  "y": -100,
+                  "name": "Create Layer 3 Task: Edit"
+                }
+              }
+            },
+            {
+              "id": 9,
+              "module": "notion:createDataSourceItem",
+              "version": 1,
+              "parameters": {
+                "__IMTCONN__": 0
+              },
+              "mapper": {
+                "fields": {
+                  "title": "Thumbnail - {{if(empty(5.$2); 4.value.$1; 5.$2)}} {{6.i}}",
+                  "PzIO": "Not Started",
+                  "I%5BF%3A": "Design",
+                  "Mb%7Ch": {
+                    "start": "{{1.properties_value.`PLANNED LIVE DATE`.start}}",
+                    "includeTime": false
+                  },
+                  "EBq%5D": [
+                    "{{7.id}}"
+                  ]
+                },
+                "select": "list",
+                "data_source": "MASTER_TASKS_DATA_SOURCE_ID"
+              },
+              "metadata": {
+                "designer": {
+                  "x": 2100,
+                  "y": 100,
+                  "name": "Create Layer 3 Task: Thumbnail"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editorial",
+          "filter": {
+            "name": "Deal Agreed + Editorial",
+            "conditions": [
+              {
+                "a": "{{1.properties_value.`DEAL STAGE`}}",
+                "o": "equal",
+                "b": "Deal Agreed"
+              },
+              {
+                "a": "{{1.properties_value.`PROJECT TYPE`}}",
+                "o": "equal",
+                "b": "Editorial"
+              }
+            ]
+          },
+          "flow": [
+            {
+              "id": 30,
+              "module": "tools:noop",
+              "version": 1,
+              "parameters": {},
+              "mapper": {},
+              "metadata": {
+                "designer": {
+                  "x": 600,
+                  "y": 250,
+                  "name": "Duplicate Commercial route logic here"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    },
+    "designer": {
+      "orphans": []
+    },
+    "zone": "us1.make.com"
+  }
+}
