@@ -679,7 +679,10 @@
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
         let project = null;
+        let parentProject = null;
+        let subitems = [];
         let deliverables = [];
+        let itemLayer = 1; // 1 = Project, 2 = Episode, 3 = Task
 
         // Get project ID from URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -698,18 +701,55 @@
                 const projData = await projRes.json();
 
                 if (!projData.success) {
-                    // If direct lookup fails, the ID might not exist
                     showError('Project not found', 'The requested project could not be found.');
                     return;
                 }
 
                 project = projData.project;
 
-                // If this is a Layer 2/3 item with a parent, optionally show it still
-                // but we could redirect to parent if desired
-                // For now, show the item directly (works for Episodes/Tasks too)
+                // Determine what layer this item is based on PARENT ITEM
+                const hasParent = project.parentItemIds && project.parentItemIds.length > 0;
+                const hasSubItems = project.subItemIds && project.subItemIds.length > 0;
 
-                // Fetch deliverables/sub-items for this project
+                if (!hasParent) {
+                    itemLayer = 1; // Layer 1: Project (no parent)
+                } else if (hasSubItems) {
+                    itemLayer = 2; // Layer 2: Episode (has parent and children)
+                } else {
+                    // Could be Layer 2 without children yet, or Layer 3
+                    // Check if parent has a parent to determine
+                    itemLayer = 2; // Default to Episode, could be Task
+                }
+
+                // If this item has a parent, fetch the parent project
+                if (hasParent) {
+                    try {
+                        const parentId = project.parentItemIds[0];
+                        const parentRes = await fetch(`${API_URL}/projects/${parentId}`);
+                        const parentData = await parentRes.json();
+                        if (parentData.success) {
+                            parentProject = parentData.project;
+                            // If parent also has a parent, this is Layer 3
+                            if (parentProject.parentItemIds && parentProject.parentItemIds.length > 0) {
+                                itemLayer = 3;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Could not load parent project:', e);
+                    }
+                }
+
+                // Fetch sub-items (children) for this item using the new endpoint
+                try {
+                    const subRes = await fetch(`${API_URL}/projects/${project.id}/subitems`);
+                    const subData = await subRes.json();
+                    subitems = subData.subitems || [];
+                } catch (e) {
+                    console.warn('Could not load sub-items:', e);
+                    subitems = [];
+                }
+
+                // Also try to fetch deliverables from the separate DB (for backwards compatibility)
                 try {
                     const delRes = await fetch(`${API_URL}/deliverables/project/${project.id}`);
                     const delData = await delRes.json();
@@ -720,7 +760,8 @@
                 }
 
                 render();
-                document.title = `${project.title || 'Project'} | DMG Command Centre`;
+                const layerLabel = itemLayer === 1 ? 'Project' : itemLayer === 2 ? 'Episode' : 'Task';
+                document.title = `${project.title || layerLabel} | DMG Command Centre`;
 
             } catch (e) {
                 console.error('Load error:', e);
@@ -831,18 +872,36 @@
             const hasTeam = salesLead || creativeLead || productionLead || editorialLead;
             const hasBudget = p.projectBudget || p.budget || p.totalSubItemBudget || p.eventShootBudget;
 
+            // Determine layer label and colors
+            const layerConfig = {
+                1: { label: 'Project', color: 'var(--dmg-blue)', icon: '📁' },
+                2: { label: 'Episode', color: 'var(--creative)', icon: '🎬' },
+                3: { label: 'Task', color: 'var(--production)', icon: '✓' }
+            };
+            const layer = layerConfig[itemLayer] || layerConfig[1];
+            const hasParentLink = parentProject && parentProject.id;
+
             document.getElementById('app').innerHTML = `
                 <div class="page-container">
-                    <!-- Back Navigation -->
-                    <div class="back-nav">
+                    <!-- Back Navigation with Hierarchy -->
+                    <div class="back-nav" style="flex-wrap: wrap; gap: 8px;">
                         <a href="projects-kanban-creative.html" class="back-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                            Back to Projects
+                            All Projects
                         </a>
+                        ${hasParentLink ? `
+                            <a href="project-detail.html?id=${parentProject.id}" class="back-btn" style="background: ${layer.color}15; border-color: ${layer.color}40; color: ${layer.color};">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                                Parent: ${escapeHtml(parentProject.title || 'Untitled')}
+                            </a>
+                        ` : ''}
+                        <span class="back-btn" style="background: ${layer.color}; color: white; border-color: ${layer.color}; cursor: default;">
+                            ${layer.icon} ${layer.label}
+                        </span>
                     </div>
 
                     <!-- Project Header -->
-                    <div class="project-header">
+                    <div class="project-header" style="border-left: 4px solid ${layer.color};">
                         <div class="header-top">
                             <div class="header-info">
                                 ${p.client ? `<div class="project-client">${escapeHtml(p.client)}</div>` : ''}
@@ -986,25 +1045,57 @@
                                 </div>
                             ` : ''}
 
-                            <!-- Deliverables -->
-                            <div class="card">
-                                <div class="card-header">
-                                    <div class="card-title">
-                                        <div class="card-dot" style="background: var(--production)"></div>
-                                        Deliverables
+                            <!-- Sub-Items (Episodes/Tasks from SUB-ITEM relation) -->
+                            ${subitems.length > 0 ? `
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <div class="card-dot" style="background: ${itemLayer === 1 ? 'var(--creative)' : 'var(--production)'}"></div>
+                                            ${itemLayer === 1 ? 'Episodes / Deliverables' : 'Tasks'}
+                                        </div>
+                                        <span class="card-count">${subitems.length}</span>
                                     </div>
-                                    <span class="card-count">${deliverables.length}</span>
+                                    <div class="card-body">
+                                        <div class="deliverables-list">
+                                            ${subitems.map(s => renderSubitem(s)).join('')}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="card-body">
-                                    ${deliverables.length === 0 ? `
-                                        <div class="card-empty">No deliverables linked to this project yet.</div>
-                                    ` : `
+                            ` : ''}
+
+                            <!-- Deliverables (from separate DB - backwards compatibility) -->
+                            ${deliverables.length > 0 ? `
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <div class="card-dot" style="background: var(--production)"></div>
+                                            Linked Deliverables
+                                        </div>
+                                        <span class="card-count">${deliverables.length}</span>
+                                    </div>
+                                    <div class="card-body">
                                         <div class="deliverables-list">
                                             ${deliverables.map(d => renderDeliverable(d)).join('')}
                                         </div>
-                                    `}
+                                    </div>
                                 </div>
-                            </div>
+                            ` : ''}
+
+                            <!-- No children message -->
+                            ${subitems.length === 0 && deliverables.length === 0 ? `
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <div class="card-dot" style="background: var(--ink-muted)"></div>
+                                            ${itemLayer === 1 ? 'Episodes / Deliverables' : itemLayer === 2 ? 'Tasks' : 'Sub-Items'}
+                                        </div>
+                                        <span class="card-count">0</span>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="card-empty">No ${itemLayer === 1 ? 'episodes or deliverables' : 'tasks'} linked to this ${itemLayer === 1 ? 'project' : 'episode'} yet.</div>
+                                    </div>
+                                </div>
+                            ` : ''}
 
                             <!-- Notes -->
                             ${hasNotes ? `
@@ -1195,6 +1286,93 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSubitem(s) {
+            const assignedTo = formatPerson(s.assignedTo);
+            const statusClass = getStatusClass(s.status || s.status1);
+            const hasChildren = s.hasSubItems && s.subItemCount > 0;
+
+            // Determine if this is an Episode (Layer 2) or Task (Layer 3)
+            const isEpisode = hasChildren || (itemLayer === 1);
+            const itemColor = isEpisode ? 'var(--creative)' : 'var(--production)';
+
+            return `
+                <div class="deliverable-card" style="border-left: 3px solid ${itemColor};">
+                    <div class="deliverable-header">
+                        <div class="deliverable-title-section">
+                            <div class="deliverable-title" style="display: flex; align-items: center; gap: 8px;">
+                                <span>${escapeHtml(s.title) || 'Untitled'}</span>
+                                ${hasChildren ? `<span style="font-size: 9px; background: var(--surface-alt); padding: 2px 6px; border-radius: 10px; color: var(--ink-sub);">${s.subItemCount} tasks</span>` : ''}
+                            </div>
+                            <div class="deliverable-format">
+                                ${s.discipline ? escapeHtml(s.discipline) : ''}
+                                ${s.discipline && s.format ? ' • ' : ''}
+                                ${s.format ? escapeHtml(s.format) : ''}
+                                ${!s.discipline && !s.format ? 'Item' : ''}
+                            </div>
+                        </div>
+                        <span class="deliverable-status ${statusClass}">${escapeHtml(s.status || s.status1) || 'Pending'}</span>
+                    </div>
+                    <div class="deliverable-body">
+                        <div class="deliverable-grid">
+                            <div class="deliverable-field">
+                                <div class="deliverable-label">Due Date</div>
+                                <div class="deliverable-value ${s.dueDate ? (isOverdue(s.dueDate) ? 'overdue' : '') : 'empty'}">${formatDate(s.dueDate) || 'Not set'}</div>
+                            </div>
+                            ${assignedTo ? `
+                                <div class="deliverable-field">
+                                    <div class="deliverable-label">Assigned To</div>
+                                    <div class="deliverable-value">${escapeHtml(assignedTo)}</div>
+                                </div>
+                            ` : ''}
+                            ${s.effortPts || s.effortScore ? `
+                                <div class="deliverable-field">
+                                    <div class="deliverable-label">Effort (pts)</div>
+                                    <div class="deliverable-value">${s.effortPts || s.effortScore || 0}</div>
+                                </div>
+                            ` : ''}
+                            ${s.channel ? `
+                                <div class="deliverable-field">
+                                    <div class="deliverable-label">Channel</div>
+                                    <div class="deliverable-value">${escapeHtml(s.channel)}</div>
+                                </div>
+                            ` : ''}
+                            ${s.creativeWorkflowStatus ? `
+                                <div class="deliverable-field">
+                                    <div class="deliverable-label">Creative Status</div>
+                                    <div class="deliverable-value">${escapeHtml(s.creativeWorkflowStatus)}</div>
+                                </div>
+                            ` : ''}
+                            ${s.productionWorkflowStatus ? `
+                                <div class="deliverable-field">
+                                    <div class="deliverable-label">Production Status</div>
+                                    <div class="deliverable-value">${escapeHtml(s.productionWorkflowStatus)}</div>
+                                </div>
+                            ` : ''}
+                            ${s.feedbackStatus ? `
+                                <div class="deliverable-field">
+                                    <div class="deliverable-label">Feedback</div>
+                                    <div class="deliverable-value">${escapeHtml(s.feedbackStatus)}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="deliverable-actions">
+                            <a href="project-detail.html?id=${s.id}" class="deliverable-link" style="background: ${itemColor}15; border-color: ${itemColor}40; color: ${itemColor};">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                                View Details
+                            </a>
+                            ${s.url ? `
+                                <a href="${s.url}" target="_blank" class="deliverable-link">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                    Notion
+                                </a>
+                            ` : ''}
                         </div>
                     </div>
                 </div>

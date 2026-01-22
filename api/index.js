@@ -487,6 +487,60 @@ app.get('/projects/:id', async (req, res) => {
 });
 
 // ============================================
+// GET /projects/:id/subitems - Get sub-items (children) for a project/episode
+// Uses PARENT ITEM relation to find items whose parent is this ID
+// ============================================
+app.get('/projects/:id/subitems', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Query items where PARENT ITEM contains this ID
+        const response = await notion.databases.query({
+            database_id: PROJECTS_DB,
+            page_size: 100,
+            filter: {
+                property: 'PARENT ITEM',
+                relation: {
+                    contains: id
+                }
+            }
+        });
+
+        const subitems = response.results.map(page => {
+            const props = page.properties;
+            return {
+                id: page.id,
+                url: page.url,
+                title: parseProperty(props['TITLE']),
+                client: parseProperty(props['CLIENT / EXTERNAL PARTNER']),
+                projectType: parseProperty(props['PROJECT TYPE']),
+                status: parseProperty(props['STATUS']),
+                status1: parseProperty(props['STATUS 1']),
+                dueDate: parseProperty(props['DUE DATE']) || parseProperty(props['(INTERNAL) DUE DATE']),
+                discipline: parseProperty(props['DISCIPLINE']),
+                format: parseProperty(props['FORMAT']),
+                channel: parseProperty(props['CHANNEL']),
+                effortScore: parseProperty(props['EFFORT SCORE']),
+                effortPts: parseProperty(props['EFFORT (PTS)']),
+                creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
+                productionWorkflowStatus: parseProperty(props['PRODUCTION WORKFLOW STATUS']),
+                feedbackStatus: parseProperty(props['FEEDBACK STATUS']),
+                assignedTo: parseProperty(props['ASSIGNED TO 1']),
+                // Check if this item has its own sub-items (for Layer 2 with Layer 3 children)
+                hasSubItems: (parseProperty(props['SUB-ITEM']) || []).length > 0,
+                subItemCount: (parseProperty(props['SUB-ITEM']) || []).length,
+                parentItemIds: parseProperty(props['PARENT ITEM'])
+            };
+        });
+
+        res.json({ success: true, subitems, count: subitems.length, parentId: id });
+    } catch (error) {
+        console.error('Error fetching sub-items:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
 // PATCH /projects/:id - Update a project
 // ============================================
 app.patch('/projects/:id', async (req, res) => {
@@ -864,6 +918,7 @@ app.get('/', (req, res) => {
         endpoints: [
             'GET /projects',
             'GET /projects/:id',
+            'GET /projects/:id/subitems',
             'PATCH /projects/:id',
             'POST /projects',
             'GET /deliverables',
