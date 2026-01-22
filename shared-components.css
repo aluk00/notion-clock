@@ -1,0 +1,634 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * SHARED UI COMPONENTS - DMG Command Centre
+ *
+ * Consistent sliding page transitions, document upload, and UI patterns
+ * for all embedded Notion widgets.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CSS VARIABLES - Design System
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+    /* Core Colors */
+    --ink: #0F172A;
+    --ink-sub: #64748B;
+    --ink-muted: #94A3B8;
+    --border: #E2E8F0;
+    --surface: #FFFFFF;
+    --surface-alt: #F8FAFC;
+
+    /* Brand */
+    --dmg-blue: #21A0D8;
+    --dmg-blue-soft: rgba(33, 160, 216, 0.1);
+    --dmg-blue-glow: rgba(33, 160, 216, 0.15);
+
+    /* Action Colors */
+    --sales: #21A0D8;
+    --sales-soft: rgba(33, 160, 216, 0.1);
+    --creative: #E6468B;
+    --creative-soft: rgba(230, 70, 139, 0.1);
+    --production: #43B049;
+    --production-soft: rgba(67, 176, 73, 0.1);
+    --design: #9333EA;
+    --design-soft: rgba(147, 51, 234, 0.1);
+    --danger: #EF4444;
+    --warning: #F59E0B;
+
+    /* Layout */
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-xs: 6px;
+    --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    --slide-transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SLIDING PAGE TRANSITIONS
+   Instead of dark overlay modals, pages slide in from the right
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Main content wrapper - needed for page sliding */
+.page-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--surface);
+}
+
+/* Main view (the default content) */
+.main-view {
+    position: absolute;
+    inset: 0;
+    background: var(--surface);
+    transition: var(--slide-transition);
+    overflow-y: auto;
+    z-index: 1;
+}
+
+.main-view.slide-out {
+    transform: translateX(-30%);
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+/* Slide-in page (detail view / form page) */
+.slide-page {
+    position: absolute;
+    inset: 0;
+    background: var(--surface);
+    transform: translateX(100%);
+    transition: var(--slide-transition);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.slide-page.active {
+    transform: translateX(0);
+}
+
+.slide-page.closing {
+    transform: translateX(100%);
+}
+
+/* Slide page header with back button */
+.slide-page-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+/* Back button - prominent and easy to tap */
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-sub);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.back-btn:hover {
+    border-color: var(--dmg-blue);
+    color: var(--dmg-blue);
+    background: var(--dmg-blue-soft);
+}
+
+.back-btn:active {
+    transform: scale(0.98);
+}
+
+.back-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2.5;
+}
+
+/* Header title area */
+.slide-page-title-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.slide-page-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.slide-page-subtitle {
+    font-size: 10px;
+    color: var(--ink-muted);
+    font-weight: 500;
+}
+
+/* Icon indicator */
+.slide-page-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.slide-page-icon.sales { background: var(--sales-soft); }
+.slide-page-icon.creative { background: var(--creative-soft); }
+.slide-page-icon.production { background: var(--production-soft); }
+.slide-page-icon.design { background: var(--design-soft); }
+
+/* Slide page body */
+.slide-page-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+/* Slide page footer */
+.slide-page-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-alt);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DOCUMENT UPLOAD COMPONENT
+   Drag & drop with visual feedback
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    text-align: center;
+    transition: var(--transition);
+    cursor: pointer;
+    background: var(--surface-alt);
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+    border-color: var(--dmg-blue);
+    background: var(--dmg-blue-soft);
+}
+
+.upload-zone.uploading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.upload-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 12px;
+    background: var(--surface);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--border);
+}
+
+.upload-zone:hover .upload-icon,
+.upload-zone.drag-over .upload-icon {
+    border-color: var(--dmg-blue);
+    background: var(--dmg-blue-soft);
+}
+
+.upload-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--ink-sub);
+}
+
+.upload-zone:hover .upload-icon svg,
+.upload-zone.drag-over .upload-icon svg {
+    stroke: var(--dmg-blue);
+}
+
+.upload-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+}
+
+.upload-hint {
+    font-size: 11px;
+    color: var(--ink-muted);
+}
+
+.upload-input {
+    display: none;
+}
+
+/* Upload progress */
+.upload-progress {
+    margin-top: 16px;
+    display: none;
+}
+
+.upload-progress.active {
+    display: block;
+}
+
+.progress-bar {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--dmg-blue);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 10px;
+    color: var(--ink-muted);
+    margin-top: 6px;
+    text-align: center;
+}
+
+/* Uploaded files list */
+.uploaded-files {
+    margin-top: 16px;
+}
+
+.uploaded-file {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    margin-bottom: 8px;
+}
+
+.uploaded-file:last-child {
+    margin-bottom: 0;
+}
+
+.file-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--surface-alt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-icon svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--ink-sub);
+}
+
+.file-icon.pdf { background: #FEE2E2; }
+.file-icon.pdf svg { stroke: #DC2626; }
+.file-icon.doc { background: #DBEAFE; }
+.file-icon.doc svg { stroke: #2563EB; }
+.file-icon.image { background: #D1FAE5; }
+.file-icon.image svg { stroke: #059669; }
+
+.file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-size {
+    font-size: 10px;
+    color: var(--ink-muted);
+}
+
+.file-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.file-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-sub);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.file-action-btn:hover {
+    background: var(--surface-alt);
+    color: var(--ink);
+}
+
+.file-action-btn.download:hover {
+    background: var(--dmg-blue-soft);
+    color: var(--dmg-blue);
+    border-color: var(--dmg-blue);
+}
+
+.file-action-btn.delete:hover {
+    background: #FEE2E2;
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FORM FIELDS - Consistent styling
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.field {
+    margin-bottom: 14px;
+}
+
+.field:last-child {
+    margin-bottom: 0;
+}
+
+.field-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.field-row .field {
+    margin-bottom: 0;
+}
+
+.field-label {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--ink-sub);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+}
+
+.field-label .required {
+    color: var(--danger);
+}
+
+.field-input,
+.field-select,
+.field-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-xs);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+    transition: var(--transition);
+}
+
+.field-input:focus,
+.field-select:focus,
+.field-textarea:focus {
+    border-color: var(--dmg-blue);
+    box-shadow: 0 0 0 3px var(--dmg-blue-glow);
+}
+
+.field-input::placeholder,
+.field-textarea::placeholder {
+    color: var(--ink-muted);
+}
+
+.field-textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.field-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236B7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px 16px;
+    padding-right: 36px;
+    cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTONS - Consistent styling
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.btn {
+    padding: 10px 16px;
+    border-radius: var(--radius-xs);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    border: none;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-primary {
+    background: var(--dmg-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1a8ac0;
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--ink-sub);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    border-color: var(--ink-muted);
+    color: var(--ink);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #DC2626;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOAST NOTIFICATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--ink);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 2000;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.toast.success { background: var(--production); }
+.toast.error { background: var(--danger); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING STATES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.dot-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 5px);
+    gap: 2px;
+}
+
+.dot-grid span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--dmg-blue);
+}
+
+.dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
+.dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+.dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
+.dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+}
+
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 12px;
+}
+
+.loading-text {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR STYLING
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #D1D5DB; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARD ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeSlideRight {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-in {
+    opacity: 0;
+    animation: fadeSlideUp 0.4s ease forwards;
+}
+
+.animate-in:nth-child(1) { animation-delay: 0.05s; }
+.animate-in:nth-child(2) { animation-delay: 0.1s; }
+.animate-in:nth-child(3) { animation-delay: 0.15s; }
+.animate-in:nth-child(4) { animation-delay: 0.2s; }
+.animate-in:nth-child(5) { animation-delay: 0.25s; }

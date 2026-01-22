@@ -238,33 +238,81 @@
             border-color: var(--hero-blue);
         }
 
-        /* --- Sheet Modal (Slick Interaction) --- */
+        /* --- Slide Page (Clean transition - no dark overlay) --- */
         .sheet-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(2px);
+            background: transparent; /* No darkening - keeps Notion white feel */
             z-index: 100;
             opacity: 0;
             pointer-events: none;
             transition: 0.3s;
-            display: flex;
-            align-items: flex-end; /* Sheet coming from bottom */
         }
-        .sheet-overlay.active { opacity: 1; pointer-events: auto; }
+        .sheet-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+            background: rgba(255,255,255,0.5); /* Subtle white overlay */
+        }
+
+        /* Main content slides back when sheet opens */
+        .widget-container.sheet-open {
+            transform: translateX(-30px) scale(0.98);
+            opacity: 0.5;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
 
         .sheet {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 420px;
+            max-width: 95vw;
             background: var(--white);
-            width: 100%;
-            border-radius: 20px 20px 0 0;
-            padding: 24px;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
-            transform: translateY(100%);
-            transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            max-height: 80vh;
+            padding: 0;
+            box-shadow: -15px 0 40px rgba(0,0,0,0.08);
+            transform: translateX(100%);
+            transition: 0.4s cubic-bezier(0.32, 0.72, 0, 1);
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
-        .sheet-overlay.active .sheet { transform: translateY(0); }
+        .sheet-overlay.active .sheet { transform: translateX(0); }
+
+        /* Back button bar */
+        .sheet-back-bar {
+            padding: 16px 20px;
+            background: #F9FAFB;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .sheet-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            background: var(--white);
+            color: var(--ink-sub);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .sheet-back-btn:hover {
+            border-color: var(--hero-pink);
+            color: var(--hero-pink);
+            background: rgba(230, 70, 139, 0.05);
+        }
+        .sheet-back-btn:active {
+            transform: scale(0.98);
+        }
+
+        .sheet-content { padding: 20px 24px; flex: 1; }
 
         .sheet-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
         .sheet-title { font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 4px; }
@@ -350,17 +398,25 @@
 
     <div class="sheet-overlay" id="sheet-overlay" onclick="handleOverlayClick(event)">
         <div class="sheet">
-            <div class="sheet-header">
-                <div>
-                    <div class="sheet-title" id="sheet-title">Edit Brief</div>
-                    <div class="sheet-sub" id="sheet-sub">Client Name</div>
-                </div>
-                <button onclick="closeSheet()" style="background:none; border:none; font-size:24px; color:var(--ink-sub); cursor:pointer;">&times;</button>
+            <div class="sheet-back-bar">
+                <button class="sheet-back-btn" onclick="closeSheet()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Back to Briefs
+                </button>
             </div>
-            
-            <form id="sheet-form">
-                <input type="hidden" id="f-id">
-                <input type="hidden" id="f-source">
+            <div class="sheet-content">
+                <div class="sheet-header">
+                    <div>
+                        <div class="sheet-title" id="sheet-title">Edit Brief</div>
+                        <div class="sheet-sub" id="sheet-sub">Client Name</div>
+                    </div>
+                </div>
+
+                <form id="sheet-form">
+                    <input type="hidden" id="f-id">
+                    <input type="hidden" id="f-source">
                 
                 <div class="form-group">
                     <label class="label">Client</label>
@@ -382,13 +438,14 @@
                     <input type="url" id="f-link" class="input" placeholder="Paste Drive, Slides, or PDF link...">
                 </div>
 
-                <button type="submit" class="btn-primary" id="save-btn">Save Changes</button>
-            </form>
-            
-            <div style="margin-top:16px; text-align:center;">
-                <a href="#" id="f-open-btn" target="_blank" style="display:none; font-size:12px; font-weight:600; color:var(--hero-pink); text-decoration:none;">
-                    Open Existing Link &#8599;
-                </a>
+                    <button type="submit" class="btn-primary" id="save-btn">Save Changes</button>
+                </form>
+
+                <div style="margin-top:16px; text-align:center;">
+                    <a href="#" id="f-open-btn" target="_blank" style="display:none; font-size:12px; font-weight:600; color:var(--hero-pink); text-decoration:none;">
+                        Open Existing Link &#8599;
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -563,6 +620,7 @@
             
             document.getElementById('f-open-btn').style.display = 'none';
             document.getElementById('sheet-overlay').classList.add('active');
+            document.querySelector('.widget-container').classList.add('sheet-open');
         }
 
         function openEditSheet(id) {
@@ -612,10 +670,12 @@
             }
 
             document.getElementById('sheet-overlay').classList.add('active');
+            document.querySelector('.widget-container').classList.add('sheet-open');
         }
 
         function closeSheet() {
             document.getElementById('sheet-overlay').classList.remove('active');
+            document.querySelector('.widget-container').classList.remove('sheet-open');
         }
 
         function showToast(message, type = 'success') {

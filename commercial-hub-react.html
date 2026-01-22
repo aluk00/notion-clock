@@ -129,25 +129,39 @@
         .note-item { background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 11px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); }
         .note-label { font-size: 9px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 4px; display: block; }
 
-        /* SIDEBAR */
+        /* SIDEBAR - Clean slide-in page (no dark overlay for Notion-embedded feel) */
         .sidebar-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: transparent; /* No darkening - keeps Notion white background feel */
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.35s ease, backdrop-filter 0.35s ease;
+            transition: opacity 0.35s ease;
             z-index: 100;
         }
-        .sidebar-overlay.open { opacity: 1; pointer-events: all; }
+        .sidebar-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+            background: rgba(255,255,255,0.5); /* Very subtle white overlay */
+        }
+
+        /* Main content fades back when sidebar opens */
+        .widget-main {
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
+        }
+        .widget-main.sidebar-open {
+            transform: translateX(-50px) scale(0.98);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
         .sidebar {
             position: fixed; top: 0; right: 0; bottom: 0; width: 600px; max-width: 95vw;
-            background: var(--bg-soft);
+            background: var(--white); /* Clean white background */
             transform: translateX(100%);
             transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
             z-index: 101;
+            box-shadow: -20px 0 60px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
             border-left: 1px solid var(--border);
             display: flex;
             flex-direction: column;
@@ -191,7 +205,39 @@
             100% { width: 500px; height: 500px; opacity: 0; }
         }
 
-        .sb-header { padding: 24px 32px; background: var(--white); border-bottom: 1px solid var(--border); }
+        /* Back button bar - prominent navigation */
+        .sb-back-bar {
+            padding: 16px 24px;
+            background: var(--bg-soft);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .sb-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            background: var(--white);
+            color: var(--ink-sub);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .sb-back-btn:hover {
+            border-color: var(--dmg-blue);
+            color: var(--dmg-blue);
+            background: rgba(33, 160, 216, 0.05);
+        }
+        .sb-back-btn:active {
+            transform: scale(0.98);
+        }
+
+        .sb-header { padding: 20px 32px; background: var(--white); border-bottom: 1px solid var(--border); }
         .sb-client { font-size: 20px; font-weight: 900; letter-spacing: -0.02em; color: var(--ink); margin: 0; }
         .sb-project { font-size: 12px; color: var(--ink-sub); margin-top: 4px; font-weight: 500; }
         
@@ -513,12 +559,22 @@
 
     <div class="sidebar-overlay" id="overlay" onclick="closeSidebar()"></div>
     <div class="sidebar" id="sidebar">
+        <!-- Back button bar - prominent and easy to tap -->
+        <div class="sb-back-bar">
+            <button class="sb-back-btn" onclick="closeSidebar()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Projects
+            </button>
+        </div>
         <div class="sb-header">
-            <div style="display:flex; justify-content:space-between;">
-                <h2 id="sb-client" class="sb-client">Client</h2>
-                <button class="btn" style="padding:4px 8px; border:none;" onclick="closeSidebar()">✕</button>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                    <h2 id="sb-client" class="sb-client">Client</h2>
+                    <p id="sb-project" class="sb-project">Project Title</p>
+                </div>
             </div>
-            <p id="sb-project" class="sb-project">Project Title</p>
             <a href="#" id="sb-project-link" target="_blank" class="project-page-link" style="display:none;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                 View Full Project Page
@@ -888,6 +944,7 @@
 
         document.getElementById('overlay').classList.add('open');
         document.getElementById('sidebar').classList.add('open');
+        document.querySelector('.widget-main').classList.add('sidebar-open');
 
         // Fetch deliverables for all project IDs in this client group
         try {
@@ -1155,9 +1212,13 @@
     window.closeSidebar = () => {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
+        const widgetMain = document.querySelector('.widget-main');
 
         // Add closing animation
         sidebar.classList.add('closing');
+
+        // Restore main content immediately
+        if (widgetMain) widgetMain.classList.remove('sidebar-open');
 
         // Wait for animation then fully close
         setTimeout(() => {
