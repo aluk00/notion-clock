@@ -1165,6 +1165,214 @@ app.patch('/events/:id', async (req, res) => {
     }
 });
 
+// ============================================
+// DEAL AGREED AUTOMATION
+// Creates Layer 2 Episodes and Layer 3 Tasks
+// from AGREED CONTENT DELIVERABLES text
+// ============================================
+
+// In-memory tracking of processed deals (resets on deploy)
+// For persistent tracking, could use Firebase
+const processedDeals = new Set();
+
+// Parse deliverables text like "3x Love Notes episodes\n2x Trailer cuts"
+function parseDeliverables(text) {
+    if (!text) return [];
+
+    const deliverables = [];
+    const lines = text.trim().split('\n');
+
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        // Match "Nx description" pattern
+        const match = trimmed.match(/^(\d+)\s*x\s+(.+)$/i);
+        if (match) {
+            deliverables.push({
+                count: parseInt(match[1], 10),
+                description: match[2].trim()
+            });
+        } else {
+            // No pattern match, treat as 1x item
+            deliverables.push({ count: 1, description: trimmed });
+        }
+    }
+
+    return deliverables;
+}
+
+// POST /process-deal-agreed - Run the Deal Agreed automation
+app.post('/process-deal-agreed', async (req, res) => {
+    try {
+        if (!PROJECTS_DB) {
+            return res.status(400).json({ success: false, error: 'Projects DB not configured' });
+        }
+
+        console.log('[Deal Agreed] Starting automation...');
+
+        // Query for deals matching criteria
+        const response = await notion.databases.query({
+            database_id: PROJECTS_DB,
+            filter: {
+                and: [
+                    {
+                        or: [
+                            {
+                                property: 'DEAL STAGE',
+                                select: { equals: 'Deal Agreed' }
+                            },
+                            {
+                                and: [
+                                    {
+                                        property: 'PROJECT OUTCOME',
+                                        select: { equals: 'Won' }
+                                    },
+                                    {
+                                        property: 'PROJECT STATUS',
+                                        status: { equals: 'In progress' }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        property: 'AGREED CONTENT DELIVERABLES (FOR AI)',
+                        rich_text: { is_not_empty: true }
+                    }
+                ]
+            }
+        });
+
+        console.log(`[Deal Agreed] Found ${response.results.length} matching deals`);
+
+        const results = {
+            dealsProcessed: 0,
+            dealsSkipped: 0,
+            episodesCreated: 0,
+            tasksCreated: 0,
+            errors: []
+        };
+
+        for (const page of response.results) {
+            const dealId = page.id;
+
+            // Skip if already processed
+            if (processedDeals.has(dealId)) {
+                console.log(`[Deal Agreed] Skipping already processed: ${dealId}`);
+                results.dealsSkipped++;
+                continue;
+            }
+
+            const props = page.properties;
+            const dealName = parseProperty(props['NAME']) || 'Untitled Deal';
+            const deliverablesText = parseProperty(props['AGREED CONTENT DELIVERABLES (FOR AI)']);
+
+            console.log(`[Deal Agreed] Processing: ${dealName}`);
+            console.log(`[Deal Agreed] Deliverables text: ${deliverablesText}`);
+
+            const deliverables = parseDeliverables(deliverablesText);
+
+            if (deliverables.length === 0) {
+                console.log(`[Deal Agreed] No deliverables parsed for ${dealName}`);
+                continue;
+            }
+
+            try {
+                // Create episodes and tasks for each deliverable
+                for (const { count, description } of deliverables) {
+                    console.log(`[Deal Agreed] Creating ${count}x ${description}`);
+
+                    for (let i = 1; i <= count; i++) {
+                        // Create Layer 2 Episode
+                        const episodeName = `${dealName} - ${description} #${i}`;
+
+                        const episodeResponse = await notion.pages.create({
+                            parent: { database_id: PROJECTS_DB },
+                            properties: {
+                                'NAME': { title: [{ text: { content: episodeName } }] },
+                                'PARENT ITEM': { relation: [{ id: dealId }] },
+                                'STATUS': { status: { name: 'Not started' } }
+                            }
+                        });
+
+                        const episodeId = episodeResponse.id;
+                        results.episodesCreated++;
+                        console.log(`[Deal Agreed] Created episode: ${episodeName}`);
+
+                        // Create Layer 3 Edit Task
+                        const editTaskName = `${dealName} - ${description} #${i} - Edit`;
+                        await notion.pages.create({
+                            parent: { database_id: PROJECTS_DB },
+                            properties: {
+                                'NAME': { title: [{ text: { content: editTaskName } }] },
+                                'PARENT ITEM': { relation: [{ id: episodeId }] },
+                                'DISCIPLINE': { select: { name: 'Editor' } },
+                                'STATUS': { status: { name: 'Not started' } }
+                            }
+                        });
+                        results.tasksCreated++;
+                        console.log(`[Deal Agreed] Created task: ${editTaskName}`);
+
+                        // Create Layer 3 Thumbnail Task
+                        const thumbnailTaskName = `${dealName} - ${description} #${i} - Thumbnail`;
+                        await notion.pages.create({
+                            parent: { database_id: PROJECTS_DB },
+                            properties: {
+                                'NAME': { title: [{ text: { content: thumbnailTaskName } }] },
+                                'PARENT ITEM': { relation: [{ id: episodeId }] },
+                                'DISCIPLINE': { select: { name: 'Design' } },
+                                'STATUS': { status: { name: 'Not started' } }
+                            }
+                        });
+                        results.tasksCreated++;
+                        console.log(`[Deal Agreed] Created task: ${thumbnailTaskName}`);
+                    }
+                }
+
+                // Mark as processed
+                processedDeals.add(dealId);
+                results.dealsProcessed++;
+
+            } catch (dealError) {
+                console.error(`[Deal Agreed] Error processing ${dealName}:`, dealError.message);
+                results.errors.push({ deal: dealName, error: dealError.message });
+            }
+        }
+
+        console.log(`[Deal Agreed] Complete. Processed: ${results.dealsProcessed}, Episodes: ${results.episodesCreated}, Tasks: ${results.tasksCreated}`);
+
+        res.json({
+            success: true,
+            message: 'Deal Agreed automation complete',
+            ...results
+        });
+
+    } catch (error) {
+        console.error('[Deal Agreed] Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /process-deal-agreed/status - Check automation status
+app.get('/process-deal-agreed/status', (req, res) => {
+    res.json({
+        success: true,
+        processedDealsCount: processedDeals.size,
+        processedDealIds: Array.from(processedDeals)
+    });
+});
+
+// POST /process-deal-agreed/reset - Reset processed deals tracking
+app.post('/process-deal-agreed/reset', (req, res) => {
+    const count = processedDeals.size;
+    processedDeals.clear();
+    res.json({
+        success: true,
+        message: `Cleared ${count} processed deal(s). Next run will reprocess all matching deals.`
+    });
+});
+
 // Health check
 app.get('/', (req, res) => {
     const { version } = require('./package.json');
@@ -1195,7 +1403,10 @@ app.get('/', (req, res) => {
             'POST /rundown/carry-over',
             'GET /events',
             'GET /events/:id',
-            'PATCH /events/:id'
+            'PATCH /events/:id',
+            'POST /process-deal-agreed',
+            'GET /process-deal-agreed/status',
+            'POST /process-deal-agreed/reset'
         ]
     });
 });
