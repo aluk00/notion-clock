@@ -513,13 +513,13 @@
                 <span class="scope-badge active">Active Projects Only</span>
                 <span class="scope-badge" id="scope-total">0 projects</span>
             </div>
-            <span class="scope-help">Production: Deal Agreed/Won/Complete or active workflow • Pipeline: Brief Received/Pitch Sent</span>
+            <span class="scope-help">Commercial projects only (excludes Editorial) • Production: Deal Agreed/Won • Pipeline: Brief Received/Pitch Sent</span>
         </div>
 
         <div class="section-header">
             <div class="section-title">
                 Active Production <span class="badge" id="count-prod">0</span>
-                <span class="section-description">Deal Agreed / Won / In Production</span>
+                <span class="section-description">Confirmed deals only (Deal Agreed / Won)</span>
             </div>
             <div class="section-title" style="color:var(--success)"><span class="live-dot"></span> Live Sync</div>
         </div>
@@ -717,29 +717,39 @@
 
                 rawProjects.forEach(p => {
                     const clientName = (p.client || 'Internal').trim();
-                    const stage = p.dealStage || '';
+                    const stage = (p.dealStage || '').trim();
+                    const stageLower = stage.toLowerCase();
                     const status1 = (p.status1 || p.projectStatus || '').toLowerCase();
+                    const projectType = (p.projectType || '').toLowerCase();
 
                     // Skip archived/cancelled/lost projects
                     if (status1.includes('cancelled') || status1.includes('archived') ||
-                        stage.toLowerCase().includes('lost') || stage.toLowerCase().includes('archived')) {
+                        stageLower.includes('lost') || stageLower.includes('archived')) {
                         return;
                     }
 
-                    // Production projects: Deal Agreed/Won/Complete OR has active workflow status
-                    const productionKeywords = ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed', 'Complete', 'In Production', 'Active'];
-                    const isProduction = productionKeywords.some(k =>
-                        stage.toLowerCase().includes(k.toLowerCase())
-                    );
+                    // LAYER FILTER: Skip Layer 2/3 items (deliverables/tasks with parent items)
+                    // Only show Layer 1 parent projects in this widget
+                    if (p.parentItemIds && p.parentItemIds.length > 0) {
+                        return;
+                    }
 
-                    // Also include projects with active production workflow status even without dealStage
+                    // EDITORIAL FILTER: Skip editorial projects - this widget is for commercial/sales
+                    if (projectType.includes('editorial') || projectType.includes('internal')) {
+                        return;
+                    }
+
+                    // PRODUCTION FILTER: Only "Deal Agreed" or "Won" (exact matches, not partial)
+                    // This is for the sales team to track confirmed deals in production
+                    const dealAgreedStages = ['deal agreed', 'won', 'campaign complete'];
+                    const isProduction = dealAgreedStages.some(k => stageLower === k);
+
+                    // Also include if workflow indicates active production on a confirmed deal
                     const hasActiveProductionStatus = p.productionWorkflowStatus &&
-                        !p.productionWorkflowStatus.toLowerCase().includes('not started');
+                        !p.productionWorkflowStatus.toLowerCase().includes('not started') &&
+                        p.productionWorkflowStatus.toLowerCase() !== 'not started';
 
-                    // Also include if STATUS 1 is Active
-                    const isActiveStatus1 = status1.includes('active');
-
-                    if (isProduction || hasActiveProductionStatus || isActiveStatus1) {
+                    if (isProduction || hasActiveProductionStatus) {
                         if (!groupedProjects[clientName]) {
                             groupedProjects[clientName] = {
                                 type: 'production',
@@ -835,29 +845,39 @@
         });
 
         if (rawProjects) {
-            const productionKeywords = ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed', 'Complete', 'In Production', 'Active'];
+            const dealAgreedStages = ['deal agreed', 'won', 'campaign complete'];
             rawProjects.forEach(p => {
-                const stage = p.dealStage || '';
+                const stage = (p.dealStage || '').trim();
+                const stageLower = stage.toLowerCase();
                 const status1 = (p.status1 || p.projectStatus || '').toLowerCase();
                 const clientName = (p.client || 'Internal').trim();
+                const projectType = (p.projectType || '').toLowerCase();
 
                 // Skip archived/cancelled/lost projects
                 if (status1.includes('cancelled') || status1.includes('archived') ||
-                    stage.toLowerCase().includes('lost') || stage.toLowerCase().includes('archived')) {
+                    stageLower.includes('lost') || stageLower.includes('archived')) {
                     return;
                 }
 
-                const isInProduction = productionKeywords.some(k => stage.toLowerCase().includes(k.toLowerCase()));
+                // LAYER FILTER: Skip Layer 2/3 items (deliverables/tasks)
+                if (p.parentItemIds && p.parentItemIds.length > 0) {
+                    return;
+                }
+
+                // EDITORIAL FILTER: Skip editorial/internal projects
+                if (projectType.includes('editorial') || projectType.includes('internal')) {
+                    return;
+                }
+
+                const isInProduction = dealAgreedStages.some(k => stageLower === k);
 
                 // Also check if project is in production group by workflow status
                 const hasActiveProductionStatus = p.productionWorkflowStatus &&
-                    !p.productionWorkflowStatus.toLowerCase().includes('not started');
+                    !p.productionWorkflowStatus.toLowerCase().includes('not started') &&
+                    p.productionWorkflowStatus.toLowerCase() !== 'not started';
 
-                // Also check if STATUS 1 is Active
-                const isActiveStatus1 = status1.includes('active');
-
-                // Skip if already shown in production (either by deal stage, workflow status, or STATUS 1)
-                if (isInProduction || hasActiveProductionStatus || isActiveStatus1) return;
+                // Skip if already shown in production (deal agreed/won or has active workflow)
+                if (isInProduction || hasActiveProductionStatus) return;
 
                 // Skip if already in production group by client name
                 if (groupedProjects[clientName]) return;
