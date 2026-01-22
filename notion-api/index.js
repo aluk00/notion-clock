@@ -1280,7 +1280,7 @@ app.post('/process-deal-agreed', async (req, res) => {
                             properties: {
                                 'NAME': { title: [{ text: { content: episodeName } }] },
                                 'PARENT ITEM': { relation: [{ id: dealId }] },
-                                'STATUS': { status: { name: 'Not started' } }
+                                'STATUS': { select: { name: 'Not started' } }
                             }
                         });
 
@@ -1296,7 +1296,7 @@ app.post('/process-deal-agreed', async (req, res) => {
                                 'NAME': { title: [{ text: { content: editTaskName } }] },
                                 'PARENT ITEM': { relation: [{ id: episodeId }] },
                                 'DISCIPLINE': { select: { name: 'Editor' } },
-                                'STATUS': { status: { name: 'Not started' } }
+                                'STATUS': { select: { name: 'Not started' } }
                             }
                         });
                         results.tasksCreated++;
@@ -1310,7 +1310,7 @@ app.post('/process-deal-agreed', async (req, res) => {
                                 'NAME': { title: [{ text: { content: thumbnailTaskName } }] },
                                 'PARENT ITEM': { relation: [{ id: episodeId }] },
                                 'DISCIPLINE': { select: { name: 'Design' } },
-                                'STATUS': { status: { name: 'Not started' } }
+                                'STATUS': { select: { name: 'Not started' } }
                             }
                         });
                         results.tasksCreated++;
