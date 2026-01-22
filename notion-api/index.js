@@ -1361,6 +1361,139 @@ app.post('/process-deal-agreed/reset', (req, res) => {
     });
 });
 
+// ============================================
+// DAILY RUNDOWN AUTOMATION
+// Creates Master Ledger items from Daily Rundown
+// and links them back
+// ============================================
+
+// Vertical to Parent Page ID mapping
+const VERTICAL_PARENTS = {
+    'UK': '0f78200e-ef2f-4d3d-88e1-313a891b315e',
+    'MAIN': '4093ae8c-3363-4ca7-b5c6-d811f493e3ac',
+    'SPORT': 'c2c82778-6419-435b-b46d-de0a0256b813',
+    'MONEY': 'e7e4081b-5b51-4efa-a18a-61c40bea95cb',
+    'RESPAWN': '03806b23-bcf4-4ada-b37a-82eb53384519',
+    'SPOTLIGHT': 'dea0d837-fe44-443c-8b38-5470cb5ac2d2'
+};
+
+// POST /process-daily-rundown - Sync Daily Rundown to Master Ledger
+app.post('/process-daily-rundown', async (req, res) => {
+    try {
+        if (!DAILY_RUNDOWN_DB || !PROJECTS_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Daily Rundown DB or Projects DB not configured'
+            });
+        }
+
+        console.log('[Daily Rundown] Starting automation...');
+
+        // Query Daily Rundown for items without MASTER LEDGER ITEM link
+        const response = await notion.databases.query({
+            database_id: DAILY_RUNDOWN_DB,
+            filter: {
+                property: 'MASTER LEDGER ITEM',
+                relation: { is_empty: true }
+            }
+        });
+
+        console.log(`[Daily Rundown] Found ${response.results.length} items without Master Ledger link`);
+
+        const results = {
+            itemsProcessed: 0,
+            itemsSkipped: 0,
+            ledgerItemsCreated: 0,
+            errors: []
+        };
+
+        for (const page of response.results) {
+            const rundownId = page.id;
+            const props = page.properties;
+
+            const title = parseProperty(props['TITLE']) || 'Untitled';
+            const vertical = parseProperty(props['VERTICAL']);
+            const date = parseProperty(props['DATE']);
+            const section = parseProperty(props['SECTION']);
+            const creator = parseProperty(props['CREATOR']);
+
+            console.log(`[Daily Rundown] Processing: ${title} (${vertical})`);
+
+            // Skip if no vertical (can't determine parent)
+            if (!vertical) {
+                console.log(`[Daily Rundown] Skipping ${title} - no VERTICAL set`);
+                results.itemsSkipped++;
+                continue;
+            }
+
+            // Get parent page ID for this vertical
+            const parentId = VERTICAL_PARENTS[vertical];
+            if (!parentId) {
+                console.log(`[Daily Rundown] Skipping ${title} - unknown VERTICAL: ${vertical}`);
+                results.itemsSkipped++;
+                continue;
+            }
+
+            try {
+                // Create Layer 2 item in Master Ledger
+                const ledgerItemName = title;
+
+                const ledgerProperties = {
+                    'NAME': { title: [{ text: { content: ledgerItemName } }] },
+                    'PARENT ITEM': { relation: [{ id: parentId }] },
+                    'STATUS': { select: { name: 'Not started' } }
+                };
+
+                // Add VERTICAL if the field exists in Master Ledger
+                if (vertical) {
+                    ledgerProperties['VERTICAL'] = { select: { name: vertical } };
+                }
+
+                // Add DUE DATE if date is set
+                if (date) {
+                    ledgerProperties['DUE DATE'] = { date: { start: date } };
+                }
+
+                const ledgerResponse = await notion.pages.create({
+                    parent: { database_id: PROJECTS_DB },
+                    properties: ledgerProperties
+                });
+
+                const ledgerItemId = ledgerResponse.id;
+                results.ledgerItemsCreated++;
+                console.log(`[Daily Rundown] Created Master Ledger item: ${ledgerItemName}`);
+
+                // Update Daily Rundown item with link back to Master Ledger
+                await notion.pages.update({
+                    page_id: rundownId,
+                    properties: {
+                        'MASTER LEDGER ITEM': { relation: [{ id: ledgerItemId }] }
+                    }
+                });
+                console.log(`[Daily Rundown] Linked back to Daily Rundown: ${title}`);
+
+                results.itemsProcessed++;
+
+            } catch (itemError) {
+                console.error(`[Daily Rundown] Error processing ${title}:`, itemError.message);
+                results.errors.push({ title, error: itemError.message });
+            }
+        }
+
+        console.log(`[Daily Rundown] Complete. Processed: ${results.itemsProcessed}, Created: ${results.ledgerItemsCreated}`);
+
+        res.json({
+            success: true,
+            message: 'Daily Rundown automation complete',
+            ...results
+        });
+
+    } catch (error) {
+        console.error('[Daily Rundown] Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Health check
 app.get('/', (req, res) => {
     const { version } = require('./package.json');
@@ -1394,7 +1527,8 @@ app.get('/', (req, res) => {
             'PATCH /events/:id',
             'POST /process-deal-agreed',
             'GET /process-deal-agreed/status',
-            'POST /process-deal-agreed/reset'
+            'POST /process-deal-agreed/reset',
+            'POST /process-daily-rundown'
         ]
     });
 });
