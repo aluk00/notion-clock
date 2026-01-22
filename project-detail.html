@@ -550,6 +550,75 @@
             color: var(--ink);
         }
 
+        /* Budget Section */
+        .budget-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        @media (max-width: 500px) {
+            .budget-grid { grid-template-columns: 1fr; }
+        }
+        .budget-item {
+            padding: 16px;
+            background: var(--surface-alt);
+            border-radius: 10px;
+            text-align: center;
+        }
+        .budget-item.highlight {
+            background: rgba(33, 160, 216, 0.08);
+            border: 1px solid rgba(33, 160, 216, 0.2);
+        }
+        .budget-item.positive {
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        .budget-item.warning {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        .budget-item.negative {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .budget-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+        .budget-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+        .budget-value.positive { color: var(--success); }
+        .budget-value.warning { color: var(--warning); }
+        .budget-value.negative { color: var(--danger); }
+        .budget-value.muted { color: var(--ink-muted); font-size: 14px; }
+        .budget-sub {
+            font-size: 10px;
+            color: var(--ink-sub);
+            margin-top: 4px;
+        }
+        .budget-divider {
+            grid-column: 1 / -1;
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+        .budget-section-title {
+            grid-column: 1 / -1;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 8px 0 4px;
+        }
+
         /* Quick Actions Sidebar */
         .quick-actions {
             display: flex;
@@ -705,10 +774,28 @@
         }
 
         function formatCurrency(value) {
-            if (!value) return null;
+            if (!value && value !== 0) return null;
             const num = parseFloat(value);
             if (isNaN(num)) return null;
             return '£' + num.toLocaleString('en-GB');
+        }
+
+        function formatBudgetValue(value) {
+            if (value === null || value === undefined) return { display: '—', class: 'muted' };
+            const num = parseFloat(value);
+            if (isNaN(num)) return { display: '—', class: 'muted' };
+            const formatted = '£' + Math.abs(num).toLocaleString('en-GB');
+            if (num > 0) return { display: formatted, class: 'positive' };
+            if (num < 0) return { display: '-' + formatted, class: 'negative' };
+            return { display: formatted, class: '' };
+        }
+
+        function getBudgetStatus(remaining, total) {
+            if (!total || total === 0) return '';
+            const percent = (remaining / total) * 100;
+            if (percent < 0) return 'negative';
+            if (percent < 20) return 'warning';
+            return 'positive';
         }
 
         function getInitials(name) {
@@ -770,6 +857,7 @@
             const hasLinks = p.briefLink || p.creativeResponseLink || p.frameIoLink || p.driveFolder;
             const hasNotes = p.notes || p.salesNotes;
             const hasTeam = salesLead || creativeLead || productionLead || editorialLead;
+            const hasBudget = p.projectBudget || p.budget || p.totalSubItemBudget || p.eventShootBudget;
 
             document.getElementById('app').innerHTML = `
                 <div class="page-container">
@@ -832,6 +920,100 @@
                     <!-- Main Content -->
                     <div class="content-grid">
                         <div class="main-column">
+                            <!-- Budget Overview -->
+                            ${hasBudget ? `
+                                <div class="card">
+                                    <div class="card-header">
+                                        <div class="card-title">
+                                            <div class="card-dot" style="background: var(--success)"></div>
+                                            Budget Overview
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="budget-grid">
+                                            <!-- Project Budget (parent level) -->
+                                            ${p.projectBudget ? `
+                                                <div class="budget-item highlight">
+                                                    <div class="budget-label">Project Budget</div>
+                                                    <div class="budget-value">${formatCurrency(p.projectBudget)}</div>
+                                                    <div class="budget-sub">Total allocated for this project</div>
+                                                </div>
+                                            ` : ''}
+
+                                            <!-- Budget Remaining -->
+                                            ${p.budgetRemaining !== null && p.budgetRemaining !== undefined ? `
+                                                <div class="budget-item ${getBudgetStatus(p.budgetRemaining, p.projectBudget)}">
+                                                    <div class="budget-label">Budget Remaining</div>
+                                                    <div class="budget-value ${formatBudgetValue(p.budgetRemaining).class}">${formatBudgetValue(p.budgetRemaining).display}</div>
+                                                    <div class="budget-sub">Project Budget - Sub-Item Budgets</div>
+                                                </div>
+                                            ` : ''}
+
+                                            <!-- Sub-Item Section -->
+                                            ${(p.totalSubItemBudget || p.totalActualSpend) ? `
+                                                <div class="budget-section-title">Sub-Item Breakdown</div>
+                                            ` : ''}
+
+                                            ${p.totalSubItemBudget ? `
+                                                <div class="budget-item">
+                                                    <div class="budget-label">Total Sub-Item Budget</div>
+                                                    <div class="budget-value">${formatCurrency(p.totalSubItemBudget)}</div>
+                                                    <div class="budget-sub">Sum of all sub-item budgets</div>
+                                                </div>
+                                            ` : ''}
+
+                                            ${p.totalActualSpend !== null && p.totalActualSpend !== undefined ? `
+                                                <div class="budget-item">
+                                                    <div class="budget-label">Total Actual Spend</div>
+                                                    <div class="budget-value">${formatCurrency(p.totalActualSpend)}</div>
+                                                    <div class="budget-sub">Sum of all sub-item spend</div>
+                                                </div>
+                                            ` : ''}
+
+                                            <!-- Budget vs Actual -->
+                                            ${p.budgetVsActual !== null && p.budgetVsActual !== undefined ? `
+                                                <div class="budget-item ${getBudgetStatus(p.budgetVsActual, p.projectBudget)}">
+                                                    <div class="budget-label">Budget vs Actual</div>
+                                                    <div class="budget-value ${formatBudgetValue(p.budgetVsActual).class}">${formatBudgetValue(p.budgetVsActual).display}</div>
+                                                    <div class="budget-sub">Project Budget - Actual Spend</div>
+                                                </div>
+                                            ` : ''}
+
+                                            <!-- Events Budget Section -->
+                                            ${(p.eventShootBudget || p.eventShootActual) ? `
+                                                <div class="budget-section-title">Event/Shoot Costs</div>
+                                            ` : ''}
+
+                                            ${p.eventShootBudget ? `
+                                                <div class="budget-item">
+                                                    <div class="budget-label">Event Shoot Budget</div>
+                                                    <div class="budget-value">${formatCurrency(p.eventShootBudget)}</div>
+                                                    <div class="budget-sub">From linked Events</div>
+                                                </div>
+                                            ` : ''}
+
+                                            ${p.eventShootActual ? `
+                                                <div class="budget-item">
+                                                    <div class="budget-label">Event Shoot Actual</div>
+                                                    <div class="budget-value">${formatCurrency(p.eventShootActual)}</div>
+                                                    <div class="budget-sub">From linked Events</div>
+                                                </div>
+                                            ` : ''}
+
+                                            <!-- Total Deliverable Budget -->
+                                            ${p.totalDeliverableBudget ? `
+                                                <div class="budget-divider"></div>
+                                                <div class="budget-item highlight" style="grid-column: 1 / -1;">
+                                                    <div class="budget-label">Total Deliverable Budget</div>
+                                                    <div class="budget-value">${formatCurrency(p.totalDeliverableBudget)}</div>
+                                                    <div class="budget-sub">Budget + Event Shoot Budget combined</div>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+
                             <!-- Deliverables -->
                             <div class="card">
                                 <div class="card-header">

@@ -175,6 +175,16 @@ async function buildProjectProperties(data) {
     if (data.effortScore !== undefined) {
         props['EFFORT SCORE'] = { number: data.effortScore };
     }
+    // Budget fields (new Master Ledger fields)
+    if (data.projectBudget !== undefined) {
+        props['PROJECT BUDGET'] = { number: data.projectBudget };
+    }
+    if (data.budget !== undefined) {
+        props['BUDGET'] = { number: data.budget };
+    }
+    if (data.actualSpend !== undefined) {
+        props['ACTUAL SPEND'] = { number: data.actualSpend };
+    }
 
     // URL fields
     if (data.briefLink !== undefined) {
@@ -352,7 +362,23 @@ app.get('/projects', async (req, res) => {
                 // Rollups from Deliverables
                 deliverableCount: parseProperty(props['DELIVERABLE COUNT']),
                 deliverablesComplete: parseProperty(props['DELIVERABLES COMPLETE']),
-                nextDeliverableDue: parseProperty(props['NEXT DELIVERABLE DUE'])
+                nextDeliverableDue: parseProperty(props['NEXT DELIVERABLE DUE']),
+                // Budget fields (Master Ledger)
+                projectBudget: parseProperty(props['PROJECT BUDGET']),
+                budget: parseProperty(props['BUDGET']),
+                actualSpend: parseProperty(props['ACTUAL SPEND']),
+                // Budget rollups (from SUB-ITEM relation)
+                totalSubItemBudget: parseProperty(props['TOTAL SUB-ITEM BUDGET']),
+                totalActualSpend: parseProperty(props['TOTAL ACTUAL SPEND']),
+                // Budget formulas
+                budgetRemaining: parseProperty(props['BUDGET REMAINING']),
+                budgetVsActual: parseProperty(props['BUDGET VS ACTUAL']),
+                // Event budget rollups (from Events relation)
+                eventShootBudget: parseProperty(props['EVENT SHOOT BUDGET']),
+                eventShootActual: parseProperty(props['EVENT SHOOT ACTUAL']),
+                totalDeliverableBudget: parseProperty(props['TOTAL DELIVERABLE BUDGET']),
+                // Events relation
+                eventsRelation: parseProperty(props['Events'])
             };
         });
 
