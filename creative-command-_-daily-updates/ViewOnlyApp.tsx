@@ -110,12 +110,6 @@ const ViewOnlyApp: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1C1C1C]">
-      <div className="max-w-[1500px] mx-auto px-8 py-6">
-        <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
-            <DotGrid />
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
       <div className="max-w-[1500px] mx-auto px-8 py-10">
         <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
