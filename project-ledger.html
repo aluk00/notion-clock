@@ -7,9 +7,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
     <!--
     ═══════════════════════════════════════════════════════════════════════════════
     PROJECT LEDGER - Quick Intake Widget
+
+    UPDATED: Using sliding page transitions instead of dark modal overlays
+    Maintains embedded-in-Notion white background aesthetic
 
     Actions:
     - New Project (Sales quick capture)
@@ -20,38 +30,11 @@
     API: https://createnotionproject-223535956454.us-central1.run.app
     ═══════════════════════════════════════════════════════════════════════════════
     -->
+
+    <!-- Shared Components CSS -->
+    <link rel="stylesheet" href="shared-components.css">
+
     <style>
-        :root {
-            /* Core Colors */
-            --ink: #0F172A;
-            --ink-sub: #64748B;
-            --ink-muted: #94A3B8;
-            --border: #E2E8F0;
-            --surface: #FFFFFF;
-            --surface-alt: #F8FAFC;
-
-            /* Brand */
-            --dmg-blue: #21A0D8;
-            --dmg-blue-soft: rgba(33, 160, 216, 0.1);
-            --dmg-blue-glow: rgba(33, 160, 216, 0.15);
-
-            /* Action Colors */
-            --sales: #21A0D8;
-            --sales-soft: rgba(33, 160, 216, 0.1);
-            --creative: #E6468B;
-            --creative-soft: rgba(230, 70, 139, 0.1);
-            --production: #43B049;
-            --production-soft: rgba(67, 176, 73, 0.1);
-            --design: #9333EA;
-            --design-soft: rgba(147, 51, 234, 0.1);
-
-            /* Layout */
-            --radius: 16px;
-            --radius-sm: 10px;
-            --radius-xs: 6px;
-            --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -59,13 +42,55 @@
             background: var(--surface);
             color: var(--ink);
             -webkit-font-smoothing: antialiased;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        /* Container */
-        .container {
-            padding: 20px;
-            max-width: 480px;
+        /* Page Wrapper - enables sliding transitions */
+        .page-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 520px;
             margin: 0 auto;
+            overflow: hidden;
+        }
+
+        /* Main View */
+        .main-view {
+            position: absolute;
+            inset: 0;
+            background: var(--surface);
+            transition: var(--slide-transition);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .main-view.slide-out {
+            transform: translateX(-30%);
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* Slide Page */
+        .slide-page {
+            position: absolute;
+            inset: 0;
+            background: var(--surface);
+            transform: translateX(100%);
+            transition: var(--slide-transition);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .slide-page.active {
+            transform: translateX(0);
+        }
+
+        .slide-page.closing {
+            transform: translateX(100%);
         }
 
         /* Header */
@@ -76,29 +101,6 @@
             margin-bottom: 20px;
             padding-bottom: 14px;
             border-bottom: 1px solid var(--border);
-        }
-
-        .dot-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 5px);
-            gap: 2px;
-        }
-
-        .dot-grid span {
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background: var(--dmg-blue);
-        }
-
-        .dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
-        .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
-        .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
-        .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 1; }
         }
 
         .header-text {
@@ -184,185 +186,6 @@
             line-height: 1.4;
         }
 
-        /* Modal */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.4);
-            backdrop-filter: blur(4px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 20px;
-        }
-
-        .modal-overlay.open {
-            display: flex;
-            animation: fadeIn 0.2s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .modal {
-            background: var(--surface);
-            width: 100%;
-            max-width: 440px;
-            max-height: 90vh;
-            border-radius: var(--radius);
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            display: flex;
-            flex-direction: column;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px) scale(0.98); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-            background: var(--surface-alt);
-        }
-
-        .modal-title-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .modal-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-        }
-
-        .modal-icon.sales { background: var(--sales-soft); }
-        .modal-icon.creative { background: var(--creative-soft); }
-        .modal-icon.production { background: var(--production-soft); }
-        .modal-icon.design { background: var(--design-soft); }
-
-        .modal-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--ink);
-        }
-
-        .modal-subtitle {
-            font-size: 10px;
-            color: var(--ink-muted);
-            font-weight: 500;
-        }
-
-        .modal-close {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: none;
-            background: var(--surface);
-            color: var(--ink-sub);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            transition: var(--transition);
-        }
-
-        .modal-close:hover {
-            background: var(--border);
-            color: var(--ink);
-        }
-
-        .modal-body {
-            padding: 20px;
-            overflow-y: auto;
-            flex: 1;
-        }
-
-        .modal-footer {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            padding: 14px 20px;
-            border-top: 1px solid var(--border);
-            background: var(--surface-alt);
-        }
-
-        /* Form Fields */
-        .field {
-            margin-bottom: 14px;
-        }
-
-        .field:last-child {
-            margin-bottom: 0;
-        }
-
-        .field-row {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
-
-        .field-row .field {
-            margin-bottom: 0;
-        }
-
-        .field-label {
-            display: block;
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 6px;
-        }
-
-        .field-label .required {
-            color: #E94B4B;
-        }
-
-        .field-input, .field-select, .field-textarea {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius-xs);
-            font-size: 12px;
-            font-weight: 500;
-            font-family: inherit;
-            background: var(--surface);
-            color: var(--ink);
-            outline: none;
-            transition: var(--transition);
-        }
-
-        .field-input:focus, .field-select:focus, .field-textarea:focus {
-            border-color: var(--dmg-blue);
-            box-shadow: 0 0 0 3px var(--dmg-blue-glow);
-        }
-
-        .field-input::placeholder, .field-textarea::placeholder {
-            color: var(--ink-muted);
-        }
-
-        .field-textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-
         /* Combobox */
         .combobox-wrapper {
             position: relative;
@@ -414,98 +237,41 @@
             text-align: center;
         }
 
-        /* Buttons */
-        .btn {
-            padding: 10px 16px;
-            border-radius: var(--radius-xs);
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            cursor: pointer;
-            border: none;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-primary {
-            background: var(--dmg-blue);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1a8ac0;
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-secondary {
-            background: var(--surface);
-            color: var(--ink-sub);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--ink-muted);
-            color: var(--ink);
-        }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            background: var(--ink);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 600;
-            z-index: 2000;
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-        }
-
-        .toast.success { background: var(--production); }
-        .toast.error { background: #E94B4B; }
-
-        /* Success Modal */
+        /* Success Content */
         .success-content {
             text-align: center;
-            padding: 30px 20px;
+            padding: 40px 20px;
         }
+
         .success-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+            font-size: 56px;
+            margin-bottom: 20px;
         }
+
         .success-title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 800;
             color: var(--ink);
             margin-bottom: 8px;
         }
+
         .success-message {
             font-size: 13px;
             color: var(--ink-sub);
-            margin-bottom: 24px;
+            margin-bottom: 28px;
         }
+
         .success-actions {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
+            max-width: 280px;
+            margin: 0 auto;
         }
+
         .success-btn {
-            padding: 12px 20px;
-            border-radius: var(--radius-xs);
+            padding: 14px 20px;
+            border-radius: var(--radius-sm);
             font-size: 12px;
             font-weight: 700;
             cursor: pointer;
@@ -517,83 +283,114 @@
             justify-content: center;
             gap: 8px;
         }
+
         .success-btn.primary {
             background: var(--dmg-blue);
             color: white;
         }
+
         .success-btn.primary:hover {
             background: #1a8ac0;
         }
+
         .success-btn.secondary {
             background: var(--surface);
             color: var(--ink-sub);
             border: 1px solid var(--border);
         }
+
         .success-btn.secondary:hover {
             border-color: var(--ink-muted);
             color: var(--ink);
         }
-        .success-btn.notion-link {
-            width: 36px;
-            padding: 0;
-            background: var(--surface-alt);
-            color: var(--ink-muted);
-            border: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .success-btn.notion-link:hover {
-            background: var(--dmg-blue);
-            color: white;
-            border-color: var(--dmg-blue);
-        }
 
-        /* Loading */
-        .loading-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 60px 20px;
-            gap: 12px;
-        }
-
-        .loading-text {
-            font-size: 10px;
+        /* Section divider in forms */
+        .section-divider {
+            font-size: 9px;
             font-weight: 700;
             color: var(--ink-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
+            margin: 20px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed var(--border);
         }
     </style>
 </head>
 <body>
-    <div class="container" id="app">
-        <div class="loading-screen">
-            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-            <span class="loading-text">Loading...</span>
-        </div>
-    </div>
+    <div class="page-wrapper">
+        <!-- Main View -->
+        <div class="main-view" id="mainView">
+            <div class="loading-screen" id="loadingScreen">
+                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                <span class="loading-text">Loading...</span>
+            </div>
+            <div id="mainContent" style="display:none;">
+                <div class="header">
+                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                    <div class="header-text">
+                        <div class="header-label">Project Ledger</div>
+                        <div class="header-subtitle">Quick project intake</div>
+                    </div>
+                </div>
 
-    <!-- Modal -->
-    <div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
-        <div class="modal" id="modal"></div>
+                <div class="action-grid">
+                    <button class="action-btn sales" onclick="openNewProjectPage()">
+                        <div class="action-icon">📋</div>
+                        <div class="action-label">New Project</div>
+                        <div class="action-desc">Log a new commercial deal</div>
+                    </button>
+
+                    <button class="action-btn creative" onclick="openAddEpisodePage()">
+                        <div class="action-icon">🎬</div>
+                        <div class="action-label">Add Episode</div>
+                        <div class="action-desc">Add content to a project</div>
+                    </button>
+
+                    <button class="action-btn production" onclick="openAddTaskPage()">
+                        <div class="action-icon">✅</div>
+                        <div class="action-label">Add Task</div>
+                        <div class="action-desc">Assign work to a team</div>
+                    </button>
+
+                    <button class="action-btn design" onclick="openRequestGraphicsPage()">
+                        <div class="action-icon">🎨</div>
+                        <div class="action-label">Request Graphics</div>
+                        <div class="action-desc">Need a thumbnail or asset?</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide Page (for forms) -->
+        <div class="slide-page" id="slidePage"></div>
     </div>
 
     <!-- Toast -->
     <div class="toast" id="toast"></div>
+
+    <!-- Shared Components JS -->
+    <script src="shared-components.js"></script>
 
     <script>
         // ═══════════════════════════════════════════════════════════════════════════
         // CONFIGURATION
         // ═══════════════════════════════════════════════════════════════════════════
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+        const APP_ID = 'dmg-command-centre-native';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
 
         // Options
         const DEAL_STAGES = ['Brief Received', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete', 'Closed Lost'];
-        const VERTICALS = ['Spotlight', 'Trailblazers', 'Hub', 'Social-First', 'Custom'];
-        const PROJECT_TYPES = ['Commercial', 'Editorial', 'Social', 'Internal'];
+        const PRIORITY_LEVELS = ['High', 'Medium', 'Low'];
         const FORMATS = ['Long-form Video', 'Short-form Video', 'Social Cut', 'BTS', 'Podcast', 'Article', 'Gallery'];
         const DISCIPLINES = ['Creative', 'Edit', 'Design', 'Producer', 'Social', 'Creator'];
         const ASSET_TYPES = ['Thumbnail', 'Social Card', 'Banner', 'Logo Treatment', 'Motion Graphics', 'Other'];
@@ -604,62 +401,40 @@
         let projects = [];
         let episodes = [];
         let clients = [];
+        let db = null;
+        let storage = null;
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // HELPERS
+        // INITIALIZE
         // ═══════════════════════════════════════════════════════════════════════════
-        const escapeHtml = (text) => {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        };
-
-        const showToast = (message, type = '') => {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast show ${type}`;
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        };
-
-        const closeModal = () => {
-            document.getElementById('modalOverlay').classList.remove('open');
-        };
-
-        const handleOverlayClick = (e) => {
-            // Close modal when clicking directly on overlay (not on modal content)
-            if (e.target.id === 'modalOverlay') {
-                closeModal();
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize Firebase
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                storage = firebase.storage();
+                await firebase.auth().signInAnonymously();
+            } catch (e) {
+                console.warn('Firebase init error:', e);
             }
-        };
 
-        // Show success modal with project link
-        const showSuccessModal = (projectId, projectName, notionUrl) => {
-            const modal = document.getElementById('modal');
-            // Build URL for project view - using dedicated project detail page
-            const projectUrl = `project-detail.html?id=${projectId}`;
-            // Fallback Notion URL construction if not provided
-            const projectNotionUrl = notionUrl || `https://notion.so/${projectId.replace(/-/g, '')}`;
+            // Initialize slide page manager
+            initSlidePageManager({
+                mainViewId: 'mainView',
+                slidePageId: 'slidePage'
+            });
 
-            modal.innerHTML = `
-                <div class="success-content">
-                    <div class="success-icon">🥳</div>
-                    <div class="success-title">Project Created!</div>
-                    <div class="success-message">"${escapeHtml(projectName)}" has been added to the ledger.</div>
-                    <div class="success-actions">
-                        <a href="${projectUrl}" class="success-btn primary" target="_blank">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                            View Project Page
-                        </a>
-                        <a href="${projectNotionUrl}" class="success-btn notion-link" target="_blank" title="Open in Notion">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        </a>
-                        <button class="success-btn secondary" onclick="closeModal()">Close</button>
-                    </div>
-                </div>
-            `;
-            document.getElementById('modalOverlay').classList.add('open');
-        };
+            // Initialize document upload manager
+            initDocumentUploadManager({
+                storage: storage,
+                db: db,
+                appId: APP_ID,
+                basePath: 'project-documents'
+            });
+
+            // Load data
+            await loadData();
+        });
 
         // ═══════════════════════════════════════════════════════════════════════════
         // DATA LOADING
@@ -678,123 +453,109 @@
                 });
                 clients = Array.from(clientSet).sort();
 
-                render();
+                // Show main content
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'block';
             } catch (e) {
                 console.error('Load failed:', e);
-                render();
+                document.getElementById('loadingScreen').innerHTML = `
+                    <div style="text-align:center; color: var(--danger);">
+                        <div style="font-size:13px; font-weight:600;">Failed to load</div>
+                        <button class="btn btn-primary" style="margin-top:12px;" onclick="loadData()">Retry</button>
+                    </div>
+                `;
             }
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // MAIN RENDER
+        // SLIDE PAGE: NEW PROJECT
         // ═══════════════════════════════════════════════════════════════════════════
-        function render() {
-            document.getElementById('app').innerHTML = `
-                <div class="header">
-                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                    <div class="header-text">
-                        <div class="header-label">Project Ledger</div>
-                        <div class="header-subtitle">Quick project intake</div>
+        function openNewProjectPage() {
+            const content = `
+                <div class="field">
+                    <label class="field-label">Project Name <span class="required">*</span></label>
+                    <input type="text" class="field-input" id="projName" placeholder="e.g. Sky Vegas Q1 Campaign">
+                </div>
+                <div class="field">
+                    <label class="field-label">Client <span class="required">*</span></label>
+                    <div class="combobox-wrapper">
+                        <input type="text" class="field-input" id="projClient" placeholder="Search or add new..." autocomplete="off"
+                            onfocus="showDropdown('clientDropdown')"
+                            oninput="filterDropdown('clientDropdown', this.value, ${JSON.stringify(clients).replace(/"/g, '&quot;')})">
+                        <div class="combobox-dropdown" id="clientDropdown"></div>
                     </div>
                 </div>
-
-                <div class="action-grid">
-                    <button class="action-btn sales" onclick="openNewProjectModal()">
-                        <div class="action-icon">📋</div>
-                        <div class="action-label">New Project</div>
-                        <div class="action-desc">Log a new commercial deal</div>
-                    </button>
-
-                    <button class="action-btn creative" onclick="openAddEpisodeModal()">
-                        <div class="action-icon">🎬</div>
-                        <div class="action-label">Add Episode</div>
-                        <div class="action-desc">Add content to a project</div>
-                    </button>
-
-                    <button class="action-btn production" onclick="openAddTaskModal()">
-                        <div class="action-icon">✅</div>
-                        <div class="action-label">Add Task</div>
-                        <div class="action-desc">Assign work to a team</div>
-                    </button>
-
-                    <button class="action-btn design" onclick="openRequestGraphicsModal()">
-                        <div class="action-icon">🎨</div>
-                        <div class="action-label">Request Graphics</div>
-                        <div class="action-desc">Need a thumbnail or asset?</div>
-                    </button>
-                </div>
-            `;
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════════
-        // MODAL 1: NEW PROJECT (Sales Quick Capture)
-        // ═══════════════════════════════════════════════════════════════════════════
-        function openNewProjectModal() {
-            const modal = document.getElementById('modal');
-            modal.innerHTML = `
-                <div class="modal-header">
-                    <div class="modal-title-group">
-                        <div class="modal-icon sales">📋</div>
-                        <div>
-                            <div class="modal-title">New Project</div>
-                            <div class="modal-subtitle">Log a new commercial deal</div>
-                        </div>
-                    </div>
-                    <button class="modal-close" onclick="closeModal()">×</button>
-                </div>
-                <div class="modal-body">
+                <div class="field-row">
                     <div class="field">
-                        <label class="field-label">Project Name <span class="required">*</span></label>
-                        <input type="text" class="field-input" id="projName" placeholder="e.g. Sky Vegas Q1 Campaign">
+                        <label class="field-label">Deal Value (£) <span class="required">*</span></label>
+                        <input type="number" class="field-input" id="projValue" placeholder="25000">
                     </div>
                     <div class="field">
-                        <label class="field-label">Client <span class="required">*</span></label>
-                        <div class="combobox-wrapper">
-                            <input type="text" class="field-input" id="projClient" placeholder="Search or add new..." autocomplete="off" onfocus="showDropdown('clientDropdown')" oninput="filterDropdown('clientDropdown', this.value, ${JSON.stringify(clients).replace(/"/g, '&quot;')})">
-                            <div class="combobox-dropdown" id="clientDropdown"></div>
-                        </div>
-                    </div>
-                    <div class="field-row">
-                        <div class="field">
-                            <label class="field-label">Deal Value (£) <span class="required">*</span></label>
-                            <input type="number" class="field-input" id="projValue" placeholder="25000">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Deal Stage <span class="required">*</span></label>
-                            <select class="field-select" id="projStage">
-                                <option value="">Select...</option>
-                                ${DEAL_STAGES.map(s => `<option value="${s}">${s}</option>`).join('')}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="field-row">
-                        <div class="field">
-                            <label class="field-label">Project Budget (£)</label>
-                            <input type="number" class="field-input" id="projBudget" placeholder="10000">
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Vertical</label>
-                            <select class="field-select" id="projVertical">
-                                <option value="">Select...</option>
-                                ${VERTICALS.map(v => `<option value="${v}">${v}</option>`).join('')}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label class="field-label">Project Type</label>
-                        <select class="field-select" id="projType">
+                        <label class="field-label">Deal Stage <span class="required">*</span></label>
+                        <select class="field-select" id="projStage">
                             <option value="">Select...</option>
-                            ${PROJECT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
+                            ${DEAL_STAGES.map(s => `<option value="${s}">${s}</option>`).join('')}
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button class="btn btn-primary" id="submitBtn" onclick="submitNewProject()">Create Project</button>
+                <div class="field-row">
+                    <div class="field">
+                        <label class="field-label">Project Budget (£)</label>
+                        <input type="number" class="field-input" id="projBudget" placeholder="10000">
+                    </div>
+                    <div class="field">
+                        <label class="field-label">Priority Level</label>
+                        <select class="field-select" id="projPriority">
+                            <option value="">Select...</option>
+                            ${PRIORITY_LEVELS.map(p => `<option value="${p}">${p}</option>`).join('')}
+                        </select>
+                    </div>
                 </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label class="field-label">(Internal) Due Date</label>
+                        <input type="date" class="field-input" id="projInternalDue">
+                    </div>
+                    <div class="field">
+                        <label class="field-label">(Client) Due Date</label>
+                        <input type="date" class="field-input" id="projClientDue">
+                    </div>
+                </div>
+
+                <div class="section-divider">Brief & Notes</div>
+
+                <div class="field">
+                    <label class="field-label">Brief</label>
+                    <textarea class="field-textarea" id="projBrief" placeholder="Brief details, objectives, requirements..."></textarea>
+                </div>
+                <div class="field">
+                    <label class="field-label">Notes</label>
+                    <textarea class="field-textarea" id="projNotes" placeholder="Additional notes..."></textarea>
+                </div>
+
+                <div class="section-divider">Attachments</div>
+
+                <div id="projectUploadZone"></div>
             `;
-            document.getElementById('modalOverlay').classList.add('open');
-            document.getElementById('projName').focus();
+
+            slidePageManager.open(content, {
+                title: 'New Project',
+                subtitle: 'Log a new commercial deal',
+                icon: '📋',
+                iconClass: 'sales',
+                primaryBtn: { text: 'Create Project', onclick: 'submitNewProject()' }
+            });
+
+            // Initialize upload zone after DOM is ready
+            setTimeout(() => {
+                const uploadZone = document.getElementById('projectUploadZone');
+                if (uploadZone) {
+                    uploadZone.innerHTML = documentUploadManager.createUploadZoneHTML('projUpload');
+                    documentUploadManager.clearUploadedFiles();
+                    documentUploadManager.initUploadZone('projUpload');
+                }
+                document.getElementById('projName').focus();
+            }, 100);
         }
 
         async function submitNewProject() {
@@ -802,16 +563,13 @@
             const client = document.getElementById('projClient').value.trim();
             const value = document.getElementById('projValue').value;
             const stage = document.getElementById('projStage').value;
-            const budget = document.getElementById('projBudget').value;
 
             if (!name || !client || !value || !stage) {
                 showToast('Please fill required fields', 'error');
                 return;
             }
 
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.textContent = 'Creating...';
+            slidePageManager.setLoading(true);
 
             try {
                 const res = await fetch(`${API_URL}/projects`, {
@@ -822,74 +580,131 @@
                         client: client,
                         dealValue: parseFloat(value),
                         dealStage: stage,
-                        vertical: document.getElementById('projVertical').value || null,
-                        projectType: document.getElementById('projType').value || null,
-                        projectBudget: budget ? parseFloat(budget) : null
+                        priorityLevel: document.getElementById('projPriority').value || null,
+                        internalDueDate: document.getElementById('projInternalDue').value || null,
+                        clientDueDate: document.getElementById('projClientDue').value || null,
+                        brief: document.getElementById('projBrief').value || null,
+                        notes: document.getElementById('projNotes').value || null,
+                        projectBudget: document.getElementById('projBudget').value ? parseFloat(document.getElementById('projBudget').value) : null,
+                        attachments: documentUploadManager.getUploadedFiles()
                     })
                 });
+
                 const data = await res.json();
                 if (data.success || data.id) {
-                    // Show success modal with view project link
-                    showSuccessModal(data.id, name, data.url);
-                    loadData();
+                    // Save attachments to Firestore if any
+                    const attachments = documentUploadManager.getUploadedFiles();
+                    if (attachments.length > 0 && db) {
+                        await db.collection('artifacts').doc(APP_ID)
+                            .collection('public').doc('data')
+                            .collection('project_attachments').doc(data.id)
+                            .set({ files: attachments, updatedAt: new Date().toISOString() });
+                    }
+
+                    showSuccessPage(data.id, name, data.url);
+                    loadData(); // Refresh project list
                 } else {
                     throw new Error(data.error || 'Failed');
                 }
             } catch (e) {
                 showToast('Error: ' + e.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Create Project';
+                slidePageManager.setLoading(false);
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════════
-        // MODAL 2: ADD EPISODE
-        // ═══════════════════════════════════════════════════════════════════════════
-        function openAddEpisodeModal() {
-            const modal = document.getElementById('modal');
-            modal.innerHTML = `
-                <div class="modal-header">
-                    <div class="modal-title-group">
-                        <div class="modal-icon creative">🎬</div>
-                        <div>
-                            <div class="modal-title">Add Episode</div>
-                            <div class="modal-subtitle">To existing project</div>
-                        </div>
+        function showSuccessPage(projectId, projectName, notionUrl) {
+            const projectUrl = `project-detail.html?id=${projectId}`;
+            const projectNotionUrl = notionUrl || `https://notion.so/${projectId.replace(/-/g, '')}`;
+
+            const content = `
+                <div class="success-content">
+                    <div class="success-icon">🎉</div>
+                    <div class="success-title">Project Created!</div>
+                    <div class="success-message">"${escapeHtml(projectName)}" has been added to the ledger.</div>
+                    <div class="success-actions">
+                        <a href="${projectUrl}" class="success-btn primary" target="_blank">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                            </svg>
+                            View Project Page
+                        </a>
+                        <a href="${projectNotionUrl}" class="success-btn secondary" target="_blank">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                <polyline points="15 3 21 3 21 9"/>
+                                <line x1="10" y1="14" x2="21" y2="3"/>
+                            </svg>
+                            Open in Notion
+                        </a>
+                        <button class="success-btn secondary" onclick="slidePageManager.close()">Done</button>
                     </div>
-                    <button class="modal-close" onclick="closeModal()">×</button>
                 </div>
-                <div class="modal-body">
+            `;
+
+            document.getElementById('slidePage').innerHTML = `
+                <div class="slide-page-header">
+                    <button class="back-btn" onclick="slidePageManager.close()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        Back
+                    </button>
+                </div>
+                <div class="slide-page-body">${content}</div>
+            `;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // SLIDE PAGE: ADD EPISODE
+        // ═══════════════════════════════════════════════════════════════════════════
+        function openAddEpisodePage() {
+            const content = `
+                <div class="field">
+                    <label class="field-label">Parent Project <span class="required">*</span></label>
+                    <select class="field-select" id="epProject">
+                        <option value="">Select project...</option>
+                        ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)} ${p.client ? `(${escapeHtml(p.client)})` : ''}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label">Episode Name <span class="required">*</span></label>
+                    <input type="text" class="field-input" id="epName" placeholder="e.g. Episode 1 - Behind the Scenes">
+                </div>
+                <div class="field-row">
                     <div class="field">
-                        <label class="field-label">Parent Project <span class="required">*</span></label>
-                        <select class="field-select" id="epProject">
-                            <option value="">Select project...</option>
-                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)} ${p.client ? `(${escapeHtml(p.client)})` : ''}</option>`).join('')}
+                        <label class="field-label">Format</label>
+                        <select class="field-select" id="epFormat">
+                            <option value="">Select...</option>
+                            ${FORMATS.map(f => `<option value="${f}">${f}</option>`).join('')}
                         </select>
                     </div>
                     <div class="field">
-                        <label class="field-label">Episode Name <span class="required">*</span></label>
-                        <input type="text" class="field-input" id="epName" placeholder="e.g. Episode 1 - Behind the Scenes">
-                    </div>
-                    <div class="field-row">
-                        <div class="field">
-                            <label class="field-label">Format</label>
-                            <select class="field-select" id="epFormat">
-                                <option value="">Select...</option>
-                                ${FORMATS.map(f => `<option value="${f}">${f}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Due Date</label>
-                            <input type="date" class="field-input" id="epDue">
-                        </div>
+                        <label class="field-label">Due Date</label>
+                        <input type="date" class="field-input" id="epDue">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button class="btn btn-primary" id="submitBtn" onclick="submitAddEpisode()">Add Episode</button>
-                </div>
+
+                <div class="section-divider">Attachments</div>
+                <div id="episodeUploadZone"></div>
             `;
-            document.getElementById('modalOverlay').classList.add('open');
+
+            slidePageManager.open(content, {
+                title: 'Add Episode',
+                subtitle: 'To existing project',
+                icon: '🎬',
+                iconClass: 'creative',
+                primaryBtn: { text: 'Add Episode', onclick: 'submitAddEpisode()' }
+            });
+
+            setTimeout(() => {
+                const uploadZone = document.getElementById('episodeUploadZone');
+                if (uploadZone) {
+                    uploadZone.innerHTML = documentUploadManager.createUploadZoneHTML('epUpload');
+                    documentUploadManager.clearUploadedFiles();
+                    documentUploadManager.initUploadZone('epUpload');
+                }
+            }, 100);
         }
 
         async function submitAddEpisode() {
@@ -901,9 +716,7 @@
                 return;
             }
 
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.textContent = 'Adding...';
+            slidePageManager.setLoading(true);
 
             try {
                 const res = await fetch(`${API_URL}/projects/${projectId}/episodes`, {
@@ -912,82 +725,73 @@
                     body: JSON.stringify({
                         name: name,
                         format: document.getElementById('epFormat').value || null,
-                        dueDate: document.getElementById('epDue').value || null
+                        dueDate: document.getElementById('epDue').value || null,
+                        attachments: documentUploadManager.getUploadedFiles()
                     })
                 });
+
                 const data = await res.json();
                 if (data.success || data.id) {
                     showToast('Episode added!', 'success');
-                    closeModal();
+                    slidePageManager.close();
                     loadData();
                 } else {
                     throw new Error(data.error || 'Failed');
                 }
             } catch (e) {
                 showToast('Error: ' + e.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Add Episode';
+                slidePageManager.setLoading(false);
             }
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // MODAL 3: ADD TASK
+        // SLIDE PAGE: ADD TASK
         // ═══════════════════════════════════════════════════════════════════════════
-        function openAddTaskModal() {
-            const modal = document.getElementById('modal');
-            modal.innerHTML = `
-                <div class="modal-header">
-                    <div class="modal-title-group">
-                        <div class="modal-icon production">✅</div>
-                        <div>
-                            <div class="modal-title">Add Task</div>
-                            <div class="modal-subtitle">Assign discipline task</div>
-                        </div>
-                    </div>
-                    <button class="modal-close" onclick="closeModal()">×</button>
+        function openAddTaskPage() {
+            const content = `
+                <div class="field">
+                    <label class="field-label">Parent Project <span class="required">*</span></label>
+                    <select class="field-select" id="taskProject" onchange="updateEpisodeDropdown()">
+                        <option value="">Select project...</option>
+                        ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('')}
+                    </select>
                 </div>
-                <div class="modal-body">
+                <div class="field">
+                    <label class="field-label">Episode (Optional)</label>
+                    <select class="field-select" id="taskEpisode">
+                        <option value="">Select episode...</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field-label">Task Name <span class="required">*</span></label>
+                    <input type="text" class="field-input" id="taskName" placeholder="e.g. First cut review">
+                </div>
+                <div class="field-row">
                     <div class="field">
-                        <label class="field-label">Parent Project <span class="required">*</span></label>
-                        <select class="field-select" id="taskProject" onchange="updateEpisodeDropdown()">
-                            <option value="">Select project...</option>
-                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('')}
+                        <label class="field-label">Discipline <span class="required">*</span></label>
+                        <select class="field-select" id="taskDiscipline">
+                            <option value="">Select...</option>
+                            ${DISCIPLINES.map(d => `<option value="${d}">${d}</option>`).join('')}
                         </select>
                     </div>
                     <div class="field">
-                        <label class="field-label">Episode (Optional)</label>
-                        <select class="field-select" id="taskEpisode">
-                            <option value="">Select episode...</option>
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label class="field-label">Task Name <span class="required">*</span></label>
-                        <input type="text" class="field-input" id="taskName" placeholder="e.g. First cut review">
-                    </div>
-                    <div class="field-row">
-                        <div class="field">
-                            <label class="field-label">Discipline <span class="required">*</span></label>
-                            <select class="field-select" id="taskDiscipline">
-                                <option value="">Select...</option>
-                                ${DISCIPLINES.map(d => `<option value="${d}">${d}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Due Date</label>
-                            <input type="date" class="field-input" id="taskDue">
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label class="field-label">Assigned To</label>
-                        <input type="text" class="field-input" id="taskAssigned" placeholder="Team member name">
+                        <label class="field-label">Due Date</label>
+                        <input type="date" class="field-input" id="taskDue">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button class="btn btn-primary" id="submitBtn" onclick="submitAddTask()">Add Task</button>
+                <div class="field">
+                    <label class="field-label">Assigned To</label>
+                    <input type="text" class="field-input" id="taskAssigned" placeholder="Team member name">
                 </div>
             `;
-            document.getElementById('modalOverlay').classList.add('open');
+
+            slidePageManager.open(content, {
+                title: 'Add Task',
+                subtitle: 'Assign discipline task',
+                icon: '✅',
+                iconClass: 'production',
+                primaryBtn: { text: 'Add Task', onclick: 'submitAddTask()' }
+            });
         }
 
         function updateEpisodeDropdown() {
@@ -1009,9 +813,7 @@
                 return;
             }
 
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.textContent = 'Adding...';
+            slidePageManager.setLoading(true);
 
             try {
                 const episodeId = document.getElementById('taskEpisode').value;
@@ -1029,69 +831,71 @@
                         assignedTo: document.getElementById('taskAssigned').value || null
                     })
                 });
+
                 const data = await res.json();
                 if (data.success || data.id) {
                     showToast('Task added!', 'success');
-                    closeModal();
+                    slidePageManager.close();
                     loadData();
                 } else {
                     throw new Error(data.error || 'Failed');
                 }
             } catch (e) {
                 showToast('Error: ' + e.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Add Task';
+                slidePageManager.setLoading(false);
             }
         }
 
         // ═══════════════════════════════════════════════════════════════════════════
-        // MODAL 4: REQUEST GRAPHICS
+        // SLIDE PAGE: REQUEST GRAPHICS
         // ═══════════════════════════════════════════════════════════════════════════
-        function openRequestGraphicsModal() {
-            const modal = document.getElementById('modal');
-            modal.innerHTML = `
-                <div class="modal-header">
-                    <div class="modal-title-group">
-                        <div class="modal-icon design">🎨</div>
-                        <div>
-                            <div class="modal-title">Request Graphics</div>
-                            <div class="modal-subtitle">Design asset request</div>
-                        </div>
-                    </div>
-                    <button class="modal-close" onclick="closeModal()">×</button>
+        function openRequestGraphicsPage() {
+            const content = `
+                <div class="field">
+                    <label class="field-label">Project <span class="required">*</span></label>
+                    <select class="field-select" id="gfxProject">
+                        <option value="">Select project...</option>
+                        ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('')}
+                    </select>
                 </div>
-                <div class="modal-body">
+                <div class="field-row">
                     <div class="field">
-                        <label class="field-label">Project <span class="required">*</span></label>
-                        <select class="field-select" id="gfxProject">
-                            <option value="">Select project...</option>
-                            ${projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('')}
+                        <label class="field-label">Asset Type <span class="required">*</span></label>
+                        <select class="field-select" id="gfxType">
+                            <option value="">Select...</option>
+                            ${ASSET_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
                         </select>
                     </div>
-                    <div class="field-row">
-                        <div class="field">
-                            <label class="field-label">Asset Type <span class="required">*</span></label>
-                            <select class="field-select" id="gfxType">
-                                <option value="">Select...</option>
-                                ${ASSET_TYPES.map(t => `<option value="${t}">${t}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div class="field">
-                            <label class="field-label">Deadline <span class="required">*</span></label>
-                            <input type="date" class="field-input" id="gfxDeadline">
-                        </div>
-                    </div>
                     <div class="field">
-                        <label class="field-label">Brief Notes</label>
-                        <textarea class="field-textarea" id="gfxNotes" placeholder="Describe what you need..."></textarea>
+                        <label class="field-label">Deadline <span class="required">*</span></label>
+                        <input type="date" class="field-input" id="gfxDeadline">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button class="btn btn-primary" id="submitBtn" onclick="submitRequestGraphics()">Submit Request</button>
+                <div class="field">
+                    <label class="field-label">Brief Notes</label>
+                    <textarea class="field-textarea" id="gfxNotes" placeholder="Describe what you need..."></textarea>
                 </div>
+
+                <div class="section-divider">Reference Files</div>
+                <div id="gfxUploadZone"></div>
             `;
-            document.getElementById('modalOverlay').classList.add('open');
+
+            slidePageManager.open(content, {
+                title: 'Request Graphics',
+                subtitle: 'Design asset request',
+                icon: '🎨',
+                iconClass: 'design',
+                primaryBtn: { text: 'Submit Request', onclick: 'submitRequestGraphics()' }
+            });
+
+            setTimeout(() => {
+                const uploadZone = document.getElementById('gfxUploadZone');
+                if (uploadZone) {
+                    uploadZone.innerHTML = documentUploadManager.createUploadZoneHTML('gfxUpload');
+                    documentUploadManager.clearUploadedFiles();
+                    documentUploadManager.initUploadZone('gfxUpload');
+                }
+            }, 100);
         }
 
         async function submitRequestGraphics() {
@@ -1104,9 +908,7 @@
                 return;
             }
 
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.textContent = 'Submitting...';
+            slidePageManager.setLoading(true);
 
             try {
                 const res = await fetch(`${API_URL}/design-requests`, {
@@ -1116,20 +918,21 @@
                         projectId: projectId,
                         assetType: assetType,
                         deadline: deadline,
-                        notes: document.getElementById('gfxNotes').value || null
+                        notes: document.getElementById('gfxNotes').value || null,
+                        referenceFiles: documentUploadManager.getUploadedFiles()
                     })
                 });
+
                 const data = await res.json();
                 if (data.success || data.id) {
                     showToast('Request submitted!', 'success');
-                    closeModal();
+                    slidePageManager.close();
                 } else {
                     throw new Error(data.error || 'Failed');
                 }
             } catch (e) {
                 showToast('Error: ' + e.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Submit Request';
+                slidePageManager.setLoading(false);
             }
         }
 
@@ -1177,17 +980,12 @@
             }
         });
 
-        // Close modal on Escape key
+        // Close slide page on Escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeModal();
+            if (e.key === 'Escape' && slidePageManager && slidePageManager.isOpen) {
+                slidePageManager.close();
             }
         });
-
-        // ═══════════════════════════════════════════════════════════════════════════
-        // INIT
-        // ═══════════════════════════════════════════════════════════════════════════
-        document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
 </html>

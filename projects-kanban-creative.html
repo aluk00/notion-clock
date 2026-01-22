@@ -295,37 +295,43 @@
         }
 
         /* ===== PROJECT PAGE STYLES ===== */
+        /* Project page - clean slide-in (no dark overlay for Notion-embedded feel) */
         .project-page-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: transparent; /* No darkening - keeps Notion white feel */
             z-index: 1000;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.35s ease, visibility 0.35s ease, backdrop-filter 0.35s ease;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
         }
         .project-page-overlay.visible {
             opacity: 1;
             visibility: visible;
+            background: rgba(255,255,255,0.6); /* Subtle white overlay */
+        }
+
+        /* Main content fades back when project page opens */
+        .kanban-container.project-open {
+            transform: translateX(-40px) scale(0.97);
+            opacity: 0.5;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
         }
 
         .project-page {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.92) translateY(20px);
-            width: 95%;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 90%;
             max-width: 1400px; /* 40% wider than typical 1000px */
-            max-height: 92vh;
             background: var(--surface);
-            border-radius: 20px;
             overflow: hidden;
             z-index: 1001;
-            opacity: 0;
-            visibility: hidden;
-            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+            transform: translateX(100%);
+            box-shadow: -20px 0 60px rgba(0, 0, 0, 0.08);
+            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
                         opacity 0.35s ease-out,
                         visibility 0.35s ease;
             display: flex;
@@ -335,9 +341,45 @@
         .project-page.visible {
             opacity: 1;
             visibility: visible;
-            transform: translate(-50%, -50%) scale(1) translateY(0);
+            transform: translateX(0);
         }
         .project-page.closing {
+            transform: translateX(100%);
+        }
+
+        /* Back button bar for project page */
+        .project-back-bar {
+            padding: 14px 20px;
+            background: #F9FAFB;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .project-back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border);
+            background: var(--surface);
+            color: var(--ink-sub);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .project-back-btn:hover {
+            border-color: var(--creative);
+            color: var(--creative);
+            background: rgba(230, 70, 139, 0.05);
+        }
+        .project-back-btn:active {
+            transform: scale(0.98);
+        }
+
+        .project-page-closing-placeholder {
             transform: translate(-50%, -50%) scale(0.95) translateY(10px);
             opacity: 0;
             transition: transform 0.25s ease-in, opacity 0.2s ease-in;
@@ -355,12 +397,12 @@
         .back-btn {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 700;
-            border: 1px solid var(--border);
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1.5px solid var(--border);
             background: var(--surface);
             cursor: pointer;
             color: var(--ink-sub);
@@ -368,6 +410,14 @@
             flex-shrink: 0;
         }
         .back-btn:hover {
+            border-color: var(--creative);
+            color: var(--creative);
+            background: rgba(230, 70, 139, 0.05);
+        }
+        .back-btn:active {
+            transform: scale(0.98);
+        }
+        .back-btn-legacy:hover {
             background: var(--surface-alt);
             border-color: #D1D5DB;
             color: var(--ink);
@@ -1216,6 +1266,7 @@
             // Show overlay with animation
             document.getElementById('projectOverlay').classList.add('visible');
             document.getElementById('projectPage').classList.add('visible');
+            document.querySelector('.kanban-container').classList.add('project-open');
 
             // Load deliverables
             const deliverables = await loadDeliverables(project.id);
@@ -1224,6 +1275,7 @@
         }
 
         function closeProjectPage() {
+            document.querySelector('.kanban-container').classList.remove('project-open');
             if (hasChanges && !confirm('You have unsaved changes. Discard them?')) return;
 
             const page = document.getElementById('projectPage');
