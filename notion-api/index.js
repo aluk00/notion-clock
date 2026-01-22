@@ -1520,6 +1520,296 @@ app.post('/process-daily-rundown', async (req, res) => {
     }
 });
 
+// ============================================
+// POST /process-events-to-ledger - Sync Events to Master Ledger
+// Creates Master Ledger items + Layer 3 tasks from Events
+// ============================================
+app.post('/process-events-to-ledger', async (req, res) => {
+    try {
+        if (!EVENTS_DB || !PROJECTS_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Events DB or Projects DB not configured'
+            });
+        }
+
+        console.log('[Events→Ledger] Starting automation...');
+
+        // Query Events where Master Ledger Row is empty
+        const response = await notion.databases.query({
+            database_id: EVENTS_DB,
+            filter: {
+                property: 'Master Ledger Row',
+                relation: { is_empty: true }
+            }
+        });
+
+        console.log(`[Events→Ledger] Found ${response.results.length} events without Master Ledger link`);
+
+        const results = {
+            eventsProcessed: 0,
+            eventsSkipped: 0,
+            ledgerItemsCreated: 0,
+            tasksCreated: 0,
+            errors: []
+        };
+
+        // Helper to detect vertical from event title prefix
+        function detectVerticalFromTitle(title) {
+            const upperTitle = (title || '').toUpperCase();
+            for (const vertical of Object.keys(VERTICAL_PARENTS)) {
+                if (upperTitle.startsWith(vertical + ' -') || upperTitle.startsWith(vertical + ' –')) {
+                    return vertical;
+                }
+            }
+            return 'MAIN'; // Default to MAIN if no prefix detected
+        }
+
+        for (const page of response.results) {
+            const eventId = page.id;
+            const props = page.properties;
+
+            const title = parseProperty(props['Event']) || 'Untitled Event';
+            const date = parseProperty(props['Date']);
+            const location = parseProperty(props['Where']);
+
+            console.log(`[Events→Ledger] Processing: ${title}`);
+
+            // Detect vertical from title prefix
+            const vertical = detectVerticalFromTitle(title);
+            const parentId = VERTICAL_PARENTS[vertical];
+
+            if (!parentId) {
+                console.log(`[Events→Ledger] Skipping ${title} - no parent found for vertical: ${vertical}`);
+                results.eventsSkipped++;
+                continue;
+            }
+
+            try {
+                // Create Master Ledger item
+                const ledgerProperties = {
+                    'NAME': { title: [{ text: { content: title } }] },
+                    'PARENT ITEM': { relation: [{ id: parentId }] },
+                    'STATUS': { select: { name: 'Not started' } },
+                    'VERTICAL': { select: { name: vertical } }
+                };
+
+                // Add DUE DATE if event has a date
+                if (date) {
+                    ledgerProperties['DUE DATE'] = { date: { start: date } };
+                }
+
+                // Add SHOOT LOCATION if event has a location
+                if (location) {
+                    ledgerProperties['SHOOT LOCATION'] = { rich_text: [{ text: { content: location } }] };
+                }
+
+                const ledgerResponse = await notion.pages.create({
+                    parent: { database_id: PROJECTS_DB },
+                    properties: ledgerProperties
+                });
+
+                const ledgerItemId = ledgerResponse.id;
+                results.ledgerItemsCreated++;
+                console.log(`[Events→Ledger] Created Master Ledger item: ${title}`);
+
+                // Create Layer 3 Edit Task
+                const editTaskName = `${title} - Edit`;
+                await notion.pages.create({
+                    parent: { database_id: PROJECTS_DB },
+                    properties: {
+                        'NAME': { title: [{ text: { content: editTaskName } }] },
+                        'PARENT ITEM': { relation: [{ id: ledgerItemId }] },
+                        'DISCIPLINE': { select: { name: 'Editor' } },
+                        'STATUS': { select: { name: 'Not started' } }
+                    }
+                });
+                results.tasksCreated++;
+                console.log(`[Events→Ledger] Created Edit task: ${editTaskName}`);
+
+                // Create Layer 3 Thumbnail Task
+                const thumbnailTaskName = `${title} - Thumbnail`;
+                await notion.pages.create({
+                    parent: { database_id: PROJECTS_DB },
+                    properties: {
+                        'NAME': { title: [{ text: { content: thumbnailTaskName } }] },
+                        'PARENT ITEM': { relation: [{ id: ledgerItemId }] },
+                        'DISCIPLINE': { select: { name: 'Design' } },
+                        'STATUS': { select: { name: 'Not started' } }
+                    }
+                });
+                results.tasksCreated++;
+                console.log(`[Events→Ledger] Created Thumbnail task: ${thumbnailTaskName}`);
+
+                // Update Event with link back to Master Ledger
+                await notion.pages.update({
+                    page_id: eventId,
+                    properties: {
+                        'Master Ledger Row': { relation: [{ id: ledgerItemId }] }
+                    }
+                });
+                console.log(`[Events→Ledger] Linked Event back to Master Ledger: ${title}`);
+
+                results.eventsProcessed++;
+
+            } catch (itemError) {
+                console.error(`[Events→Ledger] Error processing ${title}:`, itemError.message);
+                results.errors.push({ title, error: itemError.message });
+            }
+        }
+
+        console.log(`[Events→Ledger] Complete. Processed: ${results.eventsProcessed}, Created: ${results.ledgerItemsCreated} items, ${results.tasksCreated} tasks`);
+
+        res.json({
+            success: true,
+            message: 'Events to Ledger automation complete',
+            ...results
+        });
+
+    } catch (error) {
+        console.error('[Events→Ledger] Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// POST /process-ledger-to-events - Sync Master Ledger to Events
+// Creates Events from Master Ledger items that need shoots
+// ============================================
+app.post('/process-ledger-to-events', async (req, res) => {
+    try {
+        if (!EVENTS_DB || !PROJECTS_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Events DB or Projects DB not configured'
+            });
+        }
+
+        console.log('[Ledger→Events] Starting automation...');
+
+        // Query Master Ledger items where Events relation is empty
+        // Only get items that have a PARENT ITEM (i.e., Layer 2 deliverables, not Layer 1 parents)
+        const response = await notion.databases.query({
+            database_id: PROJECTS_DB,
+            filter: {
+                and: [
+                    {
+                        property: 'Events',
+                        relation: { is_empty: true }
+                    },
+                    {
+                        property: 'PARENT ITEM',
+                        relation: { is_not_empty: true }
+                    }
+                ]
+            }
+        });
+
+        console.log(`[Ledger→Events] Found ${response.results.length} ledger items without Events link`);
+
+        const results = {
+            ledgerItemsProcessed: 0,
+            ledgerItemsSkipped: 0,
+            eventsCreated: 0,
+            errors: []
+        };
+
+        for (const page of response.results) {
+            const ledgerId = page.id;
+            const props = page.properties;
+
+            const title = parseProperty(props['NAME']) || 'Untitled';
+            const dueDate = parseProperty(props['DUE DATE']);
+            const callTime = parseProperty(props['CALL TIME']);
+            const shootLocation = parseProperty(props['SHOOT LOCATION']);
+            const budget = parseProperty(props['BUDGET']);
+            const productionLead = props['PRODUCTION LEAD(S) 1']?.people?.[0]?.id;
+            const creators = props['CONTENT CREATOR(S)']?.relation || [];
+
+            console.log(`[Ledger→Events] Processing: ${title}`);
+
+            // Skip items that look like Layer 3 tasks (have DISCIPLINE set)
+            const discipline = parseProperty(props['DISCIPLINE']);
+            if (discipline) {
+                console.log(`[Ledger→Events] Skipping ${title} - is a Layer 3 task (DISCIPLINE: ${discipline})`);
+                results.ledgerItemsSkipped++;
+                continue;
+            }
+
+            try {
+                // Create Event
+                const eventProperties = {
+                    'Event': { title: [{ text: { content: title } }] },
+                    'Status': { select: { name: 'Booked' } },
+                    'Master Ledger Row': { relation: [{ id: ledgerId }] }
+                };
+
+                // Add Date from DUE DATE or CALL TIME
+                const eventDate = callTime || dueDate;
+                if (eventDate) {
+                    eventProperties['Date'] = { date: { start: eventDate } };
+                }
+
+                // Add Where from SHOOT LOCATION
+                if (shootLocation) {
+                    eventProperties['Where'] = { rich_text: [{ text: { content: shootLocation } }] };
+                }
+
+                // Add Shoot Budget from BUDGET
+                if (budget) {
+                    eventProperties['Shoot Budget'] = { number: budget };
+                }
+
+                // Add Shoot Lead from PRODUCTION LEAD(S) 1
+                if (productionLead) {
+                    eventProperties['Shoot Lead'] = { people: [{ id: productionLead }] };
+                }
+
+                // Add Creator(s) from CONTENT CREATOR(S)
+                if (creators.length > 0) {
+                    eventProperties['Creator(s)'] = { relation: creators.map(c => ({ id: c.id || c })) };
+                }
+
+                const eventResponse = await notion.pages.create({
+                    parent: { database_id: EVENTS_DB },
+                    properties: eventProperties
+                });
+
+                const eventId = eventResponse.id;
+                results.eventsCreated++;
+                console.log(`[Ledger→Events] Created Event: ${title}`);
+
+                // Update Master Ledger item with link back to Event
+                await notion.pages.update({
+                    page_id: ledgerId,
+                    properties: {
+                        'Events': { relation: [{ id: eventId }] }
+                    }
+                });
+                console.log(`[Ledger→Events] Linked Master Ledger back to Event: ${title}`);
+
+                results.ledgerItemsProcessed++;
+
+            } catch (itemError) {
+                console.error(`[Ledger→Events] Error processing ${title}:`, itemError.message);
+                results.errors.push({ title, error: itemError.message });
+            }
+        }
+
+        console.log(`[Ledger→Events] Complete. Processed: ${results.ledgerItemsProcessed}, Created: ${results.eventsCreated} events`);
+
+        res.json({
+            success: true,
+            message: 'Ledger to Events automation complete',
+            ...results
+        });
+
+    } catch (error) {
+        console.error('[Ledger→Events] Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Health check
 app.get('/', (req, res) => {
     const { version } = require('./package.json');
@@ -1554,7 +1844,9 @@ app.get('/', (req, res) => {
             'POST /process-deal-agreed',
             'GET /process-deal-agreed/status',
             'POST /process-deal-agreed/reset',
-            'POST /process-daily-rundown'
+            'POST /process-daily-rundown',
+            'POST /process-events-to-ledger',
+            'POST /process-ledger-to-events'
         ]
     });
 });
