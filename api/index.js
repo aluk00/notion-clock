@@ -309,15 +309,21 @@ function buildDeliverableProperties(data, projectId) {
 }
 
 // ============================================
-// GET /projects - List all projects
+// GET /projects - List all Layer 1 projects (PARENT ITEM is empty)
 // ============================================
 app.get('/projects', async (req, res) => {
     try {
-        // Note: Removed sort by (INTERNAL) DUE DATE as property may not exist
-        // Sorting is now done client-side to avoid breaking when Notion schema changes
+        // Filter for Layer 1 projects only (items without a PARENT ITEM)
+        // This excludes Layer 2 (Episodes) and Layer 3 (Tasks) which have PARENT ITEM set
         const response = await notion.databases.query({
             database_id: PROJECTS_DB,
-            page_size: 100
+            page_size: 100,
+            filter: {
+                property: 'PARENT ITEM',
+                relation: {
+                    is_empty: true
+                }
+            }
         });
 
         const projects = response.results.map(page => {
@@ -385,6 +391,97 @@ app.get('/projects', async (req, res) => {
         res.json({ success: true, projects, count: projects.length });
     } catch (error) {
         console.error('Error fetching projects:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// GET /projects/:id - Get single project by ID
+// Works for any layer (Project, Episode, or Task)
+// ============================================
+app.get('/projects/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Fetch the page directly from Notion
+        const page = await notion.pages.retrieve({ page_id: id });
+
+        if (!page || page.archived) {
+            return res.status(404).json({ success: false, error: 'Project not found' });
+        }
+
+        const props = page.properties;
+
+        // Parse the project data (same as in /projects list)
+        const project = {
+            id: page.id,
+            url: page.url,
+            title: parseProperty(props['TITLE']),
+            client: parseProperty(props['CLIENT / EXTERNAL PARTNER']),
+            projectType: parseProperty(props['PROJECT TYPE']),
+            priority: parseProperty(props['PRIORITY']),
+            vertical: parseProperty(props['VERTICAL']),
+            dealStage: parseProperty(props['DEAL STAGE']),
+            dealValue: parseProperty(props['DEAL VALUE']),
+            probability: parseProperty(props['PROBABILITY']),
+            dueDate: parseProperty(props['(INTERNAL) DUE DATE']),
+            clientDueDate: parseProperty(props['CLIENT DUE DATE']),
+            expectedCloseDate: parseProperty(props['EXPECTED CLOSE DATE']),
+            suggestedCampaignWindow: parseProperty(props['SUGGESTED CAMPAIGN WINDOW']),
+            creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
+            productionWorkflowStatus: parseProperty(props['PRODUCTION WORKFLOW STATUS']),
+            socialWorkflowStatus: parseProperty(props['SOCIAL WORKFLOW STATUS']),
+            deskState: parseProperty(props['DESK STATE']),
+            ownerRole: parseProperty(props['OWNER ROLE']),
+            primaryTeam: parseProperty(props['PRIMARY TEAM']),
+            assetsNeeded: parseProperty(props['ASSET(S) NEEDED']),
+            effortScore: parseProperty(props['EFFORT SCORE']),
+            cardSummary: parseProperty(props['CARD SUMMARY']),
+            notes: parseProperty(props['(INTERNAL) NOTES']),
+            salesNotes: parseProperty(props['SALES NOTES']),
+            // URL fields
+            briefLink: parseProperty(props['BRIEF LINK']),
+            creativeResponseLink: parseProperty(props['CREATIVE RESPONSE LINK']),
+            frameIoLink: parseProperty(props['FRAME.IO LINK']),
+            driveFolder: parseProperty(props['DRIVE FOLDER']),
+            responseTypeNeeded: parseProperty(props['RESPONSE TYPE NEEDED']),
+            // People
+            salesLead: parseProperty(props['SALES LEAD']),
+            creativeLead: parseProperty(props['CREATIVE LEAD']),
+            productionLead: parseProperty(props['PRODUCTION LEAD']),
+            editorialLead: parseProperty(props['EDITORIAL LEAD']),
+            // Rollups from Deliverables
+            deliverableCount: parseProperty(props['DELIVERABLE COUNT']),
+            deliverablesComplete: parseProperty(props['DELIVERABLES COMPLETE']),
+            nextDeliverableDue: parseProperty(props['NEXT DELIVERABLE DUE']),
+            // Budget fields (Master Ledger)
+            projectBudget: parseProperty(props['PROJECT BUDGET']),
+            budget: parseProperty(props['BUDGET']),
+            actualSpend: parseProperty(props['ACTUAL SPEND']),
+            // Budget rollups (from SUB-ITEM relation)
+            totalSubItemBudget: parseProperty(props['TOTAL SUB-ITEM BUDGET']),
+            totalActualSpend: parseProperty(props['TOTAL ACTUAL SPEND']),
+            // Budget formulas
+            budgetRemaining: parseProperty(props['BUDGET REMAINING']),
+            budgetVsActual: parseProperty(props['BUDGET VS ACTUAL']),
+            // Event budget rollups (from Events relation)
+            eventShootBudget: parseProperty(props['EVENT SHOOT BUDGET']),
+            eventShootActual: parseProperty(props['EVENT SHOOT ACTUAL']),
+            totalDeliverableBudget: parseProperty(props['TOTAL DELIVERABLE BUDGET']),
+            // Events relation
+            eventsRelation: parseProperty(props['Events']),
+            // Parent relation (for Layer 2/3 items)
+            parentItemIds: parseProperty(props['PARENT ITEM']),
+            // Sub-items relation (for hierarchy)
+            subItemIds: parseProperty(props['SUB-ITEM'])
+        };
+
+        res.json({ success: true, project });
+    } catch (error) {
+        console.error('Error fetching project by ID:', error);
+        if (error.code === 'object_not_found') {
+            return res.status(404).json({ success: false, error: 'Project not found' });
+        }
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -766,6 +863,7 @@ app.get('/', (req, res) => {
         },
         endpoints: [
             'GET /projects',
+            'GET /projects/:id',
             'PATCH /projects/:id',
             'POST /projects',
             'GET /deliverables',
