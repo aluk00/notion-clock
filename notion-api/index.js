@@ -331,7 +331,7 @@ app.get('/projects', async (req, res) => {
             return {
                 id: page.id,
                 url: page.url,
-                title: parseProperty(props['TITLE']),
+                title: parseProperty(props['NAME']) || parseProperty(props['TITLE']),
                 client: parseProperty(props['CLIENT / EXTERNAL PARTNER']),
                 projectType: parseProperty(props['PROJECT TYPE']),
                 priority: parseProperty(props['PRIORITY']),
@@ -511,7 +511,7 @@ app.get('/projects/:id/subitems', async (req, res) => {
             return {
                 id: page.id,
                 url: page.url,
-                title: parseProperty(props['TITLE']),
+                title: parseProperty(props['NAME']) || parseProperty(props['TITLE']),
                 client: parseProperty(props['CLIENT / EXTERNAL PARTNER']),
                 projectType: parseProperty(props['PROJECT TYPE']),
                 status: parseProperty(props['STATUS']),

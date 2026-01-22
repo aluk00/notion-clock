@@ -787,10 +787,16 @@
         }
 
         function formatCurrency(value) {
-            if (!value && value !== 0) return null;
+            if (value === null || value === undefined || value === '') return '—';
             const num = parseFloat(value);
-            if (isNaN(num)) return null;
+            if (isNaN(num)) return '—';
             return '£' + num.toLocaleString('en-GB');
+        }
+
+        function hasCurrencyValue(value) {
+            if (value === null || value === undefined || value === '') return false;
+            const num = parseFloat(value);
+            return !isNaN(num);
         }
 
         function formatBudgetValue(value) {
@@ -870,7 +876,7 @@
             const hasLinks = p.briefLink || p.creativeResponseLink || p.frameIoLink || p.driveFolder;
             const hasNotes = p.notes || p.salesNotes;
             const hasTeam = salesLead || creativeLead || productionLead || editorialLead;
-            const hasBudget = p.projectBudget || p.budget || p.totalSubItemBudget || p.eventShootBudget;
+            const hasBudget = hasCurrencyValue(p.projectBudget) || hasCurrencyValue(p.budget) || hasCurrencyValue(p.totalSubItemBudget) || hasCurrencyValue(p.eventShootBudget);
 
             // Determine layer label and colors
             const layerConfig = {
@@ -963,7 +969,7 @@
                                     <div class="card-body">
                                         <div class="budget-grid">
                                             <!-- Project Budget (parent level) -->
-                                            ${p.projectBudget ? `
+                                            ${hasCurrencyValue(p.projectBudget) ? `
                                                 <div class="budget-item highlight">
                                                     <div class="budget-label">Project Budget</div>
                                                     <div class="budget-value">${formatCurrency(p.projectBudget)}</div>
@@ -972,7 +978,7 @@
                                             ` : ''}
 
                                             <!-- Budget Remaining -->
-                                            ${p.budgetRemaining !== null && p.budgetRemaining !== undefined ? `
+                                            ${hasCurrencyValue(p.budgetRemaining) ? `
                                                 <div class="budget-item ${getBudgetStatus(p.budgetRemaining, p.projectBudget)}">
                                                     <div class="budget-label">Budget Remaining</div>
                                                     <div class="budget-value ${formatBudgetValue(p.budgetRemaining).class}">${formatBudgetValue(p.budgetRemaining).display}</div>
@@ -981,11 +987,11 @@
                                             ` : ''}
 
                                             <!-- Sub-Item Section -->
-                                            ${(p.totalSubItemBudget || p.totalActualSpend) ? `
+                                            ${(hasCurrencyValue(p.totalSubItemBudget) || hasCurrencyValue(p.totalActualSpend)) ? `
                                                 <div class="budget-section-title">Sub-Item Breakdown</div>
                                             ` : ''}
 
-                                            ${p.totalSubItemBudget ? `
+                                            ${hasCurrencyValue(p.totalSubItemBudget) ? `
                                                 <div class="budget-item">
                                                     <div class="budget-label">Total Sub-Item Budget</div>
                                                     <div class="budget-value">${formatCurrency(p.totalSubItemBudget)}</div>
@@ -993,7 +999,7 @@
                                                 </div>
                                             ` : ''}
 
-                                            ${p.totalActualSpend !== null && p.totalActualSpend !== undefined ? `
+                                            ${hasCurrencyValue(p.totalActualSpend) ? `
                                                 <div class="budget-item">
                                                     <div class="budget-label">Total Actual Spend</div>
                                                     <div class="budget-value">${formatCurrency(p.totalActualSpend)}</div>
@@ -1002,7 +1008,7 @@
                                             ` : ''}
 
                                             <!-- Budget vs Actual -->
-                                            ${p.budgetVsActual !== null && p.budgetVsActual !== undefined ? `
+                                            ${hasCurrencyValue(p.budgetVsActual) ? `
                                                 <div class="budget-item ${getBudgetStatus(p.budgetVsActual, p.projectBudget)}">
                                                     <div class="budget-label">Budget vs Actual</div>
                                                     <div class="budget-value ${formatBudgetValue(p.budgetVsActual).class}">${formatBudgetValue(p.budgetVsActual).display}</div>
@@ -1011,11 +1017,11 @@
                                             ` : ''}
 
                                             <!-- Events Budget Section -->
-                                            ${(p.eventShootBudget || p.eventShootActual) ? `
+                                            ${(hasCurrencyValue(p.eventShootBudget) || hasCurrencyValue(p.eventShootActual)) ? `
                                                 <div class="budget-section-title">Event/Shoot Costs</div>
                                             ` : ''}
 
-                                            ${p.eventShootBudget ? `
+                                            ${hasCurrencyValue(p.eventShootBudget) ? `
                                                 <div class="budget-item">
                                                     <div class="budget-label">Event Shoot Budget</div>
                                                     <div class="budget-value">${formatCurrency(p.eventShootBudget)}</div>
@@ -1023,7 +1029,7 @@
                                                 </div>
                                             ` : ''}
 
-                                            ${p.eventShootActual ? `
+                                            ${hasCurrencyValue(p.eventShootActual) ? `
                                                 <div class="budget-item">
                                                     <div class="budget-label">Event Shoot Actual</div>
                                                     <div class="budget-value">${formatCurrency(p.eventShootActual)}</div>
@@ -1032,7 +1038,7 @@
                                             ` : ''}
 
                                             <!-- Total Deliverable Budget -->
-                                            ${p.totalDeliverableBudget ? `
+                                            ${hasCurrencyValue(p.totalDeliverableBudget) ? `
                                                 <div class="budget-divider"></div>
                                                 <div class="budget-item highlight" style="grid-column: 1 / -1;">
                                                     <div class="budget-label">Total Deliverable Budget</div>
@@ -1125,16 +1131,57 @@
                         </div>
 
                         <div class="side-column">
-                            <!-- Team -->
-                            ${hasTeam ? `
-                                <div class="card">
-                                    <div class="card-header">
-                                        <div class="card-title">
-                                            <div class="card-dot" style="background: var(--creative)"></div>
-                                            Team
+                            <!-- Hierarchy Info -->
+                            <div class="card" style="border-left: 3px solid ${layer.color};">
+                                <div class="card-header">
+                                    <div class="card-title">
+                                        <div class="card-dot" style="background: ${layer.color}"></div>
+                                        Item Type
+                                    </div>
+                                </div>
+                                <div class="card-body" style="padding: 16px;">
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                        <span style="font-size: 24px;">${layer.icon}</span>
+                                        <div>
+                                            <div style="font-size: 16px; font-weight: 800; color: ${layer.color};">${layer.label}</div>
+                                            <div style="font-size: 10px; color: var(--ink-sub);">
+                                                ${itemLayer === 1 ? 'Top-level project in Master Ledger' :
+                                                  itemLayer === 2 ? 'Episode or deliverable under a project' :
+                                                  'Individual task under an episode'}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="card-body">
+                                    ${hasParentLink ? `
+                                        <div style="padding: 10px; background: var(--surface-alt); border-radius: 8px; margin-top: 8px;">
+                                            <div style="font-size: 9px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; margin-bottom: 4px;">Parent</div>
+                                            <a href="project-detail.html?id=${parentProject.id}" style="font-size: 12px; font-weight: 600; color: var(--ink); text-decoration: none;">
+                                                ${escapeHtml(parentProject.title || 'Untitled')} →
+                                            </a>
+                                        </div>
+                                    ` : ''}
+                                    ${subitems.length > 0 ? `
+                                        <div style="padding: 10px; background: var(--surface-alt); border-radius: 8px; margin-top: 8px;">
+                                            <div style="font-size: 9px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; margin-bottom: 4px;">
+                                                ${itemLayer === 1 ? 'Episodes' : 'Tasks'}
+                                            </div>
+                                            <div style="font-size: 12px; font-weight: 600; color: var(--ink);">
+                                                ${subitems.length} ${itemLayer === 1 ? 'episode' : 'task'}${subitems.length !== 1 ? 's' : ''} linked
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <!-- Team -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="card-title">
+                                        <div class="card-dot" style="background: var(--creative)"></div>
+                                        Team
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    ${hasTeam ? `
                                         <div class="team-grid">
                                             ${salesLead ? `
                                                 <div class="team-member">
@@ -1173,9 +1220,11 @@
                                                 </div>
                                             ` : ''}
                                         </div>
-                                    </div>
+                                    ` : `
+                                        <div class="card-empty">No team members assigned yet.</div>
+                                    `}
                                 </div>
-                            ` : ''}
+                            </div>
 
                             <!-- Links -->
                             ${hasLinks ? `
@@ -1269,21 +1318,27 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="quick-actions">
-                                        <a href="commercial-hub-react.html?project=${p.id}" class="action-btn primary">
+                                        <a href="commercial-hub-react.html" class="action-btn primary">
                                             <div class="action-icon">📊</div>
-                                            <span>Open in Commercial Hub</span>
+                                            <span>Commercial Hub</span>
                                         </a>
-                                        <a href="projects-kanban-creative.html?project=${p.id}" class="action-btn">
+                                        <a href="projects-kanban-creative.html" class="action-btn">
                                             <div class="action-icon">🎯</div>
-                                            <span>View in Creative Kanban</span>
+                                            <span>Creative Kanban</span>
                                         </a>
-                                        ${p.url ? `
-                                            <a href="${p.url}" target="_blank" class="action-btn">
-                                                <div class="action-icon">📝</div>
-                                                <span>Edit in Notion</span>
-                                            </a>
-                                        ` : ''}
+                                        <a href="projects-kanban-production.html" class="action-btn">
+                                            <div class="action-icon">🎬</div>
+                                            <span>Production Kanban</span>
+                                        </a>
                                     </div>
+                                    ${p.url ? `
+                                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                                            <a href="${p.url}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--ink-muted); text-decoration: none;">
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                                Edit in Notion
+                                            </a>
+                                        </div>
+                                    ` : ''}
                                 </div>
                             </div>
                         </div>
