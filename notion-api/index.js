@@ -1463,6 +1463,32 @@ app.post('/process-daily-rundown', async (req, res) => {
                 results.ledgerItemsCreated++;
                 console.log(`[Daily Rundown] Created Master Ledger item: ${ledgerItemName}`);
 
+                // Create Layer 3 Edit Task
+                const editTaskName = `${title} - Edit`;
+                await notion.pages.create({
+                    parent: { database_id: PROJECTS_DB },
+                    properties: {
+                        'NAME': { title: [{ text: { content: editTaskName } }] },
+                        'PARENT ITEM': { relation: [{ id: ledgerItemId }] },
+                        'DISCIPLINE': { select: { name: 'Editor' } },
+                        'STATUS': { select: { name: 'Not started' } }
+                    }
+                });
+                console.log(`[Daily Rundown] Created Edit task: ${editTaskName}`);
+
+                // Create Layer 3 Thumbnail Task
+                const thumbnailTaskName = `${title} - Thumbnail`;
+                await notion.pages.create({
+                    parent: { database_id: PROJECTS_DB },
+                    properties: {
+                        'NAME': { title: [{ text: { content: thumbnailTaskName } }] },
+                        'PARENT ITEM': { relation: [{ id: ledgerItemId }] },
+                        'DISCIPLINE': { select: { name: 'Design' } },
+                        'STATUS': { select: { name: 'Not started' } }
+                    }
+                });
+                console.log(`[Daily Rundown] Created Thumbnail task: ${thumbnailTaskName}`);
+
                 // Update Daily Rundown item with link back to Master Ledger
                 await notion.pages.update({
                     page_id: rundownId,
