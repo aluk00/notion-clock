@@ -1211,40 +1211,16 @@ app.post('/process-deal-agreed', async (req, res) => {
 
         console.log('[Deal Agreed] Starting automation...');
 
-        // Query for deals matching criteria
+        // Query for deals with deliverables text (filter in code for deal stage)
         const response = await notion.databases.query({
             database_id: PROJECTS_DB,
             filter: {
-                and: [
-                    {
-                        or: [
-                            {
-                                property: 'DEAL STAGE',
-                                select: { equals: 'Deal Agreed' }
-                            },
-                            {
-                                and: [
-                                    {
-                                        property: 'PROJECT OUTCOME',
-                                        select: { equals: 'Won' }
-                                    },
-                                    {
-                                        property: 'PROJECT STATUS',
-                                        status: { equals: 'In progress' }
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        property: 'AGREED CONTENT DELIVERABLES (FOR AI)',
-                        rich_text: { is_not_empty: true }
-                    }
-                ]
+                property: 'AGREED CONTENT DELIVERABLES (FOR AI)',
+                rich_text: { is_not_empty: true }
             }
         });
 
-        console.log(`[Deal Agreed] Found ${response.results.length} matching deals`);
+        console.log(`[Deal Agreed] Found ${response.results.length} items with deliverables`);
 
         const results = {
             dealsProcessed: 0,
@@ -1256,6 +1232,19 @@ app.post('/process-deal-agreed', async (req, res) => {
 
         for (const page of response.results) {
             const dealId = page.id;
+            const props = page.properties;
+
+            // Check deal stage / project status in code
+            const dealStage = parseProperty(props['DEAL STAGE']);
+            const projectOutcome = parseProperty(props['PROJECT OUTCOME']);
+            const projectStatus = parseProperty(props['PROJECT STATUS']);
+
+            const isDealAgreed = dealStage === 'Deal Agreed';
+            const isWonInProgress = projectOutcome === 'Won' && projectStatus === 'In progress';
+
+            if (!isDealAgreed && !isWonInProgress) {
+                continue; // Skip items that don't match criteria
+            }
 
             // Skip if already processed
             if (processedDeals.has(dealId)) {
@@ -1264,7 +1253,6 @@ app.post('/process-deal-agreed', async (req, res) => {
                 continue;
             }
 
-            const props = page.properties;
             const dealName = parseProperty(props['NAME']) || 'Untitled Deal';
             const deliverablesText = parseProperty(props['AGREED CONTENT DELIVERABLES (FOR AI)']);
 
