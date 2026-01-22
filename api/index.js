@@ -12,6 +12,7 @@ const notion = new Client({ auth: process.env.NOTION_API_KEY });
 // Database IDs from environment
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
+const COMMERCIAL_SNAPSHOT_DB = process.env.NOTION_COMMERCIAL_SNAPSHOT;
 
 // ============================================
 // HELPER: Parse Notion properties
@@ -33,9 +34,38 @@ function parseProperty(prop) {
         case 'people': return prop.people?.map(p => ({ id: p.id, name: p.name })) || [];
         case 'relation': return prop.relation?.map(r => r.id) || [];
         case 'formula': return prop.formula?.[prop.formula.type] || null;
-        case 'rollup': return prop.rollup?.[prop.rollup.type] || null;
+        case 'rollup': return parseRollupProperty(prop.rollup);
         default: return null;
     }
+}
+
+// Enhanced rollup parser to handle nested types
+function parseRollupProperty(rollup) {
+    if (!rollup) return null;
+
+    const rollupType = rollup.type;
+    const value = rollup[rollupType];
+
+    // Handle array rollups (most common)
+    if (rollupType === 'array' && Array.isArray(value)) {
+        return value.map(item => {
+            if (!item) return null;
+            switch (item.type) {
+                case 'title': return item.title?.[0]?.plain_text || '';
+                case 'rich_text': return item.rich_text?.[0]?.plain_text || '';
+                case 'select': return item.select?.name || null;
+                case 'status': return item.status?.name || null;
+                case 'date': return item.date?.start || null;
+                case 'number': return item.number;
+                case 'url': return item.url || null;
+                case 'people': return item.people?.map(p => ({ id: p.id, name: p.name })) || [];
+                default: return item[item.type] || null;
+            }
+        }).filter(Boolean);
+    }
+
+    // Handle single value rollups (number, date)
+    return value;
 }
 
 // ============================================
@@ -851,15 +881,281 @@ app.get('/capacity', async (req, res) => {
     }
 });
 
+// ============================================
+// COMMERCIAL SNAPSHOT ENDPOINTS
+// Read-only view of projects for dashboards/APIs
+// Data comes from rollups - updates go to master Projects DB
+// ============================================
+
+// GET /commercial-snapshot - List all projects from Commercial Snapshot
+app.get('/commercial-snapshot', async (req, res) => {
+    try {
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Commercial Snapshot DB not configured. Add NOTION_COMMERCIAL_SNAPSHOT env variable.'
+            });
+        }
+
+        const response = await notion.databases.query({
+            database_id: COMMERCIAL_SNAPSHOT_DB,
+            page_size: 100
+        });
+
+        const projects = response.results.map(page => {
+            const props = page.properties;
+
+            // Helper to get first value from rollup array
+            const getFirstRollup = (parsed) => {
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+                return parsed;
+            };
+
+            // Helper to flatten people arrays from rollups
+            const getPeopleFromRollup = (parsed) => {
+                if (Array.isArray(parsed)) {
+                    return parsed.flat().filter(p => p && p.name);
+                }
+                return [];
+            };
+
+            return {
+                id: page.id,
+                url: page.url,
+                lastEditedTime: page.last_edited_time,
+
+                // Core identity
+                record: parseProperty(props['Record']),
+                projectIds: parseProperty(props['Project']),
+
+                // Project metadata (rollups from Project)
+                projectName: getFirstRollup(parseProperty(props['Project Name'])),
+                clientPartner: getFirstRollup(parseProperty(props['Client / Partner'])),
+                vertical: getFirstRollup(parseProperty(props['Vertical'])),
+                salesLeads: getPeopleFromRollup(parseProperty(props['Sales Lead(s)'])),
+                cardSummary: getFirstRollup(parseProperty(props['Card Summary'])),
+                aiStatusRecap: getFirstRollup(parseProperty(props['AI Status Recap'])),
+
+                // Status and workflow (rollups)
+                status1: getFirstRollup(parseProperty(props['Status 1'])),
+                status: getFirstRollup(parseProperty(props['Status'])),
+                creativeWorkflowStatus: getFirstRollup(parseProperty(props['Creative Workflow Status'])),
+                productionWorkflowStatus: getFirstRollup(parseProperty(props['Production Workflow Status'])),
+                projectOutcome: getFirstRollup(parseProperty(props['Project Outcome'])),
+                priorityLevel: getFirstRollup(parseProperty(props['Priority Level'])),
+                totalProjectEffort: parseProperty(props['Total Project Effort (PTS)']),
+
+                // Commercial info (rollups)
+                dealStage: getFirstRollup(parseProperty(props['Deal Stage'])),
+                dealValue: parseProperty(props['Deal Value']),
+
+                // Timeline and delivery (rollups)
+                clientProjectDueDate: getFirstRollup(parseProperty(props['Client Project Due Date'])),
+                internalProjectDueDate: getFirstRollup(parseProperty(props['Internal Project Due Date'])),
+                earliestDeliverableDue: parseProperty(props['Earliest Deliverable Due']),
+                latestDeliverableDue: parseProperty(props['Latest Deliverable Due']),
+
+                // Live campaign
+                liveLink: getFirstRollup(parseProperty(props['Live Link'])),
+
+                // Slack integration (rollups)
+                slackChannelName: getFirstRollup(parseProperty(props['Slack Channel Name'])),
+                slackChannelId: getFirstRollup(parseProperty(props['Slack Channel ID']))
+            };
+        });
+
+        // Sort by project name for consistent ordering
+        projects.sort((a, b) => {
+            const nameA = a.projectName || a.record || '';
+            const nameB = b.projectName || b.record || '';
+            return nameA.localeCompare(nameB);
+        });
+
+        res.json({
+            success: true,
+            projects,
+            count: projects.length,
+            databaseId: COMMERCIAL_SNAPSHOT_DB
+        });
+    } catch (error) {
+        console.error('Error fetching commercial snapshot:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /commercial-snapshot/:id - Get single project by ID
+app.get('/commercial-snapshot/:id', async (req, res) => {
+    try {
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({ success: false, error: 'Commercial Snapshot DB not configured' });
+        }
+
+        const { id } = req.params;
+        const page = await notion.pages.retrieve({ page_id: id });
+
+        if (!page || page.archived) {
+            return res.status(404).json({ success: false, error: 'Project not found in Commercial Snapshot' });
+        }
+
+        const props = page.properties;
+
+        // Helper functions
+        const getFirstRollup = (parsed) => {
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+            return parsed;
+        };
+
+        const getPeopleFromRollup = (parsed) => {
+            if (Array.isArray(parsed)) {
+                return parsed.flat().filter(p => p && p.name);
+            }
+            return [];
+        };
+
+        const project = {
+            id: page.id,
+            url: page.url,
+            lastEditedTime: page.last_edited_time,
+
+            record: parseProperty(props['Record']),
+            projectIds: parseProperty(props['Project']),
+
+            projectName: getFirstRollup(parseProperty(props['Project Name'])),
+            clientPartner: getFirstRollup(parseProperty(props['Client / Partner'])),
+            vertical: getFirstRollup(parseProperty(props['Vertical'])),
+            salesLeads: getPeopleFromRollup(parseProperty(props['Sales Lead(s)'])),
+            cardSummary: getFirstRollup(parseProperty(props['Card Summary'])),
+            aiStatusRecap: getFirstRollup(parseProperty(props['AI Status Recap'])),
+
+            status1: getFirstRollup(parseProperty(props['Status 1'])),
+            status: getFirstRollup(parseProperty(props['Status'])),
+            creativeWorkflowStatus: getFirstRollup(parseProperty(props['Creative Workflow Status'])),
+            productionWorkflowStatus: getFirstRollup(parseProperty(props['Production Workflow Status'])),
+            projectOutcome: getFirstRollup(parseProperty(props['Project Outcome'])),
+            priorityLevel: getFirstRollup(parseProperty(props['Priority Level'])),
+            totalProjectEffort: parseProperty(props['Total Project Effort (PTS)']),
+
+            dealStage: getFirstRollup(parseProperty(props['Deal Stage'])),
+            dealValue: parseProperty(props['Deal Value']),
+
+            clientProjectDueDate: getFirstRollup(parseProperty(props['Client Project Due Date'])),
+            internalProjectDueDate: getFirstRollup(parseProperty(props['Internal Project Due Date'])),
+            earliestDeliverableDue: parseProperty(props['Earliest Deliverable Due']),
+            latestDeliverableDue: parseProperty(props['Latest Deliverable Due']),
+
+            liveLink: getFirstRollup(parseProperty(props['Live Link'])),
+
+            slackChannelName: getFirstRollup(parseProperty(props['Slack Channel Name'])),
+            slackChannelId: getFirstRollup(parseProperty(props['Slack Channel ID']))
+        };
+
+        res.json({ success: true, project });
+    } catch (error) {
+        console.error('Error fetching commercial snapshot project:', error);
+        if (error.code === 'object_not_found') {
+            return res.status(404).json({ success: false, error: 'Project not found' });
+        }
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /commercial-snapshot/by-status/:status - Filter by workflow status
+app.get('/commercial-snapshot/by-status/:status', async (req, res) => {
+    try {
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({ success: false, error: 'Commercial Snapshot DB not configured' });
+        }
+
+        const { status } = req.params;
+
+        // Note: Filtering on rollup fields has limitations in Notion API
+        // We fetch all and filter client-side for reliability
+        const response = await notion.databases.query({
+            database_id: COMMERCIAL_SNAPSHOT_DB,
+            page_size: 100
+        });
+
+        const getFirstRollup = (parsed) => {
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+            return parsed;
+        };
+
+        const getPeopleFromRollup = (parsed) => {
+            if (Array.isArray(parsed)) {
+                return parsed.flat().filter(p => p && p.name);
+            }
+            return [];
+        };
+
+        const projects = response.results
+            .map(page => {
+                const props = page.properties;
+                return {
+                    id: page.id,
+                    url: page.url,
+                    lastEditedTime: page.last_edited_time,
+                    record: parseProperty(props['Record']),
+                    projectIds: parseProperty(props['Project']),
+                    projectName: getFirstRollup(parseProperty(props['Project Name'])),
+                    clientPartner: getFirstRollup(parseProperty(props['Client / Partner'])),
+                    vertical: getFirstRollup(parseProperty(props['Vertical'])),
+                    salesLeads: getPeopleFromRollup(parseProperty(props['Sales Lead(s)'])),
+                    cardSummary: getFirstRollup(parseProperty(props['Card Summary'])),
+                    aiStatusRecap: getFirstRollup(parseProperty(props['AI Status Recap'])),
+                    status1: getFirstRollup(parseProperty(props['Status 1'])),
+                    status: getFirstRollup(parseProperty(props['Status'])),
+                    creativeWorkflowStatus: getFirstRollup(parseProperty(props['Creative Workflow Status'])),
+                    productionWorkflowStatus: getFirstRollup(parseProperty(props['Production Workflow Status'])),
+                    projectOutcome: getFirstRollup(parseProperty(props['Project Outcome'])),
+                    priorityLevel: getFirstRollup(parseProperty(props['Priority Level'])),
+                    totalProjectEffort: parseProperty(props['Total Project Effort (PTS)']),
+                    dealStage: getFirstRollup(parseProperty(props['Deal Stage'])),
+                    dealValue: parseProperty(props['Deal Value']),
+                    clientProjectDueDate: getFirstRollup(parseProperty(props['Client Project Due Date'])),
+                    internalProjectDueDate: getFirstRollup(parseProperty(props['Internal Project Due Date'])),
+                    earliestDeliverableDue: parseProperty(props['Earliest Deliverable Due']),
+                    latestDeliverableDue: parseProperty(props['Latest Deliverable Due']),
+                    liveLink: getFirstRollup(parseProperty(props['Live Link'])),
+                    slackChannelName: getFirstRollup(parseProperty(props['Slack Channel Name'])),
+                    slackChannelId: getFirstRollup(parseProperty(props['Slack Channel ID']))
+                };
+            })
+            .filter(p => {
+                const statusLower = status.toLowerCase();
+                return (
+                    (p.status1 && p.status1.toLowerCase().includes(statusLower)) ||
+                    (p.status && p.status.toLowerCase().includes(statusLower)) ||
+                    (p.creativeWorkflowStatus && p.creativeWorkflowStatus.toLowerCase().includes(statusLower)) ||
+                    (p.productionWorkflowStatus && p.productionWorkflowStatus.toLowerCase().includes(statusLower))
+                );
+            });
+
+        res.json({
+            success: true,
+            projects,
+            count: projects.length,
+            filter: status
+        });
+    } catch (error) {
+        console.error('Error filtering commercial snapshot:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// NOTE: To update project data, use PATCH /projects/:id endpoint
+// Commercial Snapshot is a rollup view - source of truth is the Projects database
+// The Commercial Snapshot row's Project relation contains the ID of the master project
+
 // Health check
 app.get('/', (req, res) => {
     const { version } = require('./package.json');
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
         version,
         databases: {
             projects: PROJECTS_DB ? 'configured' : 'missing',
-            deliverables: DELIVERABLES_DB ? 'configured' : 'missing'
+            deliverables: DELIVERABLES_DB ? 'configured' : 'missing',
+            commercialSnapshot: COMMERCIAL_SNAPSHOT_DB ? 'configured' : 'missing'
         },
         endpoints: [
             'GET /projects',
@@ -872,7 +1168,10 @@ app.get('/', (req, res) => {
             'POST /deliverables/bulk',
             'PATCH /deliverables/:id',
             'GET /staff',
-            'GET /capacity'
+            'GET /capacity',
+            'GET /commercial-snapshot',
+            'GET /commercial-snapshot/:id',
+            'GET /commercial-snapshot/by-status/:status'
         ]
     });
 });
