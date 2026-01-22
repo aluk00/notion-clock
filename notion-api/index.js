@@ -416,7 +416,7 @@ app.get('/projects/:id', async (req, res) => {
         const project = {
             id: page.id,
             url: page.url,
-            title: parseProperty(props['TITLE']),
+            title: parseProperty(props['NAME']) || parseProperty(props['TITLE']),
             client: parseProperty(props['CLIENT / EXTERNAL PARTNER']),
             projectType: parseProperty(props['PROJECT TYPE']),
             priority: parseProperty(props['PRIORITY']),
