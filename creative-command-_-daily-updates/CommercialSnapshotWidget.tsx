@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DotGrid } from './components/DotGrid';
 import {
     calculatePipelineValue,
@@ -14,6 +14,182 @@ import { CommercialSnapshotProject, ProjectsByStatus } from './types';
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error';
 type ViewMode = 'overview' | 'list' | 'timeline';
+
+// Slack formatting helper
+const formatSlackDate = () => {
+    const now = new Date();
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+    // Get week commencing (Monday of current week)
+    const weekStart = new Date(now);
+    const day = weekStart.getDay();
+    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
+    weekStart.setDate(diff);
+
+    return {
+        weekCommencing: `W/C ${weekStart.getDate()} ${monthNames[weekStart.getMonth()]} ${weekStart.getFullYear()}`,
+        today: `${dayNames[now.getDay()]} ${now.getDate()} ${monthNames[now.getMonth()]}`
+    };
+};
+
+const generateSlackMessage = (grouped: ProjectsByStatus, projects: CommercialSnapshotProject[]): string => {
+    const { weekCommencing, today } = formatSlackDate();
+    const lines: string[] = [];
+
+    lines.push(`📍 WHAT'S HAPPENING AT DMG NEW MEDIA | SNAPSHOT`);
+    lines.push(`@channel`);
+    lines.push(weekCommencing);
+    lines.push(`📆 ${today}`);
+    lines.push('');
+
+    // Completed projects
+    if (grouped.completed.length > 0) {
+        lines.push(`✅ COMPLETED PROJECTS`);
+        lines.push('');
+        grouped.completed.forEach(p => {
+            const name = p.projectName || p.record;
+            if (p.liveLink) {
+                lines.push(`📄 ${name}: ${p.liveLink}`);
+            } else {
+                lines.push(`📄 ${name}`);
+            }
+        });
+        lines.push('');
+    }
+
+    // In Progress / Creative Responses
+    const inProgressCommercial = grouped.inProgress.filter(p =>
+        p.creativeWorkflowStatus?.toLowerCase().includes('creative') ||
+        p.dealStage?.toLowerCase().includes('proposal')
+    );
+    const inProduction = grouped.inProgress.filter(p =>
+        !inProgressCommercial.includes(p)
+    );
+
+    if (inProgressCommercial.length > 0) {
+        lines.push(`🛠 IN PROGRESS CREATIVE RESPONSES`);
+        lines.push('');
+        inProgressCommercial.forEach(p => {
+            const name = p.projectName || p.record;
+            lines.push(`📄 ${name}${p.creativeWorkflowStatus ? ` – ${p.creativeWorkflowStatus}` : ''}`);
+        });
+        lines.push('');
+    }
+
+    // Live Projects
+    if (grouped.active.length > 0) {
+        lines.push(`🚦 LIVE / ACTIVE PROJECTS`);
+        lines.push('');
+        grouped.active.forEach(p => {
+            const name = p.projectName || p.record;
+            lines.push(`*${name.toUpperCase()}*`);
+
+            // Add sales leads if available
+            if (p.salesLeads && p.salesLeads.length > 0) {
+                const leads = p.salesLeads.map(l => `@${l.name}`).join(' ');
+                lines.push(leads);
+            }
+
+            // Add card summary as bullet points
+            if (p.cardSummary) {
+                const bullets = p.cardSummary.split(/[.;]/).filter(b => b.trim());
+                bullets.forEach(bullet => {
+                    if (bullet.trim()) {
+                        lines.push(`• ${bullet.trim()}`);
+                    }
+                });
+            }
+
+            // Add AI status recap if available
+            if (p.aiStatusRecap) {
+                lines.push(`• ${p.aiStatusRecap}`);
+            }
+
+            // Add due date info
+            const dueDate = p.clientProjectDueDate || p.internalProjectDueDate;
+            if (dueDate) {
+                lines.push(`• 📅 Due: ${formatDate(dueDate)}`);
+            }
+
+            // Add link
+            if (p.liveLink) {
+                lines.push(`🔗 ${p.liveLink}`);
+            }
+            lines.push('');
+        });
+    }
+
+    // Active / In Production
+    if (inProduction.length > 0) {
+        lines.push(`🎬 ACTIVE / IN PRODUCTION`);
+        lines.push('');
+        inProduction.forEach(p => {
+            const name = p.projectName || p.record;
+            lines.push(`*${name.toUpperCase()}*`);
+
+            if (p.salesLeads && p.salesLeads.length > 0) {
+                const leads = p.salesLeads.map(l => `@${l.name}`).join(' ');
+                lines.push(leads);
+            }
+
+            if (p.cardSummary) {
+                const bullets = p.cardSummary.split(/[.;]/).filter(b => b.trim());
+                bullets.forEach(bullet => {
+                    if (bullet.trim()) {
+                        lines.push(`• ${bullet.trim()}`);
+                    }
+                });
+            }
+
+            if (p.productionWorkflowStatus) {
+                lines.push(`• Status: ${p.productionWorkflowStatus}`);
+            }
+
+            const dueDate = p.clientProjectDueDate || p.internalProjectDueDate;
+            if (dueDate) {
+                lines.push(`• 📅 Due: ${formatDate(dueDate)}`);
+            }
+
+            if (p.liveLink) {
+                lines.push(`🔗 ${p.liveLink}`);
+            }
+            lines.push('');
+        });
+    }
+
+    // Pipeline / Prospective
+    if (grouped.pipeline.length > 0) {
+        lines.push(`🤝 PIPELINE / PROSPECTIVE`);
+        lines.push('');
+        grouped.pipeline.forEach(p => {
+            const name = p.projectName || p.record;
+            const stage = p.dealStage ? ` (${p.dealStage})` : '';
+            const value = p.dealValue ? ` – ${formatCurrency(p.dealValue)}` : '';
+            lines.push(`• ${name}${stage}${value}`);
+        });
+        lines.push('');
+    }
+
+    // Coming Up - projects with deadlines in next 7 days
+    const comingUp = projects.filter(p => {
+        const d = getDaysUntil(p.clientProjectDueDate || p.internalProjectDueDate);
+        return d !== null && d > 0 && d <= 7;
+    });
+
+    if (comingUp.length > 0) {
+        lines.push(`👋 COMING UP THIS WEEK`);
+        lines.push('');
+        comingUp.forEach(p => {
+            const name = p.projectName || p.record;
+            const dueDate = p.clientProjectDueDate || p.internalProjectDueDate;
+            lines.push(`• ${name} – Due ${formatDate(dueDate)}`);
+        });
+        lines.push('');
+    }
+
+    return lines.join('\n');
+};
 
 const statusColors: Record<string, string> = {
     active: 'bg-emerald-50 border-emerald-200 text-emerald-700',
@@ -42,6 +218,27 @@ const CommercialSnapshotWidget: React.FC = () => {
     const [viewMode, setViewMode] = useState<ViewMode>('overview');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedClient, setSelectedClient] = useState<string | null>(null);
+    const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+
+    const handleCopyForSlack = useCallback(() => {
+        const grouped = groupProjectsByStatus(projects);
+        const slackMessage = generateSlackMessage(grouped, projects);
+
+        navigator.clipboard.writeText(slackMessage).then(() => {
+            setCopyFeedback('Copied!');
+            setTimeout(() => setCopyFeedback(null), 2000);
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            setCopyFeedback('Failed to copy');
+            setTimeout(() => setCopyFeedback(null), 2000);
+        });
+    }, [projects]);
+
+    const handleSendToSlack = useCallback(() => {
+        // Placeholder for future Slack integration
+        // Will be configured to post to a specific channel
+        alert('Send to Slack coming soon! Configure your Slack webhook URL.');
+    }, []);
 
     useEffect(() => {
         const load = async () => {
@@ -155,7 +352,7 @@ const CommercialSnapshotWidget: React.FC = () => {
                 )}
             </div>
 
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-3">
                 {project.liveLink && (
                     <a
                         href={project.liveLink}
@@ -171,9 +368,10 @@ const CommercialSnapshotWidget: React.FC = () => {
                         href={project.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[10px] font-bold text-[#21A0D8] hover:underline"
+                        className="text-[9px] text-slate-400 hover:text-slate-600 hover:underline"
+                        title="View in Notion"
                     >
-                        Open in Notion
+                        ↗
                     </a>
                 )}
             </div>
@@ -231,6 +429,26 @@ const CommercialSnapshotWidget: React.FC = () => {
                                 </button>
                             ))}
                         </div>
+
+                        {/* Slack Actions */}
+                        {loadState === 'ready' && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleCopyForSlack}
+                                    className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                    <span>📋</span>
+                                    {copyFeedback || 'Copy for Slack'}
+                                </button>
+                                <button
+                                    onClick={handleSendToSlack}
+                                    className="flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-[#4A154B] text-white hover:bg-[#611f64] transition-colors"
+                                >
+                                    <span>💬</span>
+                                    Send to Slack
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </header>
 
