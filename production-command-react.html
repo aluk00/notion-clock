@@ -529,9 +529,9 @@
                                     </a>
                                 )}
                             </div>
-                            {/* Full Project Page link */}
-                            {project?.id && (
-                                <a href={`project-detail.html?id=${project.id}`} target="_blank" rel="noopener noreferrer" style={{
+                            {/* Full Project Page link - use project.id or fall back to shoot.linkedProjectId */}
+                            {(project?.id || shoot.linkedProjectId) && (
+                                <a href={`project-detail.html?id=${project?.id || shoot.linkedProjectId}`} target="_blank" rel="noopener noreferrer" style={{
                                     padding:'10px 16px', background:'var(--production)', borderRadius:'var(--radius-sm)', textDecoration:'none',
                                     fontSize:10, fontWeight:800, color:'white', textTransform:'uppercase', display:'flex', alignItems:'center', gap:6
                                 }}>
@@ -541,8 +541,8 @@
                             )}
                             <div style={{flex:1}}></div>
                             {/* Open Project Desk for Firebase shoots with linked projects */}
-                            {source === 'FIREBASE' && project ? (
-                                <button onClick={() => { onClose(); onOpenDesk(project.id); }} style={{
+                            {source === 'FIREBASE' && (project?.id || shoot.linkedProjectId) ? (
+                                <button onClick={() => { onClose(); onOpenDesk(project?.id || shoot.linkedProjectId); }} style={{
                                     padding:'12px 20px', background:'var(--ink)', borderRadius:'var(--radius-sm)', border:'none',
                                     fontSize:10, fontWeight:800, color:'white', textTransform:'uppercase', cursor:'pointer'
                                 }}>
@@ -811,9 +811,9 @@
                         console.log('Projects loaded:', projRes?.projects?.length || 0);
                         setProjects(projRes?.projects || []);
 
-                        // Fetch production events
+                        // Fetch production events from Notion API
                         console.log('Fetching production events...');
-                        const eventsRes = await fetch(`${RUNDOWN_API}/events`).then(r => r.json());
+                        const eventsRes = await fetch(`${NOTION_API}/events`).then(r => r.json());
                         if (eventsRes.success) {
                             console.log('Production events loaded:', eventsRes.events?.length || 0);
                             setProductionEvents(eventsRes.events || []);
@@ -860,11 +860,11 @@
                     const allItems = [];
                     const datePromises = [];
 
-                    // Fetch rundown for each day in the month
+                    // Fetch rundown for each day in the month from Notion API
                     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                         const dateStr = d.toISOString().split('T')[0];
                         datePromises.push(
-                            fetch(`${RUNDOWN_API}/rundown?date=${dateStr}`)
+                            fetch(`${NOTION_API}/rundown?date=${dateStr}`)
                                 .then(r => r.json())
                                 .then(data => {
                                     if (data.success && data.items) {
@@ -1400,7 +1400,7 @@
                         <div style={{display:'flex', flexDirection:'column', height:650, background:'var(--surface)'}}>
                             <div style={{padding:'20px 24px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'flex-end', justifyContent:'space-between'}}>
                                 <div style={{width:350}}>
-                                    <CustomDropdown 
+                                    <CustomDropdown
                                         label="Active Project"
                                         value={selectedProjectId || ''}
                                         onChange={(v) => setSelectedProjectId(v || null)}
@@ -1408,153 +1408,202 @@
                                         placeholder="Select Project..."
                                     />
                                 </div>
-                                <div style={{textAlign:'right'}}>
-                                    <div style={{fontSize:10, fontWeight:800, color:'var(--production)', textTransform:'uppercase', letterSpacing:'0.08em'}}>{selectedProject?.client || '-'}</div>
-                                    <div style={{fontSize:22, fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.02em'}}>{selectedProject?.title || 'Select Project'}</div>
+                                <div style={{display:'flex', alignItems:'center', gap:16}}>
+                                    <div style={{textAlign:'right'}}>
+                                        <div style={{fontSize:10, fontWeight:800, color:'var(--production)', textTransform:'uppercase', letterSpacing:'0.08em'}}>{selectedProject?.client || '-'}</div>
+                                        <div style={{fontSize:22, fontWeight:900, textTransform:'uppercase', letterSpacing:'-0.02em'}}>{selectedProject?.title || 'Select Project'}</div>
+                                    </div>
+                                    {selectedProjectId && (
+                                        <a
+                                            href={`project-detail.html?id=${selectedProjectId}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                display:'flex', alignItems:'center', gap:8,
+                                                padding:'12px 20px', background:'var(--production)',
+                                                borderRadius:'var(--radius-sm)', textDecoration:'none',
+                                                fontSize:10, fontWeight:800, color:'white',
+                                                textTransform:'uppercase', whiteSpace:'nowrap'
+                                            }}
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                                <polyline points="15 3 21 3 21 9"/>
+                                                <line x1="10" y1="14" x2="21" y2="3"/>
+                                            </svg>
+                                            Full Project Page
+                                        </a>
+                                    )}
                                 </div>
                             </div>
 
-                            <div style={{flex:1, overflow:'auto', padding:20, background:'var(--surface)'}}>
+                            <div style={{flex:1, overflow:'auto', padding:24, background:'var(--surface-alt)'}}>
                                 {selectedProjectId ? (
-                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
-                                        {/* Left */}
+                                    <div style={{display:'grid', gridTemplateColumns:'1fr 340px', gap:24}}>
+                                        {/* Left Column */}
                                         <div>
-                                            {/* Budget */}
-                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:20, marginBottom:16}}>
-                                                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16}}>
-                                                    <div style={{display:'flex', alignItems:'center', gap:8}}>
-                                                        <span style={{width:20, height:20, background:'var(--production)', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>1</span>
-                                                        <span style={{fontSize:10, fontWeight:800, color:'var(--ink-sub)', textTransform:'uppercase'}}>Finance</span>
+                                            {/* Budget Card */}
+                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden', marginBottom:20}}>
+                                                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid var(--border)'}}>
+                                                    <div style={{display:'flex', alignItems:'center', gap:10}}>
+                                                        <span style={{width:10, height:10, borderRadius:'50%', background:'var(--production)'}}></span>
+                                                        <span style={{fontSize:12, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.04em'}}>Budget</span>
                                                     </div>
-                                                    <button onClick={() => { setEditingBudget(!editingBudget); setNewBudget(budget); }} style={{background:'none', border:'none', fontSize:10, fontWeight:800, color:'var(--production)', textTransform:'uppercase', cursor:'pointer'}}>
+                                                    <button onClick={() => { setEditingBudget(!editingBudget); setNewBudget(budget); }} style={{background:'none', border:'none', fontSize:10, fontWeight:700, color:'var(--production)', textTransform:'uppercase', cursor:'pointer', padding:'4px 10px', borderRadius:20, background:'rgba(67, 176, 73, 0.1)'}}>
                                                         {editingBudget ? 'Cancel' : 'Edit'}
                                                     </button>
                                                 </div>
-                                                {editingBudget ? (
-                                                    <div style={{display:'flex', gap:8, marginBottom:16}}>
-                                                        <input type="number" value={newBudget} onChange={(e) => setNewBudget(e.target.value)} style={{flex:1, padding:'10px 12px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', fontWeight:700}} placeholder="Budget..."/>
-                                                        <button onClick={handleUpdateBudget} style={{padding:'10px 16px', background:'var(--ink)', color:'white', border:'none', borderRadius:'var(--radius-sm)', fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Save</button>
-                                                    </div>
-                                                ) : (
-                                                    <div style={{marginBottom:12}}>
-                                                        <span className="mono" style={{fontSize:36, fontWeight:900}}>{formatCurrency(budget)}</span>
-                                                        <span style={{fontSize:10, fontWeight:800, color:'var(--ink-muted)', marginLeft:8, textTransform:'uppercase'}}>Allocated</span>
-                                                    </div>
-                                                )}
-                                                <div style={{height:8, background:'var(--surface-alt)', borderRadius:4, overflow:'hidden', marginBottom:16}}>
-                                                    <div style={{height:'100%', background:'var(--production)', width:`${budget > 0 ? Math.min((spent/budget)*100, 100) : 0}%`}}/>
-                                                </div>
-                                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-                                                    <div style={{padding:14, background:'var(--surface-alt)', borderRadius:'var(--radius-sm)'}}>
-                                                        <div style={{fontSize:9, fontWeight:800, color:'#EF4444', textTransform:'uppercase', marginBottom:4}}>Spent</div>
-                                                        <div className="mono" style={{fontSize:18, fontWeight:900}}>{formatCurrency(spent)}</div>
-                                                    </div>
-                                                    <div style={{padding:14, background:'var(--surface-alt)', borderRadius:'var(--radius-sm)'}}>
-                                                        <div style={{fontSize:9, fontWeight:800, color:'var(--ink-sub)', textTransform:'uppercase', marginBottom:4}}>Balance</div>
-                                                        <div className="mono" style={{fontSize:18, fontWeight:900}}>{formatCurrency(budget - spent)}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {/* Receipts */}
-                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:20}}>
-                                                <div style={{fontSize:10, fontWeight:800, color:'var(--ink-sub)', textTransform:'uppercase', marginBottom:12}}>Expenditure</div>
-                                                <div style={{maxHeight:140, overflow:'auto', marginBottom:12}}>
-                                                    {productionRecord?.receipts?.length > 0 ? productionRecord.receipts.map((r, i) => (
-                                                        <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'8px 10px', background:'var(--surface-alt)', borderRadius:6, marginBottom:6}}>
-                                                            <span style={{fontSize:10, fontWeight:800, textTransform:'uppercase'}}>{r.title}</span>
-                                                            <span className="mono" style={{fontSize:11, fontWeight:700}}>{formatCurrency(r.amt)}</span>
+                                                <div style={{padding:20}}>
+                                                    {editingBudget ? (
+                                                        <div style={{display:'flex', gap:10, marginBottom:16}}>
+                                                            <input type="number" value={newBudget} onChange={(e) => setNewBudget(e.target.value)} style={{flex:1, padding:'12px 14px', background:'var(--surface-alt)', border:'1px solid var(--border)', borderRadius:8, fontWeight:700, fontSize:14}} placeholder="Budget..."/>
+                                                            <button onClick={handleUpdateBudget} style={{padding:'12px 20px', background:'var(--production)', color:'white', border:'none', borderRadius:8, fontSize:11, fontWeight:700, textTransform:'uppercase', cursor:'pointer'}}>Save</button>
                                                         </div>
-                                                    )) : <div style={{fontSize:10, color:'var(--ink-muted)', fontStyle:'italic', textAlign:'center', padding:16}}>No expenses</div>}
-                                                </div>
-                                                <div style={{display:'flex', gap:8, marginBottom:8}}>
-                                                    <input id="recTitle" placeholder="Item" style={{flex:1, padding:'10px 12px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', fontSize:11, fontWeight:600}}/>
-                                                    <input id="recAmt" type="number" placeholder="£" style={{width:80, padding:'10px 12px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', fontSize:11, fontWeight:600}}/>
-                                                </div>
-                                                <button onClick={handleAddReceipt} style={{width:'100%', padding:'12px', background:'var(--ink)', color:'white', border:'none', borderRadius:'var(--radius-sm)', fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Add Expense</button>
-                                            </div>
-                                            {/* Key Dates */}
-                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:20, marginTop:16}}>
-                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
-                                                    <span style={{width:20, height:20, background:'#21A0D8', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>4</span>
-                                                    <span style={{fontSize:10, fontWeight:800, color:'var(--ink-sub)', textTransform:'uppercase'}}>Key Dates</span>
-                                                </div>
-                                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-                                                    <div style={{padding:14, background:'var(--surface-alt)', borderRadius:'var(--radius-sm)'}}>
-                                                        <div style={{fontSize:9, fontWeight:800, color:'#21A0D8', textTransform:'uppercase', marginBottom:4}}>Client Due</div>
-                                                        <div style={{fontSize:13, fontWeight:800}}>{selectedProject?.dueDate ? new Date(selectedProject.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
+                                                    ) : (
+                                                        <div style={{marginBottom:16}}>
+                                                            <span className="mono" style={{fontSize:32, fontWeight:900, color:'var(--production)'}}>{formatCurrency(budget)}</span>
+                                                            <span style={{fontSize:11, fontWeight:700, color:'var(--ink-muted)', marginLeft:10, textTransform:'uppercase'}}>Allocated</span>
+                                                        </div>
+                                                    )}
+                                                    <div style={{height:8, background:'var(--surface-alt)', borderRadius:4, overflow:'hidden', marginBottom:20}}>
+                                                        <div style={{height:'100%', background:'var(--production)', width:`${budget > 0 ? Math.min((spent/budget)*100, 100) : 0}%`, transition:'width 0.3s ease'}}/>
                                                     </div>
-                                                    <div style={{padding:14, background:'var(--surface-alt)', borderRadius:'var(--radius-sm)'}}>
-                                                        <div style={{fontSize:9, fontWeight:800, color:'var(--production)', textTransform:'uppercase', marginBottom:4}}>Go Live</div>
-                                                        <div style={{fontSize:13, fontWeight:800}}>{selectedProject?.liveDate ? new Date(selectedProject.liveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
-                                                    </div>
-                                                    <div style={{padding:14, background:'var(--surface-alt)', borderRadius:'var(--radius-sm)'}}>
-                                                        <div style={{fontSize:9, fontWeight:800, color:'#F59E0B', textTransform:'uppercase', marginBottom:4}}>Internal Due</div>
-                                                        <div style={{fontSize:13, fontWeight:800}}>{selectedProject?.internalDueDate ? new Date(selectedProject.internalDueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
-                                                    </div>
-                                                    <div style={{padding:14, background:'var(--surface-alt)', borderRadius:'var(--radius-sm)'}}>
-                                                        <div style={{fontSize:9, fontWeight:800, color:'#E6468B', textTransform:'uppercase', marginBottom:4}}>Shoot Date</div>
-                                                        <div style={{fontSize:13, fontWeight:800}}>{selectedProject?.shootDate ? new Date(selectedProject.shootDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</div>
+                                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                                                        <div style={{padding:16, background:'var(--surface-alt)', borderRadius:10, textAlign:'center'}}>
+                                                            <div style={{fontSize:9, fontWeight:700, color:'var(--danger)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6}}>Spent</div>
+                                                            <div className="mono" style={{fontSize:18, fontWeight:800}}>{formatCurrency(spent)}</div>
+                                                        </div>
+                                                        <div style={{padding:16, background:'var(--surface-alt)', borderRadius:10, textAlign:'center'}}>
+                                                            <div style={{fontSize:9, fontWeight:700, color:'var(--ink-muted)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6}}>Remaining</div>
+                                                            <div className="mono" style={{fontSize:18, fontWeight:800, color: budget - spent < 0 ? 'var(--danger)' : 'var(--ink)'}}>{formatCurrency(budget - spent)}</div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                            {/* Deliverables Overview */}
-                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:20, marginTop:16}}>
-                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
-                                                    <span style={{width:20, height:20, background:'#E6468B', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>5</span>
-                                                    <span style={{fontSize:10, fontWeight:800, color:'var(--ink-sub)', textTransform:'uppercase'}}>Deliverables</span>
+
+                                            {/* Expenses Card */}
+                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden', marginBottom:20}}>
+                                                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid var(--border)'}}>
+                                                    <div style={{display:'flex', alignItems:'center', gap:10}}>
+                                                        <span style={{width:10, height:10, borderRadius:'50%', background:'var(--danger)'}}></span>
+                                                        <span style={{fontSize:12, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.04em'}}>Expenses</span>
+                                                    </div>
+                                                    <span style={{fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'var(--surface-alt)', color:'var(--ink-sub)'}}>{productionRecord?.receipts?.length || 0}</span>
                                                 </div>
-                                                <DeliverablesList projectId={selectedProjectId} />
+                                                <div style={{padding:20}}>
+                                                    <div style={{maxHeight:160, overflow:'auto', marginBottom:16}}>
+                                                        {productionRecord?.receipts?.length > 0 ? productionRecord.receipts.map((r, i) => (
+                                                            <div key={i} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 14px', background:'var(--surface-alt)', borderRadius:10, marginBottom:8}}>
+                                                                <span style={{fontSize:12, fontWeight:700}}>{r.title}</span>
+                                                                <span className="mono" style={{fontSize:12, fontWeight:700, color:'var(--danger)'}}>{formatCurrency(r.amt)}</span>
+                                                            </div>
+                                                        )) : <div style={{textAlign:'center', padding:24, color:'var(--ink-muted)', fontSize:12}}>No expenses recorded</div>}
+                                                    </div>
+                                                    <div style={{display:'flex', gap:10, marginBottom:10}}>
+                                                        <input id="recTitle" placeholder="Item description" style={{flex:1, padding:'12px 14px', background:'var(--surface-alt)', border:'1px solid var(--border)', borderRadius:8, fontSize:12, fontWeight:600}}/>
+                                                        <input id="recAmt" type="number" placeholder="£0" style={{width:90, padding:'12px 14px', background:'var(--surface-alt)', border:'1px solid var(--border)', borderRadius:8, fontSize:12, fontWeight:600}}/>
+                                                    </div>
+                                                    <button onClick={handleAddReceipt} style={{width:'100%', padding:'14px', background:'var(--ink)', color:'white', border:'none', borderRadius:8, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.03em', cursor:'pointer'}}>Add Expense</button>
+                                                </div>
+                                            </div>
+
+                                            {/* Key Dates Card */}
+                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden', marginBottom:20}}>
+                                                <div style={{display:'flex', alignItems:'center', padding:'18px 20px', borderBottom:'1px solid var(--border)'}}>
+                                                    <span style={{width:10, height:10, borderRadius:'50%', background:'var(--dmg-blue)', marginRight:10}}></span>
+                                                    <span style={{fontSize:12, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.04em'}}>Key Dates</span>
+                                                </div>
+                                                <div style={{padding:20}}>
+                                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+                                                        <div style={{padding:16, background:'var(--surface-alt)', borderRadius:10, textAlign:'center'}}>
+                                                            <div style={{fontSize:9, fontWeight:700, color:'var(--dmg-blue)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6}}>Client Due</div>
+                                                            <div style={{fontSize:14, fontWeight:800}}>{selectedProject?.dueDate ? new Date(selectedProject.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</div>
+                                                        </div>
+                                                        <div style={{padding:16, background:'var(--surface-alt)', borderRadius:10, textAlign:'center'}}>
+                                                            <div style={{fontSize:9, fontWeight:700, color:'var(--production)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6}}>Go Live</div>
+                                                            <div style={{fontSize:14, fontWeight:800}}>{selectedProject?.liveDate ? new Date(selectedProject.liveDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</div>
+                                                        </div>
+                                                        <div style={{padding:16, background:'var(--surface-alt)', borderRadius:10, textAlign:'center'}}>
+                                                            <div style={{fontSize:9, fontWeight:700, color:'var(--amber)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6}}>Internal Due</div>
+                                                            <div style={{fontSize:14, fontWeight:800}}>{selectedProject?.internalDueDate ? new Date(selectedProject.internalDueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</div>
+                                                        </div>
+                                                        <div style={{padding:16, background:'var(--surface-alt)', borderRadius:10, textAlign:'center'}}>
+                                                            <div style={{fontSize:9, fontWeight:700, color:'var(--creative)', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6}}>Shoot Date</div>
+                                                            <div style={{fontSize:14, fontWeight:800}}>{selectedProject?.shootDate ? new Date(selectedProject.shootDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Deliverables Card */}
+                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden'}}>
+                                                <div style={{display:'flex', alignItems:'center', padding:'18px 20px', borderBottom:'1px solid var(--border)'}}>
+                                                    <span style={{width:10, height:10, borderRadius:'50%', background:'var(--creative)', marginRight:10}}></span>
+                                                    <span style={{fontSize:12, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.04em'}}>Deliverables</span>
+                                                </div>
+                                                <div style={{padding:20}}>
+                                                    <DeliverablesList projectId={selectedProjectId} />
+                                                </div>
                                             </div>
                                         </div>
-                                        {/* Right */}
+
+                                        {/* Right Column */}
                                         <div>
-                                            {/* Schedule */}
-                                            <div style={{background:'var(--production-soft)', border:'1px solid var(--production)', borderRadius:'var(--radius)', padding:20, marginBottom:16}}>
-                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
-                                                    <span style={{width:20, height:20, background:'var(--production)', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>2</span>
-                                                    <span style={{fontSize:10, fontWeight:800, color:'var(--production)', textTransform:'uppercase'}}>Schedule</span>
+                                            {/* Schedule Card */}
+                                            <div style={{background:'var(--surface)', border:'1px solid var(--production)', borderRadius:14, overflow:'hidden', marginBottom:20}}>
+                                                <div style={{display:'flex', alignItems:'center', padding:'18px 20px', borderBottom:'1px solid var(--production)', background:'rgba(67, 176, 73, 0.05)'}}>
+                                                    <span style={{width:10, height:10, borderRadius:'50%', background:'var(--production)', marginRight:10}}></span>
+                                                    <span style={{fontSize:12, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.04em', color:'var(--production)'}}>Schedule</span>
                                                 </div>
-                                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
-                                                    <input type="date" id="shootDate" style={{padding:'12px 14px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', fontSize:11, fontWeight:600}}/>
-                                                    <CustomDropdown value="Standard Shoot" onChange={(v) => document.getElementById('shootFormat').value = v} options={formatOptions} />
-                                                    <input type="hidden" id="shootFormat" defaultValue="Standard Shoot" />
-                                                </div>
-                                                <button onClick={handleScheduleShoot} style={{width:'100%', padding:'12px', background:'var(--production)', color:'white', border:'none', borderRadius:'var(--radius-sm)', fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Add Shoot</button>
-                                                <div style={{marginTop:12}}>
-                                                    {projectShoots.map(s => (
-                                                        <div key={s.id} style={{display:'flex', justifyContent:'space-between', fontSize:10, fontWeight:700, color:'var(--production)', background:'var(--surface)', padding:'10px 12px', borderRadius:'var(--radius-sm)', marginTop:6}}>
-                                                            <span>{new Date(s.date || s.startDateTime).toLocaleDateString('en-GB', { weekday:'short', day: 'numeric', month: 'short' })}</span>
-                                                            <span style={{textTransform:'uppercase'}}>{s.format || 'Shoot'}</span>
-                                                        </div>
-                                                    ))}
+                                                <div style={{padding:20}}>
+                                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12}}>
+                                                        <input type="date" id="shootDate" style={{padding:'12px 14px', background:'var(--surface-alt)', border:'1px solid var(--border)', borderRadius:8, fontSize:12, fontWeight:600}}/>
+                                                        <CustomDropdown value="Standard Shoot" onChange={(v) => document.getElementById('shootFormat').value = v} options={formatOptions} />
+                                                        <input type="hidden" id="shootFormat" defaultValue="Standard Shoot" />
+                                                    </div>
+                                                    <button onClick={handleScheduleShoot} style={{width:'100%', padding:'14px', background:'var(--production)', color:'white', border:'none', borderRadius:8, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.03em', cursor:'pointer'}}>Add Shoot</button>
+                                                    <div style={{marginTop:16}}>
+                                                        {projectShoots.length > 0 ? projectShoots.map(s => (
+                                                            <div key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12, fontWeight:700, color:'var(--production)', background:'rgba(67, 176, 73, 0.08)', padding:'12px 14px', borderRadius:10, marginTop:8}}>
+                                                                <span>{new Date(s.date || s.startDateTime).toLocaleDateString('en-GB', { weekday:'short', day: 'numeric', month: 'short' })}</span>
+                                                                <span style={{textTransform:'uppercase', fontSize:10, background:'var(--production)', color:'white', padding:'4px 8px', borderRadius:4}}>{s.format || 'Shoot'}</span>
+                                                            </div>
+                                                        )) : <div style={{textAlign:'center', padding:20, color:'var(--ink-muted)', fontSize:12}}>No shoots scheduled</div>}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            {/* Crew */}
-                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius)', padding:20}}>
-                                                <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
-                                                    <span style={{width:20, height:20, background:'var(--production)', color:'white', borderRadius:5, display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, fontWeight:900}}>3</span>
-                                                    <span style={{fontSize:10, fontWeight:800, color:'var(--ink-sub)', textTransform:'uppercase'}}>Crew</span>
+
+                                            {/* Crew Card */}
+                                            <div style={{background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden'}}>
+                                                <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 20px', borderBottom:'1px solid var(--border)'}}>
+                                                    <div style={{display:'flex', alignItems:'center', gap:10}}>
+                                                        <span style={{width:10, height:10, borderRadius:'50%', background:'var(--social)'}}></span>
+                                                        <span style={{fontSize:12, fontWeight:800, textTransform:'uppercase', letterSpacing:'0.04em'}}>Crew</span>
+                                                    </div>
+                                                    <span style={{fontSize:10, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'var(--surface-alt)', color:'var(--ink-sub)'}}>{productionRecord?.crew?.length || 0}</span>
                                                 </div>
-                                                <div style={{maxHeight:120, overflow:'auto', marginBottom:16}}>
-                                                    {productionRecord?.crew?.length > 0 ? productionRecord.crew.map((c, i) => (
-                                                        <div key={i} style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'var(--surface-alt)', borderRadius:'var(--radius-sm)', marginBottom:6}}>
-                                                            <div style={{width:36, height:36, borderRadius:'var(--radius-sm)', background:'var(--production-soft)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:'var(--production)'}}>{(c.name||'?')[0]}</div>
-                                                            <div>
-                                                                <div style={{fontSize:12, fontWeight:800, textTransform:'uppercase'}}>{c.name}</div>
-                                                                <div style={{fontSize:9, fontWeight:600, color:'var(--ink-sub)', textTransform:'uppercase'}}>{c.role}</div>
+                                                <div style={{padding:20}}>
+                                                    <div style={{maxHeight:180, overflow:'auto', marginBottom:16}}>
+                                                        {productionRecord?.crew?.length > 0 ? productionRecord.crew.map((c, i) => (
+                                                            <div key={i} style={{display:'flex', alignItems:'center', gap:12, padding:'14px', background:'var(--surface-alt)', borderRadius:10, marginBottom:10}}>
+                                                                <div style={{width:40, height:40, borderRadius:'50%', background:'var(--social)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800, color:'white'}}>{(c.name||'?')[0]}</div>
+                                                                <div style={{flex:1}}>
+                                                                    <div style={{fontSize:13, fontWeight:700}}>{c.name}</div>
+                                                                    <div style={{fontSize:10, fontWeight:600, color:'var(--ink-sub)', textTransform:'uppercase'}}>{c.role}</div>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )) : <div style={{fontSize:10, color:'var(--ink-muted)', fontStyle:'italic', textAlign:'center', padding:16}}>No crew assigned</div>}
+                                                        )) : <div style={{textAlign:'center', padding:24, color:'var(--ink-muted)', fontSize:12}}>No crew assigned</div>}
+                                                    </div>
+                                                    <div style={{marginBottom:10}}>
+                                                        <CustomDropdown value="" onChange={(v) => document.getElementById('staffSelect').value = v} options={staffOptions} placeholder="Select team member..." />
+                                                        <input type="hidden" id="staffSelect" />
+                                                    </div>
+                                                    <div style={{marginBottom:12}}>
+                                                        <CustomDropdown value="Lead Producer" onChange={(v) => document.getElementById('roleSelect').value = v} options={roleOptions} />
+                                                        <input type="hidden" id="roleSelect" defaultValue="Lead Producer" />
+                                                    </div>
+                                                    <button onClick={handleAssignCrew} style={{width:'100%', padding:'14px', background:'var(--ink)', color:'white', border:'none', borderRadius:8, fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.03em', cursor:'pointer'}}>Assign to Project</button>
                                                 </div>
-                                                <div style={{marginBottom:12}}>
-                                                    <CustomDropdown value="" onChange={(v) => document.getElementById('staffSelect').value = v} options={staffOptions} placeholder="Select Team Member..." />
-                                                    <input type="hidden" id="staffSelect" />
-                                                </div>
-                                                <div style={{marginBottom:12}}>
-                                                    <CustomDropdown value="Lead Producer" onChange={(v) => document.getElementById('roleSelect').value = v} options={roleOptions} />
-                                                    <input type="hidden" id="roleSelect" defaultValue="Lead Producer" />
-                                                </div>
-                                                <button onClick={handleAssignCrew} style={{width:'100%', padding:'12px', background:'var(--ink)', color:'white', border:'none', borderRadius:'var(--radius-sm)', fontSize:10, fontWeight:800, textTransform:'uppercase', cursor:'pointer'}}>Assign to Project</button>
                                             </div>
                                         </div>
                                     </div>
