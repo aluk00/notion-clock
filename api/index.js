@@ -982,6 +982,18 @@ app.get('/commercial-snapshot', async (req, res) => {
                 record: parseProperty(props['Record']),
                 projectIds: parseProperty(props['Project']),
 
+                // Daily rundown control fields (user-editable)
+                snapshotDate: parseProperty(props['Snapshot Date']),
+                weekCommencing: parseProperty(props['Week Commencing']),
+                section: parseProperty(props['Section']),
+                itemType: parseProperty(props['Item Type']),
+                headline: parseProperty(props['Headline']),
+                details: parseProperty(props['Details']),
+                links: parseProperty(props['Links']),
+                slackMentions: parseProperty(props['Slack Mentions']),
+                statusTag: parseProperty(props['Status Tag']),
+                rawSnapshotBlock: parseProperty(props['Raw Snapshot Block']),
+
                 // Project metadata (rollups from Project)
                 projectName: getFirstRollup(parseProperty(props['Project Name'])),
                 clientPartner: getFirstRollup(parseProperty(props['Client / Partner'])),
@@ -1074,6 +1086,18 @@ app.get('/commercial-snapshot/:id', async (req, res) => {
             record: parseProperty(props['Record']),
             projectIds: parseProperty(props['Project']),
 
+            // Daily rundown control fields
+            snapshotDate: parseProperty(props['Snapshot Date']),
+            weekCommencing: parseProperty(props['Week Commencing']),
+            section: parseProperty(props['Section']),
+            itemType: parseProperty(props['Item Type']),
+            headline: parseProperty(props['Headline']),
+            details: parseProperty(props['Details']),
+            links: parseProperty(props['Links']),
+            slackMentions: parseProperty(props['Slack Mentions']),
+            statusTag: parseProperty(props['Status Tag']),
+            rawSnapshotBlock: parseProperty(props['Raw Snapshot Block']),
+
             projectName: getFirstRollup(parseProperty(props['Project Name'])),
             clientPartner: getFirstRollup(parseProperty(props['Client / Partner'])),
             vertical: getFirstRollup(parseProperty(props['Vertical'])),
@@ -1150,6 +1174,17 @@ app.get('/commercial-snapshot/by-status/:status', async (req, res) => {
                     lastEditedTime: page.last_edited_time,
                     record: parseProperty(props['Record']),
                     projectIds: parseProperty(props['Project']),
+                    // Daily rundown control fields
+                    snapshotDate: parseProperty(props['Snapshot Date']),
+                    weekCommencing: parseProperty(props['Week Commencing']),
+                    section: parseProperty(props['Section']),
+                    itemType: parseProperty(props['Item Type']),
+                    headline: parseProperty(props['Headline']),
+                    details: parseProperty(props['Details']),
+                    links: parseProperty(props['Links']),
+                    slackMentions: parseProperty(props['Slack Mentions']),
+                    statusTag: parseProperty(props['Status Tag']),
+                    rawSnapshotBlock: parseProperty(props['Raw Snapshot Block']),
                     projectName: getFirstRollup(parseProperty(props['Project Name'])),
                     clientPartner: getFirstRollup(parseProperty(props['Client / Partner'])),
                     vertical: getFirstRollup(parseProperty(props['Vertical'])),
@@ -1196,6 +1231,263 @@ app.get('/commercial-snapshot/by-status/:status', async (req, res) => {
     }
 });
 
+// ============================================
+// DAILY RUNDOWN ENDPOINT
+// Fetches today's snapshot items grouped by Section
+// This replaces the need for Firestore-based rundowns
+// ============================================
+
+// Section display configuration - maps Notion Section values to display
+const SECTION_CONFIG = {
+    '✅ Completed – Creative Responses (Last Week)': { id: 'completed_last_week', order: 1, title: 'Completed – Last Week', tone: 'sky' },
+    '✅ Completed – Creative Responses (This Week)': { id: 'completed_this_week', order: 2, title: 'Completed – This Week', tone: 'sky' },
+    '🆕 New Briefs in Progress': { id: 'new_briefs', order: 3, title: 'New Briefs in Progress', tone: 'amber' },
+    '🟡 Active / In Production Projects': { id: 'active', order: 4, title: 'Active / In Production', tone: 'emerald' },
+    '🧠 New Media Ventures': { id: 'ventures', order: 5, title: 'New Media Ventures', tone: 'purple' },
+    '🧠 Prospective & Strategic Partnerships': { id: 'partnerships', order: 6, title: 'Prospective & Strategic Partnerships', tone: 'rose' },
+    '🛠 Internal / Workflow': { id: 'internal', order: 7, title: 'Internal / Workflow', tone: 'gray' },
+    '👋 Coming Up': { id: 'coming_up', order: 8, title: 'Coming Up', tone: 'indigo' },
+    'Other': { id: 'other', order: 9, title: 'Other', tone: 'slate' }
+};
+
+// GET /daily-rundown - Get today's snapshot items grouped by section
+app.get('/daily-rundown', async (req, res) => {
+    try {
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Commercial Snapshot DB not configured'
+            });
+        }
+
+        // Allow date override via query param (for testing/historical views)
+        const targetDate = req.query.date || new Date().toISOString().split('T')[0];
+
+        // Query with filter for Snapshot Date = today
+        const response = await notion.databases.query({
+            database_id: COMMERCIAL_SNAPSHOT_DB,
+            filter: {
+                property: 'Snapshot Date',
+                date: {
+                    equals: targetDate
+                }
+            },
+            page_size: 100
+        });
+
+        // Helper functions
+        const getFirstRollup = (parsed) => {
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+            return parsed;
+        };
+
+        const getPeopleFromRollup = (parsed) => {
+            if (Array.isArray(parsed)) {
+                return parsed.flat().filter(p => p && p.name);
+            }
+            return [];
+        };
+
+        // Parse all items
+        const items = response.results.map(page => {
+            const props = page.properties;
+            return {
+                id: page.id,
+                url: page.url,
+                lastEditedTime: page.last_edited_time,
+
+                // Core identity
+                record: parseProperty(props['Record']),
+                projectIds: parseProperty(props['Project']),
+
+                // Daily rundown control fields (the ones user sets)
+                snapshotDate: parseProperty(props['Snapshot Date']),
+                weekCommencing: parseProperty(props['Week Commencing']),
+                section: parseProperty(props['Section']),
+                itemType: parseProperty(props['Item Type']),
+                headline: parseProperty(props['Headline']),
+                details: parseProperty(props['Details']),
+                links: parseProperty(props['Links']),
+                slackMentions: parseProperty(props['Slack Mentions']),
+                statusTag: parseProperty(props['Status Tag']),
+                rawSnapshotBlock: parseProperty(props['Raw Snapshot Block']),
+
+                // Project metadata (rollups)
+                projectName: getFirstRollup(parseProperty(props['Project Name'])),
+                clientPartner: getFirstRollup(parseProperty(props['Client / Partner'])),
+                vertical: getFirstRollup(parseProperty(props['Vertical'])),
+                salesLeads: getPeopleFromRollup(parseProperty(props['Sales Lead(s)'])),
+                cardSummary: getFirstRollup(parseProperty(props['Card Summary'])),
+                aiStatusRecap: getFirstRollup(parseProperty(props['AI Status Recap'])),
+
+                // Status and workflow
+                status1: getFirstRollup(parseProperty(props['Status 1'])),
+                status: getFirstRollup(parseProperty(props['Status'])),
+                creativeWorkflowStatus: getFirstRollup(parseProperty(props['Creative Workflow Status'])),
+                productionWorkflowStatus: getFirstRollup(parseProperty(props['Production Workflow Status'])),
+                projectOutcome: getFirstRollup(parseProperty(props['Project Outcome'])),
+                priorityLevel: getFirstRollup(parseProperty(props['Priority Level'])),
+
+                // Commercial info
+                dealStage: getFirstRollup(parseProperty(props['Deal Stage'])),
+                dealValue: parseProperty(props['Deal Value']),
+
+                // Timeline
+                clientProjectDueDate: getFirstRollup(parseProperty(props['Client Project Due Date'])),
+                internalProjectDueDate: getFirstRollup(parseProperty(props['Internal Project Due Date'])),
+                earliestDeliverableDue: parseProperty(props['Earliest Deliverable Due']),
+                latestDeliverableDue: parseProperty(props['Latest Deliverable Due']),
+
+                // Live campaign
+                liveLink: getFirstRollup(parseProperty(props['Live Link'])),
+
+                // Slack
+                slackChannelName: getFirstRollup(parseProperty(props['Slack Channel Name'])),
+                slackChannelId: getFirstRollup(parseProperty(props['Slack Channel ID']))
+            };
+        });
+
+        // Group items by section
+        const sectionGroups = {};
+        items.forEach(item => {
+            const sectionName = item.section || 'Other';
+            if (!sectionGroups[sectionName]) {
+                sectionGroups[sectionName] = [];
+            }
+            sectionGroups[sectionName].push(item);
+        });
+
+        // Convert to ordered sections array
+        const sections = Object.entries(sectionGroups)
+            .map(([sectionName, sectionItems]) => {
+                const config = SECTION_CONFIG[sectionName] || {
+                    id: sectionName.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+                    order: 99,
+                    title: sectionName,
+                    tone: 'slate'
+                };
+                return {
+                    id: config.id,
+                    notionSection: sectionName,
+                    title: config.title,
+                    tone: config.tone,
+                    order: config.order,
+                    items: sectionItems
+                };
+            })
+            .sort((a, b) => a.order - b.order);
+
+        // Calculate totals
+        const totals = {
+            total: items.length,
+            bySection: sections.reduce((acc, section) => {
+                acc[section.id] = section.items.length;
+                return acc;
+            }, {}),
+            byStatusTag: items.reduce((acc, item) => {
+                const tag = item.statusTag || 'none';
+                acc[tag] = (acc[tag] || 0) + 1;
+                return acc;
+            }, {})
+        };
+
+        res.json({
+            success: true,
+            date: targetDate,
+            sections,
+            totals,
+            itemCount: items.length,
+            sectionCount: sections.length,
+            lastFetched: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error fetching daily rundown:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /daily-rundown/week - Get current week's snapshot items
+app.get('/daily-rundown/week', async (req, res) => {
+    try {
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Commercial Snapshot DB not configured'
+            });
+        }
+
+        // Get week start (Monday) and end (Sunday)
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() + mondayOffset);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+
+        const startDate = weekStart.toISOString().split('T')[0];
+        const endDate = weekEnd.toISOString().split('T')[0];
+
+        const response = await notion.databases.query({
+            database_id: COMMERCIAL_SNAPSHOT_DB,
+            filter: {
+                and: [
+                    {
+                        property: 'Snapshot Date',
+                        date: { on_or_after: startDate }
+                    },
+                    {
+                        property: 'Snapshot Date',
+                        date: { on_or_before: endDate }
+                    }
+                ]
+            },
+            page_size: 100
+        });
+
+        const getFirstRollup = (parsed) => {
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+            return parsed;
+        };
+
+        // Parse items (simplified for week view)
+        const items = response.results.map(page => {
+            const props = page.properties;
+            return {
+                id: page.id,
+                url: page.url,
+                snapshotDate: parseProperty(props['Snapshot Date']),
+                section: parseProperty(props['Section']),
+                headline: parseProperty(props['Headline']),
+                details: parseProperty(props['Details']),
+                statusTag: parseProperty(props['Status Tag']),
+                projectName: getFirstRollup(parseProperty(props['Project Name'])),
+                clientPartner: getFirstRollup(parseProperty(props['Client / Partner']))
+            };
+        });
+
+        // Group by date
+        const byDate = {};
+        items.forEach(item => {
+            const date = item.snapshotDate || 'unscheduled';
+            if (!byDate[date]) byDate[date] = [];
+            byDate[date].push(item);
+        });
+
+        res.json({
+            success: true,
+            weekStart: startDate,
+            weekEnd: endDate,
+            byDate,
+            itemCount: items.length,
+            dateCount: Object.keys(byDate).length
+        });
+    } catch (error) {
+        console.error('Error fetching weekly rundown:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // NOTE: To update project data, use PATCH /projects/:id endpoint
 // Commercial Snapshot is a rollup view - source of truth is the Projects database
 // The Commercial Snapshot row's Project relation contains the ID of the master project
@@ -1226,7 +1518,10 @@ app.get('/', (req, res) => {
             'GET /capacity',
             'GET /commercial-snapshot',
             'GET /commercial-snapshot/:id',
-            'GET /commercial-snapshot/by-status/:status'
+            'GET /commercial-snapshot/by-status/:status',
+            'GET /daily-rundown',
+            'GET /daily-rundown?date=YYYY-MM-DD',
+            'GET /daily-rundown/week'
         ]
     });
 });
