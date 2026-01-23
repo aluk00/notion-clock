@@ -9,9 +9,13 @@ app.use(express.json());
 // Initialize Notion client
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
-// Database IDs from environment
-const PROJECTS_DB = process.env.NOTION_PROJECTS_DB;
+// Database IDs from environment (support both naming conventions)
+const PROJECTS_DB = process.env.NOTION_MASTER_PROJECTS_DB || process.env.NOTION_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
+const EVENTS_DB = process.env.NOTION_PROD_EVENTS_DB;
+const STAFF_DB = process.env.NOTION_STAFF_DIR_DB;
+const RUNDOWN_DB = process.env.NOTION_DAILY_RUNDOWN_DB;
+const COMMERCIAL_SNAPSHOT_DB = process.env.NOTION_COMMERCIAL_SNAPSHOT;
 
 // ============================================
 // HELPER: Parse Notion properties
@@ -935,4 +939,13 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log('Configuration:', {
+        hasApiKey: !!process.env.NOTION_API_KEY,
+        projectsDb: PROJECTS_DB ? 'configured' : 'MISSING',
+        deliverablesDb: DELIVERABLES_DB ? 'configured' : 'not set',
+        eventsDb: EVENTS_DB ? 'configured' : 'not set',
+        staffDb: STAFF_DB ? 'configured' : 'not set',
+        rundownDb: RUNDOWN_DB ? 'configured' : 'not set',
+        commercialSnapshotDb: COMMERCIAL_SNAPSHOT_DB ? 'configured' : 'not set'
+    });
 });
