@@ -25,6 +25,7 @@ const PROJECTS_DB = process.env.NOTION_MASTER_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
 const DAILY_RUNDOWN_DB = process.env.NOTION_DAILY_RUNDOWN_DB;
 const EVENTS_DB = process.env.NOTION_PROD_EVENTS_DB;
+const COMMERCIAL_SNAPSHOT_DB = process.env.NOTION_COMMERCIAL_SNAPSHOT;
 
 // ============================================
 // HELPER: Parse Notion properties
@@ -1810,6 +1811,162 @@ app.post('/process-ledger-to-events', async (req, res) => {
     }
 });
 
+// ============================================
+// DAILY RUNDOWN FROM COMMERCIAL SNAPSHOT
+// Fetches today's snapshot items grouped by Section
+// ============================================
+
+// Section display configuration
+const SECTION_CONFIG = {
+    '✅ Completed – Creative Responses (Last Week)': { id: 'completed_last_week', order: 1, title: 'Completed – Last Week', tone: 'sky' },
+    '✅ Completed – Creative Responses (This Week)': { id: 'completed_this_week', order: 2, title: 'Completed – This Week', tone: 'sky' },
+    '🆕 New Briefs in Progress': { id: 'new_briefs', order: 3, title: 'New Briefs in Progress', tone: 'amber' },
+    '🟡 Active / In Production Projects': { id: 'active', order: 4, title: 'Active / In Production', tone: 'emerald' },
+    '🧠 New Media Ventures': { id: 'ventures', order: 5, title: 'New Media Ventures', tone: 'purple' },
+    '🧠 Prospective & Strategic Partnerships': { id: 'partnerships', order: 6, title: 'Prospective & Strategic Partnerships', tone: 'rose' },
+    '🛠 Internal / Workflow': { id: 'internal', order: 7, title: 'Internal / Workflow', tone: 'gray' },
+    '👋 Coming Up': { id: 'coming_up', order: 8, title: 'Coming Up', tone: 'indigo' },
+    'Other': { id: 'other', order: 9, title: 'Other', tone: 'slate' }
+};
+
+// GET /daily-rundown - Get today's Commercial Snapshot items grouped by section
+app.get('/daily-rundown', async (req, res) => {
+    try {
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Commercial Snapshot DB not configured. Add NOTION_COMMERCIAL_SNAPSHOT env variable.'
+            });
+        }
+
+        // Allow date override via query param
+        const targetDate = req.query.date || new Date().toISOString().split('T')[0];
+
+        // Query with filter for Snapshot Date = today
+        const response = await notion.databases.query({
+            database_id: COMMERCIAL_SNAPSHOT_DB,
+            filter: {
+                property: 'Snapshot Date',
+                date: {
+                    equals: targetDate
+                }
+            },
+            page_size: 100
+        });
+
+        // Helper to get first value from rollup array
+        const getFirstRollup = (prop) => {
+            if (!prop) return null;
+            if (prop.type === 'rollup') {
+                const rollup = prop.rollup;
+                if (rollup.type === 'array' && rollup.array?.length > 0) {
+                    const first = rollup.array[0];
+                    if (first.type === 'title') return first.title?.[0]?.plain_text || '';
+                    if (first.type === 'rich_text') return first.rich_text?.[0]?.plain_text || '';
+                    if (first.type === 'select') return first.select?.name || null;
+                    if (first.type === 'url') return first.url || null;
+                    return first[first.type] || null;
+                }
+            }
+            return parseProperty(prop);
+        };
+
+        // Parse all items
+        const items = response.results.map(page => {
+            const props = page.properties;
+            return {
+                id: page.id,
+                url: page.url,
+                lastEditedTime: page.last_edited_time,
+
+                // Core identity
+                record: parseProperty(props['Record']),
+                projectIds: parseProperty(props['Project']),
+
+                // Daily rundown control fields
+                snapshotDate: parseProperty(props['Snapshot Date']),
+                weekCommencing: parseProperty(props['Week Commencing']),
+                section: parseProperty(props['Section']),
+                itemType: parseProperty(props['Item Type']),
+                headline: parseProperty(props['Headline']),
+                details: parseProperty(props['Details']),
+                links: parseProperty(props['Links']),
+                slackMentions: parseProperty(props['Slack Mentions']),
+                statusTag: parseProperty(props['Status Tag']),
+                rawSnapshotBlock: parseProperty(props['Raw Snapshot Block']),
+
+                // Project metadata (rollups)
+                projectName: getFirstRollup(props['Project Name']),
+                clientPartner: getFirstRollup(props['Client / Partner']),
+                vertical: getFirstRollup(props['Vertical']),
+                status1: getFirstRollup(props['Status 1']),
+                status: getFirstRollup(props['Status']),
+                creativeWorkflowStatus: getFirstRollup(props['Creative Workflow Status']),
+                productionWorkflowStatus: getFirstRollup(props['Production Workflow Status']),
+                dealStage: getFirstRollup(props['Deal Stage']),
+                liveLink: getFirstRollup(props['Live Link'])
+            };
+        });
+
+        // Group items by section
+        const sectionGroups = {};
+        items.forEach(item => {
+            const sectionName = item.section || 'Other';
+            if (!sectionGroups[sectionName]) {
+                sectionGroups[sectionName] = [];
+            }
+            sectionGroups[sectionName].push(item);
+        });
+
+        // Convert to ordered sections array
+        const sections = Object.entries(sectionGroups)
+            .map(([sectionName, sectionItems]) => {
+                const config = SECTION_CONFIG[sectionName] || {
+                    id: sectionName.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+                    order: 99,
+                    title: sectionName,
+                    tone: 'slate'
+                };
+                return {
+                    id: config.id,
+                    notionSection: sectionName,
+                    title: config.title,
+                    tone: config.tone,
+                    order: config.order,
+                    items: sectionItems
+                };
+            })
+            .sort((a, b) => a.order - b.order);
+
+        // Calculate totals
+        const totals = {
+            total: items.length,
+            bySection: sections.reduce((acc, section) => {
+                acc[section.id] = section.items.length;
+                return acc;
+            }, {}),
+            byStatusTag: items.reduce((acc, item) => {
+                const tag = item.statusTag || 'none';
+                acc[tag] = (acc[tag] || 0) + 1;
+                return acc;
+            }, {})
+        };
+
+        res.json({
+            success: true,
+            date: targetDate,
+            sections,
+            totals,
+            itemCount: items.length,
+            sectionCount: sections.length,
+            lastFetched: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error fetching daily rundown:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Health check
 app.get('/', (req, res) => {
     const { version } = require('./package.json');
@@ -1820,9 +1977,12 @@ app.get('/', (req, res) => {
             projects: PROJECTS_DB ? 'configured' : 'missing',
             deliverables: DELIVERABLES_DB ? 'configured' : 'missing',
             dailyRundown: DAILY_RUNDOWN_DB ? 'configured' : 'missing',
-            events: EVENTS_DB ? 'configured' : 'missing'
+            events: EVENTS_DB ? 'configured' : 'missing',
+            commercialSnapshot: COMMERCIAL_SNAPSHOT_DB ? 'configured' : 'missing'
         },
         endpoints: [
+            'GET /daily-rundown',
+            'GET /daily-rundown?date=YYYY-MM-DD',
             'GET /projects',
             'PATCH /projects/:id',
             'POST /projects',
