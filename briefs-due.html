@@ -517,15 +517,20 @@
                         // Check multiple date fields - more comprehensive
                         const dateVal = p.clientDueDate || p.internalDueDate || p.dueDate || p.expectedCloseDate || p.publishDate || p.liveDate;
 
-                        // Include projects even without dates if they have active deal stage
+                        // Include projects if they have active deal stage or creative workflow
                         const dealStage = (p.dealStage || '').toLowerCase();
                         const isActiveDeal = dealStage &&
                             !dealStage.includes('complete') &&
                             !dealStage.includes('lost') &&
                             !dealStage.includes('archived');
 
-                        // Skip if no date AND no active deal stage
-                        if (!dateVal && !isActiveDeal) return null;
+                        // Include if creative team is actively working on it
+                        const creativeStatus = (p.creativeWorkflowStatus || '').toLowerCase();
+                        const isActiveCreative = creativeStatus &&
+                            creativeStatus !== 'complete';
+
+                        // Skip if no date AND no active deal stage AND no active creative work
+                        if (!dateVal && !isActiveDeal && !isActiveCreative) return null;
 
                         return {
                             id: p.id,
@@ -538,9 +543,17 @@
                             originalLink: p.creativeResponseLink || p.briefLink,
                             projectUrl: p.url, // Direct link to project page in Notion
                             status: p.dealStage || '',
+                            creativeStatus: p.creativeWorkflowStatus || '',
                             hasNoDate: !dateVal // Track if date was missing
                         };
-                    }).filter(p => p && !p.status.toLowerCase().includes('complete'));
+                    }).filter(p => {
+                        if (!p) return false;
+                        // Keep if creative team is still working on it
+                        const creative = p.creativeStatus.toLowerCase();
+                        if (creative && creative !== 'complete') return true;
+                        // Otherwise filter out completed deals
+                        return !p.status.toLowerCase().includes('complete');
+                    });
                 }
 
                 // D. Merge & Sort
