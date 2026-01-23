@@ -189,7 +189,7 @@ async function buildProjectProperties(data) {
         props['(INTERNAL) DUE DATE'] = { date: data.dueDate ? { start: data.dueDate } : null };
     }
     if (data.clientDueDate !== undefined) {
-        props['CLIENT DUE DATE'] = { date: data.clientDueDate ? { start: data.clientDueDate } : null };
+        props['(CLIENT) PROJECT DUE DATE'] = { date: data.clientDueDate ? { start: data.clientDueDate } : null };
     }
     if (data.expectedCloseDate !== undefined) {
         props['EXPECTED CLOSE DATE'] = { date: data.expectedCloseDate ? { start: data.expectedCloseDate } : null };
@@ -345,18 +345,29 @@ app.get('/projects', async (req, res) => {
     try {
         // Filter for Layer 1 projects only (items without a PARENT ITEM)
         // This excludes Layer 2 (Episodes) and Layer 3 (Tasks) which have PARENT ITEM set
-        const response = await notion.databases.query({
-            database_id: PROJECTS_DB,
-            page_size: 100,
-            filter: {
-                property: 'PARENT ITEM',
-                relation: {
-                    is_empty: true
-                }
-            }
-        });
+        // Paginate through all results to ensure we get all projects
+        let allResults = [];
+        let hasMore = true;
+        let startCursor = undefined;
 
-        const projects = response.results.map(page => {
+        while (hasMore) {
+            const response = await notion.databases.query({
+                database_id: PROJECTS_DB,
+                page_size: 100,
+                start_cursor: startCursor,
+                filter: {
+                    property: 'PARENT ITEM',
+                    relation: {
+                        is_empty: true
+                    }
+                }
+            });
+            allResults = allResults.concat(response.results);
+            hasMore = response.has_more;
+            startCursor = response.next_cursor;
+        }
+
+        const projects = allResults.map(page => {
             const props = page.properties;
             return {
                 id: page.id,
@@ -367,10 +378,11 @@ app.get('/projects', async (req, res) => {
                 priority: parseProperty(props['PRIORITY']),
                 vertical: parseProperty(props['VERTICAL']),
                 dealStage: parseProperty(props['DEAL STAGE']),
+                status1: parseProperty(props['STATUS 1']),
                 dealValue: parseProperty(props['DEAL VALUE']),
                 probability: parseProperty(props['PROBABILITY']),
                 dueDate: parseProperty(props['(INTERNAL) DUE DATE']),
-                clientDueDate: parseProperty(props['CLIENT DUE DATE']),
+                clientDueDate: parseProperty(props['(CLIENT) PROJECT DUE DATE']) || parseProperty(props['CLIENT DUE DATE']),
                 expectedCloseDate: parseProperty(props['EXPECTED CLOSE DATE']),
                 suggestedCampaignWindow: parseProperty(props['SUGGESTED CAMPAIGN WINDOW']),
                 creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
@@ -455,7 +467,7 @@ app.get('/projects/:id', async (req, res) => {
             dealValue: parseProperty(props['DEAL VALUE']),
             probability: parseProperty(props['PROBABILITY']),
             dueDate: parseProperty(props['(INTERNAL) DUE DATE']),
-            clientDueDate: parseProperty(props['CLIENT DUE DATE']),
+            clientDueDate: parseProperty(props['(CLIENT) PROJECT DUE DATE']) || parseProperty(props['CLIENT DUE DATE']),
             expectedCloseDate: parseProperty(props['EXPECTED CLOSE DATE']),
             suggestedCampaignWindow: parseProperty(props['SUGGESTED CAMPAIGN WINDOW']),
             creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
