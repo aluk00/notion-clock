@@ -25,6 +25,7 @@ const PROJECTS_DB = process.env.NOTION_MASTER_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
 const DAILY_RUNDOWN_DB = process.env.NOTION_DAILY_RUNDOWN_DB;
 const EVENTS_DB = process.env.NOTION_PROD_EVENTS_DB;
+const COMMERCIAL_SNAPSHOT_DB = process.env.NOTION_COMMERCIAL_SNAPSHOT_DB;
 
 // ============================================
 // HELPER: Parse Notion properties
@@ -1810,6 +1811,161 @@ app.post('/process-ledger-to-events', async (req, res) => {
     }
 });
 
+// ============================================
+// DAILY SNAPSHOT ENDPOINT (Commercial Snapshot)
+// ============================================
+
+// Section configuration for daily snapshot grouping
+const SECTION_CONFIG = {
+    '⭐️ Recent Wins': { id: 'wins', order: 1, title: 'Recent Wins', tone: 'emerald' },
+    '🔥 Hot Today': { id: 'hot', order: 2, title: 'Hot Today', tone: 'rose' },
+    '📦 Delivering Soon': { id: 'delivering', order: 3, title: 'Delivering Soon', tone: 'amber' },
+    '🎬 In Production': { id: 'production', order: 4, title: 'In Production', tone: 'sky' },
+    '💰 Deals In Progress': { id: 'deals', order: 5, title: 'Deals In Progress', tone: 'purple' },
+    '📊 Noteworthy Updates': { id: 'updates', order: 6, title: 'Noteworthy Updates', tone: 'indigo' },
+    '🛠 Internal / Workflow': { id: 'internal', order: 7, title: 'Internal / Workflow', tone: 'gray' },
+    '👋 Coming Up': { id: 'coming_up', order: 8, title: 'Coming Up', tone: 'indigo' },
+    'Other': { id: 'other', order: 9, title: 'Other', tone: 'slate' }
+};
+
+// Helper functions for daily snapshot
+function getFirstRollup(parsed) {
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    return parsed;
+}
+
+function getPeopleFromRollup(parsed) {
+    if (Array.isArray(parsed)) {
+        return parsed.flat().filter(p => p && p.name);
+    }
+    return [];
+}
+
+// GET /daily-rundown - Get today's snapshot items grouped by section
+app.get('/daily-rundown', async (req, res) => {
+    try {
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Commercial Snapshot DB not configured'
+            });
+        }
+
+        // Allow date override via query param (for testing/historical views)
+        const targetDate = req.query.date || new Date().toISOString().split('T')[0];
+
+        // Query with filter for Snapshot Date = today
+        const response = await notion.databases.query({
+            database_id: COMMERCIAL_SNAPSHOT_DB,
+            filter: {
+                property: 'Snapshot Date',
+                date: {
+                    equals: targetDate
+                }
+            },
+            page_size: 100
+        });
+
+        // Parse all items
+        const items = response.results.map(page => {
+            const props = page.properties;
+            return {
+                id: page.id,
+                url: page.url,
+                lastEditedTime: page.last_edited_time,
+
+                // Core identity
+                record: parseProperty(props['Record']),
+                projectIds: parseProperty(props['Project']),
+
+                // Daily rundown control fields (the ones user sets)
+                snapshotDate: parseProperty(props['Snapshot Date']),
+                weekCommencing: parseProperty(props['Week Commencing']),
+                section: parseProperty(props['Section']),
+                itemType: parseProperty(props['Item Type']),
+                headline: parseProperty(props['Headline']),
+                details: parseProperty(props['Details']),
+                links: parseProperty(props['Links']),
+                slackMentions: parseProperty(props['Slack Mentions']),
+                statusTag: parseProperty(props['Status Tag']),
+                rawSnapshotBlock: parseProperty(props['Raw Snapshot Block']),
+
+                // Project metadata (rollups)
+                projectName: getFirstRollup(parseProperty(props['Project Name'])),
+                clientPartner: getFirstRollup(parseProperty(props['Client / Partner'])),
+                vertical: getFirstRollup(parseProperty(props['Vertical'])),
+                salesLeads: getPeopleFromRollup(parseProperty(props['Sales Lead(s)'])),
+                cardSummary: getFirstRollup(parseProperty(props['Card Summary'])),
+                aiStatusRecap: getFirstRollup(parseProperty(props['AI Status Recap'])),
+
+                // Status and workflow
+                status1: getFirstRollup(parseProperty(props['Status 1'])),
+                status: getFirstRollup(parseProperty(props['Status'])),
+                creativeWorkflowStatus: getFirstRollup(parseProperty(props['Creative Workflow Status'])),
+                productionWorkflowStatus: getFirstRollup(parseProperty(props['Production Workflow Status'])),
+                projectOutcome: getFirstRollup(parseProperty(props['Project Outcome'])),
+                priorityLevel: getFirstRollup(parseProperty(props['Priority Level'])),
+
+                // Commercial info
+                dealStage: getFirstRollup(parseProperty(props['Deal Stage'])),
+                dealValue: parseProperty(props['Deal Value']),
+
+                // Timeline
+                clientProjectDueDate: getFirstRollup(parseProperty(props['Client Project Due Date'])),
+                internalProjectDueDate: getFirstRollup(parseProperty(props['Internal Project Due Date'])),
+                earliestDeliverableDue: parseProperty(props['Earliest Deliverable Due']),
+                latestDeliverableDue: parseProperty(props['Latest Deliverable Due']),
+
+                // Live campaign
+                liveLink: getFirstRollup(parseProperty(props['Live Link'])),
+
+                // Slack
+                slackChannelName: getFirstRollup(parseProperty(props['Slack Channel Name'])),
+                slackChannelId: getFirstRollup(parseProperty(props['Slack Channel ID']))
+            };
+        });
+
+        // Group items by section
+        const sectionGroups = {};
+        items.forEach(item => {
+            const sectionName = item.section || 'Other';
+            if (!sectionGroups[sectionName]) {
+                sectionGroups[sectionName] = [];
+            }
+            sectionGroups[sectionName].push(item);
+        });
+
+        // Convert to ordered sections array
+        const sections = Object.entries(sectionGroups)
+            .map(([sectionName, sectionItems]) => {
+                const config = SECTION_CONFIG[sectionName] || {
+                    id: sectionName.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+                    order: 99,
+                    title: sectionName,
+                    tone: 'slate'
+                };
+                return {
+                    ...config,
+                    name: sectionName,
+                    items: sectionItems
+                };
+            })
+            .sort((a, b) => a.order - b.order);
+
+        res.json({
+            success: true,
+            date: targetDate,
+            totalItems: items.length,
+            sectionCount: sections.length,
+            sections
+        });
+
+    } catch (error) {
+        console.error('Error fetching daily snapshot:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Health check
 app.get('/', (req, res) => {
     const { version } = require('./package.json');
@@ -1820,7 +1976,8 @@ app.get('/', (req, res) => {
             projects: PROJECTS_DB ? 'configured' : 'missing',
             deliverables: DELIVERABLES_DB ? 'configured' : 'missing',
             dailyRundown: DAILY_RUNDOWN_DB ? 'configured' : 'missing',
-            events: EVENTS_DB ? 'configured' : 'missing'
+            events: EVENTS_DB ? 'configured' : 'missing',
+            commercialSnapshot: COMMERCIAL_SNAPSHOT_DB ? 'configured' : 'missing'
         },
         endpoints: [
             'GET /projects',
@@ -1846,7 +2003,8 @@ app.get('/', (req, res) => {
             'POST /process-deal-agreed/reset',
             'POST /process-daily-rundown',
             'POST /process-events-to-ledger',
-            'POST /process-ledger-to-events'
+            'POST /process-ledger-to-events',
+            'GET /daily-rundown?date=YYYY-MM-DD'
         ]
     });
 });
