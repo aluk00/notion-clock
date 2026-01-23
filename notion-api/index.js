@@ -152,7 +152,7 @@ async function buildProjectProperties(data) {
         props['(INTERNAL) DUE DATE'] = { date: data.dueDate ? { start: data.dueDate } : null };
     }
     if (data.clientDueDate !== undefined) {
-        props['CLIENT DUE DATE'] = { date: data.clientDueDate ? { start: data.clientDueDate } : null };
+        props['(CLIENT) PROJECT DUE DATE'] = { date: data.clientDueDate ? { start: data.clientDueDate } : null };
     }
     if (data.dealValue !== undefined) {
         props['DEAL VALUE'] = { number: data.dealValue };
@@ -413,7 +413,7 @@ app.get('/projects', async (req, res) => {
                 dealStage: parseProperty(props['DEAL STAGE']),
                 dealValue: parseProperty(props['DEAL VALUE']),
                 dueDate: parseProperty(props['(INTERNAL) DUE DATE']),
-                clientDueDate: parseProperty(props['CLIENT DUE DATE']),
+                clientDueDate: parseProperty(props['(CLIENT) PROJECT DUE DATE']) || parseProperty(props['CLIENT DUE DATE']),
                 creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
                 productionWorkflowStatus: parseProperty(props['PRODUCTION WORKFLOW STATUS']),
                 socialWorkflowStatus: parseProperty(props['SOCIAL WORKFLOW STATUS']),

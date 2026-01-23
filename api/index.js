@@ -189,7 +189,7 @@ async function buildProjectProperties(data) {
         props['(INTERNAL) DUE DATE'] = { date: data.dueDate ? { start: data.dueDate } : null };
     }
     if (data.clientDueDate !== undefined) {
-        props['CLIENT DUE DATE'] = { date: data.clientDueDate ? { start: data.clientDueDate } : null };
+        props['(CLIENT) PROJECT DUE DATE'] = { date: data.clientDueDate ? { start: data.clientDueDate } : null };
     }
     if (data.expectedCloseDate !== undefined) {
         props['EXPECTED CLOSE DATE'] = { date: data.expectedCloseDate ? { start: data.expectedCloseDate } : null };
@@ -370,7 +370,7 @@ app.get('/projects', async (req, res) => {
                 dealValue: parseProperty(props['DEAL VALUE']),
                 probability: parseProperty(props['PROBABILITY']),
                 dueDate: parseProperty(props['(INTERNAL) DUE DATE']),
-                clientDueDate: parseProperty(props['CLIENT DUE DATE']),
+                clientDueDate: parseProperty(props['(CLIENT) PROJECT DUE DATE']) || parseProperty(props['CLIENT DUE DATE']),
                 expectedCloseDate: parseProperty(props['EXPECTED CLOSE DATE']),
                 suggestedCampaignWindow: parseProperty(props['SUGGESTED CAMPAIGN WINDOW']),
                 creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
@@ -455,7 +455,7 @@ app.get('/projects/:id', async (req, res) => {
             dealValue: parseProperty(props['DEAL VALUE']),
             probability: parseProperty(props['PROBABILITY']),
             dueDate: parseProperty(props['(INTERNAL) DUE DATE']),
-            clientDueDate: parseProperty(props['CLIENT DUE DATE']),
+            clientDueDate: parseProperty(props['(CLIENT) PROJECT DUE DATE']) || parseProperty(props['CLIENT DUE DATE']),
             expectedCloseDate: parseProperty(props['EXPECTED CLOSE DATE']),
             suggestedCampaignWindow: parseProperty(props['SUGGESTED CAMPAIGN WINDOW']),
             creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
