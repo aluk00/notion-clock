@@ -688,12 +688,23 @@
         }
     });
 
-    async function loadData() {
+    async function loadData(retryCount = 0) {
+        const maxRetries = 3;
+        const baseTimeout = 45000; // 45s to handle Cloud Run cold starts
+
         try {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 15000);
+            const timeout = setTimeout(() => controller.abort(), baseTimeout);
 
-            console.log('[Commercial Hub] Fetching from:', `${API_URL}/projects`);
+            // Show cold start message on first attempt
+            if (retryCount === 0) {
+                const prodList = document.getElementById('production-list');
+                if (prodList) {
+                    prodList.innerHTML = `<div class="loading">Loading projects... (first load may take up to 30s)</div>`;
+                }
+            }
+
+            console.log('[Commercial Hub] Fetching from:', `${API_URL}/projects`, retryCount > 0 ? `(retry ${retryCount})` : '');
             const res = await fetch(`${API_URL}/projects`, { signal: controller.signal });
             clearTimeout(timeout);
 
@@ -797,7 +808,21 @@
                 }
             }
         } catch (e) {
-            console.error("[Commercial Hub] Load Error:", e);
+            console.error("[Commercial Hub] Load Error:", e, retryCount > 0 ? `(retry ${retryCount})` : '');
+
+            // Retry with exponential backoff
+            if (retryCount < maxRetries) {
+                const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+                console.log(`[Commercial Hub] Retrying in ${delay}ms...`);
+                document.getElementById('production-list').innerHTML = `
+                    <div class="loading" style="flex-direction: column; gap: 8px;">
+                        <div>Connection slow, retrying... (${retryCount + 1}/${maxRetries})</div>
+                        <div style="font-size: 10px; color: var(--ink-sub);">Cloud services may be waking up</div>
+                    </div>`;
+                await new Promise(r => setTimeout(r, delay));
+                return loadData(retryCount + 1);
+            }
+
             document.getElementById('production-list').innerHTML = `
                 <div class="loading" style="color:var(--danger); flex-direction: column; gap: 8px;">
                     <div>Failed to connect to API</div>

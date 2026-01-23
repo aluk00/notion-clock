@@ -1108,11 +1108,31 @@
             handleRouting();
         }
 
-        async function loadProjects() {
+        async function loadProjects(retryCount = 0) {
+            const maxRetries = 3;
+            const baseTimeout = 45000; // 45s to handle Cloud Run cold starts
+
             try {
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 15000);
+                const timeout = setTimeout(() => controller.abort(), baseTimeout);
 
+                // Show cold start message on first attempt
+                if (retryCount === 0) {
+                    document.getElementById('app').innerHTML = `
+                        <div class="kanban-container">
+                            <div class="header">
+                                <div class="header-left">
+                                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                                    <span class="header-label">Brief Response Status</span>
+                                </div>
+                            </div>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <div style="font-size: 14px; font-weight: 500;">Loading projects... (first load may take up to 30s)</div>
+                            </div>
+                        </div>`;
+                }
+
+                console.log('[Kanban Creative] Fetching projects...', retryCount > 0 ? `(retry ${retryCount})` : '');
                 const res = await fetch(`${API_URL}/projects`, { signal: controller.signal });
                 clearTimeout(timeout);
 
@@ -1125,7 +1145,29 @@
                 loading = false;
                 render();
             } catch (e) {
-                console.error('Load failed:', e);
+                console.error('Load failed:', e, retryCount > 0 ? `(retry ${retryCount})` : '');
+
+                // Retry with exponential backoff
+                if (retryCount < maxRetries) {
+                    const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+                    console.log(`[Kanban Creative] Retrying in ${delay}ms...`);
+                    document.getElementById('app').innerHTML = `
+                        <div class="kanban-container">
+                            <div class="header">
+                                <div class="header-left">
+                                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                                    <span class="header-label">Brief Response Status</span>
+                                </div>
+                            </div>
+                            <div style="text-align: center; padding: 60px 20px;">
+                                <div style="font-size: 14px; font-weight: 500;">Connection slow, retrying... (${retryCount + 1}/${maxRetries})</div>
+                                <div style="font-size: 12px; color: var(--ink-muted); margin-top: 8px;">Cloud services may be waking up</div>
+                            </div>
+                        </div>`;
+                    await new Promise(r => setTimeout(r, delay));
+                    return loadProjects(retryCount + 1);
+                }
+
                 loading = false;
                 document.getElementById('app').innerHTML = `
                     <div class="kanban-container">
