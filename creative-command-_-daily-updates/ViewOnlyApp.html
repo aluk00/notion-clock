@@ -58,7 +58,7 @@
 
         body {
             font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--surface-alt);
+            background: #FFFFFF;
             color: var(--ink);
             -webkit-font-smoothing: antialiased;
             margin: 0;
@@ -578,7 +578,7 @@
                 throw new Error(data.error || 'Failed to fetch rundown');
             }
 
-            if (data.itemCount === 0) {
+            if (data.totalItems === 0) {
                 renderEmpty();
                 return;
             }
@@ -595,10 +595,21 @@
     // RENDER FUNCTIONS
     // ═══════════════════════════════════════════════════════════════════════════
     function render() {
-        const { sections, totals, date, lastFetched } = rundownData;
+        const { sections, totalItems, date, lastFetched } = rundownData;
 
         // Filter to non-empty sections
         const activeSections = sections.filter(s => s.items.length > 0);
+
+        // Compute totals from sections (API doesn't provide pre-computed totals)
+        const allItems = sections.flatMap(s => s.items);
+        const totals = {
+            total: totalItems || allItems.length,
+            byStatusTag: allItems.reduce((acc, item) => {
+                const tag = item.statusTag || 'None';
+                acc[tag] = (acc[tag] || 0) + 1;
+                return acc;
+            }, {})
+        };
 
         // Get focus items (Yellow/Red status tags)
         const focusItems = sections
@@ -608,8 +619,7 @@
 
         document.getElementById('root').innerHTML = `
             <div class="widget-main">
-                ${renderHeader(date, lastFetched)}
-                ${renderStats(totals)}
+                ${renderStatsBar(totals, lastFetched)}
                 <div class="main-content">
                     ${renderSidebar(activeSections, focusItems)}
                     <div class="sections-grid">
@@ -625,55 +635,42 @@
         attachEventListeners();
     }
 
-    function renderHeader(date, lastFetched) {
-        return `
-            <div class="header">
-                <div class="header-left">
-                    <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                    <div class="header-brand">
-                        <h1>Creative Command</h1>
-                        <p>Daily Snapshot</p>
-                        <span>Live from Commercial Snapshot</span>
-                    </div>
-                </div>
-                <div class="header-meta">
-                    <span class="meta-badge">${formatDate(new Date())}</span>
-                    <span class="meta-badge">Updated ${formatTime(lastFetched)}</span>
-                    <button class="slack-btn" id="openSlack">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                        </svg>
-                        Slack Message
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    function renderStats(totals) {
+    function renderStatsBar(totals, lastFetched) {
         const { total, byStatusTag } = totals;
         const green = byStatusTag?.Green || 0;
         const yellow = byStatusTag?.Yellow || 0;
         const red = byStatusTag?.Red || 0;
 
         return `
-            <div class="stats-bar">
-                <div class="stat-item">
-                    <div class="stat-num" style="color: var(--ink);">${total}</div>
-                    <div class="stat-label">Total Items</div>
+            <div class="stats-bar" style="justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 16px;">
+                    <div class="stat-item">
+                        <div class="stat-num" style="color: var(--ink);">${total}</div>
+                        <div class="stat-label">Total Items</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num" style="color: var(--green);">${green}</div>
+                        <div class="stat-label">On Track</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num" style="color: var(--yellow);">${yellow}</div>
+                        <div class="stat-label">Attention</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-num" style="color: var(--red);">${red}</div>
+                        <div class="stat-label">Blocked</div>
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-num" style="color: var(--green);">${green}</div>
-                    <div class="stat-label">On Track</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-num" style="color: var(--yellow);">${yellow}</div>
-                    <div class="stat-label">Attention</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-num" style="color: var(--red);">${red}</div>
-                    <div class="stat-label">Blocked</div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span class="meta-badge">${formatDate(new Date())}</span>
+                    ${lastFetched ? `<span class="meta-badge">Updated ${formatTime(lastFetched)}</span>` : ''}
+                    <button class="slack-btn" id="openSlack">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        Slack
+                    </button>
                 </div>
             </div>
         `;
@@ -750,18 +747,6 @@
     function renderEmpty() {
         document.getElementById('root').innerHTML = `
             <div class="widget-main">
-                <div class="header">
-                    <div class="header-left">
-                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                        <div class="header-brand">
-                            <h1>Creative Command</h1>
-                            <p>Daily Snapshot</p>
-                        </div>
-                    </div>
-                    <div class="header-meta">
-                        <span class="meta-badge">${formatDate(new Date())}</span>
-                    </div>
-                </div>
                 <div class="empty-state">
                     <div style="font-size: 48px; opacity: 0.3;">📋</div>
                     <span class="empty-text">No items for today</span>
@@ -776,15 +761,6 @@
     function renderError(message) {
         document.getElementById('root').innerHTML = `
             <div class="widget-main">
-                <div class="header">
-                    <div class="header-left">
-                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                        <div class="header-brand">
-                            <h1>Creative Command</h1>
-                            <p>Daily Snapshot</p>
-                        </div>
-                    </div>
-                </div>
                 <div class="error-state">
                     <div style="font-size: 48px; opacity: 0.3;">⚠️</div>
                     <span class="error-text">Unable to load snapshot</span>
