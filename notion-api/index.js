@@ -453,6 +453,103 @@ app.get('/projects', async (req, res) => {
 });
 
 // ============================================
+// GET /projects/:id - Get a single project by ID
+// ============================================
+app.get('/projects/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const page = await notion.pages.retrieve({ page_id: id });
+        const props = page.properties;
+
+        const project = {
+            id: page.id,
+            url: page.url,
+            title: parseProperty(props['NAME']),
+            client: parseProperty(props['CLIENT / EXTERNAL PARTNER']),
+            projectType: parseProperty(props['PROJECT TYPE']),
+            priority: parseProperty(props['PRIORITY']),
+            vertical: parseProperty(props['VERTICAL']),
+            dealStage: parseProperty(props['DEAL STAGE']),
+            dealValue: parseProperty(props['DEAL VALUE']),
+            dueDate: parseProperty(props['(INTERNAL) DUE DATE']),
+            clientDueDate: parseProperty(props['(CLIENT) PROJECT DUE DATE']) || parseProperty(props['CLIENT DUE DATE']),
+            creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
+            productionWorkflowStatus: parseProperty(props['PRODUCTION WORKFLOW STATUS']),
+            socialWorkflowStatus: parseProperty(props['SOCIAL WORKFLOW STATUS']),
+            deskState: parseProperty(props['DESK STATE']),
+            ownerRole: parseProperty(props['OWNER ROLE']),
+            primaryTeam: parseProperty(props['PRIMARY TEAM']),
+            assetsNeeded: parseProperty(props['ASSET(S) NEEDED']),
+            effortScore: parseProperty(props['EFFORT SCORE']),
+            cardSummary: parseProperty(props['CARD SUMMARY']),
+            salesLead: parseProperty(props['SALES LEAD']),
+            creativeLead: parseProperty(props['CREATIVE LEAD']),
+            productionLead: parseProperty(props['PRODUCTION LEAD']),
+            editorialLead: parseProperty(props['EDITORIAL LEAD']),
+            salesNotes: parseProperty(props['SALES NOTES']),
+            probability: parseProperty(props['PROBABILITY']),
+            expectedCloseDate: parseProperty(props['EXPECTED CLOSE DATE']),
+            briefLink: parseProperty(props['BRIEF LINK']),
+            creativeResponseLink: parseProperty(props['CREATIVE RESPONSE LINK']),
+            frameIoLink: parseProperty(props['FRAME.IO LINK']),
+            driveFolder: parseProperty(props['DRIVE FOLDER']),
+            responseTypeNeeded: parseProperty(props['RESPONSE TYPE NEEDED']),
+            suggestedCampaignWindow: parseProperty(props['SUGGESTED CAMPAIGN WINDOW']),
+            deliverableCount: parseProperty(props['DELIVERABLE COUNT']),
+            deliverablesComplete: parseProperty(props['DELIVERABLES COMPLETE']),
+            nextDeliverableDue: parseProperty(props['NEXT DELIVERABLE DUE']),
+            parentProject: parseProperty(props['PARENT PROJECT']),
+            subItems: parseProperty(props['SUB-ITEMS'])
+        };
+
+        res.json({ success: true, project });
+    } catch (error) {
+        console.error('Error fetching project:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// GET /projects/:id/subitems - Get sub-items for a project
+// ============================================
+app.get('/projects/:id/subitems', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Query projects where PARENT PROJECT relation contains this ID
+        const response = await notion.databases.query({
+            database_id: PROJECTS_DB,
+            filter: {
+                property: 'PARENT PROJECT',
+                relation: {
+                    contains: id
+                }
+            }
+        });
+
+        const subitems = response.results.map(page => {
+            const props = page.properties;
+            return {
+                id: page.id,
+                url: page.url,
+                title: parseProperty(props['NAME']),
+                client: parseProperty(props['CLIENT / EXTERNAL PARTNER']),
+                projectType: parseProperty(props['PROJECT TYPE']),
+                dealStage: parseProperty(props['DEAL STAGE']),
+                dueDate: parseProperty(props['(INTERNAL) DUE DATE']),
+                creativeWorkflowStatus: parseProperty(props['CREATIVE WORKFLOW STATUS']),
+                productionWorkflowStatus: parseProperty(props['PRODUCTION WORKFLOW STATUS'])
+            };
+        });
+
+        res.json({ success: true, subitems, count: subitems.length });
+    } catch (error) {
+        console.error('Error fetching subitems:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
 // PATCH /projects/:id - Update a project
 // ============================================
 app.patch('/projects/:id', async (req, res) => {

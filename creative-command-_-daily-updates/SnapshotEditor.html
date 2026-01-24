@@ -111,6 +111,118 @@
             gap: 8px;
         }
 
+        /* Date Navigation */
+        .date-nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--surface-alt);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .date-nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #FFFFFF;
+            color: var(--ink);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .date-nav-btn:hover {
+            background: var(--border);
+        }
+
+        .date-nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .date-display {
+            flex: 1;
+            text-align: center;
+        }
+
+        .date-display-main {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .date-display-sub {
+            font-size: 11px;
+            color: var(--ink-muted);
+            margin-top: 2px;
+        }
+
+        .date-input-wrapper {
+            position: relative;
+        }
+
+        .date-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .today-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: #FFFFFF;
+            color: var(--ink-sub);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .today-btn:hover {
+            background: var(--hero-pink);
+            color: white;
+            border-color: var(--hero-pink);
+        }
+
+        .today-btn.is-today {
+            background: var(--hero-pink);
+            color: white;
+            border-color: var(--hero-pink);
+        }
+
+        /* Date indicator dots */
+        .date-dots {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+            margin-top: 6px;
+        }
+
+        .date-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--border);
+        }
+
+        .date-dot.has-items {
+            background: var(--production-green);
+        }
+
+        .date-dot.current {
+            background: var(--hero-pink);
+            width: 6px;
+            height: 6px;
+        }
+
         /* Buttons */
         .btn {
             padding: 8px 14px;
@@ -630,6 +742,27 @@
                 </div>
             </div>
 
+            <!-- Date Navigation -->
+            <div class="date-nav">
+                <button class="date-nav-btn" id="prevDayBtn" title="Previous day">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <div class="date-display date-input-wrapper">
+                    <input type="date" class="date-input" id="datePicker">
+                    <div class="date-display-main" id="dateDisplayMain">Today</div>
+                    <div class="date-display-sub" id="dateDisplaySub">Friday, 24 January 2026</div>
+                    <div class="date-dots" id="dateDots"></div>
+                </div>
+                <button class="date-nav-btn" id="nextDayBtn" title="Next day">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+                <button class="today-btn" id="todayBtn">Today</button>
+            </div>
+
             <!-- Add/Edit Form -->
             <div class="form-section">
                 <div class="form-section-title" id="formTitle">Add New Item</div>
@@ -753,6 +886,8 @@
 
     let items = [];
     let projects = [];
+    let selectedDate = TODAY;
+    let datesWithItems = new Set();
 
     // Helpers
     const showToast = (message, type = '') => {
@@ -769,12 +904,81 @@
         return div.innerHTML;
     };
 
+    // Date Helpers
+    const formatDateDisplay = (dateStr) => {
+        const date = new Date(dateStr + 'T12:00:00');
+        const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+        return date.toLocaleDateString('en-GB', options);
+    };
+
+    const getDateLabel = (dateStr) => {
+        if (dateStr === TODAY) return 'Today';
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (dateStr === yesterday.toISOString().split('T')[0]) return 'Yesterday';
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (dateStr === tomorrow.toISOString().split('T')[0]) return 'Tomorrow';
+        return formatDateDisplay(dateStr).split(',')[0]; // Just the day name
+    };
+
+    const addDays = (dateStr, days) => {
+        const date = new Date(dateStr + 'T12:00:00');
+        date.setDate(date.getDate() + days);
+        return date.toISOString().split('T')[0];
+    };
+
+    const updateDateDisplay = () => {
+        document.getElementById('dateDisplayMain').textContent = getDateLabel(selectedDate);
+        document.getElementById('dateDisplaySub').textContent = formatDateDisplay(selectedDate);
+        document.getElementById('datePicker').value = selectedDate;
+
+        const todayBtn = document.getElementById('todayBtn');
+        todayBtn.classList.toggle('is-today', selectedDate === TODAY);
+
+        // Disable next button if viewing today or future
+        document.getElementById('nextDayBtn').disabled = selectedDate >= TODAY;
+
+        // Update items title
+        const title = selectedDate === TODAY ? "Today's Snapshot" : `Snapshot for ${getDateLabel(selectedDate)}`;
+        document.querySelector('.items-title').textContent = title;
+
+        // Update date dots
+        updateDateDots();
+    };
+
+    const updateDateDots = () => {
+        const dotsContainer = document.getElementById('dateDots');
+        let dotsHtml = '';
+
+        // Show 7 days centered on selected date
+        for (let i = -3; i <= 3; i++) {
+            const dotDate = addDays(selectedDate, i);
+            const hasItems = datesWithItems.has(dotDate);
+            const isCurrent = i === 0;
+            dotsHtml += `<span class="date-dot ${hasItems ? 'has-items' : ''} ${isCurrent ? 'current' : ''}"></span>`;
+        }
+        dotsContainer.innerHTML = dotsHtml;
+    };
+
+    const goToDate = (dateStr) => {
+        selectedDate = dateStr;
+        updateDateDisplay();
+        loadItems();
+    };
+
+    const goToPrevDay = () => goToDate(addDays(selectedDate, -1));
+    const goToNextDay = () => {
+        if (selectedDate < TODAY) goToDate(addDays(selectedDate, 1));
+    };
+    const goToToday = () => goToDate(TODAY);
+
     // Slack Message
     function generateSlackMessage() {
-        const now = new Date();
-        const dateStr = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-        const monday = new Date(now);
-        monday.setDate(now.getDate() - (now.getDay() || 7) + 1);
+        const selectedDateObj = new Date(selectedDate + 'T12:00:00');
+        const dateStr = selectedDateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        const monday = new Date(selectedDateObj);
+        monday.setDate(selectedDateObj.getDate() - (selectedDateObj.getDay() || 7) + 1);
         const wcStr = monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
         document.getElementById('slackTime').textContent = dateStr;
@@ -835,7 +1039,7 @@
     // Data Loading
     async function loadItems() {
         try {
-            const response = await fetch(`${API_URL}/daily-rundown?date=${TODAY}`);
+            const response = await fetch(`${API_URL}/daily-rundown?date=${selectedDate}`);
             const data = await response.json();
 
             if (!data.success) throw new Error(data.error || 'Failed to load');
@@ -843,6 +1047,9 @@
             items = data.sections.flatMap(s => s.items);
             renderItems();
             updatePreview();
+
+            // Check surrounding dates for items
+            checkDatesWithItems();
         } catch (error) {
             console.error('Error:', error);
             document.getElementById('itemsList').innerHTML = `
@@ -852,6 +1059,30 @@
                 </div>
             `;
         }
+    }
+
+    async function checkDatesWithItems() {
+        // Check the surrounding week for items
+        const datesToCheck = [];
+        for (let i = -7; i <= 0; i++) {
+            datesToCheck.push(addDays(TODAY, i));
+        }
+
+        for (const dateStr of datesToCheck) {
+            try {
+                const response = await fetch(`${API_URL}/daily-rundown?date=${dateStr}`);
+                const data = await response.json();
+                if (data.success && data.sections) {
+                    const count = data.sections.reduce((sum, s) => sum + s.items.length, 0);
+                    if (count > 0) {
+                        datesWithItems.add(dateStr);
+                    }
+                }
+            } catch (e) {
+                // Ignore errors for background checks
+            }
+        }
+        updateDateDots();
     }
 
     async function loadProjects() {
@@ -946,7 +1177,7 @@
             details: document.getElementById('details').value || null,
             links: document.getElementById('links').value || null,
             projectId: document.getElementById('project').value || null,
-            snapshotDate: TODAY
+            snapshotDate: selectedDate
         };
 
         try {
@@ -1009,13 +1240,14 @@
     }
 
     async function carryOver() {
-        if (!confirm('Copy items from yesterday?')) return;
+        const prevDate = addDays(selectedDate, -1);
+        if (!confirm(`Copy items from ${getDateLabel(prevDate)} to ${getDateLabel(selectedDate)}?`)) return;
 
         try {
             const response = await fetch(`${API_URL}/commercial-snapshot/carry-over`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ toDate: TODAY })
+                body: JSON.stringify({ toDate: selectedDate, fromDate: prevDate })
             });
 
             const result = await response.json();
@@ -1055,6 +1287,16 @@
     document.getElementById('refreshBtn').addEventListener('click', loadItems);
     document.getElementById('copyBtn').addEventListener('click', copyToClipboard);
 
+    // Date Navigation
+    document.getElementById('prevDayBtn').addEventListener('click', goToPrevDay);
+    document.getElementById('nextDayBtn').addEventListener('click', goToNextDay);
+    document.getElementById('todayBtn').addEventListener('click', goToToday);
+    document.getElementById('datePicker').addEventListener('change', (e) => {
+        if (e.target.value && e.target.value <= TODAY) {
+            goToDate(e.target.value);
+        }
+    });
+
     document.querySelectorAll('.status-pill').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.status-pill').forEach(b => b.classList.remove('active'));
@@ -1068,6 +1310,7 @@
     });
 
     // Init
+    updateDateDisplay();
     loadItems();
     loadProjects();
 </script>
