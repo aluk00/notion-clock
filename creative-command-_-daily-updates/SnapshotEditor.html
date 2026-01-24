@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Commercial Snapshot Editor | DMG Command Centre</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #0F172A;
+            --ink-sub: #64748B;
+            --ink-muted: #94A3B8;
+            --border: #E2E8F0;
+            --surface: #FFFFFF;
+            --surface-alt: #F8FAFC;
+            --hero-blue: #21A0D8;
+            --creative-pink: #E6468B;
+            --green: #10B981;
+            --green-soft: rgba(16, 185, 129, 0.1);
+            --yellow: #F59E0B;
+            --yellow-soft: rgba(245, 158, 11, 0.1);
+            --red: #EF4444;
+            --red-soft: rgba(239, 68, 68, 0.1);
+            --blue: #3B82F6;
+            --blue-soft: rgba(59, 130, 246, 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: all 0.2s ease;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--surface-alt);
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 1200px) {
+            .app-container { grid-template-columns: 1fr; }
+            .preview-panel { display: none; }
+        }
+
+        /* Main Panel */
+        .main-panel {
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--creative-pink);
+            color: white;
+        }
+        .btn-primary:hover { background: #d63d7d; }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--ink);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { background: var(--surface-alt); }
+
+        .btn-success {
+            background: var(--green);
+            color: white;
+        }
+        .btn-success:hover { background: #059669; }
+
+        /* Form Card */
+        .form-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-card h2 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--ink);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-family: inherit;
+            background: var(--surface);
+            color: var(--ink);
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--creative-pink);
+            box-shadow: 0 0 0 3px rgba(230, 70, 139, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        /* Status Buttons */
+        .status-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .status-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 2px solid var(--border);
+            background: var(--surface);
+            transition: var(--transition);
+        }
+
+        .status-btn.green { color: var(--green); }
+        .status-btn.green.active { background: var(--green-soft); border-color: var(--green); }
+        .status-btn.yellow { color: var(--yellow); }
+        .status-btn.yellow.active { background: var(--yellow-soft); border-color: var(--yellow); }
+        .status-btn.red { color: var(--red); }
+        .status-btn.red.active { background: var(--red-soft); border-color: var(--red); }
+        .status-btn.info { color: var(--blue); }
+        .status-btn.info.active { background: var(--blue-soft); border-color: var(--blue); }
+
+        /* Items List */
+        .items-section h2 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .items-count {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            background: var(--surface-alt);
+            border-radius: 10px;
+            color: var(--ink-sub);
+        }
+
+        .items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .item-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            transition: var(--transition);
+        }
+
+        .item-card:hover {
+            border-color: var(--ink-muted);
+        }
+
+        .item-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .item-headline {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 4px;
+        }
+
+        .item-meta {
+            font-size: 11px;
+            color: var(--ink-sub);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .item-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: var(--surface-alt);
+            color: var(--ink-sub);
+            cursor: pointer;
+            font-size: 12px;
+            transition: var(--transition);
+        }
+
+        .item-btn:hover {
+            background: var(--border);
+            color: var(--ink);
+        }
+
+        .item-btn.delete:hover {
+            background: var(--red-soft);
+            color: var(--red);
+        }
+
+        .status-tag {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .status-tag.green { background: var(--green-soft); color: var(--green); }
+        .status-tag.yellow { background: var(--yellow-soft); color: var(--yellow); }
+        .status-tag.red { background: var(--red-soft); color: var(--red); }
+        .status-tag.info { background: var(--blue-soft); color: var(--blue); }
+
+        /* Preview Panel */
+        .preview-panel {
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+        }
+
+        .preview-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-header h2 {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .preview-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .preview-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .slack-preview {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            color: var(--ink-sub);
+            background: var(--surface-alt);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            border: 1px solid var(--border);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--ink);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.success { background: var(--green); }
+        .toast.error { background: var(--red); }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--ink-muted);
+            font-size: 12px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--ink-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 40px;
+            opacity: 0.3;
+            margin-bottom: 12px;
+        }
+
+        .empty-state-text {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* Section Headers */
+        .section-group {
+            margin-bottom: 24px;
+        }
+
+        .section-group-header {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Main Panel -->
+        <div class="main-panel">
+            <div class="header">
+                <h1>Commercial Snapshot Editor</h1>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" id="carryOverBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                        Carry Over from Yesterday
+                    </button>
+                    <button class="btn btn-primary" id="refreshBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                        </svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Add/Edit Form -->
+            <div class="form-card">
+                <h2 id="formTitle">Add New Item</h2>
+                <form id="itemForm">
+                    <input type="hidden" id="editingId" value="">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Section *</label>
+                            <select id="section" required>
+                                <option value="">Select section...</option>
+                                <option value="✅ Completed – Creative Responses (This Week)">✅ Completed – Creative Responses</option>
+                                <option value="🆕 New Briefs in Progress">🆕 New Briefs in Progress</option>
+                                <option value="🟡 Active / In Production Projects">🟡 Active / In Production</option>
+                                <option value="🧠 New Media Ventures">🧠 New Media Ventures</option>
+                                <option value="🧠 Prospective & Strategic Partnerships">🧠 Prospective Partnerships</option>
+                                <option value="🛠 Internal / Workflow">🛠 Internal / Workflow</option>
+                                <option value="👋 Coming Up">👋 Coming Up</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Project (optional)</label>
+                            <select id="project">
+                                <option value="">No project linked</option>
+                            </select>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Headline *</label>
+                            <input type="text" id="headline" placeholder="e.g. Specsavers | Brief received, concepts in progress" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Status</label>
+                            <div class="status-buttons">
+                                <button type="button" class="status-btn green" data-status="Green">🟢 On Track</button>
+                                <button type="button" class="status-btn yellow" data-status="Yellow">🟡 Attention</button>
+                                <button type="button" class="status-btn red" data-status="Red">🔴 Blocked</button>
+                                <button type="button" class="status-btn info" data-status="Info">ℹ️ Info</button>
+                            </div>
+                            <input type="hidden" id="statusTag" value="">
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Details (optional)</label>
+                            <textarea id="details" placeholder="Key updates, next actions, watch-outs..."></textarea>
+                        </div>
+                        <div class="form-group full-width">
+                            <label>Links (optional)</label>
+                            <input type="text" id="links" placeholder="Paste URLs separated by spaces">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-success" id="submitBtn">Add Item</button>
+                        <button type="button" class="btn btn-secondary" id="cancelBtn" style="display: none;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Today's Items -->
+            <div class="items-section">
+                <h2>Today's Snapshot <span class="items-count" id="itemsCount">0</span></h2>
+                <div id="itemsList" class="items-list">
+                    <div class="loading">Loading items...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview-panel">
+            <div class="preview-header">
+                <h2>Slack Preview</h2>
+                <div class="preview-actions">
+                    <button class="btn btn-secondary" id="copyBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                        Copy
+                    </button>
+                </div>
+            </div>
+            <div class="preview-content">
+                <pre class="slack-preview" id="slackPreview">Loading preview...</pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+<script>
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONFIGURATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+    const TODAY = new Date().toISOString().split('T')[0];
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════════════════════════════════════
+    let items = [];
+    let projects = [];
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════════════════════
+    const showToast = (message, type = '') => {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.className = `toast show ${type}`;
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    };
+
+    const escapeHtml = (text) => {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SLACK MESSAGE GENERATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    function generateSlackMessage() {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+        // Get Monday of current week
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - (now.getDay() || 7) + 1);
+        const wcStr = monday.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+        let message = `📌 DMG NEW MEDIA — COMMERCIAL OPS\n🗓️ ${dateStr}\nW/C ${wcStr}\n\n`;
+
+        // Group items by section
+        const sectionOrder = [
+            '✅ Completed – Creative Responses (This Week)',
+            '🆕 New Briefs in Progress',
+            '🟡 Active / In Production Projects',
+            '🧠 New Media Ventures',
+            '🧠 Prospective & Strategic Partnerships',
+            '🛠 Internal / Workflow',
+            '👋 Coming Up'
+        ];
+
+        const grouped = {};
+        items.forEach(item => {
+            const section = item.section || 'Other';
+            if (!grouped[section]) grouped[section] = [];
+            grouped[section].push(item);
+        });
+
+        sectionOrder.forEach(section => {
+            if (!grouped[section] || grouped[section].length === 0) return;
+
+            message += `${section.toUpperCase()}\n\n`;
+
+            grouped[section].forEach(item => {
+                const statusIcon = item.statusTag === 'Green' ? '🟢' :
+                                   item.statusTag === 'Yellow' ? '🟡' :
+                                   item.statusTag === 'Red' ? '🔴' : '';
+
+                message += `${item.headline || 'Untitled'}`;
+                if (statusIcon) message += ` | Status: ${statusIcon}`;
+                message += '\n';
+
+                if (item.details) {
+                    const lines = item.details.split('\n').filter(l => l.trim());
+                    lines.forEach(line => {
+                        message += `${line.trim()}\n`;
+                    });
+                }
+
+                if (item.links) {
+                    message += `🔗 ${item.links}\n`;
+                }
+
+                message += '\n';
+            });
+        });
+
+        return message.trim();
+    }
+
+    function updatePreview() {
+        document.getElementById('slackPreview').textContent = generateSlackMessage();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DATA LOADING
+    // ═══════════════════════════════════════════════════════════════════════════
+    async function loadItems() {
+        try {
+            const response = await fetch(`${API_URL}/daily-rundown?date=${TODAY}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to load items');
+            }
+
+            // Flatten sections into items array
+            items = data.sections.flatMap(s => s.items);
+            renderItems();
+            updatePreview();
+        } catch (error) {
+            console.error('Error loading items:', error);
+            document.getElementById('itemsList').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚠️</div>
+                    <div class="empty-state-text">Failed to load items: ${escapeHtml(error.message)}</div>
+                </div>
+            `;
+        }
+    }
+
+    async function loadProjects() {
+        try {
+            const response = await fetch(`${API_URL}/commercial-snapshot/projects`);
+            const data = await response.json();
+
+            if (data.success && data.projects) {
+                projects = data.projects;
+                const select = document.getElementById('project');
+                select.innerHTML = '<option value="">No project linked</option>';
+                projects.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.client ? `${p.name} (${p.client})` : p.name;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (error) {
+            console.error('Error loading projects:', error);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════════════════════════════════════════
+    function renderItems() {
+        const container = document.getElementById('itemsList');
+        document.getElementById('itemsCount').textContent = items.length;
+
+        if (items.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-text">No items for today yet.<br>Add one above or carry over from yesterday.</div>
+                </div>
+            `;
+            return;
+        }
+
+        // Group by section
+        const grouped = {};
+        items.forEach(item => {
+            const section = item.section || 'Other';
+            if (!grouped[section]) grouped[section] = [];
+            grouped[section].push(item);
+        });
+
+        let html = '';
+        Object.entries(grouped).forEach(([section, sectionItems]) => {
+            html += `<div class="section-group">`;
+            html += `<div class="section-group-header">${escapeHtml(section)}</div>`;
+
+            sectionItems.forEach(item => {
+                const statusClass = item.statusTag ? item.statusTag.toLowerCase() : '';
+                html += `
+                    <div class="item-card" data-id="${item.id}">
+                        <div class="item-content">
+                            <div class="item-headline">${escapeHtml(item.headline || item.projectName || 'Untitled')}</div>
+                            <div class="item-meta">
+                                ${item.statusTag ? `<span class="status-tag ${statusClass}">${item.statusTag}</span>` : ''}
+                                ${item.clientPartner ? `<span>${escapeHtml(item.clientPartner)}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="item-btn edit-btn" title="Edit" data-id="${item.id}">✏️</button>
+                            <button class="item-btn delete delete-btn" title="Delete" data-id="${item.id}">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+        });
+
+        container.innerHTML = html;
+
+        // Attach event listeners
+        container.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => editItem(btn.dataset.id));
+        });
+        container.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', () => deleteItem(btn.dataset.id));
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CRUD OPERATIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+    async function saveItem(e) {
+        e.preventDefault();
+
+        const editingId = document.getElementById('editingId').value;
+        const data = {
+            section: document.getElementById('section').value,
+            headline: document.getElementById('headline').value,
+            statusTag: document.getElementById('statusTag').value || null,
+            details: document.getElementById('details').value || null,
+            links: document.getElementById('links').value || null,
+            projectId: document.getElementById('project').value || null,
+            snapshotDate: TODAY
+        };
+
+        try {
+            const url = editingId
+                ? `${API_URL}/commercial-snapshot/${editingId}`
+                : `${API_URL}/commercial-snapshot`;
+
+            const response = await fetch(url, {
+                method: editingId ? 'PATCH' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to save');
+            }
+
+            showToast(editingId ? 'Item updated!' : 'Item added!', 'success');
+            resetForm();
+            loadItems();
+        } catch (error) {
+            console.error('Error saving item:', error);
+            showToast('Failed to save: ' + error.message, 'error');
+        }
+    }
+
+    function editItem(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        document.getElementById('editingId').value = id;
+        document.getElementById('section').value = item.section || '';
+        document.getElementById('headline').value = item.headline || '';
+        document.getElementById('statusTag').value = item.statusTag || '';
+        document.getElementById('details').value = item.details || '';
+        document.getElementById('links').value = item.links || '';
+
+        // Update status buttons
+        document.querySelectorAll('.status-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.status === item.statusTag);
+        });
+
+        document.getElementById('formTitle').textContent = 'Edit Item';
+        document.getElementById('submitBtn').textContent = 'Update Item';
+        document.getElementById('cancelBtn').style.display = 'block';
+
+        // Scroll to form
+        document.querySelector('.form-card').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function deleteItem(id) {
+        if (!confirm('Delete this item?')) return;
+
+        try {
+            const response = await fetch(`${API_URL}/commercial-snapshot/${id}`, {
+                method: 'DELETE'
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to delete');
+            }
+
+            showToast('Item deleted', 'success');
+            loadItems();
+        } catch (error) {
+            console.error('Error deleting item:', error);
+            showToast('Failed to delete: ' + error.message, 'error');
+        }
+    }
+
+    async function carryOver() {
+        if (!confirm('Copy all items from yesterday to today?')) return;
+
+        try {
+            const response = await fetch(`${API_URL}/commercial-snapshot/carry-over`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ toDate: TODAY })
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to carry over');
+            }
+
+            showToast(`Carried over ${result.itemsCopied} items from ${result.fromDate}`, 'success');
+            loadItems();
+        } catch (error) {
+            console.error('Error carrying over:', error);
+            showToast('Failed to carry over: ' + error.message, 'error');
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('itemForm').reset();
+        document.getElementById('editingId').value = '';
+        document.getElementById('statusTag').value = '';
+        document.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('formTitle').textContent = 'Add New Item';
+        document.getElementById('submitBtn').textContent = 'Add Item';
+        document.getElementById('cancelBtn').style.display = 'none';
+    }
+
+    async function copyToClipboard() {
+        const text = document.getElementById('slackPreview').textContent;
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast('Copied to clipboard!', 'success');
+        } catch (err) {
+            showToast('Failed to copy', 'error');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // EVENT LISTENERS
+    // ═══════════════════════════════════════════════════════════════════════════
+    document.getElementById('itemForm').addEventListener('submit', saveItem);
+    document.getElementById('cancelBtn').addEventListener('click', resetForm);
+    document.getElementById('carryOverBtn').addEventListener('click', carryOver);
+    document.getElementById('refreshBtn').addEventListener('click', loadItems);
+    document.getElementById('copyBtn').addEventListener('click', copyToClipboard);
+
+    // Status button toggles
+    document.querySelectorAll('.status-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('statusTag').value = btn.dataset.status;
+        });
+    });
+
+    // Live preview update on form change
+    ['section', 'headline', 'details', 'links'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updatePreview);
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INITIALIZE
+    // ═══════════════════════════════════════════════════════════════════════════
+    loadItems();
+    loadProjects();
+</script>
+</body>
+</html>

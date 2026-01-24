@@ -1966,6 +1966,251 @@ app.get('/daily-rundown', async (req, res) => {
     }
 });
 
+// ============================================
+// COMMERCIAL SNAPSHOT CRUD
+// For the editor widget
+// ============================================
+
+// POST /commercial-snapshot - Create new snapshot item
+app.post('/commercial-snapshot', async (req, res) => {
+    try {
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({ success: false, error: 'Commercial Snapshot DB not configured' });
+        }
+
+        const { projectId, section, statusTag, headline, details, links, snapshotDate } = req.body;
+
+        if (!section || !headline) {
+            return res.status(400).json({ success: false, error: 'Section and Headline are required' });
+        }
+
+        const properties = {
+            'Headline': { title: [{ text: { content: headline } }] },
+            'Section': { select: { name: section } },
+            'Snapshot Date': { date: { start: snapshotDate || new Date().toISOString().split('T')[0] } }
+        };
+
+        if (statusTag) {
+            properties['Status Tag'] = { select: { name: statusTag } };
+        }
+        if (details) {
+            properties['Details'] = { rich_text: [{ text: { content: details } }] };
+        }
+        if (links) {
+            properties['Links'] = { rich_text: [{ text: { content: links } }] };
+        }
+        if (projectId) {
+            properties['Project'] = { relation: [{ id: projectId }] };
+        }
+
+        const response = await notion.pages.create({
+            parent: { database_id: COMMERCIAL_SNAPSHOT_DB },
+            properties
+        });
+
+        res.json({ success: true, id: response.id, url: response.url });
+    } catch (error) {
+        console.error('Error creating snapshot item:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// PATCH /commercial-snapshot/:id - Update snapshot item
+app.patch('/commercial-snapshot/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { section, statusTag, headline, details, links, snapshotDate, projectId } = req.body;
+
+        const properties = {};
+
+        if (headline !== undefined) {
+            properties['Headline'] = { title: [{ text: { content: headline } }] };
+        }
+        if (section !== undefined) {
+            properties['Section'] = { select: { name: section } };
+        }
+        if (statusTag !== undefined) {
+            properties['Status Tag'] = statusTag ? { select: { name: statusTag } } : { select: null };
+        }
+        if (details !== undefined) {
+            properties['Details'] = { rich_text: details ? [{ text: { content: details } }] : [] };
+        }
+        if (links !== undefined) {
+            properties['Links'] = { rich_text: links ? [{ text: { content: links } }] : [] };
+        }
+        if (snapshotDate !== undefined) {
+            properties['Snapshot Date'] = { date: { start: snapshotDate } };
+        }
+        if (projectId !== undefined) {
+            properties['Project'] = projectId ? { relation: [{ id: projectId }] } : { relation: [] };
+        }
+
+        await notion.pages.update({
+            page_id: id,
+            properties
+        });
+
+        res.json({ success: true, id });
+    } catch (error) {
+        console.error('Error updating snapshot item:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// DELETE /commercial-snapshot/:id - Archive snapshot item
+app.delete('/commercial-snapshot/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        await notion.pages.update({
+            page_id: id,
+            archived: true
+        });
+
+        res.json({ success: true, id });
+    } catch (error) {
+        console.error('Error deleting snapshot item:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST /commercial-snapshot/carry-over - Copy items from source date to target date
+app.post('/commercial-snapshot/carry-over', async (req, res) => {
+    try {
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({ success: false, error: 'Commercial Snapshot DB not configured' });
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const { fromDate, toDate = today } = req.body;
+
+        // Default: carry over from yesterday
+        const sourceDate = fromDate || (() => {
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            return d.toISOString().split('T')[0];
+        })();
+
+        // Get items from source date
+        const sourceItems = await notion.databases.query({
+            database_id: COMMERCIAL_SNAPSHOT_DB,
+            filter: {
+                property: 'Snapshot Date',
+                date: { equals: sourceDate }
+            }
+        });
+
+        if (sourceItems.results.length === 0) {
+            return res.json({ success: true, message: `No items found for ${sourceDate}`, itemsCopied: 0 });
+        }
+
+        // Check what already exists on target date
+        const existingItems = await notion.databases.query({
+            database_id: COMMERCIAL_SNAPSHOT_DB,
+            filter: {
+                property: 'Snapshot Date',
+                date: { equals: toDate }
+            }
+        });
+
+        const existingHeadlines = new Set(
+            existingItems.results.map(p => parseProperty(p.properties['Headline']))
+        );
+
+        let itemsCopied = 0;
+        const errors = [];
+
+        for (const page of sourceItems.results) {
+            const props = page.properties;
+            const headline = parseProperty(props['Headline']);
+
+            // Skip if already exists
+            if (existingHeadlines.has(headline)) {
+                continue;
+            }
+
+            try {
+                const newProps = {
+                    'Headline': { title: [{ text: { content: headline || 'Untitled' } }] },
+                    'Snapshot Date': { date: { start: toDate } }
+                };
+
+                const section = parseProperty(props['Section']);
+                if (section) newProps['Section'] = { select: { name: section } };
+
+                const statusTag = parseProperty(props['Status Tag']);
+                if (statusTag) newProps['Status Tag'] = { select: { name: statusTag } };
+
+                const details = parseProperty(props['Details']);
+                if (details) newProps['Details'] = { rich_text: [{ text: { content: details } }] };
+
+                const links = parseProperty(props['Links']);
+                if (links) newProps['Links'] = { rich_text: [{ text: { content: links } }] };
+
+                const projectIds = parseProperty(props['Project']);
+                if (projectIds && projectIds.length > 0) {
+                    newProps['Project'] = { relation: projectIds.map(id => ({ id })) };
+                }
+
+                await notion.pages.create({
+                    parent: { database_id: COMMERCIAL_SNAPSHOT_DB },
+                    properties: newProps
+                });
+
+                itemsCopied++;
+            } catch (err) {
+                errors.push({ headline, error: err.message });
+            }
+        }
+
+        res.json({
+            success: true,
+            fromDate: sourceDate,
+            toDate,
+            itemsCopied,
+            itemsSkipped: sourceItems.results.length - itemsCopied - errors.length,
+            errors
+        });
+    } catch (error) {
+        console.error('Error carrying over items:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /commercial-snapshot/projects - Get list of projects for dropdown
+app.get('/commercial-snapshot/projects', async (req, res) => {
+    try {
+        if (!PROJECTS_DB) {
+            return res.status(400).json({ success: false, error: 'Projects DB not configured' });
+        }
+
+        // Get recent/active projects for the dropdown
+        const response = await notion.databases.query({
+            database_id: PROJECTS_DB,
+            filter: {
+                or: [
+                    { property: 'STATUS 1', select: { equals: 'Active' } },
+                    { property: 'STATUS 1', select: { equals: 'Pipeline' } }
+                ]
+            },
+            sorts: [{ property: 'NAME', direction: 'ascending' }],
+            page_size: 100
+        });
+
+        const projects = response.results.map(page => ({
+            id: page.id,
+            name: parseProperty(page.properties['NAME']),
+            client: parseProperty(page.properties['CLIENT / EXTERNAL PARTNER']),
+            status: parseProperty(page.properties['STATUS 1'])
+        }));
+
+        res.json({ success: true, projects });
+    } catch (error) {
+        console.error('Error fetching projects:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Health check
 app.get('/', (req, res) => {
     const { version } = require('./package.json');
@@ -2004,7 +2249,12 @@ app.get('/', (req, res) => {
             'POST /process-daily-rundown',
             'POST /process-events-to-ledger',
             'POST /process-ledger-to-events',
-            'GET /daily-rundown?date=YYYY-MM-DD'
+            'GET /daily-rundown?date=YYYY-MM-DD',
+            'POST /commercial-snapshot',
+            'PATCH /commercial-snapshot/:id',
+            'DELETE /commercial-snapshot/:id',
+            'POST /commercial-snapshot/carry-over',
+            'GET /commercial-snapshot/projects'
         ]
     });
 });
