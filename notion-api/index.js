@@ -1281,7 +1281,7 @@ app.post('/process-deal-agreed', async (req, res) => {
                             properties: {
                                 'NAME': { title: [{ text: { content: episodeName } }] },
                                 'PARENT ITEM': { relation: [{ id: dealId }] },
-                                'STATUS': { select: { name: 'Not started' } }
+                                'STATUS': { status: { name: 'Not started' } }
                             }
                         });
 
@@ -1297,7 +1297,7 @@ app.post('/process-deal-agreed', async (req, res) => {
                                 'NAME': { title: [{ text: { content: editTaskName } }] },
                                 'PARENT ITEM': { relation: [{ id: episodeId }] },
                                 'DISCIPLINE': { select: { name: 'Editor' } },
-                                'STATUS': { select: { name: 'Not started' } }
+                                'STATUS': { status: { name: 'Not started' } }
                             }
                         });
                         results.tasksCreated++;
@@ -1311,7 +1311,7 @@ app.post('/process-deal-agreed', async (req, res) => {
                                 'NAME': { title: [{ text: { content: thumbnailTaskName } }] },
                                 'PARENT ITEM': { relation: [{ id: episodeId }] },
                                 'DISCIPLINE': { select: { name: 'Design' } },
-                                'STATUS': { select: { name: 'Not started' } }
+                                'STATUS': { status: { name: 'Not started' } }
                             }
                         });
                         results.tasksCreated++;
@@ -1442,7 +1442,7 @@ app.post('/process-daily-rundown', async (req, res) => {
                 const ledgerProperties = {
                     'NAME': { title: [{ text: { content: ledgerItemName } }] },
                     'PARENT ITEM': { relation: [{ id: parentId }] },
-                    'STATUS': { select: { name: 'Not started' } }
+                    'STATUS': { status: { name: 'Not started' } }
                 };
 
                 // Add VERTICAL if the field exists in Master Ledger
@@ -1472,7 +1472,7 @@ app.post('/process-daily-rundown', async (req, res) => {
                         'NAME': { title: [{ text: { content: editTaskName } }] },
                         'PARENT ITEM': { relation: [{ id: ledgerItemId }] },
                         'DISCIPLINE': { select: { name: 'Editor' } },
-                        'STATUS': { select: { name: 'Not started' } }
+                        'STATUS': { status: { name: 'Not started' } }
                     }
                 });
                 console.log(`[Daily Rundown] Created Edit task: ${editTaskName}`);
@@ -1485,7 +1485,7 @@ app.post('/process-daily-rundown', async (req, res) => {
                         'NAME': { title: [{ text: { content: thumbnailTaskName } }] },
                         'PARENT ITEM': { relation: [{ id: ledgerItemId }] },
                         'DISCIPLINE': { select: { name: 'Design' } },
-                        'STATUS': { select: { name: 'Not started' } }
+                        'STATUS': { status: { name: 'Not started' } }
                     }
                 });
                 console.log(`[Daily Rundown] Created Thumbnail task: ${thumbnailTaskName}`);
@@ -1591,7 +1591,7 @@ app.post('/process-events-to-ledger', async (req, res) => {
                 const ledgerProperties = {
                     'NAME': { title: [{ text: { content: title } }] },
                     'PARENT ITEM': { relation: [{ id: parentId }] },
-                    'STATUS': { select: { name: 'Not started' } },
+                    'STATUS': { status: { name: 'Not started' } },
                     'VERTICAL': { select: { name: vertical } }
                 };
 
@@ -1622,7 +1622,7 @@ app.post('/process-events-to-ledger', async (req, res) => {
                         'NAME': { title: [{ text: { content: editTaskName } }] },
                         'PARENT ITEM': { relation: [{ id: ledgerItemId }] },
                         'DISCIPLINE': { select: { name: 'Editor' } },
-                        'STATUS': { select: { name: 'Not started' } }
+                        'STATUS': { status: { name: 'Not started' } }
                     }
                 });
                 results.tasksCreated++;
@@ -1636,7 +1636,7 @@ app.post('/process-events-to-ledger', async (req, res) => {
                         'NAME': { title: [{ text: { content: thumbnailTaskName } }] },
                         'PARENT ITEM': { relation: [{ id: ledgerItemId }] },
                         'DISCIPLINE': { select: { name: 'Design' } },
-                        'STATUS': { select: { name: 'Not started' } }
+                        'STATUS': { status: { name: 'Not started' } }
                     }
                 });
                 results.tasksCreated++;
