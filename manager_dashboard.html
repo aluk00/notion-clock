@@ -840,6 +840,7 @@
             // Create lookup by notionId and by name
             const notionById = {};
             const notionByName = {};
+            const matchedNotionIds = new Set();
             notionStaff.forEach(ns => {
                 if (ns.id) notionById[ns.id] = ns;
                 const fullName = `${ns.firstName || ''} ${ns.lastName || ''}`.trim().toLowerCase();
@@ -847,7 +848,7 @@
             });
 
             // Merge: use Firebase as base, enrich with Notion data
-            return staff.map(fs => {
+            const merged = staff.map(fs => {
                 let ns = null;
                 if (fs.notionId) ns = notionById[fs.notionId];
                 if (!ns) {
@@ -855,6 +856,7 @@
                     ns = notionByName[fullName];
                 }
                 if (ns) {
+                    matchedNotionIds.add(ns.id);
                     return {
                         ...fs,
                         email: ns.email || fs.email,
@@ -870,6 +872,34 @@
                 }
                 return fs;
             });
+
+            // Add Notion-only staff (not matched to Firebase) so they appear in the list
+            notionStaff.forEach(ns => {
+                if (!matchedNotionIds.has(ns.id)) {
+                    merged.push({
+                        id: ns.id,
+                        notionId: ns.id,
+                        notionUrl: ns.notionUrl,
+                        firstName: ns.firstName,
+                        lastName: ns.lastName,
+                        email: ns.email,
+                        team: ns.team,
+                        role: ns.role,
+                        seniority: ns.seniority,
+                        status: ns.status,
+                        active: ns.active,
+                        weeklyCapacityPTS: ns.weeklyCapacityPTS,
+                        isLineManager: ns.isLineManager,
+                        secondaryRoles: ns.secondaryRoles,
+                        employmentType: ns.employmentType,
+                        phone: ns.phone,
+                        slackId: ns.slackId,
+                        notionOnly: true // Flag to indicate this is Notion-only
+                    });
+                }
+            });
+
+            return merged;
         }
 
         // PIN Management
@@ -1349,31 +1379,38 @@
                 </div>
 
                 <!-- Quick Stats Row -->
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
-                    <div class="card" style="cursor:pointer;" onclick="setTab('staff')">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px;">
+                    <div class="card" style="cursor:pointer;" onclick="setTab('staff')" title="Click to manage staff">
                         <div class="card-body" style="padding:16px;text-align:center;">
                             <div style="font-size:28px;font-weight:900;color:var(--ink);">${activeStaff.length}</div>
-                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Active Team</div>
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Active Staff</div>
                         </div>
                     </div>
-                    <div class="card" style="cursor:pointer;" onclick="setTab('capacity')">
+                    <div class="card" style="cursor:pointer;" onclick="setTab('capacity')" title="Click to see capacity details">
                         <div class="card-body" style="padding:16px;text-align:center;">
                             <div style="font-size:28px;font-weight:900;color:${capacityColor(totalUtilization)};">${totalUtilization}%</div>
-                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Utilisation</div>
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Team Utilisation</div>
                         </div>
                     </div>
-                    <div class="card" style="cursor:pointer;" onclick="setTab('projects')">
+                    <div class="card" style="cursor:pointer;" onclick="setTab('projects')" title="Click to see all projects">
                         <div class="card-body" style="padding:16px;text-align:center;">
                             <div style="font-size:28px;font-weight:900;color:var(--dmg-blue);">${projects.filter(p => (p.status || '').toLowerCase().includes('progress')).length}</div>
-                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">In Progress</div>
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Projects Active</div>
                         </div>
                     </div>
-                    <div class="card">
+                    <div class="card" title="Number of departments/teams">
                         <div class="card-body" style="padding:16px;text-align:center;">
-                            <div style="font-size:28px;font-weight:900;color:var(--ink);">${teamData.length}</div>
-                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Teams</div>
+                            <div style="font-size:28px;font-weight:900;color:var(--ink);">${teamData.filter(t => t.members.length > 0).length}</div>
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Active Teams</div>
                         </div>
                     </div>
+                </div>
+                <div style="padding:8px 12px;margin-bottom:16px;background:var(--surface-alt);border-radius:var(--radius-sm);font-size:11px;color:var(--ink-muted);line-height:1.5;">
+                    <strong>What these mean:</strong>
+                    <strong>Active Staff</strong> = team members not archived ·
+                    <strong>Team Utilisation</strong> = % of total team capacity currently assigned to projects (${totalUtilization > 70 ? 'high workload' : totalUtilization > 40 ? 'healthy workload' : 'capacity available'}) ·
+                    <strong>Projects Active</strong> = projects with "In Progress" status ·
+                    <strong>Active Teams</strong> = departments with at least one member
                 </div>
 
                 <!-- Team Capacity Overview -->
@@ -1901,6 +1938,12 @@
         }
 
         function renderProjects() {
+            // Debug: log all projects loaded from API
+            console.log('[Projects] Total loaded from API:', projects.length);
+            if (projects.length > 0) {
+                console.log('[Projects] Sample deal stages:', projects.slice(0, 5).map(p => p.dealStage || p.status || 'none'));
+            }
+
             // Show projects that are active (not cancelled/archived)
             const activeProjects = projects.filter(p => {
                 const stage = (p.dealStage || p.status || p.projectStatus || '').toLowerCase();
@@ -1910,6 +1953,8 @@
                 if (included.some(i => stage.includes(i))) return true;
                 return !!(p.creativeLead || p.productionLead || p.videoEditor || stage);
             });
+            console.log('[Projects] After filtering:', activeProjects.length);
+
             const mergedStaff = getMergedStaff();
             const productionStaff = mergedStaff.filter(s => ['production', 'creative'].includes((s.team || '').toLowerCase()));
             const editorsStaff = mergedStaff.filter(s => (s.role || '').toLowerCase().includes('editor') || (s.team || '').toLowerCase() === 'editorial');
@@ -1928,6 +1973,7 @@
                     <div class="card-header">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Project Assignments</span>
                         <span class="card-meta">${activeProjects.length} active projects</span>
+                        <button class="btn btn-ghost btn-sm" onclick="loadProjects()" title="Refresh projects">↻ Refresh</button>
                     </div>
                     <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);line-height:1.5;">
                         <strong>Assign team members to projects:</strong> Select Creative Lead, Production Lead, and Editor for each project.
@@ -1938,7 +1984,9 @@
                         <div class="empty">
                             <div class="empty-icon">📋</div>
                             <div class="empty-title">No Active Projects</div>
-                            <div class="empty-subtitle">Projects with "Deal Agreed" status will appear here for assignment.</div>
+                            <div class="empty-subtitle">${projects.length === 0
+                                ? 'No projects loaded from Notion. Check API connection and console for errors.'
+                                : `${projects.length} projects loaded but none match active criteria. Projects need a Deal Stage like "Deal Agreed", "In Progress", "Filming", etc.`}</div>
                         </div>
                     ` : `
                         <div class="card-body" style="padding:16px;">
@@ -2275,6 +2323,47 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Section: Assigned Projects -->
+                    ${(() => {
+                        const name = (s.firstName || '').toLowerCase();
+                        const assignedProjects = projects.filter(p => {
+                            const creative = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase();
+                            const production = (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase();
+                            const editor = (p.videoEditor?.[0]?.name || p.videoEditor || '').toLowerCase();
+                            const editorial = (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase();
+                            return name && (creative.includes(name) || production.includes(name) || editor.includes(name) || editorial.includes(name));
+                        });
+                        return assignedProjects.length > 0 ? \`
+                            <div style="margin-bottom:20px;">
+                                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects (\${assignedProjects.length})</div>
+                                <div style="display:flex;flex-direction:column;gap:8px;">
+                                    \${assignedProjects.map(p => {
+                                        const role = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase().includes(name) ? 'Creative Lead' :
+                                                     (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase().includes(name) ? 'Production Lead' :
+                                                     (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase().includes(name) ? 'Editorial Lead' : 'Editor';
+                                        return \`
+                                            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;">
+                                                <div style="flex:1;min-width:0;">
+                                                    <div style="font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\${p.title || 'Untitled'}</div>
+                                                    <div style="font-size:11px;color:var(--ink-sub);">\${p.client || 'No client'} · \${role}</div>
+                                                </div>
+                                                <span style="font-size:10px;padding:4px 8px;background:var(--dmg-blue-soft);color:var(--dmg-blue);border-radius:4px;">\${p.dealStage || p.status || 'Active'}</span>
+                                                \${p.url ? \`<a href="\${p.url}" target="_blank" style="font-size:10px;color:var(--ink-muted);" title="Open in Notion">↗</a>\` : ''}
+                                            </div>
+                                        \`;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        \` : \`
+                            <div style="margin-bottom:20px;">
+                                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects</div>
+                                <div style="padding:16px;background:var(--surface-alt);border-radius:8px;text-align:center;">
+                                    <div style="font-size:12px;color:var(--ink-muted);">No projects currently assigned</div>
+                                </div>
+                            </div>
+                        \`;
+                    })()}
 
                     ${s.notionUrl ? `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);"><a href="${s.notionUrl}" target="_blank" style="font-size:12px;color:var(--dmg-blue);">View full profile in Notion ↗</a></div>` : ''}
                 </div>
