@@ -854,6 +854,11 @@ function parseStaffMember(page) {
         slackId: parseProperty(props['Slack ID']) || parseProperty(props['SLACK ID']) || '',
         phone: parseProperty(props['Phone']) || parseProperty(props['PHONE']) || '',
         jobRoles: parseProperty(props['Job Roles']) || parseProperty(props['JOB ROLES']) || [],
+        // Line Manager fields
+        isLineManager: parseProperty(props['IS LINE MANAGER']) || parseProperty(props['Is Line Manager']) || false,
+        lineManager: parseProperty(props['LINE MANAGER']) || parseProperty(props['Line Manager']) || '',
+        lineManagerName: parseProperty(props['LINE MANAGER NAME (API)']) || parseProperty(props['Line Manager Name (API)']) || '',
+        lineManagerDropdown: parseProperty(props['LINE MANAGER (DROPDOWN)']) || parseProperty(props['Line Manager (Dropdown)']) || '',
         createdAt: page.created_time,
         updatedAt: page.last_edited_time
     };
@@ -895,6 +900,13 @@ function buildStaffProperties(data) {
     }
     if (data.jobRoles !== undefined && Array.isArray(data.jobRoles)) {
         props['Job Roles'] = { multi_select: data.jobRoles.map(r => ({ name: r })) };
+    }
+    // Line Manager fields
+    if (data.isLineManager !== undefined) {
+        props['IS LINE MANAGER'] = { checkbox: data.isLineManager === true };
+    }
+    if (data.lineManagerDropdown !== undefined) {
+        props['LINE MANAGER (DROPDOWN)'] = data.lineManagerDropdown ? { select: { name: data.lineManagerDropdown } } : { select: null };
     }
 
     return props;
