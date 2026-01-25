@@ -827,9 +827,46 @@
         const JOB_ROLES = ['Creator', 'Creative', 'Editor', 'Designer', 'Producer', 'Channel Lead', 'Account Manager', 'Strategist', 'Manager', 'Admin'];
 
         // State
-        let staff = [], rotaRequests = [], projects = [], pendingChanges = [], effortConfig = null;
+        let staff = [], notionStaff = [], rotaRequests = [], projects = [], pendingChanges = [], effortConfig = null;
         let activeTab = 'overview', loading = true, calendarWeekOffset = 0;
         const root = document.getElementById('root');
+
+        // Merge Firebase staff with Notion staff data (Notion has accurate emails)
+        function getMergedStaff() {
+            // Create lookup by notionId and by name
+            const notionById = {};
+            const notionByName = {};
+            notionStaff.forEach(ns => {
+                if (ns.id) notionById[ns.id] = ns;
+                const fullName = `${ns.firstName || ''} ${ns.lastName || ''}`.trim().toLowerCase();
+                if (fullName) notionByName[fullName] = ns;
+            });
+
+            // Merge: use Firebase as base, enrich with Notion data
+            return staff.map(fs => {
+                let ns = null;
+                if (fs.notionId) ns = notionById[fs.notionId];
+                if (!ns) {
+                    const fullName = `${fs.firstName || ''} ${fs.lastName || ''}`.trim().toLowerCase();
+                    ns = notionByName[fullName];
+                }
+                if (ns) {
+                    return {
+                        ...fs,
+                        email: ns.email || fs.email,
+                        team: ns.team || fs.team,
+                        role: ns.role || fs.role,
+                        seniority: ns.seniority || fs.seniority,
+                        status: ns.status || fs.status,
+                        weeklyCapacityPTS: ns.weeklyCapacityPTS || fs.weeklyCapacityPTS,
+                        isLineManager: ns.isLineManager || fs.isLineManager,
+                        notionId: ns.id,
+                        notionUrl: ns.notionUrl
+                    };
+                }
+                return fs;
+            });
+        }
 
         // PIN Management
         const PIN_HASH = '1234';
@@ -997,8 +1034,11 @@
         // ========== TAB RENDERERS ==========
 
         function renderOverview() {
+            const mergedStaff = getMergedStaff();
+            const activeStaff = mergedStaff.filter(s => s.active !== false && s.status !== 'Inactive');
+
             const teamData = TEAMS.map(t => {
-                const members = staff.filter(s => s.team === t);
+                const members = mergedStaff.filter(s => s.team === t);
                 const totals = members.reduce((sum, m) => {
                     const stats = getMemberEffort(m);
                     return { effort: sum.effort + stats.currentEffort, capacity: sum.capacity + stats.weeklyCapacity };
@@ -1008,7 +1048,7 @@
 
             const pendingRota = rotaRequests.filter(r => r.status === 'pending').length;
             const pendingApprovals = pendingChanges.filter(c => c.status === 'pending').length;
-            const overallTotals = staff.reduce((sum, m) => {
+            const overallTotals = mergedStaff.reduce((sum, m) => {
                 const stats = getMemberEffort(m);
                 return { effort: sum.effort + stats.currentEffort, capacity: sum.capacity + stats.weeklyCapacity };
             }, { effort: 0, capacity: 0 });
@@ -1026,7 +1066,7 @@
             }));
 
             const todayStatus = { office: [], wfh: [], leave: [], sick: [] };
-            staff.filter(s => s.active !== false).forEach(s => {
+            activeStaff.forEach(s => {
                 const name = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase();
                 const request = approved.find(r => {
                     const reqName = `${r.firstName || r.name || ''} ${r.lastName || ''}`.toLowerCase();
@@ -1121,14 +1161,15 @@
         }
 
         function renderCapacity() {
+            const mergedStaff = getMergedStaff();
             const forecastedProjects = projects.filter(p => {
                 const stage = (p.dealStage || '').toLowerCase();
                 const status = (p.status || p.productionWorkflowStatus || '').toLowerCase();
                 return (stage.includes('agreed') || stage.includes('won')) && !status.includes('in production') && !status.includes('complete') && ((p.movingAssetCount > 0) || (p.staticAssetCount > 0));
             });
             const forecastedHours = forecastedProjects.reduce((sum, p) => sum + (p.movingAssetCount || 0) * 4 + (p.staticAssetCount || 0) * 2, 0);
-            const totalCapacity = staff.reduce((sum, m) => sum + getWeeklyCapacity(m), 0);
-            const currentEffort = staff.reduce((sum, m) => sum + getMemberEffort(m).currentEffort, 0);
+            const totalCapacity = mergedStaff.reduce((sum, m) => sum + getWeeklyCapacity(m), 0);
+            const currentEffort = mergedStaff.reduce((sum, m) => sum + getMemberEffort(m).currentEffort, 0);
             const forecastedUtilization = totalCapacity > 0 ? ((currentEffort + forecastedHours) / totalCapacity) * 100 : 0;
 
             return `
@@ -1152,10 +1193,10 @@
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Individual Capacity</span>
-                        <span class="card-meta">${staff.length} team members</span>
+                        <span class="card-meta">${mergedStaff.length} team members</span>
                     </div>
-                    ${staff.length === 0 ? `<div class="empty"><div class="empty-icon">👤</div><div class="empty-title">No Staff</div><div class="empty-subtitle">Add staff members to track capacity.</div></div>` : `
-                        <div>${staff.map(s => {
+                    ${mergedStaff.length === 0 ? `<div class="empty"><div class="empty-icon">👤</div><div class="empty-title">No Staff</div><div class="empty-subtitle">Add staff members to track capacity.</div></div>` : `
+                        <div>${mergedStaff.map(s => {
                             const stats = getMemberEffort(s);
                             return `
                                 <div class="list-item" onclick="openStaffModal('${s.id}')">
@@ -1178,6 +1219,8 @@
         }
 
         function renderAvailability() {
+            const mergedStaff = getMergedStaff();
+            const activeStaff = mergedStaff.filter(s => s.active !== false && s.status !== 'Inactive');
             const weekDates = getWeekDates(calendarWeekOffset);
             const approved = rotaRequests.filter(r => r.status === 'approved').map(r => ({
                 ...r,
@@ -1193,19 +1236,33 @@
                 });
                 if (request) {
                     const type = (request.type || 'leave').toLowerCase();
-                    if (type === 'wfh') return { icon: '🏠', label: 'WFH' };
-                    if (type === 'sick') return { icon: '🤒', label: 'Sick' };
-                    return { icon: '🏖️', label: 'Leave' };
+                    if (type === 'wfh') return { icon: '🏠', label: 'WFH', color: 'rgba(33, 160, 216, 0.15)' };
+                    if (type === 'sick') return { icon: '🤒', label: 'Sick', color: 'rgba(239, 68, 68, 0.15)' };
+                    return { icon: '🏖️', label: 'Leave', color: 'rgba(249, 115, 22, 0.15)' };
                 }
-                return { icon: '🏢', label: 'Office' };
+                return { icon: '🏢', label: 'Office', color: 'rgba(67, 176, 73, 0.15)' };
             };
 
             const weekLabel = `Week of ${weekDates[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
             const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
+            // Count by team for summary
+            const teamCounts = {};
+            activeStaff.forEach(s => {
+                const team = s.team || 'Unassigned';
+                if (!teamCounts[team]) teamCounts[team] = { total: 0, office: 0 };
+                teamCounts[team].total++;
+                const today = new Date();
+                const status = getStatusForDay(s, today);
+                if (status.label === 'Office') teamCounts[team].office++;
+            });
+
             return `
                 <div class="card">
-                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Weekly Attendance</span></div>
+                    <div class="card-header">
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Weekly Attendance</span>
+                        <span class="card-meta">${activeStaff.length} team members</span>
+                    </div>
                     <div class="card-body">
                         <div class="calendar-nav">
                             <button class="btn btn-ghost btn-sm" onclick="changeWeek(-1)">← Previous</button>
@@ -1215,9 +1272,18 @@
                         <div class="calendar-grid">
                             <div class="calendar-header">Team Member</div>
                             ${dayLabels.map((d, i) => `<div class="calendar-header">${d} ${weekDates[i].getDate()}</div>`).join('')}
-                            ${staff.slice(0, 15).map(s => `
-                                <div class="calendar-row-name" style="cursor:pointer;" onclick="openAttendanceModal('${s.id}')"><div class="avatar avatar-sm" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div><span>${s.firstName}</span></div>
-                                ${weekDates.map(date => { const status = getStatusForDay(s, date); return `<div class="calendar-cell" title="${status.label}"><span class="calendar-icon">${status.icon}</span></div>`; }).join('')}
+                            ${activeStaff.map(s => `
+                                <div class="calendar-row-name" style="cursor:pointer;" onclick="openAttendanceModal('${s.id}')">
+                                    <div class="avatar avatar-sm" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div>
+                                    <div style="overflow:hidden;">
+                                        <span style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.firstName}</span>
+                                        <span style="font-size:10px; color:var(--ink-sub);">${s.team || ''}</span>
+                                    </div>
+                                </div>
+                                ${weekDates.map(date => {
+                                    const status = getStatusForDay(s, date);
+                                    return `<div class="calendar-cell" title="${status.label}" style="background:${status.color}"><span class="calendar-icon">${status.icon}</span></div>`;
+                                }).join('')}
                             `).join('')}
                         </div>
                         <div class="calendar-legend">
@@ -1294,26 +1360,35 @@
         }
 
         function renderStaff() {
+            const mergedStaff = getMergedStaff();
             return `
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Team Directory</span>
-                        <button class="btn btn-primary btn-sm" onclick="openAddStaffModal()">+ Add Member</button>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-ghost btn-sm" onclick="loadStaffFromNotion()" title="Refresh from Notion">↻ Sync</button>
+                            <button class="btn btn-primary btn-sm" onclick="openAddStaffModal()">+ Add Member</button>
+                        </div>
                     </div>
-                    ${staff.length === 0 ? `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No Staff Members</div><div class="empty-subtitle">Click "Add Member" to add your first team member.</div></div>` : `
+                    ${mergedStaff.length === 0 ? `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No Staff Members</div><div class="empty-subtitle">Click "Add Member" to add your first team member.</div></div>` : `
                         <div class="table-wrapper">
                             <table>
                                 <thead><tr><th>Name</th><th>Team</th><th>Role</th><th>Seniority</th><th>Capacity</th><th>Status</th><th></th></tr></thead>
                                 <tbody>
-                                    ${staff.map(s => `
+                                    ${mergedStaff.map(s => `
                                         <tr>
                                             <td><div style="display:flex;align-items:center;gap:12px;"><div class="avatar avatar-sm" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div><div><div style="font-weight:700;">${s.firstName} ${s.lastName}</div><div style="font-size:11px;color:var(--ink-sub);">${s.email || 'No email'}</div></div></div></td>
                                             <td><span class="pill" style="background:${colorSoft(s.team)};color:${color(s.team)}">${s.team || 'Unassigned'}</span></td>
                                             <td>${s.role || '—'}</td>
                                             <td>${s.seniority || '—'}</td>
                                             <td>${getWeeklyCapacity(s)} PTS</td>
-                                            <td><span class="pill ${s.active !== false ? 'pill-success' : 'pill-gray'}">${s.active !== false ? 'Active' : 'Inactive'}</span></td>
-                                            <td><button class="btn btn-ghost btn-sm" onclick="openStaffModal('${s.id}')">Edit</button></td>
+                                            <td><span class="pill ${(s.status === 'Active' || s.active !== false) ? 'pill-success' : 'pill-gray'}">${s.status || (s.active !== false ? 'Active' : 'Inactive')}</span></td>
+                                            <td>
+                                                <div style="display:flex;gap:4px;">
+                                                    ${s.notionUrl ? `<a href="${s.notionUrl}" target="_blank" class="btn btn-ghost btn-sm" title="View in Notion">↗</a>` : ''}
+                                                    <button class="btn btn-ghost btn-sm" onclick="openStaffModal('${s.id}')">Edit</button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -1360,31 +1435,107 @@
                 if (included.some(i => stage.includes(i))) return true;
                 return !!(p.creativeLead || p.productionLead || p.videoEditor || stage);
             });
-            const productionStaff = staff.filter(s => ['production', 'creative'].includes((s.team || '').toLowerCase()));
-            const editorsStaff = staff.filter(s => (s.role || '').toLowerCase().includes('editor') || (s.team || '').toLowerCase() === 'editorial');
+            const mergedStaff = getMergedStaff();
+            const productionStaff = mergedStaff.filter(s => ['production', 'creative'].includes((s.team || '').toLowerCase()));
+            const editorsStaff = mergedStaff.filter(s => (s.role || '').toLowerCase().includes('editor') || (s.team || '').toLowerCase() === 'editorial');
+
+            const getStageColor = (stage) => {
+                const s = (stage || '').toLowerCase();
+                if (s.includes('complete') || s.includes('live')) return { bg: 'rgba(67, 176, 73, 0.1)', color: '#43B049' };
+                if (s.includes('edit') || s.includes('review')) return { bg: 'rgba(249, 115, 22, 0.1)', color: '#F97316' };
+                if (s.includes('filming') || s.includes('shoot') || s.includes('production')) return { bg: 'rgba(33, 160, 216, 0.1)', color: '#21A0D8' };
+                if (s.includes('agreed') || s.includes('briefed') || s.includes('pre-prod')) return { bg: 'rgba(139, 92, 246, 0.1)', color: '#8B5CF6' };
+                return { bg: 'rgba(107, 114, 128, 0.1)', color: '#6B7280' };
+            };
 
             return `
                 <div class="card">
-                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Project Assignments</span><span class="card-meta">${activeProjects.length} active projects</span></div>
-                    ${activeProjects.length === 0 ? `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No Active Projects</div><div class="empty-subtitle">Projects with "Deal Agreed" status will appear here for assignment.</div></div>` : `
-                        <div class="card-body">${activeProjects.map(p => {
-                            const currentCreative = p.creativeLead?.[0]?.name || p.creativeLead || '';
-                            const currentProduction = p.productionLead?.[0]?.name || p.productionLead || '';
-                            return `
-                                <div style="border:1px solid var(--border); border-radius:var(--radius-sm); padding:22px; margin-bottom:18px; background:var(--surface-alt); transition: all 0.25s var(--ease);" onmouseover="this.style.borderColor='var(--dmg-blue)'" onmouseout="this.style.borderColor='var(--border)'">
-                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
-                                        <div><div style="font-size:11px;font-weight:700;color:var(--ink-sub);text-transform:uppercase;letter-spacing:0.05em;">${p.client || 'Internal'}</div><div style="font-size:17px;font-weight:800;margin-top:5px;">${p.title || 'Untitled Project'}</div></div>
-                                        <span class="pill ${(p.dealStage || '').includes('Complete') ? 'pill-success' : 'pill-blue'}">${p.dealStage || 'In Progress'}</span>
-                                    </div>
-                                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:18px;">
-                                        <div><label class="form-label">Creative Lead</label><select class="form-select project-assign" data-project="${p.id}" data-role="creativeLead"><option value="">Select...</option>${productionStaff.map(s => `<option value="${s.id}" ${currentCreative.includes(s.firstName) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}</select></div>
-                                        <div><label class="form-label">Production Lead</label><select class="form-select project-assign" data-project="${p.id}" data-role="productionLead"><option value="">Select...</option>${productionStaff.map(s => `<option value="${s.id}" ${currentProduction.includes(s.firstName) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}</select></div>
-                                        <div><label class="form-label">Editor</label><select class="form-select project-assign" data-project="${p.id}" data-role="editor"><option value="">Select...</option>${editorsStaff.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName || ''}</option>`).join('')}</select></div>
-                                    </div>
-                                    <div style="margin-top:18px; text-align:right;"><button class="btn btn-primary btn-sm" onclick="saveProjectAssignment('${p.id}')">Save Assignment</button></div>
-                                </div>
-                            `;
-                        }).join('')}</div>
+                    <div class="card-header">
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Project Assignments</span>
+                        <span class="card-meta">${activeProjects.length} active projects</span>
+                    </div>
+                    ${activeProjects.length === 0 ? `
+                        <div class="empty">
+                            <div class="empty-icon">📋</div>
+                            <div class="empty-title">No Active Projects</div>
+                            <div class="empty-subtitle">Projects with "Deal Agreed" status will appear here for assignment.</div>
+                        </div>
+                    ` : `
+                        <div class="card-body" style="padding:16px;">
+                            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:16px;">
+                                ${activeProjects.map(p => {
+                                    const currentCreative = p.creativeLead?.[0]?.name || p.creativeLead || '';
+                                    const currentProduction = p.productionLead?.[0]?.name || p.productionLead || '';
+                                    const stageColors = getStageColor(p.dealStage || p.status);
+                                    const dueDate = p.dueDate ? new Date(p.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null;
+                                    return `
+                                        <div class="project-card" style="
+                                            background: white;
+                                            border: 1px solid var(--border);
+                                            border-radius: 12px;
+                                            padding: 0;
+                                            overflow: hidden;
+                                            transition: all 0.2s var(--ease);
+                                            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+                                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.08)'; this.style.borderColor='var(--dmg-blue)'"
+                                           onmouseout="this.style.transform=''; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'; this.style.borderColor='var(--border)'">
+
+                                            <div style="padding:18px 18px 14px; border-bottom:1px solid var(--border); background:var(--surface-alt);">
+                                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                                                    <div style="flex:1; min-width:0;">
+                                                        <div style="font-size:10px; font-weight:700; color:var(--ink-sub); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">${p.client || 'Internal Project'}</div>
+                                                        <div style="font-size:15px; font-weight:800; color:var(--ink); line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${p.title || 'Untitled Project'}</div>
+                                                    </div>
+                                                    <span style="
+                                                        flex-shrink:0;
+                                                        font-size:10px;
+                                                        font-weight:700;
+                                                        padding:5px 10px;
+                                                        border-radius:6px;
+                                                        background:${stageColors.bg};
+                                                        color:${stageColors.color};
+                                                        text-transform:uppercase;
+                                                        letter-spacing:0.02em;
+                                                    ">${p.dealStage || p.status || 'Active'}</span>
+                                                </div>
+                                                ${dueDate ? `<div style="margin-top:10px; font-size:11px; color:var(--ink-sub);"><span style="opacity:0.7;">Due:</span> <strong>${dueDate}</strong></div>` : ''}
+                                            </div>
+
+                                            <div style="padding:14px 18px;">
+                                                <div style="display:flex; flex-direction:column; gap:10px;">
+                                                    <div style="display:flex; align-items:center; gap:10px;">
+                                                        <span style="font-size:11px; color:var(--ink-sub); width:90px;">Creative</span>
+                                                        <select class="form-select project-assign" data-project="${p.id}" data-role="creativeLead" style="flex:1; font-size:12px; padding:6px 10px;">
+                                                            <option value="">Unassigned</option>
+                                                            ${productionStaff.map(s => `<option value="${s.id}" ${currentCreative.includes(s.firstName) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}
+                                                        </select>
+                                                    </div>
+                                                    <div style="display:flex; align-items:center; gap:10px;">
+                                                        <span style="font-size:11px; color:var(--ink-sub); width:90px;">Production</span>
+                                                        <select class="form-select project-assign" data-project="${p.id}" data-role="productionLead" style="flex:1; font-size:12px; padding:6px 10px;">
+                                                            <option value="">Unassigned</option>
+                                                            ${productionStaff.map(s => `<option value="${s.id}" ${currentProduction.includes(s.firstName) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}
+                                                        </select>
+                                                    </div>
+                                                    <div style="display:flex; align-items:center; gap:10px;">
+                                                        <span style="font-size:11px; color:var(--ink-sub); width:90px;">Editor</span>
+                                                        <select class="form-select project-assign" data-project="${p.id}" data-role="editor" style="flex:1; font-size:12px; padding:6px 10px;">
+                                                            <option value="">Unassigned</option>
+                                                            ${editorsStaff.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName || ''}</option>`).join('')}
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
+                                                    ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:11px; color:var(--dmg-blue); text-decoration:none;">View in Notion ↗</a>` : '<span></span>'}
+                                                    <button class="btn btn-primary btn-sm" onclick="saveProjectAssignment('${p.id}')" style="font-size:11px; padding:6px 14px;">Save</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
                     `}
                 </div>
             `;
@@ -1886,6 +2037,20 @@
             } catch (e) { console.error('Failed to load projects:', e); }
         }
 
+        async function loadStaffFromNotion() {
+            try {
+                const res = await fetch(`${API_URL}/staff-directory`);
+                const data = await res.json();
+                if (data.success) {
+                    notionStaff = data.staff || [];
+                    console.log('[Manager] Loaded', notionStaff.length, 'staff from Notion');
+                    render();
+                }
+            } catch (e) {
+                console.error('Failed to load staff from Notion:', e);
+            }
+        }
+
         // ========== INITIALIZE ==========
 
         onAuthStateChanged(auth, user => {
@@ -1919,7 +2084,9 @@
                 });
 
                 loadProjects();
+                loadStaffFromNotion();
                 setInterval(loadProjects, 60000);
+                setInterval(loadStaffFromNotion, 60000);
             } else {
                 signInAnonymously(auth);
             }
