@@ -823,8 +823,12 @@
             Design: { color: '#8B5CF6', soft: 'rgba(139, 92, 246, 0.1)' }
         };
         const TEAMS = Object.keys(TEAM_COLORS);
-        const SENIORITY_LEVELS = ['Intern', 'Junior', 'Midweight', 'Senior', 'Lead', 'Head of', 'Director'];
-        const JOB_ROLES = ['Creator', 'Creative', 'Editor', 'Designer', 'Producer', 'Channel Lead', 'Account Manager', 'Strategist', 'Manager', 'Admin'];
+        const SENIORITY_LEVELS = ['Intern', 'Junior', 'Midweight', 'Senior', 'Lead', 'Head of', 'Director of', 'Executive'];
+        const JOB_ROLES = ['Creator', 'Creative', 'Editor', 'Designer', 'Producer', 'Channel Lead', 'Account Manager', 'Strategist', 'Manager', 'Admin', 'Videographer', 'Team Led', 'Project Manager', 'Channel Producer', 'Content Producer'];
+        const SECONDARY_ROLES = ['Creative', 'Producer', 'Channel Lead', 'Creator', 'Editor', 'Designer'];
+        const EMPLOYMENT_TYPES = ['Full-time', 'Freelance', 'Contractor', 'Intern'];
+        const STAFF_STATUS = ['Active', 'On Leave', 'Inactive'];
+        const LINE_MANAGER_OPTIONS = ['Anais Lukaku', 'Ellie Beetham', 'Nev Brook', 'Nick Moar', 'Matthew Macleod', 'Nathan Aspell', 'Williams Olufemi', 'Nick Bolwell', 'Alice Baker', 'Maxine Halperin', 'Deli Koprinkov'];
 
         // State
         let staff = [], notionStaff = [], rotaRequests = [], projects = [], pendingChanges = [], effortConfig = null;
@@ -1031,6 +1035,170 @@
 
         window.closeModal = () => document.getElementById('modalOverlay').classList.remove('active');
 
+        // ========== PROJECT DETAIL MODAL ==========
+
+        window.openProjectDetailModal = (projectId) => {
+            const p = projects.find(proj => proj.id === projectId);
+            if (!p) return;
+
+            const mergedStaff = getMergedStaff();
+            const stageColor = getProjectStageColor(p.dealStage || p.status);
+            const dueDate = p.dueDate ? new Date(p.dueDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set';
+
+            // Get assigned staff
+            const creativeLead = p.creativeLead?.[0]?.name || p.creativeLead || 'Unassigned';
+            const productionLead = p.productionLead?.[0]?.name || p.productionLead || 'Unassigned';
+            const videoEditor = p.videoEditor?.[0]?.name || p.videoEditor || 'Unassigned';
+
+            // Calculate budget info
+            const budget = p.budget || p.totalBudget || 0;
+            const spent = p.spent || p.actualSpend || 0;
+            const remaining = budget - spent;
+            const budgetPercent = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+
+            // Get deliverables count
+            const movingAssets = p.movingAssetCount || 0;
+            const staticAssets = p.staticAssetCount || 0;
+            const totalAssets = movingAssets + staticAssets;
+
+            // Find related change requests
+            const projectRequests = pendingChanges.filter(c => c.projectId === projectId || c.projectTitle === p.title);
+
+            const modal = document.getElementById('modal');
+            modal.innerHTML = `
+                <div class="modal-header" style="background:linear-gradient(135deg, ${stageColor.color}15 0%, transparent 100%);">
+                    <div style="flex:1;">
+                        <div style="font-size:11px;font-weight:700;color:var(--ink-sub);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${p.client || 'Internal Project'}</div>
+                        <span class="modal-title" style="font-size:20px;">${p.title || 'Untitled Project'}</span>
+                        <div style="display:flex;gap:8px;margin-top:8px;">
+                            <span style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;background:${stageColor.bg};color:${stageColor.color};text-transform:uppercase;">${p.dealStage || p.status || 'Active'}</span>
+                            ${p.vertical ? `<span style="font-size:10px;font-weight:600;padding:4px 10px;border-radius:6px;background:var(--surface-alt);color:var(--ink-sub);">${p.vertical}</span>` : ''}
+                        </div>
+                    </div>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+                    <!-- Key Info Grid -->
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+                        <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:14px;text-align:center;">
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;margin-bottom:4px;">Due Date</div>
+                            <div style="font-size:14px;font-weight:800;color:var(--ink);">${dueDate}</div>
+                        </div>
+                        <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:14px;text-align:center;">
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;margin-bottom:4px;">Deliverables</div>
+                            <div style="font-size:14px;font-weight:800;color:var(--dmg-blue);">${totalAssets} total</div>
+                            <div style="font-size:10px;color:var(--ink-sub);">${movingAssets} video • ${staticAssets} static</div>
+                        </div>
+                        <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:14px;text-align:center;">
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;margin-bottom:4px;">Format</div>
+                            <div style="font-size:14px;font-weight:800;color:var(--ink);">${p.format || p.contentType || 'TBD'}</div>
+                        </div>
+                    </div>
+
+                    <!-- Budget Section -->
+                    <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:18px;margin-bottom:20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div style="font-size:12px;font-weight:700;color:var(--ink);">Budget</div>
+                            ${budget > 0 ? `<div style="font-size:11px;color:var(--ink-sub);">${budgetPercent}% spent</div>` : ''}
+                        </div>
+                        ${budget > 0 ? `
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:12px;">
+                                <div>
+                                    <div style="font-size:10px;color:var(--ink-sub);margin-bottom:2px;">Total Budget</div>
+                                    <div style="font-size:18px;font-weight:900;color:var(--ink);">£${budget.toLocaleString()}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size:10px;color:var(--ink-sub);margin-bottom:2px;">Spent</div>
+                                    <div style="font-size:18px;font-weight:900;color:var(--warning);">£${spent.toLocaleString()}</div>
+                                </div>
+                                <div>
+                                    <div style="font-size:10px;color:var(--ink-sub);margin-bottom:2px;">Remaining</div>
+                                    <div style="font-size:18px;font-weight:900;color:${remaining >= 0 ? 'var(--success)' : 'var(--danger)'};">£${remaining.toLocaleString()}</div>
+                                </div>
+                            </div>
+                            <div class="capacity-bar" style="height:8px;">
+                                <div class="capacity-fill" style="width:${Math.min(budgetPercent, 100)}%;background:${budgetPercent > 90 ? 'var(--danger)' : budgetPercent > 70 ? 'var(--warning)' : 'var(--success)'}"></div>
+                            </div>
+                        ` : `
+                            <div style="text-align:center;padding:12px;color:var(--ink-sub);">
+                                <div style="font-size:13px;">No budget set</div>
+                                <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="showToast('Budget editing coming soon')">+ Set Budget</button>
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- Team Section -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:12px;">Assigned Team</div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                            <div style="background:var(--creative-soft);border-radius:var(--radius-sm);padding:12px;">
+                                <div style="font-size:10px;color:var(--creative);font-weight:700;margin-bottom:4px;">CREATIVE LEAD</div>
+                                <div style="font-size:13px;font-weight:600;color:var(--ink);">${creativeLead}</div>
+                            </div>
+                            <div style="background:var(--production-soft);border-radius:var(--radius-sm);padding:12px;">
+                                <div style="font-size:10px;color:var(--production);font-weight:700;margin-bottom:4px;">PRODUCTION LEAD</div>
+                                <div style="font-size:13px;font-weight:600;color:var(--ink);">${productionLead}</div>
+                            </div>
+                            <div style="background:var(--editorial-soft);border-radius:var(--radius-sm);padding:12px;">
+                                <div style="font-size:10px;color:var(--editorial);font-weight:700;margin-bottom:4px;">VIDEO EDITOR</div>
+                                <div style="font-size:13px;font-weight:600;color:var(--ink);">${videoEditor}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Change Requests Section -->
+                    <div style="margin-bottom:20px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div style="font-size:12px;font-weight:700;color:var(--ink);">Change Requests</div>
+                            ${projectRequests.length > 0 ? `<span class="pill pill-warning">${projectRequests.filter(r => r.status === 'pending').length} pending</span>` : ''}
+                        </div>
+                        ${projectRequests.length === 0 ? `
+                            <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:16px;text-align:center;">
+                                <div style="font-size:13px;color:var(--ink-sub);">No change requests</div>
+                            </div>
+                        ` : `
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                                ${projectRequests.slice(0, 5).map(r => `
+                                    <div style="background:var(--surface-alt);border-radius:var(--radius-xs);padding:12px;display:flex;justify-content:space-between;align-items:center;">
+                                        <div>
+                                            <div style="font-size:12px;font-weight:600;color:var(--ink);">${r.field || 'Status'} change</div>
+                                            <div style="font-size:11px;color:var(--ink-sub);">${r.currentValue || 'None'} → ${r.requestedValue}</div>
+                                        </div>
+                                        <span class="pill ${r.status === 'approved' ? 'pill-success' : r.status === 'rejected' ? 'pill-danger' : 'pill-warning'}">${r.status}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- Project Notes -->
+                    ${p.notes || p.description ? `
+                        <div>
+                            <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:8px;">Notes</div>
+                            <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:14px;font-size:13px;color:var(--ink-sub);line-height:1.6;">${p.notes || p.description}</div>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;">
+                    ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:11px;color:var(--ink-sub);text-decoration:none;display:flex;align-items:center;gap:4px;"><span>Open in Notion</span><span style="font-size:10px;">↗</span></a>` : '<span></span>'}
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+                        <button class="btn btn-primary" onclick="switchTab('projects');closeModal();">Edit Assignment</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('active');
+        };
+
+        function getProjectStageColor(stage) {
+            const s = (stage || '').toLowerCase();
+            if (s.includes('complete') || s.includes('live')) return { bg: 'rgba(67, 176, 73, 0.1)', color: '#43B049' };
+            if (s.includes('edit') || s.includes('review')) return { bg: 'rgba(249, 115, 22, 0.1)', color: '#F97316' };
+            if (s.includes('filming') || s.includes('shoot') || s.includes('production')) return { bg: 'rgba(33, 160, 216, 0.1)', color: '#21A0D8' };
+            if (s.includes('agreed') || s.includes('briefed') || s.includes('pre-prod')) return { bg: 'rgba(139, 92, 246, 0.1)', color: '#8B5CF6' };
+            return { bg: 'rgba(107, 114, 128, 0.1)', color: '#6B7280' };
+        }
+
         // ========== TAB RENDERERS ==========
 
         function renderOverview() {
@@ -1058,6 +1226,7 @@
             const today = new Date();
             const isWeekend = today.getDay() === 0 || today.getDay() === 6;
             const todayStr = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+            const greeting = today.getHours() < 12 ? 'Good morning' : today.getHours() < 17 ? 'Good afternoon' : 'Good evening';
 
             const approved = rotaRequests.filter(r => r.status === 'approved').map(r => ({
                 ...r,
@@ -1082,11 +1251,69 @@
                 }
             });
 
+            // Get upcoming items needing attention
+            const totalNeedingAttention = pendingRota + pendingApprovals;
+
             return `
+                <!-- Welcome Hero Section -->
+                <div style="background:linear-gradient(135deg, var(--dmg-blue) 0%, #1a7ca8 100%);border-radius:var(--radius);padding:28px 32px;margin-bottom:20px;color:white;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                        <div>
+                            <div style="font-size:13px;opacity:0.85;margin-bottom:4px;">${todayStr}</div>
+                            <div style="font-size:28px;font-weight:800;margin-bottom:8px;">${greeting}</div>
+                            <div style="font-size:14px;opacity:0.9;">Your team dashboard at a glance</div>
+                        </div>
+                        <div style="text-align:right;">
+                            ${totalNeedingAttention > 0 ? `
+                                <div style="background:rgba(255,255,255,0.2);border-radius:var(--radius-sm);padding:12px 16px;backdrop-filter:blur(4px);">
+                                    <div style="font-size:24px;font-weight:900;">${totalNeedingAttention}</div>
+                                    <div style="font-size:11px;opacity:0.9;">needs attention</div>
+                                </div>
+                            ` : `
+                                <div style="background:rgba(255,255,255,0.2);border-radius:var(--radius-sm);padding:12px 16px;backdrop-filter:blur(4px);">
+                                    <div style="font-size:20px;">✓</div>
+                                    <div style="font-size:11px;opacity:0.9;">All caught up</div>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                ${totalNeedingAttention > 0 ? `
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;">
+                        ${pendingApprovals > 0 ? `
+                            <div class="card" style="cursor:pointer;transition:all 0.2s var(--ease);border-left:4px solid var(--warning);" onclick="switchTab('approvals')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <div class="card-body" style="padding:16px;display:flex;align-items:center;gap:14px;">
+                                    <div style="width:44px;height:44px;border-radius:var(--radius-sm);background:var(--warning-soft);display:flex;align-items:center;justify-content:center;font-size:20px;">📋</div>
+                                    <div style="flex:1;">
+                                        <div style="font-size:14px;font-weight:700;">${pendingApprovals} Pending Approval${pendingApprovals > 1 ? 's' : ''}</div>
+                                        <div style="font-size:12px;color:var(--ink-sub);">Status changes awaiting review</div>
+                                    </div>
+                                    <div style="font-size:18px;color:var(--ink-muted);">→</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${pendingRota > 0 ? `
+                            <div class="card" style="cursor:pointer;transition:all 0.2s var(--ease);border-left:4px solid var(--dmg-blue);" onclick="switchTab('rota')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                                <div class="card-body" style="padding:16px;display:flex;align-items:center;gap:14px;">
+                                    <div style="width:44px;height:44px;border-radius:var(--radius-sm);background:var(--dmg-blue-soft);display:flex;align-items:center;justify-content:center;font-size:20px;">📅</div>
+                                    <div style="flex:1;">
+                                        <div style="font-size:14px;font-weight:700;">${pendingRota} Rota Request${pendingRota > 1 ? 's' : ''}</div>
+                                        <div style="font-size:12px;color:var(--ink-sub);">Leave/WFH requests to approve</div>
+                                    </div>
+                                    <div style="font-size:18px;color:var(--ink-muted);">→</div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : ''}
+
+                <!-- Office Outlook -->
                 <div class="card" style="margin-bottom:16px;">
                     <div class="card-header" style="border-bottom:none;padding-bottom:0;">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Office Outlook</span>
-                        <span class="card-meta">${todayStr}</span>
+                        <button class="btn btn-ghost btn-sm" onclick="switchTab('availability')" style="font-size:11px;">View full calendar →</button>
                     </div>
                     <div class="card-body" style="padding-top:16px;">
                         ${isWeekend ? `
@@ -1096,22 +1323,22 @@
                             </div>
                         ` : `
                             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
-                                <div class="stat-card" style="cursor:pointer;" onclick="openOfficeOutlookModal('office')">
+                                <div class="stat-card" style="cursor:pointer;transition:all 0.15s var(--ease);" onclick="openOfficeOutlookModal('office')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                                     <div style="font-size:28px;margin-bottom:8px;">🏢</div>
                                     <div class="stat-value" style="color:var(--success);">${todayStatus.office.length}</div>
                                     <div class="stat-label">In Office</div>
                                 </div>
-                                <div class="stat-card" style="cursor:pointer;" onclick="openOfficeOutlookModal('wfh')">
+                                <div class="stat-card" style="cursor:pointer;transition:all 0.15s var(--ease);" onclick="openOfficeOutlookModal('wfh')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                                     <div style="font-size:28px;margin-bottom:8px;">🏠</div>
                                     <div class="stat-value" style="color:var(--dmg-blue);">${todayStatus.wfh.length}</div>
                                     <div class="stat-label">Remote</div>
                                 </div>
-                                <div class="stat-card" style="cursor:pointer;" onclick="openOfficeOutlookModal('leave')">
+                                <div class="stat-card" style="cursor:pointer;transition:all 0.15s var(--ease);" onclick="openOfficeOutlookModal('leave')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                                     <div style="font-size:28px;margin-bottom:8px;">🏖️</div>
                                     <div class="stat-value" style="color:var(--warning);">${todayStatus.leave.length}</div>
                                     <div class="stat-label">On Leave</div>
                                 </div>
-                                <div class="stat-card" style="cursor:pointer;" onclick="openOfficeOutlookModal('sick')">
+                                <div class="stat-card" style="cursor:pointer;transition:all 0.15s var(--ease);" onclick="openOfficeOutlookModal('sick')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                                     <div style="font-size:28px;margin-bottom:8px;">🤒</div>
                                     <div class="stat-value" style="color:var(--danger);">${todayStatus.sick.length}</div>
                                     <div class="stat-label">Sick</div>
@@ -1120,26 +1347,46 @@
                         `}
                     </div>
                 </div>
-                <div class="card">
-                    <div class="card-body">
-                        <div class="stats-grid">
-                            <div class="stat-card"><div class="stat-value">${staff.length}</div><div class="stat-label">Team Members</div></div>
-                            <div class="stat-card"><div class="stat-value" style="color:${capacityColor(totalUtilization)}">${totalUtilization}%</div><div class="stat-label">Team Utilisation</div></div>
-                            <div class="stat-card"><div class="stat-value" style="color:${pendingApprovals > 0 ? 'var(--warning)' : 'var(--success)'}">${pendingApprovals}</div><div class="stat-label">Pending Approvals</div></div>
-                            <div class="stat-card"><div class="stat-value" style="color:${pendingRota > 0 ? 'var(--warning)' : 'var(--success)'}">${pendingRota}</div><div class="stat-label">Rota Requests</div></div>
+
+                <!-- Quick Stats Row -->
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+                    <div class="card" style="cursor:pointer;" onclick="switchTab('staff')">
+                        <div class="card-body" style="padding:16px;text-align:center;">
+                            <div style="font-size:28px;font-weight:900;color:var(--ink);">${activeStaff.length}</div>
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Active Team</div>
+                        </div>
+                    </div>
+                    <div class="card" style="cursor:pointer;" onclick="switchTab('capacity')">
+                        <div class="card-body" style="padding:16px;text-align:center;">
+                            <div style="font-size:28px;font-weight:900;color:${capacityColor(totalUtilization)};">${totalUtilization}%</div>
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Utilisation</div>
+                        </div>
+                    </div>
+                    <div class="card" style="cursor:pointer;" onclick="switchTab('projects')">
+                        <div class="card-body" style="padding:16px;text-align:center;">
+                            <div style="font-size:28px;font-weight:900;color:var(--dmg-blue);">${projects.filter(p => (p.status || '').toLowerCase().includes('progress')).length}</div>
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">In Progress</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body" style="padding:16px;text-align:center;">
+                            <div style="font-size:28px;font-weight:900;color:var(--ink);">${teamData.length}</div>
+                            <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Teams</div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Team Capacity Overview -->
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Team Capacity</span>
-                        <span class="card-meta">${teamData.length} active teams</span>
+                        <button class="btn btn-ghost btn-sm" onclick="switchTab('capacity')" style="font-size:11px;">View details →</button>
                     </div>
                     ${teamData.length === 0 ? `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No Teams Found</div><div class="empty-subtitle">Add staff members in the Staff tab to see team capacity.</div></div>` : `
                         <div class="card-body">
                             <div class="team-grid">
                                 ${teamData.map(t => `
-                                    <div class="team-card">
+                                    <div class="team-card" style="cursor:pointer;transition:all 0.15s var(--ease);" onclick="switchTab('capacity')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                                         <div class="team-header">
                                             <div class="team-dot" style="background:${color(t.name)}"></div>
                                             <span class="team-name">${t.name}</span>
@@ -1148,7 +1395,7 @@
                                         <div class="capacity-bar"><div class="capacity-fill" style="width:${Math.min(t.utilization, 100)}%; background:${capacityColor(t.utilization)}"></div></div>
                                         <div class="capacity-label"><span>Utilisation</span><span style="color:${capacityColor(t.utilization)}; font-weight:800;">${t.utilization}%</span></div>
                                         <div class="members-row">
-                                            ${t.members.slice(0, 8).map(m => `<div class="member-avatar" style="background:${color(t.name)}" title="${m.firstName} ${m.lastName}: ${Math.round(getMemberEffort(m).utilization)}%" onclick="openStaffModal('${m.id}')">${initials(m.firstName, m.lastName)}</div>`).join('')}
+                                            ${t.members.slice(0, 8).map(m => `<div class="member-avatar" style="background:${color(t.name)}" title="${m.firstName} ${m.lastName}: ${Math.round(getMemberEffort(m).utilization)}%" onclick="event.stopPropagation();openStaffModal('${m.id}')">${initials(m.firstName, m.lastName)}</div>`).join('')}
                                             ${t.members.length > 8 ? `<div class="member-avatar" style="background:var(--ink-muted)">+${t.members.length - 8}</div>` : ''}
                                         </div>
                                     </div>
@@ -1236,26 +1483,28 @@
                 });
                 if (request) {
                     const type = (request.type || 'leave').toLowerCase();
-                    if (type === 'wfh') return { icon: '🏠', label: 'WFH', color: 'rgba(33, 160, 216, 0.15)' };
-                    if (type === 'sick') return { icon: '🤒', label: 'Sick', color: 'rgba(239, 68, 68, 0.15)' };
-                    return { icon: '🏖️', label: 'Leave', color: 'rgba(249, 115, 22, 0.15)' };
+                    if (type === 'wfh') return { icon: '🏠', label: 'WFH', color: 'rgba(33, 160, 216, 0.15)', textColor: '#21A0D8' };
+                    if (type === 'sick') return { icon: '🤒', label: 'Sick', color: 'rgba(239, 68, 68, 0.15)', textColor: '#EF4444' };
+                    return { icon: '🏖️', label: 'Leave', color: 'rgba(249, 115, 22, 0.15)', textColor: '#F97316' };
                 }
-                return { icon: '🏢', label: 'Office', color: 'rgba(67, 176, 73, 0.15)' };
+                return { icon: '🏢', label: 'Office', color: 'rgba(67, 176, 73, 0.1)', textColor: '#43B049' };
             };
 
             const weekLabel = `Week of ${weekDates[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
             const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
-            // Count by team for summary
-            const teamCounts = {};
+            // Group staff by team
+            const staffByTeam = {};
+            TEAMS.forEach(t => staffByTeam[t] = []);
+            staffByTeam['Unassigned'] = [];
             activeStaff.forEach(s => {
                 const team = s.team || 'Unassigned';
-                if (!teamCounts[team]) teamCounts[team] = { total: 0, office: 0 };
-                teamCounts[team].total++;
-                const today = new Date();
-                const status = getStatusForDay(s, today);
-                if (status.label === 'Office') teamCounts[team].office++;
+                if (!staffByTeam[team]) staffByTeam[team] = [];
+                staffByTeam[team].push(s);
             });
+
+            // Get teams that have members
+            const activeTeams = Object.entries(staffByTeam).filter(([_, members]) => members.length > 0);
 
             return `
                 <div class="card">
@@ -1269,27 +1518,40 @@
                             <span class="calendar-title">${weekLabel}</span>
                             <button class="btn btn-ghost btn-sm" onclick="changeWeek(1)">Next →</button>
                         </div>
-                        <div class="calendar-grid">
-                            <div class="calendar-header">Team Member</div>
-                            ${dayLabels.map((d, i) => `<div class="calendar-header">${d} ${weekDates[i].getDate()}</div>`).join('')}
-                            ${activeStaff.map(s => `
-                                <div class="calendar-row-name" style="cursor:pointer;" onclick="openAttendanceModal('${s.id}')">
-                                    <div class="avatar avatar-sm" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div>
-                                    <div style="overflow:hidden;">
-                                        <span style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.firstName}</span>
-                                        <span style="font-size:10px; color:var(--ink-sub);">${s.team || ''}</span>
-                                    </div>
+
+                        <!-- Team-grouped attendance -->
+                        ${activeTeams.map(([teamName, members]) => `
+                            <div style="margin-bottom:24px;">
+                                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid ${color(teamName)};">
+                                    <div style="width:10px;height:10px;border-radius:50%;background:${color(teamName)};"></div>
+                                    <span style="font-weight:700;font-size:14px;">${teamName}</span>
+                                    <span style="font-size:12px;color:var(--ink-sub);">${members.length} members</span>
                                 </div>
-                                ${weekDates.map(date => {
-                                    const status = getStatusForDay(s, date);
-                                    return `<div class="calendar-cell" title="${status.label}" style="background:${status.color}"><span class="calendar-icon">${status.icon}</span></div>`;
-                                }).join('')}
-                            `).join('')}
-                        </div>
-                        <div class="calendar-legend">
+                                <div class="calendar-grid" style="grid-template-columns:180px repeat(5, 1fr);">
+                                    <div class="calendar-header" style="font-size:10px;">Team Member</div>
+                                    ${dayLabels.map((d, i) => `<div class="calendar-header" style="font-size:10px;">${d} ${weekDates[i].getDate()}</div>`).join('')}
+                                    ${members.map(s => `
+                                        <div class="calendar-row-name" style="cursor:pointer;padding:8px;" onclick="openAttendanceModal('${s.id}')">
+                                            <div class="avatar avatar-sm" style="background:${color(teamName)};width:28px;height:28px;font-size:10px;">${initials(s.firstName, s.lastName)}</div>
+                                            <span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.firstName} ${(s.lastName || '').charAt(0)}.</span>
+                                        </div>
+                                        ${weekDates.map(date => {
+                                            const status = getStatusForDay(s, date);
+                                            return `
+                                                <div class="calendar-cell" title="${status.label}" style="background:${status.color};cursor:pointer;border-radius:6px;" onclick="openAttendanceModal('${s.id}')">
+                                                    <span style="font-size:16px;">${status.icon}</span>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+
+                        <div class="calendar-legend" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
                             <div class="legend-item"><span>🏢</span> Office</div>
-                            <div class="legend-item"><span>🏠</span> Working from Home</div>
-                            <div class="legend-item"><span>🏖️</span> Annual Leave</div>
+                            <div class="legend-item"><span>🏠</span> WFH</div>
+                            <div class="legend-item"><span>🏖️</span> Leave</div>
                             <div class="legend-item"><span>🤒</span> Sick</div>
                         </div>
                     </div>
@@ -1526,8 +1788,11 @@
                                                     </div>
                                                 </div>
 
-                                                <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
-                                                    ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:11px; color:var(--dmg-blue); text-decoration:none;">View in Notion ↗</a>` : '<span></span>'}
+                                                <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                                                    <div style="display:flex; gap:12px; align-items:center;">
+                                                        ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:10px; color:var(--ink-muted); text-decoration:none; opacity:0.7;" title="Open in Notion">↗ Notion</a>` : ''}
+                                                        <button class="btn btn-ghost btn-sm" onclick="openProjectDetailModal('${p.id}')" style="font-size:10px; padding:4px 10px; color:var(--dmg-blue);">View Details</button>
+                                                    </div>
                                                     <button class="btn btn-primary btn-sm" onclick="saveProjectAssignment('${p.id}')" style="font-size:11px; padding:6px 14px;">Save</button>
                                                 </div>
                                             </div>
@@ -1584,18 +1849,151 @@
         window.showPinScreen = showPinScreen;
 
         window.openStaffModal = (id) => {
-            const s = staff.find(m => m.id === id);
+            const mergedStaff = getMergedStaff();
+            const s = mergedStaff.find(m => m.id === id);
             if (!s) return;
+
+            const secondaryRolesSelected = s.secondaryRoles || [];
             const modal = document.getElementById('modal');
             modal.innerHTML = `
-                <div class="modal-header"><span class="modal-title">Edit Team Member</span><button class="modal-close" onclick="closeModal()">×</button></div>
-                <div class="modal-body">
-                    <div class="form-row"><div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="staffFirstName" value="${s.firstName || ''}"></div><div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="staffLastName" value="${s.lastName || ''}"></div></div>
-                    <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="staffEmail" value="${s.email || ''}"></div>
-                    <div class="form-row"><div class="form-group"><label class="form-label">Team</label><select class="form-select" id="staffTeam"><option value="">Select team...</option>${TEAMS.map(t => `<option value="${t}" ${s.team === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Seniority</label><select class="form-select" id="staffSeniority"><option value="">Select level...</option>${SENIORITY_LEVELS.map(l => `<option value="${l}" ${s.seniority === l ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
-                    <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="staffRole"><option value="">Select role...</option>${JOB_ROLES.map(r => `<option value="${r}" ${s.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
-                    <div class="form-group"><label class="form-label">Weekly Capacity (Points)</label><input class="form-input" type="number" id="staffCapacity" value="${getWeeklyCapacity(s)}" min="0" max="80"></div>
-                    <div class="form-group"><label class="form-toggle"><input type="checkbox" id="staffActive" ${s.active !== false ? 'checked' : ''}><span class="toggle-switch"></span><span class="toggle-label">Active</span></label></div>
+                <div class="modal-header">
+                    <div>
+                        <span class="modal-title">${s.firstName} ${s.lastName}</span>
+                        <div style="font-size:12px;color:var(--ink-sub);margin-top:4px;">${s.email || 'No email'}</div>
+                    </div>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+                    <!-- Section: Basic Info -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Basic Information</div>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="staffFirstName" value="${s.firstName || ''}"></div>
+                            <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="staffLastName" value="${s.lastName || ''}"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="staffPhone" value="${s.phone || ''}" placeholder="+44..."></div>
+                            <div class="form-group"><label class="form-label">Slack ID</label><input class="form-input" id="staffSlackId" value="${s.slackId || ''}" placeholder="@handle"></div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Role & Team -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Role & Team</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Team</label>
+                                <select class="form-select" id="staffTeam">
+                                    <option value="">Select team...</option>
+                                    ${TEAMS.map(t => `<option value="${t}" ${s.team === t ? 'selected' : ''}>${t}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Primary Role</label>
+                                <select class="form-select" id="staffRole">
+                                    <option value="">Select role...</option>
+                                    ${JOB_ROLES.map(r => `<option value="${r}" ${s.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Seniority</label>
+                                <select class="form-select" id="staffSeniority">
+                                    <option value="">Select level...</option>
+                                    ${SENIORITY_LEVELS.map(l => `<option value="${l}" ${s.seniority === l ? 'selected' : ''}>${l}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Employment Type</label>
+                                <select class="form-select" id="staffEmploymentType">
+                                    <option value="">Select type...</option>
+                                    ${EMPLOYMENT_TYPES.map(t => `<option value="${t}" ${s.employmentType === t ? 'selected' : ''}>${t}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Secondary Roles</label>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+                                ${SECONDARY_ROLES.map(r => `
+                                    <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:${secondaryRolesSelected.includes(r) ? 'var(--dmg-blue-soft)' : 'var(--surface-alt)'};border:1px solid ${secondaryRolesSelected.includes(r) ? 'var(--dmg-blue)' : 'var(--border)'};border-radius:6px;cursor:pointer;font-size:12px;">
+                                        <input type="checkbox" class="secondary-role-check" value="${r}" ${secondaryRolesSelected.includes(r) ? 'checked' : ''} style="display:none;">
+                                        <span>${r}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Management -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Management</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Line Manager</label>
+                                <select class="form-select" id="staffLineManager">
+                                    <option value="">Select manager...</option>
+                                    ${LINE_MANAGER_OPTIONS.map(m => `<option value="${m}" ${s.lineManagerDropdown === m ? 'selected' : ''}>${m}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="staffStatus">
+                                    ${STAFF_STATUS.map(st => `<option value="${st}" ${s.status === st ? 'selected' : ''}>${st}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group" style="flex:0 0 auto;">
+                                <label class="form-toggle" style="margin-top:24px;">
+                                    <input type="checkbox" id="staffIsLineManager" ${s.isLineManager ? 'checked' : ''}>
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-label">Is a Line Manager</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Capabilities -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Capability Flags</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:16px;">
+                            <label class="form-toggle">
+                                <input type="checkbox" id="staffIsCreator" ${s.isCreator ? 'checked' : ''}>
+                                <span class="toggle-switch"></span>
+                                <span class="toggle-label">Is Creator</span>
+                            </label>
+                            <label class="form-toggle">
+                                <input type="checkbox" id="staffIsEditor" ${s.isEditor ? 'checked' : ''}>
+                                <span class="toggle-switch"></span>
+                                <span class="toggle-label">Is Editor</span>
+                            </label>
+                            <label class="form-toggle">
+                                <input type="checkbox" id="staffIsProducer" ${s.isProducer ? 'checked' : ''}>
+                                <span class="toggle-switch"></span>
+                                <span class="toggle-label">Is Producer</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Section: Capacity -->
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Capacity</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Max Hours Per Week</label>
+                                <input class="form-input" type="number" id="staffMaxHours" value="${s.maxHoursPerWeek || 40}" min="0" max="60">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Weekly Capacity (PTS)</label>
+                                <div style="padding:10px 14px;background:var(--surface-alt);border-radius:8px;color:var(--ink-sub);font-size:14px;">
+                                    ${s.weeklyCapacityPTS || getWeeklyCapacity(s)} <span style="font-size:11px;">pts (auto from seniority)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${s.notionUrl ? `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);"><a href="${s.notionUrl}" target="_blank" style="font-size:12px;color:var(--dmg-blue);">View full profile in Notion ↗</a></div>` : ''}
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-danger btn-sm" onclick="archiveStaff('${id}')" style="margin-right:auto;">Archive</button>
@@ -1604,6 +2002,15 @@
                 </div>
             `;
             document.getElementById('modalOverlay').classList.add('active');
+
+            // Handle secondary role chip clicks
+            document.querySelectorAll('.secondary-role-check').forEach(cb => {
+                cb.parentElement.addEventListener('click', () => {
+                    cb.checked = !cb.checked;
+                    cb.parentElement.style.background = cb.checked ? 'var(--dmg-blue-soft)' : 'var(--surface-alt)';
+                    cb.parentElement.style.borderColor = cb.checked ? 'var(--dmg-blue)' : 'var(--border)';
+                });
+            });
         };
 
         window.openAddStaffModal = () => {
@@ -1623,15 +2030,30 @@
         };
 
         window.saveStaff = async (id) => {
+            // Gather secondary roles from checkboxes
+            const secondaryRoles = [];
+            document.querySelectorAll('.secondary-role-check:checked').forEach(cb => {
+                secondaryRoles.push(cb.value);
+            });
+
             const data = {
                 firstName: document.getElementById('staffFirstName').value.trim(),
                 lastName: document.getElementById('staffLastName').value.trim(),
-                email: document.getElementById('staffEmail').value.trim(),
+                phone: document.getElementById('staffPhone')?.value.trim() || '',
+                slackId: document.getElementById('staffSlackId')?.value.trim() || '',
                 team: document.getElementById('staffTeam').value,
-                seniority: document.getElementById('staffSeniority').value,
                 role: document.getElementById('staffRole').value,
-                weeklyCapacityPTS: parseInt(document.getElementById('staffCapacity').value) || 40,
-                active: document.getElementById('staffActive')?.checked !== false
+                seniority: document.getElementById('staffSeniority').value,
+                employmentType: document.getElementById('staffEmploymentType')?.value || '',
+                secondaryRoles: secondaryRoles,
+                lineManagerDropdown: document.getElementById('staffLineManager')?.value || '',
+                status: document.getElementById('staffStatus')?.value || 'Active',
+                isLineManager: document.getElementById('staffIsLineManager')?.checked || false,
+                isCreator: document.getElementById('staffIsCreator')?.checked || false,
+                isEditor: document.getElementById('staffIsEditor')?.checked || false,
+                isProducer: document.getElementById('staffIsProducer')?.checked || false,
+                maxHoursPerWeek: parseInt(document.getElementById('staffMaxHours')?.value) || 40,
+                active: document.getElementById('staffStatus')?.value === 'Active'
             };
             if (!data.firstName) { showToast('First name is required', 'error'); return; }
 
@@ -1735,16 +2157,82 @@
         // Attendance modal state
         let attendanceModalWeekOffset = 0;
         let attendanceModalStaffId = null;
+        let attendanceModalSelectedDay = null;
+        let attendanceModalShowForm = false;
 
         window.openAttendanceModal = (staffId) => {
             attendanceModalStaffId = staffId;
             attendanceModalWeekOffset = 0;
+            attendanceModalSelectedDay = null;
+            attendanceModalShowForm = false;
             renderAttendanceModal();
         };
 
         window.changeAttendanceWeek = (delta) => {
             attendanceModalWeekOffset += delta;
+            attendanceModalSelectedDay = null;
+            attendanceModalShowForm = false;
             renderAttendanceModal();
+        };
+
+        window.selectAttendanceDay = (dayIndex) => {
+            // Only allow selection for current or future weeks
+            if (attendanceModalWeekOffset >= 0) {
+                const weekDates = getWeekDates(attendanceModalWeekOffset);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const selectedDate = weekDates[dayIndex];
+                // Only allow future dates or today
+                if (selectedDate >= today) {
+                    attendanceModalSelectedDay = dayIndex;
+                    attendanceModalShowForm = true;
+                    renderAttendanceModal();
+                }
+            }
+        };
+
+        window.cancelAttendanceForm = () => {
+            attendanceModalSelectedDay = null;
+            attendanceModalShowForm = false;
+            renderAttendanceModal();
+        };
+
+        window.submitAttendanceStatus = async (statusType) => {
+            const s = staff.find(m => m.id === attendanceModalStaffId);
+            if (!s || attendanceModalSelectedDay === null) return;
+
+            const weekDates = getWeekDates(attendanceModalWeekOffset);
+            const selectedDate = weekDates[attendanceModalSelectedDay];
+
+            if (statusType === 'office') {
+                // Clear any existing request for this day - just close the form
+                showToast('Status set to In Office');
+                attendanceModalSelectedDay = null;
+                attendanceModalShowForm = false;
+                renderAttendanceModal();
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "artifacts", appId, "public", "data", "rota_requests"), {
+                    firstName: s.firstName,
+                    lastName: s.lastName,
+                    name: `${s.firstName} ${s.lastName}`,
+                    team: s.team,
+                    type: statusType,
+                    reason: statusType === 'wfh' ? 'Working from home' : statusType === 'sick' ? 'Sick leave' : 'Annual leave',
+                    startDate: Timestamp.fromDate(selectedDate),
+                    endDate: Timestamp.fromDate(selectedDate),
+                    status: 'pending',
+                    createdAt: serverTimestamp()
+                });
+                showToast(`${statusType.toUpperCase()} request submitted for ${selectedDate.toLocaleDateString('en-GB', {day:'numeric',month:'short'})}`);
+                attendanceModalSelectedDay = null;
+                attendanceModalShowForm = false;
+                renderAttendanceModal();
+            } catch (e) {
+                showToast('Error: ' + e.message, 'error');
+            }
         };
 
         function renderAttendanceModal() {
@@ -1792,6 +2280,10 @@
             const weekLabel = weekDates[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' - ' + weekDates[4].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
             const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
             const isCurrentWeek = attendanceModalWeekOffset === 0;
+            const isFutureWeek = attendanceModalWeekOffset > 0;
+            const canEdit = isCurrentWeek || isFutureWeek;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
             const modal = document.getElementById('modal');
             modal.innerHTML = `
@@ -1808,9 +2300,10 @@
                 <div class="modal-body">
                     <div class="calendar-nav" style="margin-bottom:20px;">
                         <button class="btn btn-ghost btn-sm" onclick="changeAttendanceWeek(-1)">← Previous</button>
-                        <span class="calendar-title" style="font-size:14px;">${weekLabel}${isCurrentWeek ? ' <span style="color:var(--dmg-blue);font-size:11px;font-weight:700;">(Current)</span>' : ''}</span>
+                        <span class="calendar-title" style="font-size:14px;">${weekLabel}${isCurrentWeek ? ' <span style="color:var(--dmg-blue);font-size:11px;font-weight:700;">(Current)</span>' : isFutureWeek ? ' <span style="color:var(--success);font-size:11px;font-weight:700;">(Future)</span>' : ''}</span>
                         <button class="btn btn-ghost btn-sm" onclick="changeAttendanceWeek(1)">Next →</button>
                     </div>
+                    ${canEdit ? '<div style="font-size:11px;color:var(--ink-sub);text-align:center;margin-bottom:12px;">Click a day to set or request a status change</div>' : ''}
                     <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:24px;">
                         ${weekDates.map((date, i) => {
                             const status = getStatusForDay(date, approved);
@@ -1818,17 +2311,45 @@
                                 const reqName = `${r.firstName || r.name || ''} ${r.lastName || ''}`.toLowerCase();
                                 return reqName.includes(personName.split(' ')[0]) && isWithinRange(date, r.start, r.end);
                             });
+                            const isSelected = attendanceModalSelectedDay === i;
+                            const isPast = date < today;
+                            const canClick = canEdit && !isPast;
                             return `
-                                <div style="background:${status.color};border-radius:var(--radius-sm);padding:16px;text-align:center;${hasPending ? 'border:2px dashed var(--warning);' : ''}">
+                                <div style="background:${isSelected ? 'var(--dmg-blue-soft)' : status.color};border-radius:var(--radius-sm);padding:16px;text-align:center;${hasPending ? 'border:2px dashed var(--warning);' : isSelected ? 'border:2px solid var(--dmg-blue);' : ''}${canClick ? 'cursor:pointer;transition:transform 0.1s;' : ''}${isPast ? 'opacity:0.5;' : ''}" ${canClick ? `onclick="selectAttendanceDay(${i})" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'"` : ''}>
                                     <div style="font-size:11px;font-weight:700;color:var(--ink-sub);text-transform:uppercase;margin-bottom:6px;">${dayLabels[i]}</div>
                                     <div style="font-size:13px;font-weight:600;margin-bottom:10px;">${date.getDate()} ${date.toLocaleDateString('en-GB', {month: 'short'})}</div>
                                     <div style="font-size:28px;margin-bottom:6px;">${status.icon}</div>
                                     <div style="font-size:11px;font-weight:600;color:var(--ink);">${status.label}</div>
                                     ${hasPending ? '<div style="font-size:9px;color:var(--warning);font-weight:700;margin-top:4px;">PENDING</div>' : ''}
+                                    ${canClick && !isSelected ? '<div style="font-size:9px;color:var(--dmg-blue);font-weight:600;margin-top:4px;">Click to change</div>' : ''}
                                 </div>
                             `;
                         }).join('')}
                     </div>
+                    ${attendanceModalShowForm && attendanceModalSelectedDay !== null ? `
+                        <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:20px;margin-bottom:24px;border:1px solid var(--border);">
+                            <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:12px;">Set status for ${weekDates[attendanceModalSelectedDay].toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'short'})}</div>
+                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                                <button class="btn btn-sm" style="flex-direction:column;gap:4px;padding:12px 8px;background:var(--success-soft);border:1px solid var(--success);color:var(--success);" onclick="submitAttendanceStatus('office')">
+                                    <span style="font-size:20px;">🏢</span>
+                                    <span style="font-size:10px;">Office</span>
+                                </button>
+                                <button class="btn btn-sm" style="flex-direction:column;gap:4px;padding:12px 8px;background:var(--dmg-blue-soft);border:1px solid var(--dmg-blue);color:var(--dmg-blue);" onclick="submitAttendanceStatus('wfh')">
+                                    <span style="font-size:20px;">🏠</span>
+                                    <span style="font-size:10px;">WFH</span>
+                                </button>
+                                <button class="btn btn-sm" style="flex-direction:column;gap:4px;padding:12px 8px;background:var(--warning-soft);border:1px solid var(--warning);color:var(--warning);" onclick="submitAttendanceStatus('leave')">
+                                    <span style="font-size:20px;">🏖️</span>
+                                    <span style="font-size:10px;">Leave</span>
+                                </button>
+                                <button class="btn btn-sm" style="flex-direction:column;gap:4px;padding:12px 8px;background:var(--danger-soft);border:1px solid var(--danger);color:var(--danger);" onclick="submitAttendanceStatus('sick')">
+                                    <span style="font-size:20px;">🤒</span>
+                                    <span style="font-size:10px;">Sick</span>
+                                </button>
+                            </div>
+                            <button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;" onclick="cancelAttendanceForm()">Cancel</button>
+                        </div>
+                    ` : ''}
                     ${personRequests.length > 0 ? `
                         <div style="border-top:1px solid var(--border);padding-top:20px;">
                             <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-sub);margin-bottom:12px;">Upcoming Requests</div>
