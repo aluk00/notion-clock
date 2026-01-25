@@ -1511,21 +1511,41 @@
         window.saveProjectAssignment = async (projectId) => {
             const selects = document.querySelectorAll(`.project-assign[data-project="${projectId}"]`);
             const updates = {};
+            const notionUpdates = {};
             selects.forEach(select => {
                 const role = select.dataset.role;
                 const staffId = select.value;
                 if (staffId) {
                     const member = staff.find(s => s.id === staffId);
                     if (member) {
-                        updates[role] = `${member.firstName} ${member.lastName || ''}`.trim();
+                        const fullName = `${member.firstName} ${member.lastName || ''}`.trim();
+                        updates[role] = fullName;
                         updates[`${role}Id`] = staffId;
+                        // Map roles to Notion field names
+                        const notionFieldMap = {
+                            creativeLead: 'Creative Lead',
+                            productionLead: 'Production Lead',
+                            editor: 'Video Editor',
+                            designer: 'Graphic Designer',
+                            salesLead: 'Sales Lead'
+                        };
+                        if (notionFieldMap[role]) {
+                            notionUpdates[notionFieldMap[role]] = fullName;
+                        }
                     }
                 }
             });
             if (Object.keys(updates).length === 0) { showToast('No assignments selected', 'error'); return; }
             try {
+                // Sync to Notion Master Ledger
+                await fetch(`${API_URL}/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(notionUpdates)
+                });
+                // Also save to Firebase for quick access
                 await setDoc(doc(db, "artifacts", appId, "public", "data", "project_assignments", projectId), { ...updates, projectId, updatedAt: serverTimestamp() }, { merge: true });
-                showToast('Assignment saved');
+                showToast('Assignment saved & synced to Notion');
             } catch (e) { showToast('Error: ' + e.message, 'error'); }
         };
 
