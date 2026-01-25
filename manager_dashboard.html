@@ -831,8 +831,8 @@
         const LINE_MANAGER_OPTIONS = ['Anais Lukaku', 'Ellie Beetham', 'Nev Brook', 'Nick Moar', 'Matthew Macleod', 'Nathan Aspell', 'Williams Olufemi', 'Nick Bolwell', 'Alice Baker', 'Maxine Halperin', 'Deli Koprinkov'];
 
         // State
-        let staff = [], notionStaff = [], rotaRequests = [], projects = [], pendingChanges = [], effortConfig = null;
-        let activeTab = 'overview', loading = true, calendarWeekOffset = 0;
+        let staff = [], notionStaff = [], rotaRequests = [], projects = [], pendingChanges = [], effortConfig = null, rundownItems = [];
+        let activeTab = 'overview', loading = true, calendarWeekOffset = 0, staffViewMode = 'team', rundownDate = new Date();
         const root = document.getElementById('root');
 
         // Merge Firebase staff with Notion staff data (Notion has accurate emails)
@@ -1183,7 +1183,7 @@
                     ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:11px;color:var(--ink-sub);text-decoration:none;display:flex;align-items:center;gap:4px;"><span>Open in Notion</span><span style="font-size:10px;">↗</span></a>` : '<span></span>'}
                     <div style="display:flex;gap:8px;">
                         <button class="btn btn-ghost" onclick="closeModal()">Close</button>
-                        <button class="btn btn-primary" onclick="switchTab('projects');closeModal();">Edit Assignment</button>
+                        <button class="btn btn-primary" onclick="setTab('projects');closeModal();">Edit Assignment</button>
                     </div>
                 </div>
             `;
@@ -1261,7 +1261,7 @@
                         <div>
                             <div style="font-size:13px;opacity:0.85;margin-bottom:4px;">${todayStr}</div>
                             <div style="font-size:28px;font-weight:800;margin-bottom:8px;">${greeting}</div>
-                            <div style="font-size:14px;opacity:0.9;">Your team dashboard at a glance</div>
+                            <div style="font-size:14px;opacity:0.9;">Your team dashboard - manage capacity, attendance, projects & approvals</div>
                         </div>
                         <div style="text-align:right;">
                             ${totalNeedingAttention > 0 ? `
@@ -1283,7 +1283,7 @@
                 ${totalNeedingAttention > 0 ? `
                     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;">
                         ${pendingApprovals > 0 ? `
-                            <div class="card" style="cursor:pointer;transition:all 0.2s var(--ease);border-left:4px solid var(--warning);" onclick="switchTab('approvals')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <div class="card" style="cursor:pointer;transition:all 0.2s var(--ease);border-left:4px solid var(--warning);" onclick="setTab('approvals')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                                 <div class="card-body" style="padding:16px;display:flex;align-items:center;gap:14px;">
                                     <div style="width:44px;height:44px;border-radius:var(--radius-sm);background:var(--warning-soft);display:flex;align-items:center;justify-content:center;font-size:20px;">📋</div>
                                     <div style="flex:1;">
@@ -1295,7 +1295,7 @@
                             </div>
                         ` : ''}
                         ${pendingRota > 0 ? `
-                            <div class="card" style="cursor:pointer;transition:all 0.2s var(--ease);border-left:4px solid var(--dmg-blue);" onclick="switchTab('rota')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <div class="card" style="cursor:pointer;transition:all 0.2s var(--ease);border-left:4px solid var(--dmg-blue);" onclick="setTab('rota')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                                 <div class="card-body" style="padding:16px;display:flex;align-items:center;gap:14px;">
                                     <div style="width:44px;height:44px;border-radius:var(--radius-sm);background:var(--dmg-blue-soft);display:flex;align-items:center;justify-content:center;font-size:20px;">📅</div>
                                     <div style="flex:1;">
@@ -1313,7 +1313,7 @@
                 <div class="card" style="margin-bottom:16px;">
                     <div class="card-header" style="border-bottom:none;padding-bottom:0;">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Office Outlook</span>
-                        <button class="btn btn-ghost btn-sm" onclick="switchTab('availability')" style="font-size:11px;">View full calendar →</button>
+                        <button class="btn btn-ghost btn-sm" onclick="setTab('availability')" style="font-size:11px;">View full calendar →</button>
                     </div>
                     <div class="card-body" style="padding-top:16px;">
                         ${isWeekend ? `
@@ -1350,19 +1350,19 @@
 
                 <!-- Quick Stats Row -->
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
-                    <div class="card" style="cursor:pointer;" onclick="switchTab('staff')">
+                    <div class="card" style="cursor:pointer;" onclick="setTab('staff')">
                         <div class="card-body" style="padding:16px;text-align:center;">
                             <div style="font-size:28px;font-weight:900;color:var(--ink);">${activeStaff.length}</div>
                             <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Active Team</div>
                         </div>
                     </div>
-                    <div class="card" style="cursor:pointer;" onclick="switchTab('capacity')">
+                    <div class="card" style="cursor:pointer;" onclick="setTab('capacity')">
                         <div class="card-body" style="padding:16px;text-align:center;">
                             <div style="font-size:28px;font-weight:900;color:${capacityColor(totalUtilization)};">${totalUtilization}%</div>
                             <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">Utilisation</div>
                         </div>
                     </div>
-                    <div class="card" style="cursor:pointer;" onclick="switchTab('projects')">
+                    <div class="card" style="cursor:pointer;" onclick="setTab('projects')">
                         <div class="card-body" style="padding:16px;text-align:center;">
                             <div style="font-size:28px;font-weight:900;color:var(--dmg-blue);">${projects.filter(p => (p.status || '').toLowerCase().includes('progress')).length}</div>
                             <div style="font-size:11px;color:var(--ink-sub);font-weight:600;">In Progress</div>
@@ -1380,13 +1380,13 @@
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Team Capacity</span>
-                        <button class="btn btn-ghost btn-sm" onclick="switchTab('capacity')" style="font-size:11px;">View details →</button>
+                        <button class="btn btn-ghost btn-sm" onclick="setTab('capacity')" style="font-size:11px;">View details →</button>
                     </div>
                     ${teamData.length === 0 ? `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No Teams Found</div><div class="empty-subtitle">Add staff members in the Staff tab to see team capacity.</div></div>` : `
                         <div class="card-body">
                             <div class="team-grid">
                                 ${teamData.map(t => `
-                                    <div class="team-card" style="cursor:pointer;transition:all 0.15s var(--ease);" onclick="switchTab('capacity')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                                    <div class="team-card" style="cursor:pointer;transition:all 0.15s var(--ease);" onclick="setTab('capacity')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                                         <div class="team-header">
                                             <div class="team-dot" style="background:${color(t.name)}"></div>
                                             <span class="team-name">${t.name}</span>
@@ -1409,59 +1409,158 @@
 
         function renderCapacity() {
             const mergedStaff = getMergedStaff();
+            const activeStaff = mergedStaff.filter(s => s.active !== false && s.status !== 'Inactive');
+
+            // Calculate forecasted projects
             const forecastedProjects = projects.filter(p => {
                 const stage = (p.dealStage || '').toLowerCase();
                 const status = (p.status || p.productionWorkflowStatus || '').toLowerCase();
                 return (stage.includes('agreed') || stage.includes('won')) && !status.includes('in production') && !status.includes('complete') && ((p.movingAssetCount > 0) || (p.staticAssetCount > 0));
             });
             const forecastedHours = forecastedProjects.reduce((sum, p) => sum + (p.movingAssetCount || 0) * 4 + (p.staticAssetCount || 0) * 2, 0);
-            const totalCapacity = mergedStaff.reduce((sum, m) => sum + getWeeklyCapacity(m), 0);
-            const currentEffort = mergedStaff.reduce((sum, m) => sum + getMemberEffort(m).currentEffort, 0);
-            const forecastedUtilization = totalCapacity > 0 ? ((currentEffort + forecastedHours) / totalCapacity) * 100 : 0;
+
+            // Group staff by team
+            const staffByTeam = {};
+            TEAMS.forEach(t => staffByTeam[t] = []);
+            staffByTeam['Unassigned'] = [];
+            activeStaff.forEach(s => {
+                const team = s.team || 'Unassigned';
+                if (!staffByTeam[team]) staffByTeam[team] = [];
+                staffByTeam[team].push(s);
+            });
+            const activeTeams = Object.entries(staffByTeam).filter(([_, members]) => members.length > 0);
+
+            // Get person's assigned projects
+            const getPersonProjects = (person) => {
+                const name = `${person.firstName || ''} ${person.lastName || ''}`.toLowerCase();
+                return projects.filter(p => {
+                    const creative = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase();
+                    const production = (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase();
+                    const editor = (p.videoEditor?.[0]?.name || p.videoEditor || '').toLowerCase();
+                    return creative.includes(name.split(' ')[0]) || production.includes(name.split(' ')[0]) || editor.includes(name.split(' ')[0]);
+                });
+            };
+
+            // Calculate team-level insights for forecasting
+            const getTeamInsights = (teamName, members) => {
+                const totalCapacity = members.reduce((sum, m) => sum + getWeeklyCapacity(m), 0);
+                const currentEffort = members.reduce((sum, m) => sum + getMemberEffort(m).currentEffort, 0);
+                const utilization = totalCapacity > 0 ? Math.round((currentEffort / totalCapacity) * 100) : 0;
+                const availableHours = totalCapacity - currentEffort;
+                const overloaded = members.filter(m => getMemberEffort(m).utilization > 100).length;
+                const underutilized = members.filter(m => getMemberEffort(m).utilization < 50).length;
+                return { totalCapacity, currentEffort, utilization, availableHours, overloaded, underutilized };
+            };
 
             return `
-                ${forecastedProjects.length > 0 ? `
-                    <div class="forecast-card">
-                        <div class="forecast-header">
-                            <div>
-                                <div class="forecast-title">Forecasted Pipeline</div>
-                                <div class="forecast-value">${forecastedHours} <span style="font-size:16px;font-weight:600;color:var(--ink-sub)">hours</span></div>
-                                <div class="forecast-label">${forecastedProjects.length} projects in pipeline</div>
+                <!-- Forecasting Insights -->
+                <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg, var(--surface) 0%, var(--dmg-blue-soft) 100%);">
+                    <div class="card-header" style="border-bottom:none;">
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Capacity Forecast</span>
+                    </div>
+                    <div style="padding:12px 20px;background:rgba(33,160,216,0.05);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);line-height:1.5;">
+                        <strong>How this works:</strong> Each team member has a weekly capacity (set in Staff tab). The % shows how much of that capacity is currently used by assigned projects.
+                        <span style="color:var(--success);">Green = under 70%</span>,
+                        <span style="color:var(--warning);">Amber = 70-100%</span>,
+                        <span style="color:var(--danger);">Red = overloaded</span>.
+                        When teams hit 85%+, you may need freelancers.
+                    </div>
+                    <div class="card-body" style="padding-top:16px;">
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;">
+                            ${activeTeams.map(([teamName, members]) => {
+                                const insights = getTeamInsights(teamName, members);
+                                const needsHelp = insights.utilization > 85 || insights.overloaded > 0;
+                                return `
+                                    <div style="background:white;border-radius:var(--radius-sm);padding:16px;border-left:4px solid ${color(teamName)};">
+                                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+                                            <div style="font-size:13px;font-weight:700;color:var(--ink);">${teamName}</div>
+                                            <div style="font-size:20px;font-weight:900;color:${capacityColor(insights.utilization)};">${insights.utilization}%</div>
+                                        </div>
+                                        <div class="capacity-bar" style="height:6px;margin-bottom:10px;"><div class="capacity-fill" style="width:${Math.min(insights.utilization, 100)}%;background:${capacityColor(insights.utilization)}"></div></div>
+                                        <div style="font-size:11px;color:var(--ink-sub);margin-bottom:4px;">${members.length} members • ${insights.availableHours.toFixed(0)} hrs available</div>
+                                        ${needsHelp ? `
+                                            <div style="margin-top:8px;padding:8px;background:var(--warning-soft);border-radius:var(--radius-xs);font-size:11px;color:var(--warning);font-weight:600;">
+                                                ${insights.overloaded > 0 ? `⚠️ ${insights.overloaded} overloaded` : '⚠️ Near capacity - may need freelancers'}
+                                            </div>
+                                        ` : insights.underutilized > 1 ? `
+                                            <div style="margin-top:8px;padding:8px;background:var(--success-soft);border-radius:var(--radius-xs);font-size:11px;color:var(--success);font-weight:600;">
+                                                ✓ ${insights.underutilized} available for more work
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        ${forecastedProjects.length > 0 ? `
+                            <div style="margin-top:16px;padding:14px;background:var(--surface-alt);border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center;">
+                                <div>
+                                    <div style="font-size:12px;font-weight:700;color:var(--ink);">Pipeline Incoming</div>
+                                    <div style="font-size:11px;color:var(--ink-sub);">${forecastedProjects.length} projects • ${forecastedHours} estimated hours</div>
+                                </div>
+                                <button class="btn btn-ghost btn-sm" onclick="setTab('projects')" style="font-size:11px;">View Projects →</button>
                             </div>
-                            <div style="text-align:right;">
-                                <div style="font-size:11px;color:var(--ink-sub);text-transform:uppercase;font-weight:700;">Projected Utilisation</div>
-                                <div style="font-size:32px;font-weight:900;color:${capacityColor(forecastedUtilization)}">${Math.round(forecastedUtilization)}%</div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- Individual Capacity by Team -->
+                <div class="card" style="margin-bottom:16px;border-left:4px solid var(--dmg-blue);">
+                    <div style="padding:14px 20px;background:var(--surface-alt);font-size:12px;color:var(--ink-sub);line-height:1.5;">
+                        <strong>Individual Capacity:</strong> Click any card to edit that person's details. "PTS" = effort points (hours of work).
+                        Each person's capacity is based on their role and employment type. Projects are assigned via the Projects tab.
+                    </div>
+                </div>
+                ${activeTeams.map(([teamName, members]) => `
+                    <div class="card" style="margin-bottom:16px;">
+                        <div class="card-header">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:10px;height:10px;border-radius:50%;background:${color(teamName)};"></div>
+                                <span class="card-title">${teamName}</span>
+                            </div>
+                            <span class="card-meta">${members.length} members</span>
+                        </div>
+                        <div class="card-body">
+                            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:12px;">
+                                ${members.map(s => {
+                                    const stats = getMemberEffort(s);
+                                    const personProjects = getPersonProjects(s);
+                                    return `
+                                        <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:all 0.15s var(--ease);border:1px solid transparent;" onclick="openStaffModal('${s.id}')" onmouseover="this.style.borderColor='var(--dmg-blue)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='transparent';this.style.transform=''">
+                                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                                                <div class="avatar avatar-sm" style="background:${color(s.team)};width:32px;height:32px;font-size:11px;">${initials(s.firstName, s.lastName)}</div>
+                                                <div style="flex:1;min-width:0;">
+                                                    <div style="font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.firstName} ${s.lastName}</div>
+                                                    <div style="font-size:10px;color:var(--ink-sub);">${s.role || 'Team Member'}</div>
+                                                </div>
+                                                <div style="font-size:16px;font-weight:900;color:${capacityColor(stats.utilization)};">${Math.round(stats.utilization)}%</div>
+                                            </div>
+                                            <div class="capacity-bar" style="height:6px;margin-bottom:8px;"><div class="capacity-fill" style="width:${Math.min(stats.utilization, 100)}%;background:${capacityColor(stats.utilization)}"></div></div>
+                                            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-sub);margin-bottom:8px;">
+                                                <span>${stats.currentEffort.toFixed(1)} / ${stats.weeklyCapacity} PTS</span>
+                                                <span>${stats.weeklyCapacity - stats.currentEffort > 0 ? `${(stats.weeklyCapacity - stats.currentEffort).toFixed(1)} available` : 'At capacity'}</span>
+                                            </div>
+                                            ${personProjects.length > 0 ? `
+                                                <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">
+                                                    <div style="font-size:9px;font-weight:700;color:var(--ink-sub);text-transform:uppercase;margin-bottom:4px;">Assigned (${personProjects.length})</div>
+                                                    <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                                                        ${personProjects.slice(0, 3).map(p => `
+                                                            <span style="font-size:9px;padding:2px 6px;background:var(--dmg-blue-soft);color:var(--dmg-blue);border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;" title="${p.title}">${p.title?.substring(0, 15) || 'Project'}${(p.title?.length || 0) > 15 ? '...' : ''}</span>
+                                                        `).join('')}
+                                                        ${personProjects.length > 3 ? `<span style="font-size:9px;padding:2px 6px;background:var(--surface);color:var(--ink-sub);border-radius:4px;">+${personProjects.length - 3}</span>` : ''}
+                                                    </div>
+                                                </div>
+                                            ` : `
+                                                <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">
+                                                    <div style="font-size:10px;color:var(--ink-muted);font-style:italic;">No projects assigned</div>
+                                                </div>
+                                            `}
+                                        </div>
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
-                        <div class="forecast-bar"><div class="forecast-fill" style="width:${Math.min(forecastedUtilization, 100)}%; background:${capacityColor(forecastedUtilization)}"></div></div>
-                        ${forecastedUtilization > 100 ? `<div class="forecast-warning"><span>⚠️</span><span>Team capacity will be exceeded. Consider resource planning.</span></div>` : ''}
                     </div>
-                ` : ''}
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Individual Capacity</span>
-                        <span class="card-meta">${mergedStaff.length} team members</span>
-                    </div>
-                    ${mergedStaff.length === 0 ? `<div class="empty"><div class="empty-icon">👤</div><div class="empty-title">No Staff</div><div class="empty-subtitle">Add staff members to track capacity.</div></div>` : `
-                        <div>${mergedStaff.map(s => {
-                            const stats = getMemberEffort(s);
-                            return `
-                                <div class="list-item" onclick="openStaffModal('${s.id}')">
-                                    <div class="avatar" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div>
-                                    <div class="list-item-info">
-                                        <div class="list-item-title">${s.firstName} ${s.lastName}</div>
-                                        <div class="list-item-subtitle">${s.team || 'No team'} • ${s.role || 'Team Member'}</div>
-                                    </div>
-                                    <div style="display:flex;align-items:center;gap:14px;">
-                                        <div style="text-align:right;"><div style="font-size:11px;color:var(--ink-sub);">${stats.currentEffort.toFixed(1)} / ${stats.weeklyCapacity} PTS</div></div>
-                                        <div style="width:110px;"><div class="capacity-bar" style="height:8px;"><div class="capacity-fill" style="width:${Math.min(stats.utilization, 100)}%; background:${capacityColor(stats.utilization)}"></div></div></div>
-                                        <div style="width:50px; text-align:right; font-weight:800; color:${capacityColor(stats.utilization)}">${Math.round(stats.utilization)}%</div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}</div>
-                    `}
-                </div>
+                `).join('')}
             `;
         }
 
@@ -1511,6 +1610,11 @@
                     <div class="card-header">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Weekly Attendance</span>
                         <span class="card-meta">${activeStaff.length} team members</span>
+                    </div>
+                    <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);line-height:1.5;">
+                        <strong>How to use:</strong> Click any person's name to see their full week and set/request status changes.
+                        🏢 = In Office, 🏠 = Working from Home, 🏖️ = Annual Leave, 🤒 = Sick.
+                        Staff submit requests via the Clock-In page; you approve them in the Leave Requests tab.
                     </div>
                     <div class="card-body">
                         <div class="calendar-nav">
@@ -1566,8 +1670,11 @@
 
             return `
                 <div class="card">
-                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Pending Approvals</span><span class="card-meta">${pending.length} awaiting review</span></div>
-                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All Caught Up</div><div class="empty-subtitle">No pending status changes require your approval.</div></div>` : `
+                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Project Changes</span><span class="card-meta">${pending.length} awaiting review</span></div>
+                    <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);">
+                        Status changes on projects (e.g., moving from "Briefed" to "In Production", changing editors/designers)
+                    </div>
+                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All Caught Up</div><div class="empty-subtitle">No pending project changes require your approval.</div></div>` : `
                         <div class="card-body">${pending.map(c => `
                             <div class="approval-card">
                                 <div class="approval-header">
@@ -1598,8 +1705,11 @@
 
             return `
                 <div class="card">
-                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Rota Requests</span><span class="card-meta">${pending.length} awaiting</span></div>
-                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">No Pending Requests</div><div class="empty-subtitle">Rota requests from team members will appear here.</div></div>` : `
+                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Leave & WFH Requests</span><span class="card-meta">${pending.length} awaiting</span></div>
+                    <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);">
+                        Staff requests for annual leave, sick days, or working from home
+                    </div>
+                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">No Pending Requests</div><div class="empty-subtitle">Staff leave/WFH requests will appear here for approval.</div></div>` : `
                         <div>${pending.map(r => `
                             <div class="list-item">
                                 <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName)}</div>
@@ -1621,58 +1731,161 @@
             `;
         }
 
+        window.toggleStaffView = () => {
+            staffViewMode = staffViewMode === 'team' ? 'alpha' : 'team';
+            render();
+        };
+
         function renderStaff() {
             const mergedStaff = getMergedStaff();
+
+            // Sort based on view mode
+            let sortedStaff;
+            if (staffViewMode === 'alpha') {
+                sortedStaff = [...mergedStaff].sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
+            } else {
+                sortedStaff = mergedStaff;
+            }
+
+            // Group by team if in team view
+            const staffByTeam = {};
+            if (staffViewMode === 'team') {
+                TEAMS.forEach(t => staffByTeam[t] = []);
+                staffByTeam['Unassigned'] = [];
+                sortedStaff.forEach(s => {
+                    const team = s.team || 'Unassigned';
+                    if (!staffByTeam[team]) staffByTeam[team] = [];
+                    staffByTeam[team].push(s);
+                });
+            }
+            const activeTeams = Object.entries(staffByTeam).filter(([_, members]) => members.length > 0);
+
+            const renderStaffRow = (s) => `
+                <tr style="cursor:pointer;transition:background 0.1s;" onclick="openStaffModal('${s.id}')" onmouseover="this.style.background='var(--dmg-blue-soft)'" onmouseout="this.style.background=''">
+                    <td><div style="display:flex;align-items:center;gap:12px;"><div class="avatar avatar-sm" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div><div><div style="font-weight:700;">${s.firstName} ${s.lastName}</div><div style="font-size:11px;color:var(--ink-sub);">${s.email || 'No email'}</div></div></div></td>
+                    ${staffViewMode === 'alpha' ? `<td><span class="pill" style="background:${colorSoft(s.team)};color:${color(s.team)}">${s.team || 'Unassigned'}</span></td>` : ''}
+                    <td>${s.role || '—'}</td>
+                    <td>${s.seniority || '—'}</td>
+                    <td>${getWeeklyCapacity(s)} PTS</td>
+                    <td><span class="pill ${(s.status === 'Active' || s.active !== false) ? 'pill-success' : 'pill-gray'}">${s.status || (s.active !== false ? 'Active' : 'Inactive')}</span></td>
+                    <td onclick="event.stopPropagation()">
+                        ${s.notionUrl ? `<a href="${s.notionUrl}" target="_blank" class="btn btn-ghost btn-sm" title="View in Notion" style="font-size:10px;padding:4px 8px;color:var(--ink-muted);">↗</a>` : ''}
+                    </td>
+                </tr>
+            `;
+
             return `
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Team Directory</span>
-                        <div style="display:flex;gap:8px;">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <div style="display:flex;border:1px solid var(--border);border-radius:var(--radius-xs);overflow:hidden;">
+                                <button class="btn btn-sm" style="border:none;border-radius:0;padding:6px 12px;font-size:11px;${staffViewMode === 'team' ? 'background:var(--dmg-blue);color:white;' : 'background:transparent;'}" onclick="event.stopPropagation();staffViewMode='team';render();">By Team</button>
+                                <button class="btn btn-sm" style="border:none;border-radius:0;padding:6px 12px;font-size:11px;${staffViewMode === 'alpha' ? 'background:var(--dmg-blue);color:white;' : 'background:transparent;'}" onclick="event.stopPropagation();staffViewMode='alpha';render();">A-Z</button>
+                            </div>
                             <button class="btn btn-ghost btn-sm" onclick="loadStaffFromNotion()" title="Refresh from Notion">↻ Sync</button>
                             <button class="btn btn-primary btn-sm" onclick="openAddStaffModal()">+ Add Member</button>
                         </div>
                     </div>
-                    ${mergedStaff.length === 0 ? `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No Staff Members</div><div class="empty-subtitle">Click "Add Member" to add your first team member.</div></div>` : `
-                        <div class="table-wrapper">
-                            <table>
-                                <thead><tr><th>Name</th><th>Team</th><th>Role</th><th>Seniority</th><th>Capacity</th><th>Status</th><th></th></tr></thead>
-                                <tbody>
-                                    ${mergedStaff.map(s => `
-                                        <tr>
-                                            <td><div style="display:flex;align-items:center;gap:12px;"><div class="avatar avatar-sm" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div><div><div style="font-weight:700;">${s.firstName} ${s.lastName}</div><div style="font-size:11px;color:var(--ink-sub);">${s.email || 'No email'}</div></div></div></td>
-                                            <td><span class="pill" style="background:${colorSoft(s.team)};color:${color(s.team)}">${s.team || 'Unassigned'}</span></td>
-                                            <td>${s.role || '—'}</td>
-                                            <td>${s.seniority || '—'}</td>
-                                            <td>${getWeeklyCapacity(s)} PTS</td>
-                                            <td><span class="pill ${(s.status === 'Active' || s.active !== false) ? 'pill-success' : 'pill-gray'}">${s.status || (s.active !== false ? 'Active' : 'Inactive')}</span></td>
-                                            <td>
-                                                <div style="display:flex;gap:4px;">
-                                                    ${s.notionUrl ? `<a href="${s.notionUrl}" target="_blank" class="btn btn-ghost btn-sm" title="View in Notion">↗</a>` : ''}
-                                                    <button class="btn btn-ghost btn-sm" onclick="openStaffModal('${s.id}')">Edit</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    `}
+                    <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);line-height:1.5;">
+                        <strong>Manage your team:</strong> Click any row to edit that person's details (name, role, seniority, team, capacity, line manager).
+                        "Sync" pulls latest data from Notion. Capacity (PTS) determines how much work they can handle per week - set based on employment type and role.
+                    </div>
+                    ${mergedStaff.length === 0 ? `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No Staff Members</div><div class="empty-subtitle">Click "Add Member" to add your first team member.</div></div>` :
+                        staffViewMode === 'team' ? `
+                            <!-- Team-grouped view -->
+                            ${activeTeams.map(([teamName, members]) => `
+                                <div style="margin-bottom:0;">
+                                    <div style="display:flex;align-items:center;gap:10px;padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);">
+                                        <div style="width:10px;height:10px;border-radius:50%;background:${color(teamName)};"></div>
+                                        <span style="font-weight:700;font-size:13px;">${teamName}</span>
+                                        <span style="font-size:11px;color:var(--ink-sub);">${members.length} members</span>
+                                    </div>
+                                    <div class="table-wrapper" style="margin:0;">
+                                        <table>
+                                            <thead><tr><th>Name</th><th>Role</th><th>Seniority</th><th>Capacity</th><th>Status</th><th></th></tr></thead>
+                                            <tbody>${members.map(renderStaffRow).join('')}</tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        ` : `
+                            <!-- Alphabetical view -->
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead><tr><th>Name</th><th>Team</th><th>Role</th><th>Seniority</th><th>Capacity</th><th>Status</th><th></th></tr></thead>
+                                    <tbody>${sortedStaff.map(renderStaffRow).join('')}</tbody>
+                                </table>
+                            </div>
+                        `
+                    }
                 </div>
             `;
         }
 
         function renderEffortConfig() {
-            const config = effortConfig || {
-                taskTypes: { video_edit_short: { baseHours: 4, label: 'Video Edit (Short)' }, video_edit_long: { baseHours: 8, label: 'Video Edit (Long)' }, thumbnail: { baseHours: 2, label: 'Thumbnail Design' }, social_cutdown: { baseHours: 1, label: 'Social Cutdown' }, script: { baseHours: 3, label: 'Script Writing' }, graphics_pack: { baseHours: 6, label: 'Graphics Pack' } },
+            const defaultConfig = {
+                taskTypes: {
+                    // Video/Editing tasks
+                    video_edit_short: { baseHours: 4, label: 'Video Edit (Short)' },
+                    video_edit_medium: { baseHours: 8, label: 'Video Edit (Medium)' },
+                    video_edit_long: { baseHours: 16, label: 'Video Edit (Long)' },
+                    motion_graphics: { baseHours: 6, label: 'Motion Graphics' },
+                    colour_grade: { baseHours: 2, label: 'Colour Grade' },
+                    sound_mix: { baseHours: 3, label: 'Sound Mix' },
+                    revision_round: { baseHours: 2, label: 'Revision Round' },
+                    social_cutdown: { baseHours: 1, label: 'Social Cutdown' },
+                    script: { baseHours: 3, label: 'Script Writing' },
+                    // Design tasks
+                    thumbnail: { baseHours: 0.5, label: 'Thumbnail' },
+                    carousel: { baseHours: 2, label: 'Carousel/Multi-image' },
+                    deck: { baseHours: 4, label: 'Presentation Deck' },
+                    template: { baseHours: 3, label: 'Template Design' },
+                    brand_kit: { baseHours: 8, label: 'Brand Kit' },
+                    infographic: { baseHours: 3, label: 'Infographic' },
+                    social_graphic: { baseHours: 1, label: 'Social Graphic' }
+                },
                 seniorityMultipliers: { intern: 1.5, junior: 1.3, midweight: 1.0, senior: 0.85, lead: 0.75 }
+            };
+            const config = effortConfig || defaultConfig;
+
+            // Layman descriptions for task types
+            const taskDescriptions = {
+                // Video/Editing
+                'video_edit_short': 'Quick edits under 3 mins - social clips, teasers, reels',
+                'video_edit_medium': 'Standard videos 3-10 mins - typical YouTube content',
+                'video_edit_long': 'Long-form videos 10+ mins - documentaries, interviews',
+                'motion_graphics': 'Animated lower thirds, intros, outros, text animations',
+                'colour_grade': 'Colour correction and grading for consistent look',
+                'sound_mix': 'Audio mixing, music sync, voiceover integration',
+                'revision_round': 'Client feedback revisions and amendments',
+                'social_cutdown': 'Reformatting existing content for different social platforms',
+                'script': 'Writing voiceover, dialogue, or narrative for video content',
+                // Design
+                'thumbnail': 'Eye-catching preview images for videos and content',
+                'carousel': 'Multi-image posts for Instagram/LinkedIn carousels',
+                'deck': 'Presentation slides for pitches or internal use',
+                'template': 'Reusable design templates for recurring content',
+                'brand_kit': 'Full brand identity package - logos, colours, guidelines',
+                'infographic': 'Data visualisation and information graphics',
+                'social_graphic': 'Single static image for social media posts'
             };
 
             return `
                 <div class="card">
                     <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Task Effort Scores</span><button class="btn btn-primary btn-sm" onclick="addTaskType()">+ Add Task Type</button></div>
+                    <div style="padding:16px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);">
+                        These scores define how much effort (in hours) each task type typically requires. They're used to calculate team capacity and workload.
+                    </div>
                     <div class="table-wrapper">
-                        <table><thead><tr><th>Task Type</th><th>Label</th><th>Base Hours</th><th></th></tr></thead>
-                            <tbody>${Object.entries(config.taskTypes).map(([key, val]) => `<tr><td><code class="mono" style="font-size:11px;background:var(--surface-alt);padding:6px 10px;border-radius:4px;">${key}</code></td><td><input class="table-input" style="width:180px;" value="${val.label}" onchange="updateTaskType('${key}', 'label', this.value)"></td><td><input class="table-input" type="number" value="${val.baseHours}" onchange="updateTaskType('${key}', 'baseHours', this.value)"></td><td><button class="btn btn-ghost btn-sm" onclick="removeTaskType('${key}')">Remove</button></td></tr>`).join('')}</tbody>
+                        <table><thead><tr><th>Task Type</th><th>Label</th><th style="min-width:200px;">What is this?</th><th>Base Hours</th><th></th></tr></thead>
+                            <tbody>${Object.entries(config.taskTypes).map(([key, val]) => `<tr>
+                                <td><code class="mono" style="font-size:11px;background:var(--surface-alt);padding:6px 10px;border-radius:4px;">${key}</code></td>
+                                <td><input class="table-input" style="width:160px;" value="${val.label}" onchange="updateTaskType('${key}', 'label', this.value)"></td>
+                                <td style="font-size:11px;color:var(--ink-sub);line-height:1.4;">${taskDescriptions[key] || 'Custom task type'}</td>
+                                <td><input class="table-input" type="number" style="width:80px;" value="${val.baseHours}" onchange="updateTaskType('${key}', 'baseHours', this.value)"></td>
+                                <td><button class="btn btn-ghost btn-sm" onclick="removeTaskType('${key}')">Remove</button></td>
+                            </tr>`).join('')}</tbody>
                         </table>
                     </div>
                 </div>
@@ -1715,6 +1928,11 @@
                     <div class="card-header">
                         <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Project Assignments</span>
                         <span class="card-meta">${activeProjects.length} active projects</span>
+                    </div>
+                    <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);line-height:1.5;">
+                        <strong>Assign team members to projects:</strong> Select Creative Lead, Production Lead, and Editor for each project.
+                        Click "View Details" for full project info including budget, deliverables, and change requests.
+                        Assignments sync to Notion and affect team member capacity calculations.
                     </div>
                     ${activeProjects.length === 0 ? `
                         <div class="empty">
@@ -1824,11 +2042,12 @@
                         <button class="tab ${activeTab === 'overview' ? 'active' : ''}" onclick="setTab('overview')">Overview</button>
                         <button class="tab ${activeTab === 'capacity' ? 'active' : ''}" onclick="setTab('capacity')">Capacity</button>
                         <button class="tab ${activeTab === 'availability' ? 'active' : ''}" onclick="setTab('availability')">Attendance</button>
-                        <button class="tab ${activeTab === 'approvals' ? 'active' : ''}" onclick="setTab('approvals')">Approvals${pendingApprovals > 0 ? `<span class="tab-badge">${pendingApprovals}</span>` : ''}</button>
-                        <button class="tab ${activeTab === 'rota' ? 'active' : ''}" onclick="setTab('rota')">Rota${pendingRota > 0 ? `<span class="tab-badge">${pendingRota}</span>` : ''}</button>
+                        <button class="tab ${activeTab === 'approvals' ? 'active' : ''}" onclick="setTab('approvals')">Project Changes${pendingApprovals > 0 ? `<span class="tab-badge">${pendingApprovals}</span>` : ''}</button>
+                        <button class="tab ${activeTab === 'rota' ? 'active' : ''}" onclick="setTab('rota')">Leave Requests${pendingRota > 0 ? `<span class="tab-badge">${pendingRota}</span>` : ''}</button>
                         <button class="tab ${activeTab === 'projects' ? 'active' : ''}" onclick="setTab('projects')">Projects</button>
                         <button class="tab ${activeTab === 'staff' ? 'active' : ''}" onclick="setTab('staff')">Staff</button>
                         <button class="tab ${activeTab === 'effort' ? 'active' : ''}" onclick="setTab('effort')">Effort Config</button>
+                        <button class="tab ${activeTab === 'rundown' ? 'active' : ''}" onclick="setTab('rundown')">Daily Rundown</button>
                     </div>
                 </div>
                 ${activeTab === 'overview' ? renderOverview() : ''}
@@ -1839,13 +2058,77 @@
                 ${activeTab === 'projects' ? renderProjects() : ''}
                 ${activeTab === 'staff' ? renderStaff() : ''}
                 ${activeTab === 'effort' ? renderEffortConfig() : ''}
+                ${activeTab === 'rundown' ? renderRundown() : ''}
+            `;
+        }
+
+        function renderRundown() {
+            // Embed the full editor directly in an iframe
+            return `
+                <div class="card" style="overflow:hidden;">
+                    <div class="card-header" style="padding:12px 20px;">
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Daily Rundown Editor</span>
+                        <a href="daily-rundown-editor.html" target="_blank" class="btn btn-ghost btn-sm" style="font-size:11px;">Open in New Tab ↗</a>
+                    </div>
+                    <div style="height:calc(100vh - 200px);min-height:600px;">
+                        <iframe src="daily-rundown-editor.html" style="width:100%;height:100%;border:none;"></iframe>
+                    </div>
+                </div>
             `;
         }
 
         // ========== GLOBAL FUNCTIONS ==========
 
-        window.setTab = (tab) => { activeTab = tab; render(); };
+        window.setTab = (tab) => {
+            activeTab = tab;
+            if (tab === 'rundown') loadRundown();
+            render();
+        };
         window.changeWeek = (offset) => { calendarWeekOffset += offset; render(); };
+
+        window.changeRundownDate = (delta) => {
+            rundownDate.setDate(rundownDate.getDate() + delta);
+            loadRundown();
+        };
+
+        window.loadRundown = async () => {
+            const dateKey = rundownDate.toISOString().split('T')[0];
+            try {
+                const res = await fetch(`${API_URL}/rundown?date=${dateKey}`);
+                const data = await res.json();
+                if (data.success) {
+                    rundownItems = data.items || [];
+                } else {
+                    rundownItems = [];
+                }
+            } catch (e) {
+                console.error('Failed to load rundown:', e);
+                rundownItems = [];
+            }
+            render();
+        };
+
+        window.cycleRundownStatus = async (id) => {
+            const statuses = ['Not Started', 'Pending', 'Done', 'Blocked'];
+            const item = rundownItems.find(i => i.id === id);
+            if (!item) return;
+
+            const currentIdx = statuses.indexOf(item.status || 'Not Started');
+            const nextStatus = statuses[(currentIdx + 1) % statuses.length];
+
+            try {
+                await fetch(`${API_URL}/rundown/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: nextStatus })
+                });
+                item.status = nextStatus;
+                showToast(`Status: ${nextStatus}`);
+                render();
+            } catch (e) {
+                showToast('Failed to update status', 'error');
+            }
+        };
         window.showPinScreen = showPinScreen;
 
         window.openStaffModal = (id) => {
@@ -2545,7 +2828,7 @@
 
         async function saveEffortConfig() {
             try {
-                await setDoc(doc(db, "artifacts", appId, "public", "data", "config", "effortScores"), effortConfig);
+                await setDoc(doc(db, "artifacts", appId, "public", "config", "effortScores"), effortConfig);
                 showToast('Configuration saved');
             } catch (e) { showToast('Error: ' + e.message, 'error'); }
         }
@@ -2600,7 +2883,7 @@
                     render();
                 });
 
-                onSnapshot(doc(db, "artifacts", appId, "public", "data", "config", "effortScores"), snap => {
+                onSnapshot(doc(db, "artifacts", appId, "public", "config", "effortScores"), snap => {
                     if (snap.exists()) effortConfig = snap.data();
                 });
 
