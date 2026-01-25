@@ -1411,43 +1411,44 @@
             };
             if (!data.firstName) { showToast('First name is required', 'error'); return; }
 
+            let notionSynced = false;
+
+            // Try to sync to Notion Staff Directory (gracefully handle if API not available)
+            async function tryNotionSync(method, url, body) {
+                try {
+                    const response = await fetch(url, {
+                        method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (!response.ok) throw new Error('API error');
+                    const text = await response.text();
+                    if (text.startsWith('<!')) throw new Error('API not configured');
+                    const result = JSON.parse(text);
+                    return result;
+                } catch (e) {
+                    console.warn('Notion sync unavailable:', e.message);
+                    return null;
+                }
+            }
+
             try {
-                // Sync to Notion Staff Directory
                 if (id) {
-                    // Get the Notion page ID from Firebase record
                     const staffDoc = staff.find(s => s.id === id);
                     if (staffDoc?.notionId) {
-                        await fetch(`${API_URL}/staff-directory/${staffDoc.notionId}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(data)
-                        });
+                        const result = await tryNotionSync('PATCH', `${API_URL}/staff-directory/${staffDoc.notionId}`, data);
+                        notionSynced = !!result?.success;
                     } else {
-                        // Create in Notion if no notionId
-                        const response = await fetch(`${API_URL}/staff-directory`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(data)
-                        });
-                        const result = await response.json();
-                        if (result.success) data.notionId = result.id;
+                        const result = await tryNotionSync('POST', `${API_URL}/staff-directory`, data);
+                        if (result?.success) { data.notionId = result.id; notionSynced = true; }
                     }
-                    // Update Firebase
                     await updateDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", id), { ...data, updatedAt: serverTimestamp() });
-                    showToast('Team member updated & synced to Notion');
+                    showToast(notionSynced ? 'Team member updated & synced to Notion' : 'Team member updated (Notion sync pending)');
                 } else {
-                    // Create in Notion first
-                    const response = await fetch(`${API_URL}/staff-directory`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
-                    const result = await response.json();
-                    if (result.success) data.notionId = result.id;
-
-                    // Then create in Firebase
+                    const result = await tryNotionSync('POST', `${API_URL}/staff-directory`, data);
+                    if (result?.success) { data.notionId = result.id; notionSynced = true; }
                     await addDoc(collection(db, "artifacts", appId, "public", "data", "staff_directory"), { ...data, createdAt: serverTimestamp() });
-                    showToast('Team member added & synced to Notion');
+                    showToast(notionSynced ? 'Team member added & synced to Notion' : 'Team member added (Notion sync pending)');
                 }
                 closeModal();
             } catch (e) {
@@ -1460,15 +1461,22 @@
             if (!confirm('Archive this team member? They will be marked as inactive.')) return;
             try {
                 const staffDoc = staff.find(s => s.id === id);
+                let notionSynced = false;
                 if (staffDoc?.notionId) {
-                    await fetch(`${API_URL}/staff-directory/${staffDoc.notionId}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ active: false })
-                    });
+                    try {
+                        const res = await fetch(`${API_URL}/staff-directory/${staffDoc.notionId}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ active: false })
+                        });
+                        if (res.ok) {
+                            const text = await res.text();
+                            if (!text.startsWith('<!')) notionSynced = true;
+                        }
+                    } catch (e) { console.warn('Notion archive unavailable:', e.message); }
                 }
                 await updateDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", id), { active: false, updatedAt: serverTimestamp() });
-                showToast('Team member archived');
+                showToast(notionSynced ? 'Team member archived & synced' : 'Team member archived (Notion sync pending)');
                 closeModal();
             } catch (e) { showToast('Error: ' + e.message, 'error'); }
         };
