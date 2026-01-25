@@ -431,20 +431,35 @@
                 <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label">Vertical</label>
                     <select class="form-select" id="create-event-vertical">
-                        <option value="">Auto-detect...</option>
-                        <option value="Entertainment">🎬 Entertainment</option>
-                        <option value="Music">🎵 Music</option>
-                        <option value="Sport">⚽ Sport</option>
-                        <option value="Gaming">🎮 Gaming</option>
-                        <option value="Fashion">👗 Fashion</option>
-                        <option value="Tech">💻 Tech</option>
-                        <option value="General">📰 General</option>
+                        <option value="">Select vertical...</option>
+                        <option value="MAIN">📰 MAIN</option>
+                        <option value="SPORT">⚽ SPORT</option>
+                        <option value="UK">🇬🇧 UK</option>
+                        <option value="RESPAWN">🎮 RESPAWN</option>
+                        <option value="MONEY">💰 MONEY</option>
+                        <option value="SPOTLIGHT">✨ SPOTLIGHT</option>
                     </select>
                 </div>
             </div>
 
+            <!-- Format dropdown -->
+            <div class="form-group" style="margin-top: 18px;">
+                <label class="form-label">Format <span style="font-weight:400; text-transform:none;">(optional)</span></label>
+                <select class="form-select" id="create-event-format">
+                    <option value="">Select format...</option>
+                    <option value="Street Talks">🎤 Street Talks</option>
+                    <option value="Mail Investigates">🔍 Mail Investigates</option>
+                    <option value="Headlines">📰 Headlines</option>
+                    <option value="Mail Talks">💬 Mail Talks</option>
+                    <option value="Deep Dive">🌊 Deep Dive</option>
+                    <option value="Global Debate">🌍 Global Debate</option>
+                    <option value="The Verdict">⚖️ The Verdict</option>
+                    <option value="Playbook">📋 Playbook</option>
+                </select>
+            </div>
+
             <!-- Link to Project (for deliverables) -->
-            <div class="form-group" id="project-link-group" style="margin-top: 18px;">
+            <div class="form-group" id="project-link-group">
                 <label class="form-label">Link to Project <span style="font-weight:400; text-transform:none;">(optional)</span></label>
                 <select class="form-select" id="create-event-project">
                     <option value="">No project linked</option>
@@ -2116,21 +2131,22 @@ let selectedCreationType = 'rundown';
 let selectedTemplate = 'birthday';
 let projectsCache = [];
 
-// Category to Vertical mapping
+// Category to Vertical mapping (using actual DMG verticals: SPORT, UK, RESPAWN, MAIN, MONEY, SPOTLIGHT)
 const CATEGORY_TO_VERTICAL = {
-    'music': 'Music',
-    'film': 'Entertainment',
-    'tv': 'Entertainment',
-    'gaming': 'Gaming',
-    'game': 'Gaming',
-    'sport': 'Sport',
-    'fashion': 'Fashion',
-    'tech': 'Tech',
-    'pop': 'Entertainment',
-    'birthday': 'Entertainment',
-    'history': 'General',
-    'release': 'Entertainment',
-    'all': 'General'
+    'music': 'MAIN',
+    'film': 'MAIN',
+    'tv': 'MAIN',
+    'gaming': 'RESPAWN',
+    'game': 'RESPAWN',
+    'sport': 'SPORT',
+    'fashion': 'SPOTLIGHT',
+    'tech': 'RESPAWN',
+    'pop': 'MAIN',
+    'birthday': 'SPOTLIGHT',
+    'history': 'UK',
+    'release': 'MAIN',
+    'event': 'MAIN',
+    'all': 'MAIN'
 };
 
 // Template definitions
@@ -2184,17 +2200,16 @@ function autoDetectDate(title) {
     return null;
 }
 
-// Auto-detect vertical from title and category
+// Auto-detect vertical from title and category (using DMG verticals: SPORT, UK, RESPAWN, MAIN, MONEY, SPOTLIGHT)
 function autoDetectVertical(title, category) {
     const titleLower = title.toLowerCase();
 
-    // Check for keywords in title
-    if (titleLower.includes('music') || titleLower.includes('album') || titleLower.includes('tour') || titleLower.includes('concert')) return 'Music';
-    if (titleLower.includes('film') || titleLower.includes('movie') || titleLower.includes('cinema')) return 'Entertainment';
-    if (titleLower.includes('game') || titleLower.includes('gaming') || titleLower.includes('playstation') || titleLower.includes('xbox')) return 'Gaming';
-    if (titleLower.includes('sport') || titleLower.includes('football') || titleLower.includes('premier league')) return 'Sport';
-    if (titleLower.includes('fashion') || titleLower.includes('style') || titleLower.includes('runway')) return 'Fashion';
-    if (titleLower.includes('tech') || titleLower.includes('apple') || titleLower.includes('google')) return 'Tech';
+    // Check for keywords in title - map to DMG verticals
+    if (titleLower.includes('sport') || titleLower.includes('football') || titleLower.includes('premier league') || titleLower.includes('rugby') || titleLower.includes('tennis') || titleLower.includes('f1') || titleLower.includes('olympics')) return 'SPORT';
+    if (titleLower.includes('game') || titleLower.includes('gaming') || titleLower.includes('playstation') || titleLower.includes('xbox') || titleLower.includes('nintendo') || titleLower.includes('esports')) return 'RESPAWN';
+    if (titleLower.includes('money') || titleLower.includes('finance') || titleLower.includes('economy') || titleLower.includes('stock') || titleLower.includes('crypto')) return 'MONEY';
+    if (titleLower.includes('uk') || titleLower.includes('britain') || titleLower.includes('london') || titleLower.includes('parliament')) return 'UK';
+    if (titleLower.includes('fashion') || titleLower.includes('celebrity') || titleLower.includes('influencer') || titleLower.includes('red carpet')) return 'SPOTLIGHT';
 
     // Check category mapping
     if (category && CATEGORY_TO_VERTICAL[category.toLowerCase()]) {
@@ -2247,12 +2262,14 @@ window.openCreateEventModal = (prefillTitle = '', prefillDate = '', prefillCateg
     const titleInput = document.getElementById('create-event-title');
     const dateInput = document.getElementById('create-event-date');
     const verticalSelect = document.getElementById('create-event-vertical');
+    const formatSelect = document.getElementById('create-event-format');
     const notesInput = document.getElementById('create-event-notes');
     const projectSelect = document.getElementById('create-event-project');
 
     // Reset form
     titleInput.value = prefillTitle;
     notesInput.value = prefillDesc || '';
+    if (formatSelect) formatSelect.value = '';
     selectedSection = 'INTERNAL';
     selectedCreationType = 'rundown';
     selectedTemplate = 'birthday';
@@ -2362,6 +2379,7 @@ window.submitCreateEvent = async () => {
     const title = document.getElementById('create-event-title').value.trim();
     const date = document.getElementById('create-event-date').value;
     const vertical = document.getElementById('create-event-vertical').value;
+    const format = document.getElementById('create-event-format')?.value || '';
     const notes = document.getElementById('create-event-notes').value.trim();
     const projectId = document.getElementById('create-event-project')?.value || '';
     const submitBtn = document.getElementById('create-event-submit');
@@ -2416,6 +2434,7 @@ window.submitCreateEvent = async () => {
                 date: date,
                 section: selectedSection,
                 vertical: vertical || null,
+                format: format || null,
                 notes: notes || null,
                 status: 'pending'
             };
