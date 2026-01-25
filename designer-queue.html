@@ -7,8 +7,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
+            --dmg-blue: #21A0D8;
             --production: #43B049;
             --production-light: rgba(67, 176, 73, 0.1);
+            --creative: #E6468B;
+            --creative-light: rgba(230, 70, 139, 0.1);
             --urgent: #EF4444;
             --warning: #F59E0B;
             --success: #10B981;
@@ -20,12 +23,13 @@
             --radius: 16px;
             --radius-sm: 10px;
             --radius-xs: 6px;
-            --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: transparent; color: var(--ink); padding: 16px; -webkit-font-smoothing: antialiased; }
+
         .dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
-        .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--production); }
+        .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--creative); }
         .dots span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
         .dots span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
         .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
@@ -34,49 +38,60 @@
 
         .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
         .queue-label { font-size: 11px; font-weight: 700; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.05em; }
+        .config-status { font-size: 9px; font-weight: 600; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }
+        .config-status.active { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+        .config-status.loading { background: rgba(245, 158, 11, 0.1); color: #F59E0B; }
         .stats { margin-left: auto; display: flex; gap: 16px; }
         .stat { display: flex; align-items: center; gap: 6px; }
         .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
         .stat-value { font-size: 12px; font-weight: 700; }
         .stat-label { font-size: 10px; color: var(--ink-light); }
 
-        .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-        .tab { padding: 8px 14px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: var(--transition); }
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .tab { padding: 8px 14px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: all 0.25s var(--ease); }
         .tab:hover { border-color: var(--ink-light); }
         .tab.active { background: var(--ink); color: white; border-color: var(--ink); }
 
-        .columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        @media (max-width: 900px) { .columns { grid-template-columns: 1fr; } }
+        .legend { display: flex; gap: 12px; margin-left: auto; font-size: 9px; align-items: center; }
+        .legend-item { display: flex; align-items: center; gap: 4px; color: var(--ink-light); }
+        .legend-badge { font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; }
 
-        .column { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-height: 400px; }
+        .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        @media (max-width: 1200px) { .columns { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 700px) { .columns { grid-template-columns: 1fr; } }
+
+        .column { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; min-height: 400px; transition: all 0.3s var(--ease); }
+        .column:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .column.forecasted { background: linear-gradient(180deg, rgba(33, 160, 216, 0.03) 0%, white 100%); border-color: rgba(33, 160, 216, 0.2); }
+
         .column-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
         .column-dot { width: 8px; height: 8px; border-radius: 50%; }
         .column-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); }
         .column-count { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--ink-light); background: var(--surface-alt); padding: 2px 8px; border-radius: 10px; }
+        .column-effort { font-size: 9px; font-weight: 600; color: var(--creative); background: var(--creative-light); padding: 2px 8px; border-radius: 10px; margin-left: 4px; }
 
         .cards { display: flex; flex-direction: column; gap: 10px; }
 
-        .card { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; position: relative; transition: var(--transition); }
+        .card { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; position: relative; cursor: pointer; transition: all 0.25s var(--ease); }
         .card:hover { border-color: var(--ink-light); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
 
         .card-priority { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
         .card-priority.high { background: var(--urgent); }
         .card-priority.medium { background: var(--warning); }
         .card-priority.low { background: var(--success); }
+        .card-priority.forecasted { background: var(--dmg-blue); }
 
         .card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-        .card-type { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; background: var(--production-light); color: var(--production); }
+        .card-type { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; background: var(--creative-light); color: var(--creative); }
         .card-source { font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
         .card-source.notion { background: rgba(33, 160, 216, 0.1); color: #21A0D8; }
         .card-source.quick { background: rgba(230, 70, 139, 0.1); color: #E6468B; }
         .card-source.rundown { background: rgba(233, 75, 75, 0.1); color: #E94B4B; }
+        .card-source.forecasted { background: rgba(33, 160, 216, 0.15); color: #21A0D8; }
 
-        /* Legend for source badges */
-        .legend { display: flex; gap: 12px; margin-left: auto; font-size: 9px; }
-        .legend-item { display: flex; align-items: center; gap: 4px; color: var(--ink-light); }
-        .legend-badge { font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; }
         .card-effort { font-size: 9px; font-weight: 600; color: var(--ink-light); margin-left: auto; }
-        .card-notion-link { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 4px; background: var(--surface); color: var(--ink-light); text-decoration: none; transition: 0.15s; }
+        .card-effort-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--creative-light); color: var(--creative); }
+        .card-notion-link { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 4px; background: var(--surface); color: var(--ink-light); text-decoration: none; transition: 0.2s var(--ease); }
         .card-notion-link:hover { background: #21A0D8; color: white; }
 
         .card-title { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.4; margin-bottom: 6px; }
@@ -91,6 +106,7 @@
         .card-designer { font-size: 10px; color: var(--ink-light); margin-left: auto; }
 
         .empty { text-align: center; padding: 40px 20px; color: var(--ink-light); font-size: 11px; font-weight: 500; }
+        .empty-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.5; }
         .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; gap: 12px; }
         .loading-text { font-size: 11px; font-weight: 600; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.1em; }
     </style>
@@ -99,6 +115,7 @@
     <div class="top-bar">
         <div class="dots"><span></span><span></span><span></span><span></span></div>
         <span class="queue-label">Designer Queue</span>
+        <span class="config-status loading" id="configStatus">Loading config...</span>
         <div class="stats">
             <div class="stat">
                 <div class="stat-dot" style="background: var(--urgent)"></div>
@@ -106,22 +123,29 @@
                 <span class="stat-label">Urgent</span>
             </div>
             <div class="stat">
-                <div class="stat-dot" style="background: var(--warning)"></div>
-                <span class="stat-value" id="dueTodayCount">0</span>
-                <span class="stat-label">Due Today</span>
+                <div class="stat-dot" style="background: var(--dmg-blue)"></div>
+                <span class="stat-value" id="forecastedCount">0</span>
+                <span class="stat-label">Forecasted</span>
+            </div>
+            <div class="stat">
+                <div class="stat-dot" style="background: var(--creative)"></div>
+                <span class="stat-value" id="totalEffort">0</span>
+                <span class="stat-label">Total Hrs</span>
             </div>
         </div>
     </div>
 
     <div class="tabs">
         <div class="tab active" data-view="all" onclick="switchTab('all')">All</div>
-        <div class="tab" data-view="deliverables" onclick="switchTab('deliverables')">Deliverables</div>
-        <div class="tab" data-view="quick" onclick="switchTab('quick')">Quick Requests</div>
-        <div class="tab" data-view="rundown" onclick="switchTab('rundown')">Daily Rundown</div>
+        <div class="tab" data-view="with-design" onclick="switchTab('with-design')">With Design</div>
+        <div class="tab" data-view="in-progress" onclick="switchTab('in-progress')">In Progress</div>
+        <div class="tab" data-view="review" onclick="switchTab('review')">Review</div>
+        <div class="tab" data-view="forecasted" onclick="switchTab('forecasted')">Forecasted</div>
         <div class="legend">
             <div class="legend-item"><span class="legend-badge" style="background: rgba(33, 160, 216, 0.1); color: #21A0D8;">DEL</span> Deliverables</div>
             <div class="legend-item"><span class="legend-badge" style="background: rgba(230, 70, 139, 0.1); color: #E6468B;">QR</span> Quick Request</div>
             <div class="legend-item"><span class="legend-badge" style="background: rgba(233, 75, 75, 0.1); color: #E94B4B;">RUN</span> Daily Rundown</div>
+            <div class="legend-item"><span class="legend-badge" style="background: rgba(33, 160, 216, 0.15); color: #21A0D8;">⏳</span> Forecasted</div>
         </div>
     </div>
 
@@ -134,7 +158,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, onSnapshot, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -151,17 +175,91 @@
     const APP_ID = "dmg-command-centre-native";
     const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
+    // Effort configuration - loaded from Firebase
+    let effortConfig = {
+        taskTypes: {
+            thumbnail: { baseHours: 0.5, label: 'Thumbnail' },
+            social_graphic: { baseHours: 1, label: 'Social Graphic' },
+            carousel: { baseHours: 2, label: 'Carousel' },
+            deck: { baseHours: 4, label: 'Presentation Deck' },
+            template: { baseHours: 3, label: 'Template Design' },
+            brand_kit: { baseHours: 8, label: 'Brand Kit' },
+            infographic: { baseHours: 3, label: 'Infographic' }
+        },
+        seniorityMultipliers: {
+            intern: 1.5,
+            junior: 1.3,
+            midweight: 1.0,
+            senior: 0.85,
+            lead: 0.75
+        }
+    };
+    let staffDirectory = {};
+    let rotaData = {};
+    let currentView = 'all';
+
     const COLUMNS = [
-        { key: 'with-design', title: 'With Design', color: 'var(--success)', filter: i => i.status === 'With Design' || i.status === 'Not Started' },
-        { key: 'in-progress', title: 'In Progress', color: 'var(--warning)', filter: i => i.status === 'In Progress' },
-        { key: 'review', title: 'Ready for Review', color: 'var(--production)', filter: i => i.status === 'Ready for Review' || i.status === 'Done' }
+        { key: 'forecasted', title: 'Forecasted', color: 'var(--dmg-blue)', filter: i => i.isForecasted === true },
+        { key: 'with-design', title: 'With Design', color: 'var(--success)', filter: i => !i.isForecasted && (i.status === 'With Design' || i.status === 'Not Started') },
+        { key: 'in-progress', title: 'In Progress', color: 'var(--warning)', filter: i => !i.isForecasted && i.status === 'In Progress' },
+        { key: 'review', title: 'Ready for Review', color: 'var(--creative)', filter: i => !i.isForecasted && (i.status === 'Ready for Review' || i.status === 'Done') }
     ];
 
     let deliverables = [];
     let quickRequests = [];
     let rundownItems = [];
+    let forecastedItems = [];
     let staff = {};
-    let currentView = 'all';
+
+    // Calculate effort based on task type and designer seniority
+    function calculateEffort(item) {
+        let baseHours = 1; // Default
+        const taskType = (item.type || item.designType || '').toLowerCase();
+
+        if (taskType.includes('thumbnail')) {
+            baseHours = effortConfig.taskTypes.thumbnail?.baseHours || 0.5;
+        } else if (taskType.includes('carousel') || taskType.includes('swipe')) {
+            baseHours = effortConfig.taskTypes.carousel?.baseHours || 2;
+        } else if (taskType.includes('deck') || taskType.includes('presentation')) {
+            baseHours = effortConfig.taskTypes.deck?.baseHours || 4;
+        } else if (taskType.includes('template')) {
+            baseHours = effortConfig.taskTypes.template?.baseHours || 3;
+        } else if (taskType.includes('brand') || taskType.includes('kit')) {
+            baseHours = effortConfig.taskTypes.brand_kit?.baseHours || 8;
+        } else if (taskType.includes('infographic')) {
+            baseHours = effortConfig.taskTypes.infographic?.baseHours || 3;
+        } else {
+            baseHours = effortConfig.taskTypes.social_graphic?.baseHours || 1;
+        }
+
+        // Apply seniority multiplier
+        let multiplier = 1.0;
+        const designerName = item.designer || '';
+        const staffMember = Object.values(staffDirectory).find(s =>
+            `${s.firstName} ${s.lastName}`.toLowerCase() === designerName.toLowerCase() ||
+            s.firstName?.toLowerCase() === designerName.toLowerCase()
+        );
+
+        if (staffMember?.seniority) {
+            const seniority = staffMember.seniority.toLowerCase();
+            multiplier = effortConfig.seniorityMultipliers[seniority] || 1.0;
+        }
+
+        return Math.round(baseHours * multiplier * 10) / 10;
+    }
+
+    // Check if designer is available (not on leave)
+    function isDesignerAvailable(designerName) {
+        if (!designerName || !rotaData) return true;
+        const today = new Date().toISOString().split('T')[0];
+        const staffMember = Object.entries(staffDirectory).find(([id, s]) =>
+            `${s.firstName} ${s.lastName}`.toLowerCase() === designerName.toLowerCase()
+        );
+        if (!staffMember) return true;
+        const staffId = staffMember[0];
+        const todayRota = rotaData[staffId]?.[today];
+        return !todayRota || todayRota === 'Office' || todayRota === 'WFH' || todayRota === 'In Building' || todayRota === 'Remote';
+    }
 
     function isOverdue(dateStr) {
         if (!dateStr) return false;
@@ -188,18 +286,17 @@
     }
 
     function getPriority(item) {
+        if (item.isForecasted) return 'forecasted';
         if (item.priority === 'Urgent' || item.priorityLevel === 'High') return 'high';
         if (item.priority === 'Tomorrow' || item.priorityLevel === 'Medium') return 'medium';
         return 'low';
     }
 
     function normaliseDeliverable(d) {
-        // Normalize status based on actual Notion field values
         let status = 'With Design';
         const deskState = d.deskState || '';
         const productionStatus = d.productionStatus || d.status || '';
 
-        // Map various status values to columns
         if (deskState === 'With Design' || productionStatus === 'Not Started' || productionStatus === 'To Be Briefed') {
             status = 'With Design';
         } else if (deskState === 'In Design' || productionStatus === 'In Progress' || productionStatus === 'In Production') {
@@ -217,15 +314,15 @@
             projectId: d.projectId || d.parentProjectId || null,
             title: d.title || 'Untitled',
             project: d.projectTitle || d.project || '',
-            type: (d.staticAssetsNeeded && d.staticAssetsNeeded[0]) || (d.assetsNeeded && d.assetsNeeded[0]) || 'Graphic',
-            effort: d.designEffort || 0,
+            type: (d.staticAssetsNeeded && d.staticAssetsNeeded[0]) || (d.assetsNeeded && d.assetsNeeded[0]) || d.designTaskType || 'Graphic',
             dueDate: d.dueDate,
             liveDate: d.liveDate || d.goLiveDate || d.plannedLiveDate || '',
             clientDueDate: d.clientDueDate || d.deliveryDue || d.feedbackDue || '',
             feedbackStatus: d.feedbackStatus || '',
             designer: d.graphicDesigner || d.assignedCreative || 'Unassigned',
             status: status,
-            priority: d.priorityLevel || d.priority || 'Standard'
+            priority: d.priorityLevel || d.priority || 'Standard',
+            isForecasted: false
         };
     }
 
@@ -236,82 +333,113 @@
             title: r.headline || 'Untitled',
             project: r.seriesName || '',
             type: r.assetType || 'Asset',
-            effort: ({ Thumbnail: 0.5, Headline: 0.5, Swipe: 1, Deck: 2, Template: 1.5 }[r.assetType] || 1),
             dueDate: r.deadline,
             liveDate: r.liveDate || r.goLiveDate || '',
             clientDueDate: r.clientDueDate || r.deliveryDue || '',
             designer: staff[r.designerId] || 'Unassigned',
             status: r.status || 'Not Started',
-            priority: r.priority || 'Standard'
+            priority: r.priority || 'Standard',
+            isForecasted: false
         };
     }
 
     function normaliseRundownItem(r) {
-        // Rundown items in GOING LIVE need thumbnails/design
         return {
             id: r.id,
             source: 'rundown',
             title: r.title || 'Untitled',
             project: r.vertical || '',
             type: 'Thumbnail',
-            effort: 0.5,
             dueDate: r.plannedLiveDate || r.date,
             liveDate: r.plannedLiveDate || '',
             clientDueDate: '',
             designer: r.creator || 'Unassigned',
             status: r.status === 'done' ? 'Ready for Review' : (r.status === 'pending' ? 'In Progress' : 'With Design'),
-            priority: r.plannedLiveDate && new Date(r.plannedLiveDate) < new Date(Date.now() + 2*24*60*60*1000) ? 'Urgent' : 'Standard'
+            priority: r.plannedLiveDate && new Date(r.plannedLiveDate) < new Date(Date.now() + 2*24*60*60*1000) ? 'Urgent' : 'Standard',
+            isForecasted: false
         };
+    }
+
+    // Load forecasted items from API (pipeline projects needing design)
+    async function loadForecastedItems() {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 10000);
+
+            const res = await fetch(`${API_URL}/projects`, { signal: controller.signal });
+            clearTimeout(timeout);
+
+            if (!res.ok) return;
+
+            const data = await res.json();
+            const projects = data.projects || [];
+
+            // Filter for pipeline projects with static assets
+            forecastedItems = projects.filter(p => {
+                const dealStage = (p.dealStage || p.status1 || '').toLowerCase();
+                const hasAssets = (p.staticAssetCount > 0 || p.staticAssetsNeeded?.length > 0);
+                const isPipeline = dealStage.includes('agreed') || dealStage.includes('won') || dealStage.includes('verbal') || dealStage.includes('confirmed');
+                const notInProduction = !(p.productionWorkflowStatus || '').toLowerCase().includes('progress');
+                return hasAssets && isPipeline && notInProduction;
+            }).map(p => ({
+                id: p.id,
+                title: p.title || 'Untitled Project',
+                project: p.client || '',
+                designer: p.graphicDesigner || 'TBC',
+                priority: 'Pipeline',
+                dueDate: p.dueDate || p.clientDueDate,
+                liveDate: p.plannedLiveDate || p.liveDate,
+                status: 'Forecasted',
+                type: (p.staticAssetsNeeded && p.staticAssetsNeeded[0]) || 'Graphic',
+                projectId: p.id,
+                source: 'forecasted',
+                isForecasted: true,
+                dealStage: p.dealStage || p.status1,
+                dealValue: p.dealValue || p.projectBudget,
+                staticAssetCount: p.staticAssetCount || p.staticAssetsNeeded?.length || 1,
+                url: p.url
+            }));
+
+            console.log('[Designer Queue] Loaded', forecastedItems.length, 'forecasted items');
+            render();
+        } catch (err) {
+            console.warn('[Designer Queue] Could not load forecasted items');
+        }
     }
 
     function render() {
         let items = [];
-        if (currentView === 'all' || currentView === 'deliverables') {
-            // Include deliverables that need design work:
-            // - Has staticAssetsNeeded or staticAssetCount, OR
-            // - Has discipline = 'Design', OR
-            // - Has designTaskType set, OR
-            // - Title contains design-related keywords, OR
-            // - Status indicates it's in production (not yet complete)
-            // Exclude Live/Published items
+
+        // Add forecasted items
+        items = items.concat(forecastedItems);
+
+        // Add deliverables (filtered for design work)
+        if (currentView === 'all' || currentView === 'with-design' || currentView === 'in-progress' || currentView === 'review') {
             const designKeywords = ['thumbnail', 'graphic', 'design', 'asset', 'social'];
             const activeStatuses = ['not started', 'in progress', 'with design', 'pre-production', 'briefed', 'to be briefed', 'stakeholder review'];
             const designDeliverables = deliverables.filter(d => {
-                // Always exclude completed items
                 const status = (d.status || '').toLowerCase();
                 if (status === 'live' || status === 'published' || status === 'complete' || status === 'done') return false;
-
-                // Include if has design assets
                 if (d.staticAssetsNeeded?.length > 0 || d.staticAssetCount > 0) return true;
-
-                // Include if discipline is Design
                 if (d.discipline === 'Design') return true;
-
-                // Include if has designTaskType
                 if (d.designTaskType) return true;
-
-                // Include if title contains design keywords
                 const title = (d.title || '').toLowerCase();
                 if (designKeywords.some(k => title.includes(k))) return true;
-
-                // Include if status indicates active work (fallback for project-level items)
                 if (activeStatuses.some(s => status.includes(s))) return true;
-
-                // Include ALL items if this is from /projects fallback (no specific design fields but still active)
-                // This ensures projects show up even without explicit design tagging
                 if (d.projectTitle && !status.includes('cancelled') && !status.includes('archived')) return true;
-
                 return false;
             }).map(normaliseDeliverable);
             items = items.concat(designDeliverables);
         }
-        if (currentView === 'all' || currentView === 'quick') {
+
+        // Add quick requests
+        if (currentView === 'all' || currentView === 'with-design' || currentView === 'in-progress' || currentView === 'review') {
             const qr = quickRequests.filter(r => r.status !== 'Done').map(normaliseQuickRequest);
             items = items.concat(qr);
         }
 
-        // Include rundown items (GOING LIVE items needing thumbnails)
-        if (currentView === 'all' || currentView === 'rundown') {
+        // Add rundown items
+        if (currentView === 'all' || currentView === 'with-design' || currentView === 'in-progress' || currentView === 'review') {
             const existingIds = new Set(items.map(i => i.id));
             const rundown = rundownItems
                 .filter(r => !existingIds.has(r.id) && r.status !== 'done')
@@ -319,47 +447,65 @@
             items = items.concat(rundown);
         }
 
-        // Include commercial hub design items (thumbnails needed)
+        // Add commercial hub design items
         if (currentView === 'all' && window.commercialHubDesignItems) {
             const existingIds = new Set(items.map(i => i.id));
             const hubItems = window.commercialHubDesignItems.filter(i => !existingIds.has(i.id));
             items = items.concat(hubItems);
         }
 
+        // Filter based on current view
+        if (currentView !== 'all') {
+            const col = COLUMNS.find(c => c.key === currentView);
+            if (col) {
+                items = items.filter(col.filter);
+            }
+        }
+
+        // Calculate stats
         const urgent = items.filter(i => getPriority(i) === 'high').length;
-        const dueToday = items.filter(i => i.dueDate?.startsWith(new Date().toISOString().split('T')[0])).length;
+        const forecasted = items.filter(i => i.isForecasted).length;
+        const totalEffort = items.reduce((sum, item) => sum + calculateEffort(item), 0);
 
         document.getElementById('urgentCount').textContent = urgent;
-        document.getElementById('dueTodayCount').textContent = dueToday;
+        document.getElementById('forecastedCount').textContent = forecasted;
+        document.getElementById('totalEffort').textContent = Math.round(totalEffort);
 
+        // Render columns
         document.getElementById('columns').innerHTML = COLUMNS.map(col => {
             const colItems = items.filter(col.filter);
             colItems.sort((a, b) => {
-                const pOrder = { high: 0, medium: 1, low: 2 };
+                const pOrder = { high: 0, medium: 1, low: 2, forecasted: 3 };
                 if (pOrder[getPriority(a)] !== pOrder[getPriority(b)]) return pOrder[getPriority(a)] - pOrder[getPriority(b)];
                 if (!a.dueDate) return 1;
                 if (!b.dueDate) return -1;
                 return new Date(a.dueDate) - new Date(b.dueDate);
             });
 
+            const colEffort = colItems.reduce((sum, item) => sum + calculateEffort(item), 0);
+
             return `
-                <div class="column">
+                <div class="column ${col.key === 'forecasted' ? 'forecasted' : ''}">
                     <div class="column-header">
                         <div class="column-dot" style="background: ${col.color}"></div>
                         <span class="column-title">${col.title}</span>
                         <span class="column-count">${colItems.length}</span>
+                        <span class="column-effort">${Math.round(colEffort)}h</span>
                     </div>
                     <div class="cards">
-                        ${colItems.length === 0 ? '<div class="empty">No items</div>' : colItems.map(item => {
+                        ${colItems.length === 0 ? `<div class="empty"><div class="empty-icon">${col.key === 'forecasted' ? '📊' : '🎨'}</div>No items</div>` : colItems.map(item => {
                             const overdue = isOverdue(item.dueDate);
                             const soon = isDueSoon(item.dueDate);
+                            const effort = calculateEffort(item);
+                            const available = isDesignerAvailable(item.designer);
+
                             return `
                                 <div class="card">
                                     <div class="card-priority ${getPriority(item)}"></div>
                                     <div class="card-top">
                                         <span class="card-type">${item.type}</span>
-                                        <span class="card-source ${item.source}">${item.source === 'notion' ? 'DEL' : (item.source === 'rundown' ? 'RUN' : 'QR')}</span>
-                                        <span class="card-effort">${item.effort} pts</span>
+                                        <span class="card-source ${item.source}">${item.isForecasted ? '⏳' : (item.source === 'notion' ? 'DEL' : (item.source === 'rundown' ? 'RUN' : 'QR'))}</span>
+                                        <span class="card-effort-badge">${effort}h</span>
                                         ${item.projectId ? `<a href="project-detail.html?id=${item.projectId}" target="_blank" class="card-notion-link" title="View Project Page" onclick="event.stopPropagation()" style="background: var(--production-light); color: var(--production);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></a>` : ''}
                                         ${item.url ? `<a href="${item.url}" target="_blank" class="card-notion-link" title="Open in Notion" onclick="event.stopPropagation()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
                                     </div>
@@ -370,7 +516,8 @@
                                         ${item.clientDueDate ? `<span class="card-client-due">Client: ${formatDate(item.clientDueDate)}</span>` : ''}
                                         ${item.liveDate ? `<span class="card-live">Live: ${formatDate(item.liveDate)}</span>` : ''}
                                         ${item.feedbackStatus ? `<span style="font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(139, 92, 246, 0.1); color: #7C3AED;">${item.feedbackStatus}</span>` : ''}
-                                        <span class="card-designer">${item.designer}</span>
+                                        ${item.isForecasted && item.staticAssetCount ? `<span style="font-size: 9px; font-weight: 600; padding: 3px 6px; border-radius: 4px; background: rgba(33, 160, 216, 0.1); color: var(--dmg-blue);">${item.staticAssetCount} assets</span>` : ''}
+                                        <span class="card-designer">${item.designer}${!available ? ' 🏖️' : ''}</span>
                                     </div>
                                 </div>
                             `;
@@ -393,12 +540,11 @@
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 10000);
 
-            // Try /deliverables first
             const res = await fetch(`${API_URL}/deliverables`, { signal: controller.signal });
             clearTimeout(timeout);
 
             if (!res.ok) {
-                console.warn('[Designer Queue] API returned', res.status, '- using Firebase data only');
+                console.warn('[Designer Queue] API returned', res.status);
                 render();
                 return;
             }
@@ -406,16 +552,13 @@
             const data = await res.json();
             let items = data.deliverables || data.projects || [];
 
-            // If no deliverables, also try /projects to get project-level items that need design
             if (items.length === 0) {
                 console.log('[Designer Queue] No deliverables found, trying /projects endpoint');
                 const projRes = await fetch(`${API_URL}/projects`);
                 if (projRes.ok) {
                     const projData = await projRes.json();
                     if (projData.projects && projData.projects.length > 0) {
-                        // Convert projects to deliverable-like items for design work
                         items = projData.projects.filter(p => {
-                            // Include projects that might need design work
                             const status = (p.status1 || p.status || p.projectStatus || '').toLowerCase();
                             return !status.includes('cancelled') && !status.includes('archived') && status !== 'live' && status !== 'complete';
                         }).map(p => ({
@@ -443,8 +586,7 @@
             console.log('[Designer Queue] Loaded', deliverables.length, 'items');
             render();
         } catch (err) {
-            // Silently fail - widget works with just Firebase data
-            console.warn('[Designer Queue] API unavailable, using Firebase data only');
+            console.warn('[Designer Queue] API unavailable');
             render();
         }
     }
@@ -454,7 +596,6 @@
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 10000);
 
-            // Get today and next 7 days of rundown items
             const dates = [];
             for (let i = 0; i < 7; i++) {
                 const d = new Date();
@@ -469,13 +610,12 @@
                     if (!res.ok) continue;
                     const data = await res.json();
                     if (data.success && data.items) {
-                        // Only include items in GOING LIVE section or with planned live date
                         const designItems = data.items.filter(item =>
                             item.section === 'GOING LIVE' || item.plannedLiveDate
                         );
                         allItems.push(...designItems);
                     }
-                } catch (e) { /* skip failed date */ }
+                } catch (e) { /* skip */ }
             }
             clearTimeout(timeout);
 
@@ -488,11 +628,51 @@
 
     async function loadStaff() {
         const snap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "staff_directory"));
-        snap.docs.forEach(d => { const data = d.data(); staff[d.id] = `${data.firstName} ${data.lastName}`; });
+        snap.docs.forEach(d => {
+            const data = d.data();
+            staff[d.id] = `${data.firstName} ${data.lastName}`;
+            staffDirectory[d.id] = data;
+        });
+        console.log('[Designer Queue] Loaded', Object.keys(staffDirectory).length, 'staff members');
+    }
+
+    // Load rota data
+    async function loadRotaData() {
+        try {
+            const snap = await getDocs(collection(db, "artifacts", APP_ID, "public", "data", "rota"));
+            snap.docs.forEach(d => { rotaData[d.id] = d.data(); });
+            console.log('[Designer Queue] Loaded rota data');
+        } catch (err) {
+            console.warn('[Designer Queue] Could not load rota data');
+        }
+    }
+
+    // Load effort config from Firebase
+    async function loadEffortConfig() {
+        try {
+            const configDoc = await getDoc(doc(db, "artifacts", APP_ID, "public", "config", "effortScores"));
+            if (configDoc.exists()) {
+                effortConfig = { ...effortConfig, ...configDoc.data() };
+                document.getElementById('configStatus').textContent = 'Config loaded';
+                document.getElementById('configStatus').className = 'config-status active';
+                console.log('[Designer Queue] Loaded effort config from Firebase');
+            } else {
+                document.getElementById('configStatus').textContent = 'Using defaults';
+                document.getElementById('configStatus').className = 'config-status';
+            }
+            render();
+        } catch (err) {
+            console.warn('[Designer Queue] Could not load effort config, using defaults');
+            document.getElementById('configStatus').textContent = 'Using defaults';
+            document.getElementById('configStatus').className = 'config-status';
+        }
     }
 
     signInAnonymously(auth).then(async () => {
         await loadStaff();
+        await loadRotaData();
+        await loadEffortConfig();
+        await loadForecastedItems();
         await loadDeliverables();
         await loadRundownItems();
 
@@ -505,7 +685,6 @@
         // Listen to asset_metadata for commercial hub assets needing design
         onSnapshot(collection(db, "artifacts", APP_ID, "public", "data", "asset_metadata"), (snap) => {
             const assetMeta = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            // Filter for assets that need thumbnails/design
             const designAssets = assetMeta.filter(a =>
                 !a.thumbnailReady &&
                 a.status !== 'Live' &&
@@ -516,23 +695,33 @@
                 title: a.assetTitle || 'Untitled',
                 project: a.clientName,
                 type: 'Thumbnail',
-                effort: 0.5,
                 dueDate: a.deliveryDue,
                 liveDate: a.liveDate || a.plannedLiveDate,
                 clientDueDate: a.feedbackDue || a.deliveryDue,
                 feedbackStatus: a.feedbackStatus,
                 designer: 'Unassigned',
                 status: a.thumbnailReady ? 'Done' : (a.status === 'Edit' ? 'In Progress' : 'With Design'),
-                priority: a.deliveryDue && new Date(a.deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'Urgent' : 'Standard'
+                priority: a.deliveryDue && new Date(a.deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'Urgent' : 'Standard',
+                isForecasted: false
             }));
 
-            // Inject into render cycle - these will be merged with quick requests
             window.commercialHubDesignItems = designAssets;
             render();
+        });
+
+        // Listen for effort config changes
+        onSnapshot(doc(db, "artifacts", APP_ID, "public", "config", "effortScores"), snap => {
+            if (snap.exists()) {
+                effortConfig = { ...effortConfig, ...snap.data() };
+                document.getElementById('configStatus').textContent = 'Config loaded';
+                document.getElementById('configStatus').className = 'config-status active';
+                render();
+            }
         });
     });
 
     setInterval(() => {
+        loadForecastedItems();
         loadDeliverables();
         loadRundownItems();
     }, 60000);
