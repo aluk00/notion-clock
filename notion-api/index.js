@@ -939,8 +939,8 @@ app.get('/staff-directory', async (req, res) => {
         const response = await notion.databases.query({
             database_id: STAFF_DIR_DB,
             filter,
-            page_size: 100,
-            sorts: [{ property: 'First Name', direction: 'ascending' }]
+            page_size: 100
+            // Sort removed - property names vary between databases
         });
 
         const staff = response.results.map(parseStaffMember);
