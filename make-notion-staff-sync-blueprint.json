@@ -1,0 +1,160 @@
+{
+    "name": "DMG Staff Directory Sync",
+    "description": "Syncs user profiles to Notion Staff Directory when they sign in",
+    "version": 1,
+    "modules": [
+        {
+            "id": 1,
+            "module": "gateway:CustomWebHook",
+            "name": "Webhook - Receive User Data",
+            "parameters": {
+                "hook": "{{WEBHOOK_ID}}",
+                "maxResults": 1
+            },
+            "metadata": {
+                "designer": { "x": 0, "y": 0 },
+                "restore": {
+                    "hook": { "label": "DMG Staff Sync Webhook" }
+                },
+                "expect": [
+                    { "name": "firstName", "type": "text", "label": "First Name" },
+                    { "name": "lastName", "type": "text", "label": "Last Name" },
+                    { "name": "email", "type": "text", "label": "Email" },
+                    { "name": "team", "type": "text", "label": "Team" },
+                    { "name": "role", "type": "text", "label": "Role" },
+                    { "name": "active", "type": "boolean", "label": "Active" }
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "module": "notion:searchObjects",
+            "name": "Search Notion - Find Existing Staff",
+            "parameters": {
+                "connection": "{{NOTION_CONNECTION_ID}}",
+                "database": "2eb950e6ee5881f48679fd8e7fc37484",
+                "filter": {
+                    "and": [
+                        {
+                            "property": "Email",
+                            "email": {
+                                "equals": "{{1.email}}"
+                            }
+                        }
+                    ]
+                },
+                "limit": 1
+            },
+            "metadata": {
+                "designer": { "x": 300, "y": 0 }
+            }
+        },
+        {
+            "id": 3,
+            "module": "builtin:BasicRouter",
+            "name": "Router - Create or Update",
+            "routes": [
+                {
+                    "name": "Update Existing",
+                    "condition": "{{length(2.results) > 0}}"
+                },
+                {
+                    "name": "Create New",
+                    "condition": "{{length(2.results) = 0}}"
+                }
+            ],
+            "metadata": {
+                "designer": { "x": 600, "y": 0 }
+            }
+        },
+        {
+            "id": 4,
+            "module": "notion:updateADatabaseItem",
+            "name": "Update Existing Staff Entry",
+            "route": 0,
+            "parameters": {
+                "connection": "{{NOTION_CONNECTION_ID}}",
+                "pageId": "{{2.results[].id}}",
+                "properties": {
+                    "First Name": { "rich_text": [{ "text": { "content": "{{1.firstName}}" } }] },
+                    "Last Name": { "rich_text": [{ "text": { "content": "{{1.lastName}}" } }] },
+                    "Team": { "select": { "name": "{{1.team}}" } },
+                    "Role": { "select": { "name": "{{1.role}}" } },
+                    "Status": { "select": { "name": "Active" } }
+                }
+            },
+            "metadata": {
+                "designer": { "x": 900, "y": -100 }
+            }
+        },
+        {
+            "id": 5,
+            "module": "notion:createADatabaseItem",
+            "name": "Create New Staff Entry",
+            "route": 1,
+            "parameters": {
+                "connection": "{{NOTION_CONNECTION_ID}}",
+                "database": "2eb950e6ee5881f48679fd8e7fc37484",
+                "properties": {
+                    "Full Name": { "title": [{ "text": { "content": "{{1.firstName}} {{1.lastName}}" } }] },
+                    "First Name": { "rich_text": [{ "text": { "content": "{{1.firstName}}" } }] },
+                    "Last Name": { "rich_text": [{ "text": { "content": "{{1.lastName}}" } }] },
+                    "Team": { "select": { "name": "{{1.team}}" } },
+                    "Role": { "select": { "name": "{{1.role}}" } },
+                    "Status": { "select": { "name": "Active" } },
+                    "Seniority": { "select": { "name": "Midweight" } },
+                    "Employment Type": { "select": { "name": "Full-time" } }
+                }
+            },
+            "metadata": {
+                "designer": { "x": 900, "y": 100 }
+            }
+        },
+        {
+            "id": 6,
+            "module": "builtin:BasicFeeder",
+            "name": "Merge Results",
+            "parameters": {},
+            "metadata": {
+                "designer": { "x": 1200, "y": 0 }
+            }
+        },
+        {
+            "id": 7,
+            "module": "gateway:WebhookRespond",
+            "name": "Respond - Return Result",
+            "parameters": {
+                "status": 200,
+                "body": {
+                    "success": true,
+                    "notionId": "{{ifempty(4.id, 5.id)}}",
+                    "action": "{{if(length(2.results) > 0, \"updated\", \"created\")}}"
+                }
+            },
+            "metadata": {
+                "designer": { "x": 1500, "y": 0 }
+            }
+        }
+    ],
+    "connections": [
+        { "from": 1, "to": 2 },
+        { "from": 2, "to": 3 },
+        { "from": 3, "to": 4, "route": 0 },
+        { "from": 3, "to": 5, "route": 1 },
+        { "from": 4, "to": 6 },
+        { "from": 5, "to": 6 },
+        { "from": 6, "to": 7 }
+    ],
+    "scheduling": {
+        "type": "indefinitely"
+    },
+    "_setup_instructions": {
+        "step1": "In Make.com, go to Scenarios > Create New Scenario",
+        "step2": "Click the three dots menu > Import Blueprint",
+        "step3": "Paste this JSON",
+        "step4": "Connect your Notion account when prompted",
+        "step5": "Copy the webhook URL from the first module",
+        "step6": "Paste that URL into profile-sso.html where it says MAKE_WEBHOOK_URL",
+        "step7": "Turn on the scenario"
+    }
+}
