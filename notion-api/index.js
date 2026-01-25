@@ -26,6 +26,7 @@ const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
 const DAILY_RUNDOWN_DB = process.env.NOTION_DAILY_RUNDOWN_DB;
 const EVENTS_DB = process.env.NOTION_PROD_EVENTS_DB;
 const COMMERCIAL_SNAPSHOT_DB = process.env.NOTION_COMMERCIAL_SNAPSHOT_DB;
+const STAFF_DIR_DB = process.env.NOTION_STAFF_DIR_DB;
 
 // ============================================
 // HELPER: Parse Notion properties
@@ -828,6 +829,205 @@ app.get('/staff', async (req, res) => {
         res.json({ success: true, users, count: users.length });
     } catch (error) {
         console.error('Error fetching users:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// STAFF DIRECTORY ENDPOINTS (Notion DB)
+// ============================================
+
+// Helper: Parse Staff Directory item
+function parseStaffMember(page) {
+    const props = page.properties;
+    return {
+        id: page.id,
+        notionUrl: page.url,
+        firstName: parseProperty(props['First Name']) || parseProperty(props['FIRST NAME']) || '',
+        lastName: parseProperty(props['Last Name']) || parseProperty(props['LAST NAME']) || '',
+        email: parseProperty(props['Email']) || parseProperty(props['EMAIL']) || '',
+        team: parseProperty(props['Team']) || parseProperty(props['TEAM']) || parseProperty(props['Primary Team']) || '',
+        role: parseProperty(props['Role']) || parseProperty(props['ROLE']) || parseProperty(props['Job Title']) || '',
+        seniority: parseProperty(props['Seniority']) || parseProperty(props['SENIORITY']) || '',
+        weeklyCapacityPTS: parseProperty(props['Weekly Capacity']) || parseProperty(props['WEEKLY CAPACITY']) || parseProperty(props['Capacity']) || 40,
+        active: parseProperty(props['Active']) !== false && parseProperty(props['ACTIVE']) !== false && parseProperty(props['Status']) !== 'Inactive',
+        slackId: parseProperty(props['Slack ID']) || parseProperty(props['SLACK ID']) || '',
+        phone: parseProperty(props['Phone']) || parseProperty(props['PHONE']) || '',
+        jobRoles: parseProperty(props['Job Roles']) || parseProperty(props['JOB ROLES']) || [],
+        createdAt: page.created_time,
+        updatedAt: page.last_edited_time
+    };
+}
+
+// Helper: Build Staff Directory properties for Notion
+function buildStaffProperties(data) {
+    const props = {};
+
+    if (data.firstName !== undefined) {
+        props['First Name'] = { title: [{ text: { content: data.firstName || '' } }] };
+    }
+    if (data.lastName !== undefined) {
+        props['Last Name'] = { rich_text: data.lastName ? [{ text: { content: data.lastName } }] : [] };
+    }
+    if (data.email !== undefined) {
+        props['Email'] = { email: data.email || null };
+    }
+    if (data.team !== undefined) {
+        props['Team'] = data.team ? { select: { name: data.team } } : { select: null };
+    }
+    if (data.role !== undefined) {
+        props['Role'] = { rich_text: data.role ? [{ text: { content: data.role } }] : [] };
+    }
+    if (data.seniority !== undefined) {
+        props['Seniority'] = data.seniority ? { select: { name: data.seniority } } : { select: null };
+    }
+    if (data.weeklyCapacityPTS !== undefined) {
+        props['Weekly Capacity'] = { number: parseInt(data.weeklyCapacityPTS) || 40 };
+    }
+    if (data.active !== undefined) {
+        props['Active'] = { checkbox: data.active !== false };
+    }
+    if (data.slackId !== undefined) {
+        props['Slack ID'] = { rich_text: data.slackId ? [{ text: { content: data.slackId } }] : [] };
+    }
+    if (data.phone !== undefined) {
+        props['Phone'] = { phone_number: data.phone || null };
+    }
+    if (data.jobRoles !== undefined && Array.isArray(data.jobRoles)) {
+        props['Job Roles'] = { multi_select: data.jobRoles.map(r => ({ name: r })) };
+    }
+
+    return props;
+}
+
+// GET /staff-directory - List all staff from Notion Staff Directory DB
+app.get('/staff-directory', async (req, res) => {
+    try {
+        if (!STAFF_DIR_DB) {
+            return res.status(400).json({ success: false, error: 'Staff Directory DB not configured' });
+        }
+
+        const { team, active } = req.query;
+        let filter = undefined;
+
+        // Build filter if provided
+        const filters = [];
+        if (team) {
+            filters.push({ property: 'Team', select: { equals: team } });
+        }
+        if (active !== undefined) {
+            filters.push({ property: 'Active', checkbox: { equals: active === 'true' } });
+        }
+        if (filters.length === 1) {
+            filter = filters[0];
+        } else if (filters.length > 1) {
+            filter = { and: filters };
+        }
+
+        const response = await notion.databases.query({
+            database_id: STAFF_DIR_DB,
+            filter,
+            page_size: 100,
+            sorts: [{ property: 'First Name', direction: 'ascending' }]
+        });
+
+        const staff = response.results.map(parseStaffMember);
+        res.json({ success: true, staff, count: staff.length });
+    } catch (error) {
+        console.error('Error fetching staff directory:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /staff-directory/:id - Get single staff member
+app.get('/staff-directory/:id', async (req, res) => {
+    try {
+        if (!STAFF_DIR_DB) {
+            return res.status(400).json({ success: false, error: 'Staff Directory DB not configured' });
+        }
+
+        const page = await notion.pages.retrieve({ page_id: req.params.id });
+        const member = parseStaffMember(page);
+        res.json({ success: true, member });
+    } catch (error) {
+        console.error('Error fetching staff member:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST /staff-directory - Create new staff member
+app.post('/staff-directory', async (req, res) => {
+    try {
+        if (!STAFF_DIR_DB) {
+            return res.status(400).json({ success: false, error: 'Staff Directory DB not configured' });
+        }
+
+        const { firstName, lastName, email, team, role, seniority, weeklyCapacityPTS, active, jobRoles, phone, slackId } = req.body;
+
+        if (!firstName) {
+            return res.status(400).json({ success: false, error: 'firstName is required' });
+        }
+
+        const properties = buildStaffProperties({
+            firstName, lastName, email, team, role, seniority,
+            weeklyCapacityPTS, active: active !== false, jobRoles, phone, slackId
+        });
+
+        const page = await notion.pages.create({
+            parent: { database_id: STAFF_DIR_DB },
+            properties
+        });
+
+        const member = parseStaffMember(page);
+        res.json({ success: true, member, id: page.id });
+    } catch (error) {
+        console.error('Error creating staff member:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// PATCH /staff-directory/:id - Update staff member
+app.patch('/staff-directory/:id', async (req, res) => {
+    try {
+        if (!STAFF_DIR_DB) {
+            return res.status(400).json({ success: false, error: 'Staff Directory DB not configured' });
+        }
+
+        const properties = buildStaffProperties(req.body);
+
+        if (Object.keys(properties).length === 0) {
+            return res.status(400).json({ success: false, error: 'No valid fields to update' });
+        }
+
+        const page = await notion.pages.update({
+            page_id: req.params.id,
+            properties
+        });
+
+        const member = parseStaffMember(page);
+        res.json({ success: true, member, id: page.id });
+    } catch (error) {
+        console.error('Error updating staff member:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// DELETE /staff-directory/:id - Archive staff member (soft delete)
+app.delete('/staff-directory/:id', async (req, res) => {
+    try {
+        if (!STAFF_DIR_DB) {
+            return res.status(400).json({ success: false, error: 'Staff Directory DB not configured' });
+        }
+
+        // Archive the page instead of deleting
+        await notion.pages.update({
+            page_id: req.params.id,
+            archived: true
+        });
+
+        res.json({ success: true, archived: true, id: req.params.id });
+    } catch (error) {
+        console.error('Error archiving staff member:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

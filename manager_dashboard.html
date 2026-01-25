@@ -5,109 +5,798 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manager Dashboard | DMG</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; --success: #22C55E; --warning: #F59E0B; --danger: #EF4444; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 16px; color: var(--ink); }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { background: #FFF; border: 1px solid var(--border); border-radius: 16px; padding: 18px 22px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
-        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 2px; }
-        .dot-grid span { width: 5px; height: 5px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
-        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+        :root {
+            /* Core palette */
+            --ink: #0F172A;
+            --ink-sub: #64748B;
+            --ink-muted: #94A3B8;
+            --border: #E2E8F0;
+            --surface: #FFFFFF;
+            --surface-alt: #F8FAFC;
+
+            /* Hero/Brand */
+            --dmg-blue: #21A0D8;
+            --dmg-blue-soft: rgba(33, 160, 216, 0.1);
+            --dmg-blue-glow: rgba(33, 160, 216, 0.2);
+
+            /* Semantic */
+            --success: #22C55E;
+            --success-soft: rgba(34, 197, 94, 0.1);
+            --warning: #F59E0B;
+            --warning-soft: rgba(245, 158, 11, 0.1);
+            --danger: #EF4444;
+            --danger-soft: rgba(239, 68, 68, 0.1);
+
+            /* Team colors */
+            --creative: #E6468B;
+            --creative-soft: rgba(230, 70, 139, 0.1);
+            --production: #43B049;
+            --production-soft: rgba(67, 176, 73, 0.1);
+            --editorial: #E94B4B;
+            --editorial-soft: rgba(233, 75, 75, 0.1);
+            --social: #F2C316;
+            --social-soft: rgba(242, 195, 22, 0.1);
+            --operations: #9333EA;
+            --operations-soft: rgba(147, 51, 234, 0.1);
+            --sales: #F97316;
+            --sales-soft: rgba(249, 115, 22, 0.1);
+            --design: #8B5CF6;
+            --design-soft: rgba(139, 92, 246, 0.1);
+
+            /* Layout */
+            --radius: 16px;
+            --radius-sm: 10px;
+            --radius-xs: 6px;
+
+            /* Smooth transition - natural feel */
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
+            --ease-out: cubic-bezier(0, 0, 0.2, 1);
+            --ease-in: cubic-bezier(0.4, 0, 1, 1);
+            --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { background: transparent; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: transparent;
+            padding: 16px;
+            -webkit-font-smoothing: antialiased;
+            color: var(--ink);
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: -0.04em; }
+
+        /* Smooth keyframes */
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98) translateY(4px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideInRight {
+            from { opacity: 0; transform: translateX(24px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        @keyframes ripple {
+            0% { transform: scale(0); opacity: 0.5; }
+            100% { transform: scale(4); opacity: 0; }
+        }
+
+        .container { max-width: 1320px; margin: 0 auto; }
+
+        /* PIN Screen */
+        .pin-screen {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(145deg, #F8FAFC 0%, #E2E8F0 50%, #CBD5E1 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .pin-card {
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.03);
+            text-align: center;
+            animation: slideUp 0.5s var(--ease);
+        }
+        .pin-card.shake { animation: shake 0.4s var(--ease); }
+        .pin-logo {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, var(--dmg-blue) 0%, #1a8bc0 100%);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 28px;
+            box-shadow: 0 8px 24px var(--dmg-blue-glow);
+            transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+        }
+        .pin-logo:hover { transform: scale(1.05); box-shadow: 0 12px 32px var(--dmg-blue-glow); }
+        .pin-logo svg { width: 32px; height: 32px; color: white; }
+        .pin-title { font-size: 26px; font-weight: 900; margin-bottom: 8px; letter-spacing: -0.03em; }
+        .pin-subtitle { font-size: 14px; color: var(--ink-sub); margin-bottom: 36px; }
+        .pin-dots { display: flex; justify-content: center; gap: 18px; margin-bottom: 36px; }
+        .pin-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: transparent;
+            transition: all 0.25s var(--ease-bounce);
+        }
+        .pin-dot.filled { background: var(--dmg-blue); border-color: var(--dmg-blue); transform: scale(1.1); }
+        .pin-dot.error { background: var(--danger); border-color: var(--danger); }
+        .pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 280px; margin: 0 auto; }
+        .pin-key {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 26px;
+            font-weight: 700;
+            background: var(--surface);
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .pin-key:hover { background: var(--surface-alt); border-color: var(--dmg-blue); transform: scale(1.02); }
+        .pin-key:active { transform: scale(0.96); background: var(--dmg-blue-soft); }
+        .pin-key.action { font-size: 14px; color: var(--ink-sub); font-weight: 600; }
+        .pin-error { color: var(--danger); font-size: 13px; font-weight: 600; margin-top: 20px; min-height: 20px; }
+
+        /* Header */
+        .header {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            animation: slideIn 0.4s var(--ease);
+        }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 4px; }
+        .dot-grid span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+        }
+        .dot-grid span:nth-child(1) { animation: pulse 2.5s ease-in-out 0s infinite; }
+        .dot-grid span:nth-child(2) { animation: pulse 2.5s ease-in-out 0.3s infinite; }
+        .dot-grid span:nth-child(3) { animation: pulse 2.5s ease-in-out 0.9s infinite; }
+        .dot-grid span:nth-child(4) { animation: pulse 2.5s ease-in-out 0.6s infinite; }
         .eyebrow { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.16em; color: var(--dmg-blue); }
-        .title { font-size: 18px; font-weight: 900; letter-spacing: -0.02em; }
-        .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); }
-        
-        .tabs { display: flex; gap: 4px; background: #FFF; border: 1px solid var(--border); border-radius: 12px; padding: 4px; margin-bottom: 16px; }
-        .tab { flex: 1; padding: 12px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; text-align: center; cursor: pointer; transition: all 0.15s; border: none; background: transparent; color: var(--ink-sub); }
-        .tab:hover { background: var(--bg-soft); color: var(--ink); }
-        .tab.active { background: var(--dmg-blue); color: #FFF; }
-        .tab .count { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 99px; font-size: 10px; background: rgba(255,255,255,0.2); }
-        
-        .card { background: #FFF; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
-        .card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .card-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
-        .card-meta { font-size: 11px; color: var(--ink-sub); font-weight: 600; }
-        .card-title-row { display: flex; align-items: center; gap: 10px; }
-        
-        .btn { padding: 10px 16px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-primary { background: var(--dmg-blue); color: #FFF; }
-        .btn-primary:hover { background: #1a8bc0; }
-        .btn-success { background: var(--success); color: #FFF; }
-        .btn-warning { background: var(--warning); color: #FFF; }
-        .btn-danger { background: var(--danger); color: #FFF; }
-        .btn-ghost { background: transparent; color: var(--ink-sub); }
-        .btn-ghost:hover { background: var(--bg-soft); }
-        .btn-sm { padding: 6px 12px; font-size: 11px; }
-        
-        .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #FFF; flex-shrink: 0; }
-        
-        /* Team capacity cards */
-        .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding: 20px; }
-        .team-card { background: var(--bg-soft); border-radius: 14px; padding: 20px; }
-        .team-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-        .team-dot { width: 12px; height: 12px; border-radius: 50%; }
-        .team-name { font-size: 14px; font-weight: 800; }
-        .team-count { margin-left: auto; font-size: 12px; color: var(--ink-sub); }
-        .capacity-bar { height: 8px; background: #E5E5E5; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
-        .capacity-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
-        .capacity-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-sub); }
-        .members-row { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
-        .member-avatar { width: 32px; height: 32px; border-radius: 50%; font-size: 10px; font-weight: 800; color: #FFF; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.15s; }
-        .member-avatar:hover { transform: scale(1.1); }
-        
-        /* Rota requests */
-        .rota-list { }
-        .rota-item { padding: 16px 20px; border-bottom: 1px solid #F5F5F5; display: flex; align-items: center; gap: 14px; }
-        .rota-item:last-child { border-bottom: none; }
-        .rota-info { flex: 1; }
-        .rota-name { font-size: 14px; font-weight: 700; }
-        .rota-detail { font-size: 12px; color: var(--ink-sub); margin-top: 2px; }
-        .rota-dates { font-size: 13px; font-weight: 600; margin-top: 4px; }
-        .rota-type { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 99px; }
-        .rota-type.wfh { background: #DBEAFE; color: #1D4ED8; }
-        .rota-type.leave { background: #FEF3C7; color: #B45309; }
-        .rota-type.sick { background: #FEE2E2; color: #B91C1C; }
-        .rota-actions { display: flex; gap: 8px; }
-        
-        .empty { padding: 60px 24px; text-align: center; }
-        .empty-icon { font-size: 48px; margin-bottom: 16px; }
-        .empty-title { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
-        .empty-sub { font-size: 13px; color: var(--ink-sub); }
-        
-        .toast { position: fixed; bottom: 20px; right: 20px; padding: 14px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #FFF; transform: translateY(100px); opacity: 0; transition: all 0.3s; z-index: 2000; }
-        .toast.show { transform: translateY(0); opacity: 1; }
+        .title { font-size: 22px; font-weight: 900; letter-spacing: -0.03em; }
+        .status { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--success); animation: pulse 2s ease-in-out infinite; }
+        .status-text { font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+        .header-actions { display: flex; gap: 8px; margin-left: 16px; }
+
+        /* Tabs */
+        .tabs-wrapper {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 6px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            animation: slideIn 0.4s var(--ease) 0.05s both;
+        }
+        .tabs { display: flex; gap: 4px; min-width: max-content; }
+        .tab {
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s var(--ease);
+            border: none;
+            background: transparent;
+            color: var(--ink-sub);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
+        .tab:hover { background: var(--surface-alt); color: var(--ink); }
+        .tab.active {
+            background: var(--dmg-blue);
+            color: white;
+            box-shadow: 0 4px 12px var(--dmg-blue-glow);
+        }
+        .tab-badge {
+            padding: 3px 8px;
+            border-radius: 99px;
+            font-size: 10px;
+            font-weight: 800;
+            background: rgba(255,255,255,0.25);
+            transition: all 0.25s var(--ease);
+        }
+        .tab:not(.active) .tab-badge { background: var(--danger-soft); color: var(--danger); }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 16px;
+            animation: slideIn 0.4s var(--ease) 0.1s both;
+            transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+        }
+        .card:hover { border-color: var(--dmg-blue-soft); }
+        .card-header {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .card-title {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--ink);
+        }
+        .card-meta { font-size: 12px; color: var(--ink-sub); font-weight: 600; }
+        .card-body { padding: 22px; }
+
+        /* Buttons */
+        .btn {
+            padding: 11px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s var(--ease);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            transform: scale(0);
+            opacity: 0;
+            transition: transform 0.5s var(--ease), opacity 0.5s var(--ease);
+        }
+        .btn:active::after { transform: scale(2); opacity: 1; transition: 0s; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--dmg-blue); color: white; }
+        .btn-primary:hover:not(:disabled) { background: #1a8bc0; box-shadow: 0 4px 12px var(--dmg-blue-glow); transform: translateY(-1px); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover:not(:disabled) { box-shadow: 0 4px 12px var(--success-soft); transform: translateY(-1px); }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover:not(:disabled) { box-shadow: 0 4px 12px var(--danger-soft); transform: translateY(-1px); }
+        .btn-ghost { background: transparent; color: var(--ink-sub); border: 1px solid var(--border); }
+        .btn-ghost:hover:not(:disabled) { background: var(--surface-alt); border-color: var(--dmg-blue); color: var(--dmg-blue); }
+        .btn-sm { padding: 8px 14px; font-size: 11px; }
+        .btn-icon { width: 38px; height: 38px; padding: 0; justify-content: center; }
+
+        /* Avatar */
+        .avatar {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 800;
+            color: white;
+            flex-shrink: 0;
+            transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+        }
+        .avatar:hover { transform: scale(1.08); }
+        .avatar-sm { width: 34px; height: 34px; font-size: 12px; }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+        .stat-card {
+            background: var(--surface-alt);
+            border-radius: var(--radius-sm);
+            padding: 22px;
+            text-align: center;
+            transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+            cursor: default;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+        .stat-value { font-size: 32px; font-weight: 900; letter-spacing: -0.03em; transition: color 0.25s var(--ease); }
+        .stat-label { font-size: 10px; color: var(--ink-sub); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
+
+        /* Team Cards */
+        .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+        .team-card {
+            background: var(--surface-alt);
+            border-radius: var(--radius);
+            padding: 22px;
+            transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+            cursor: default;
+        }
+        .team-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.08); }
+        .team-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+        .team-dot { width: 14px; height: 14px; border-radius: 50%; transition: transform 0.2s var(--ease); }
+        .team-card:hover .team-dot { transform: scale(1.2); }
+        .team-name { font-size: 16px; font-weight: 800; }
+        .team-meta { margin-left: auto; font-size: 12px; color: var(--ink-sub); font-weight: 600; }
+        .capacity-bar { height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; }
+        .capacity-fill { height: 100%; border-radius: 5px; transition: width 0.6s var(--ease-out); }
+        .capacity-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-sub); margin-top: 10px; }
+        .members-row { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+        .member-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 800;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.25s var(--ease-bounce);
+            border: 2px solid transparent;
+        }
+        .member-avatar:hover {
+            transform: scale(1.15) translateY(-2px);
+            border-color: white;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        /* List Items */
+        .list-item {
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--surface-alt);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.2s var(--ease);
+            cursor: pointer;
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item:hover { background: var(--surface-alt); }
+        .list-item-info { flex: 1; min-width: 0; }
+        .list-item-title { font-size: 14px; font-weight: 700; transition: color 0.2s var(--ease); }
+        .list-item:hover .list-item-title { color: var(--dmg-blue); }
+        .list-item-subtitle { font-size: 12px; color: var(--ink-sub); margin-top: 3px; }
+        .list-item-meta { font-size: 13px; font-weight: 600; margin-top: 5px; }
+        .list-item-actions { display: flex; gap: 8px; }
+
+        /* Pills/Badges */
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 99px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            transition: transform 0.2s var(--ease);
+        }
+        .pill:hover { transform: scale(1.05); }
+        .pill-success { background: var(--success-soft); color: #166534; }
+        .pill-warning { background: var(--warning-soft); color: #92400E; }
+        .pill-danger { background: var(--danger-soft); color: #B91C1C; }
+        .pill-blue { background: var(--dmg-blue-soft); color: #1E40AF; }
+        .pill-gray { background: var(--surface-alt); color: var(--ink-sub); }
+
+        /* Empty State */
+        .empty { padding: 70px 28px; text-align: center; animation: fadeIn 0.4s var(--ease); }
+        .empty-icon { font-size: 56px; margin-bottom: 18px; }
+        .empty-title { font-size: 18px; font-weight: 800; margin-bottom: 10px; }
+        .empty-subtitle { font-size: 14px; color: var(--ink-sub); max-width: 320px; margin: 0 auto; line-height: 1.5; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(120px);
+            padding: 14px 28px;
+            border-radius: 99px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            opacity: 0;
+            transition: all 0.4s var(--ease-out);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .toast.success { background: var(--success); }
         .toast.error { background: var(--danger); }
-        
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px; }
-        .stat { text-align: center; padding: 16px; background: var(--bg-soft); border-radius: 12px; }
-        .stat-value { font-size: 24px; font-weight: 900; }
-        .stat-label { font-size: 10px; color: var(--ink-sub); font-weight: 600; text-transform: uppercase; margin-top: 4px; }
+        .toast.info { background: var(--ink); }
 
-        .availability-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 20px; }
-        .availability-card { background: var(--bg-soft); border-radius: 14px; padding: 16px; }
-        .availability-title { font-size: 12px; font-weight: 800; margin-bottom: 8px; }
-        .availability-meta { font-size: 11px; color: var(--ink-sub); margin-bottom: 12px; }
-        .availability-row { display: flex; align-items: center; justify-content: space-between; font-size: 12px; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .availability-row:last-child { border-bottom: none; }
-        .availability-pill { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; }
-        .availability-pill.in { background: #DCFCE7; color: #166534; }
-        .availability-pill.out { background: #FEE2E2; color: #B91C1C; }
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.25s var(--ease); }
+        .modal {
+            background: var(--surface);
+            border-radius: var(--radius);
+            width: 100%;
+            max-width: 580px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 25px 60px -12px rgba(0,0,0,0.18);
+            animation: slideUp 0.35s var(--ease);
+        }
+        .modal-header {
+            padding: 22px 26px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-title { font-size: 18px; font-weight: 800; }
+        .modal-close {
+            width: 38px;
+            height: 38px;
+            border: none;
+            background: var(--surface-alt);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            color: var(--ink-sub);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s var(--ease);
+        }
+        .modal-close:hover { background: var(--border); color: var(--ink); transform: rotate(90deg); }
+        .modal-body { padding: 26px; overflow-y: auto; max-height: calc(90vh - 160px); }
+        .modal-footer {
+            padding: 18px 26px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 22px; }
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            margin-bottom: 10px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 13px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.25s var(--ease);
+            background: var(--surface);
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 4px var(--dmg-blue-soft);
+        }
+        .form-select {
+            width: 100%;
+            padding: 13px 16px;
+            padding-right: 44px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 500;
+            background: var(--surface);
+            cursor: pointer;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748B' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 18px 18px;
+            transition: all 0.25s var(--ease);
+        }
+        .form-select:focus { outline: none; border-color: var(--dmg-blue); box-shadow: 0 0 0 4px var(--dmg-blue-soft); }
+        .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+        .form-toggle { display: flex; align-items: center; gap: 14px; cursor: pointer; }
+        .toggle-switch {
+            width: 48px;
+            height: 26px;
+            background: var(--border);
+            border-radius: 13px;
+            position: relative;
+            transition: background 0.3s var(--ease);
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.3s var(--ease-bounce);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .form-toggle input:checked + .toggle-switch { background: var(--success); }
+        .form-toggle input:checked + .toggle-switch::after { transform: translateX(22px); }
+        .form-toggle input { display: none; }
+        .toggle-label { font-size: 14px; font-weight: 600; }
+
+        /* Calendar Grid */
+        .calendar-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+        .calendar-title { font-size: 16px; font-weight: 800; }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: 160px repeat(5, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        .calendar-header {
+            background: var(--surface-alt);
+            padding: 14px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            text-align: center;
+        }
+        .calendar-header:first-child { text-align: left; }
+        .calendar-row-name {
+            background: var(--surface);
+            padding: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .calendar-cell {
+            background: var(--surface);
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+        }
+        .calendar-cell:hover { background: var(--dmg-blue-soft); }
+        .calendar-cell.pending { background: var(--warning-soft); }
+        .calendar-icon { font-size: 20px; transition: transform 0.2s var(--ease); }
+        .calendar-cell:hover .calendar-icon { transform: scale(1.15); }
+        .calendar-legend { display: flex; gap: 24px; margin-top: 20px; justify-content: center; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-sub); font-weight: 500; }
+
+        /* Table */
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            padding: 14px 18px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            background: var(--surface-alt);
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--surface-alt);
+            font-size: 13px;
+            transition: background 0.2s var(--ease);
+        }
+        tr:hover td { background: var(--surface-alt); }
+        .table-input {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            font-size: 13px;
+            width: 90px;
+            text-align: center;
+            transition: all 0.2s var(--ease);
+        }
+        .table-input:focus { outline: none; border-color: var(--dmg-blue); box-shadow: 0 0 0 3px var(--dmg-blue-soft); }
+
+        /* Forecast Card */
+        .forecast-card {
+            background: linear-gradient(135deg, var(--dmg-blue-soft) 0%, var(--production-soft) 100%);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 22px;
+            animation: slideIn 0.4s var(--ease);
+        }
+        .forecast-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+        .forecast-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dmg-blue); }
+        .forecast-value { font-size: 36px; font-weight: 900; letter-spacing: -0.03em; }
+        .forecast-label { font-size: 12px; color: var(--ink-sub); }
+        .forecast-bar { height: 14px; background: rgba(255,255,255,0.6); border-radius: 7px; overflow: hidden; margin-top: 14px; }
+        .forecast-fill { height: 100%; border-radius: 7px; transition: width 0.6s var(--ease-out); }
+        .forecast-warning {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 14px;
+            padding: 12px 16px;
+            background: var(--warning-soft);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            color: #92400E;
+        }
+
+        /* Approval Card */
+        .approval-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            margin-bottom: 14px;
+            background: var(--surface);
+            transition: all 0.25s var(--ease);
+        }
+        .approval-card:hover { border-color: var(--dmg-blue); box-shadow: 0 8px 24px rgba(0,0,0,0.06); transform: translateY(-2px); }
+        .approval-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+        .approval-project { font-size: 15px; font-weight: 800; text-transform: uppercase; }
+        .approval-field { font-size: 12px; color: var(--ink-sub); margin-top: 3px; }
+        .approval-change {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            background: var(--surface-alt);
+            border-radius: var(--radius-sm);
+            margin-bottom: 14px;
+        }
+        .approval-value { padding: 8px 14px; border-radius: var(--radius-xs); font-size: 13px; font-weight: 700; }
+        .approval-arrow { color: var(--ink-muted); font-size: 18px; }
+        .approval-meta { font-size: 12px; color: var(--ink-sub); display: flex; align-items: center; gap: 10px; }
+        .approval-actions { display: flex; gap: 10px; margin-top: 14px; }
+
+        /* Loading */
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 70px; }
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--dmg-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 18px;
+        }
+        .loading-text { font-size: 12px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Skeleton loading */
+        .skeleton {
+            background: linear-gradient(90deg, var(--surface-alt) 25%, var(--border) 50%, var(--surface-alt) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius-sm);
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="root"></div>
+    <!-- PIN Screen -->
+    <div class="pin-screen" id="pinScreen" style="display:none;">
+        <div class="pin-card" id="pinCard">
+            <div class="pin-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+            </div>
+            <h1 class="pin-title">Manager Access</h1>
+            <p class="pin-subtitle">Enter your 4-digit PIN to continue</p>
+            <div class="pin-dots" id="pinDots">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+            <div class="pin-keypad" id="pinKeypad">
+                <button class="pin-key" data-key="1">1</button>
+                <button class="pin-key" data-key="2">2</button>
+                <button class="pin-key" data-key="3">3</button>
+                <button class="pin-key" data-key="4">4</button>
+                <button class="pin-key" data-key="5">5</button>
+                <button class="pin-key" data-key="6">6</button>
+                <button class="pin-key" data-key="7">7</button>
+                <button class="pin-key" data-key="8">8</button>
+                <button class="pin-key" data-key="9">9</button>
+                <button class="pin-key action" data-key="clear">Clear</button>
+                <button class="pin-key" data-key="0">0</button>
+                <button class="pin-key action" data-key="back">←</button>
+            </div>
+            <div class="pin-error" id="pinError"></div>
+        </div>
     </div>
-    <div id="toast" class="toast"></div>
+
+    <div class="container" id="mainContent" style="display:none;">
+        <div id="root">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span class="loading-text">Loading Dashboard...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Container -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal" id="modal"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, onSnapshot, updateDoc, deleteDoc, setDoc, addDoc, getDoc, getDocs, serverTimestamp, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const app = initializeApp({
             apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
@@ -117,25 +806,132 @@
             messagingSenderId: "223535956454",
             appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
         });
-        const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
-        const COLORS = { Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049', Social: '#F2C316', Operations: '#9333EA', Sales: '#F97316', Design: '#8B5CF6' };
-        const TEAMS = ['Editorial', 'Creative', 'Production', 'Social', 'Operations', 'Sales', 'Design'];
+
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "dmg-command-centre-native";
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
-        let staff = [], rotaRequests = [], projects = [], activeTab = 'overview', loading = true;
+        // Team colors
+        const TEAM_COLORS = {
+            Editorial: { color: '#E94B4B', soft: 'rgba(233, 75, 75, 0.1)' },
+            Creative: { color: '#E6468B', soft: 'rgba(230, 70, 139, 0.1)' },
+            Production: { color: '#43B049', soft: 'rgba(67, 176, 73, 0.1)' },
+            Social: { color: '#F2C316', soft: 'rgba(242, 195, 22, 0.1)' },
+            Operations: { color: '#9333EA', soft: 'rgba(147, 51, 234, 0.1)' },
+            Sales: { color: '#F97316', soft: 'rgba(249, 115, 22, 0.1)' },
+            Design: { color: '#8B5CF6', soft: 'rgba(139, 92, 246, 0.1)' }
+        };
+        const TEAMS = Object.keys(TEAM_COLORS);
+        const SENIORITY_LEVELS = ['Intern', 'Junior', 'Midweight', 'Senior', 'Lead', 'Head of', 'Director'];
+        const JOB_ROLES = ['Creative', 'Producer', 'Editor', 'Designer', 'Channel Lead', 'Creator', 'Account Manager', 'Strategist'];
+
+        // State
+        let staff = [], rotaRequests = [], projects = [], pendingChanges = [], effortConfig = null;
+        let activeTab = 'overview', loading = true, calendarWeekOffset = 0;
         const root = document.getElementById('root');
-        const toastEl = document.getElementById('toast');
-        
-        const staffRef = () => collection(db, "artifacts", appId, "public", "data", "staff_directory");
-        const rotaRef = () => collection(db, "artifacts", appId, "public", "data", "rota_requests");
-        const color = t => COLORS[t] || '#21a0d8';
+
+        // PIN Management
+        const PIN_HASH = '1234';
+        const AUTH_TIMEOUT = 30 * 60 * 1000;
+        let pinEntry = '';
+
+        function checkAuth() {
+            const auth = sessionStorage.getItem('managerAuth');
+            const authTime = sessionStorage.getItem('managerAuthTime');
+            if (auth === 'true' && authTime) {
+                if (Date.now() - parseInt(authTime) < AUTH_TIMEOUT) return true;
+            }
+            sessionStorage.removeItem('managerAuth');
+            sessionStorage.removeItem('managerAuthTime');
+            return false;
+        }
+
+        function setAuth() {
+            sessionStorage.setItem('managerAuth', 'true');
+            sessionStorage.setItem('managerAuthTime', Date.now().toString());
+        }
+
+        function resetAuthTimer() {
+            if (checkAuth()) sessionStorage.setItem('managerAuthTime', Date.now().toString());
+        }
+
+        function showPinScreen() {
+            document.getElementById('pinScreen').style.display = 'flex';
+            document.getElementById('mainContent').style.display = 'none';
+            pinEntry = '';
+            updatePinDots();
+        }
+
+        function hidePinScreen() {
+            document.getElementById('pinScreen').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+        }
+
+        function updatePinDots() {
+            document.querySelectorAll('.pin-dot').forEach((dot, i) => {
+                dot.classList.toggle('filled', i < pinEntry.length);
+                dot.classList.remove('error');
+            });
+        }
+
+        function handlePinKey(key) {
+            document.getElementById('pinError').textContent = '';
+            if (key === 'clear') pinEntry = '';
+            else if (key === 'back') pinEntry = pinEntry.slice(0, -1);
+            else if (pinEntry.length < 4) pinEntry += key;
+            updatePinDots();
+            if (pinEntry.length === 4) verifyPin();
+        }
+
+        async function verifyPin() {
+            let correctPin = PIN_HASH;
+            try {
+                const configDoc = await getDoc(doc(db, "artifacts", appId, "public", "data", "config", "managerPin"));
+                if (configDoc.exists()) correctPin = configDoc.data().pin || PIN_HASH;
+            } catch (e) {}
+
+            if (pinEntry === correctPin) {
+                setAuth();
+                hidePinScreen();
+                showToast('Welcome back!', 'success');
+            } else {
+                document.querySelectorAll('.pin-dot').forEach(dot => dot.classList.add('error'));
+                document.getElementById('pinCard').classList.add('shake');
+                document.getElementById('pinError').textContent = 'Incorrect PIN. Please try again.';
+                setTimeout(() => {
+                    document.getElementById('pinCard').classList.remove('shake');
+                    pinEntry = '';
+                    updatePinDots();
+                }, 500);
+            }
+        }
+
+        document.getElementById('pinKeypad').addEventListener('click', (e) => {
+            const key = e.target.closest('.pin-key')?.dataset.key;
+            if (key) handlePinKey(key);
+        });
+
+        document.addEventListener('click', resetAuthTimer);
+        document.addEventListener('keydown', resetAuthTimer);
+        setInterval(() => {
+            if (document.getElementById('mainContent').style.display !== 'none' && !checkAuth()) {
+                showPinScreen();
+                showToast('Session expired. Please sign in again.', 'info');
+            }
+        }, 60000);
+
+        // Utilities
+        const color = t => TEAM_COLORS[t]?.color || '#21A0D8';
+        const colorSoft = t => TEAM_COLORS[t]?.soft || 'rgba(33, 160, 216, 0.1)';
         const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
         const capacityColor = c => c > 100 ? '#EF4444' : c >= 80 ? '#F59E0B' : '#22C55E';
 
         function showToast(msg, type = 'success') {
-            toastEl.textContent = msg;
-            toastEl.className = `toast ${type} show`;
-            setTimeout(() => toastEl.classList.remove('show'), 3000);
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
         function formatDate(d) {
@@ -144,58 +940,41 @@
             return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
         }
 
+        function formatDateTime(d) {
+            if (!d) return '';
+            const date = d.toDate ? d.toDate() : new Date(d);
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function getWeekDates(offset = 0) {
+            const today = new Date();
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - today.getDay() + 1 + (offset * 7));
+            return Array.from({length: 5}, (_, i) => {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                return d;
+            });
+        }
+
         function isWithinRange(date, start, end) {
             if (!start || !end) return false;
-            return date >= start && date <= end;
+            const d = new Date(date).setHours(0,0,0,0);
+            return d >= new Date(start).setHours(0,0,0,0) && d <= new Date(end).setHours(0,0,0,0);
         }
 
-        function isRangeOverlapping(startA, endA, startB, endB) {
-            if (!startA || !endA || !startB || !endB) return false;
-            return startA <= endB && endA >= startB;
-        }
-
-        const normalizeName = (name) => (name || '').toLowerCase().replace(/\s+/g, ' ').trim();
-
+        const normalizeName = (name) => (name || '').toLowerCase().trim();
         const toNameArray = (value) => {
             if (!value) return [];
-            if (Array.isArray(value)) {
-                return value.flatMap(item => {
-                    if (!item) return [];
-                    if (typeof item === 'string') return [item];
-                    if (typeof item?.name === 'string') return [item.name];
-                    if (typeof item?.fullName === 'string') return [item.fullName];
-                    return [];
-                });
-            }
-            if (typeof value === 'string') return [value];
-            if (typeof value?.name === 'string') return [value.name];
-            if (typeof value?.fullName === 'string') return [value.fullName];
-            return [];
+            if (Array.isArray(value)) return value.flatMap(item => typeof item === 'string' ? [item] : item?.name ? [item.name] : []);
+            return typeof value === 'string' ? [value] : value?.name ? [value.name] : [];
         };
 
-        const projectEffort = (project) => Number(project?.effortPTS ?? project?.effortPts ?? project?.effort ?? 0);
-
-        const projectAssignees = (project) => {
-            const fields = [
-                'assignedTo',
-                'assignee',
-                'owner',
-                'editor',
-                'producer',
-                'creativeLead',
-                'productionLead',
-                'designLead',
-                'designer',
-                'talent',
-                'teamMembers'
-            ];
-            const names = fields.flatMap(field => toNameArray(project?.[field]));
-            return names.map(normalizeName).filter(Boolean);
-        };
-
-        const isProjectComplete = (project) => {
-            const status = `${project?.status || project?.projectStatus || project?.dealStage || ''}`.toLowerCase();
-            return status.includes('complete') || status.includes('completed') || status.includes('done');
+        const projectEffort = (p) => Number(p?.effortPTS ?? p?.effortPts ?? 0);
+        const projectAssignees = (p) => ['assignedTo','assignee','owner','editor','producer','creativeLead','productionLead','designLead','designer'].flatMap(f => toNameArray(p?.[f])).map(normalizeName).filter(Boolean);
+        const isProjectComplete = (p) => {
+            const s = `${p?.status || p?.dealStage || ''}`.toLowerCase();
+            return s.includes('complete') || s.includes('done') || s.includes('live');
         };
 
         function getWeeklyCapacity(person) {
@@ -203,110 +982,73 @@
         }
 
         function getMemberEffort(person) {
-            const name = normalizeName(`${person.firstName || ''} ${person.lastName || ''}`.trim());
+            const name = normalizeName(`${person.firstName || ''} ${person.lastName || ''}`);
             let currentEffort = 0;
-            let completedEffort = 0;
-
-            projects.forEach(project => {
-                const assignees = projectAssignees(project);
-                if (!assignees.includes(name)) return;
-                const effort = projectEffort(project);
-                if (!effort) return;
-                if (isProjectComplete(project)) {
-                    completedEffort += effort;
-                } else {
-                    currentEffort += effort;
-                }
+            projects.forEach(p => {
+                if (!projectAssignees(p).includes(name) || isProjectComplete(p)) return;
+                currentEffort += projectEffort(p);
             });
-
             const weeklyCapacity = getWeeklyCapacity(person);
-            const utilization = weeklyCapacity > 0 ? (currentEffort / weeklyCapacity) * 100 : 0;
-            return { currentEffort, completedEffort, weeklyCapacity, utilization };
+            return { currentEffort, weeklyCapacity, utilization: weeklyCapacity > 0 ? (currentEffort / weeklyCapacity) * 100 : 0 };
         }
+
+        window.closeModal = () => document.getElementById('modalOverlay').classList.remove('active');
+
+        // ========== TAB RENDERERS ==========
 
         function renderOverview() {
             const teamData = TEAMS.map(t => {
                 const members = staff.filter(s => s.team === t);
-                const totals = members.reduce((sum, member) => {
-                    const stats = getMemberEffort(member);
-                    sum.effort += stats.currentEffort;
-                    sum.capacity += stats.weeklyCapacity;
-                    return sum;
+                const totals = members.reduce((sum, m) => {
+                    const stats = getMemberEffort(m);
+                    return { effort: sum.effort + stats.currentEffort, capacity: sum.capacity + stats.weeklyCapacity };
                 }, { effort: 0, capacity: 0 });
-                const utilization = totals.capacity > 0 ? Math.round((totals.effort / totals.capacity) * 100) : 0;
-                return { name: t, members, utilization, totals };
+                return { name: t, members, utilization: totals.capacity > 0 ? Math.round((totals.effort / totals.capacity) * 100) : 0, totals };
             }).filter(t => t.members.length > 0);
-            
+
             const pendingRota = rotaRequests.filter(r => r.status === 'pending').length;
-            const overallTotals = staff.reduce((sum, member) => {
-                const stats = getMemberEffort(member);
-                sum.effort += stats.currentEffort;
-                sum.capacity += stats.weeklyCapacity;
-                return sum;
+            const pendingApprovals = pendingChanges.filter(c => c.status === 'pending').length;
+            const overallTotals = staff.reduce((sum, m) => {
+                const stats = getMemberEffort(m);
+                return { effort: sum.effort + stats.currentEffort, capacity: sum.capacity + stats.weeklyCapacity };
             }, { effort: 0, capacity: 0 });
-            const totalCapacity = overallTotals.capacity > 0 ? Math.round((overallTotals.effort / overallTotals.capacity) * 100) : 0;
-            
+            const totalUtilization = overallTotals.capacity > 0 ? Math.round((overallTotals.effort / overallTotals.capacity) * 100) : 0;
+
             return `
                 <div class="card">
-                    <div class="stats">
-                        <div class="stat">
-                            <div class="stat-value">${staff.length}</div>
-                            <div class="stat-label">Total Staff</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value" style="color:${capacityColor(totalCapacity)}">${totalCapacity}%</div>
-                            <div class="stat-label">Avg Utilization</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value" style="color:${pendingRota > 0 ? '#F59E0B' : '#22C55E'}">${pendingRota}</div>
-                            <div class="stat-label">Pending Requests</div>
-                        </div>
-                        <div class="stat">
-                            <div class="stat-value">${teamData.length}</div>
-                            <div class="stat-label">Active Teams</div>
+                    <div class="card-body">
+                        <div class="stats-grid">
+                            <div class="stat-card"><div class="stat-value">${staff.length}</div><div class="stat-label">Team Members</div></div>
+                            <div class="stat-card"><div class="stat-value" style="color:${capacityColor(totalUtilization)}">${totalUtilization}%</div><div class="stat-label">Team Utilisation</div></div>
+                            <div class="stat-card"><div class="stat-value" style="color:${pendingApprovals > 0 ? 'var(--warning)' : 'var(--success)'}">${pendingApprovals}</div><div class="stat-label">Pending Approvals</div></div>
+                            <div class="stat-card"><div class="stat-value" style="color:${pendingRota > 0 ? 'var(--warning)' : 'var(--success)'}">${pendingRota}</div><div class="stat-label">Rota Requests</div></div>
                         </div>
                     </div>
                 </div>
-                
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title-row">
-                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                            <h2 class="card-title">Team Capacity</h2>
-                        </div>
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Team Capacity</span>
+                        <span class="card-meta">${teamData.length} active teams</span>
                     </div>
-                    ${teamData.length === 0 ? `
-                        <div class="empty">
-                            <div class="empty-icon">📊</div>
-                            <div class="empty-title">No Teams Yet</div>
-                            <div class="empty-sub">Add staff members in the Admin Console to see team capacity.</div>
-                        </div>
-                    ` : `
-                        <div class="team-grid">
-                            ${teamData.map(t => `
-                                <div class="team-card">
-                                    <div class="team-header">
-                                        <div class="team-dot" style="background:${color(t.name)}"></div>
-                                        <span class="team-name">${t.name}</span>
-                                        <span class="team-count">${t.members.length} members • ${t.totals.effort.toFixed(1)} PTS</span>
+                    ${teamData.length === 0 ? `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No Teams Found</div><div class="empty-subtitle">Add staff members in the Staff tab to see team capacity.</div></div>` : `
+                        <div class="card-body">
+                            <div class="team-grid">
+                                ${teamData.map(t => `
+                                    <div class="team-card">
+                                        <div class="team-header">
+                                            <div class="team-dot" style="background:${color(t.name)}"></div>
+                                            <span class="team-name">${t.name}</span>
+                                            <span class="team-meta">${t.members.length} • ${t.totals.effort.toFixed(1)} PTS</span>
+                                        </div>
+                                        <div class="capacity-bar"><div class="capacity-fill" style="width:${Math.min(t.utilization, 100)}%; background:${capacityColor(t.utilization)}"></div></div>
+                                        <div class="capacity-label"><span>Utilisation</span><span style="color:${capacityColor(t.utilization)}; font-weight:800;">${t.utilization}%</span></div>
+                                        <div class="members-row">
+                                            ${t.members.slice(0, 8).map(m => `<div class="member-avatar" style="background:${color(t.name)}" title="${m.firstName} ${m.lastName}: ${Math.round(getMemberEffort(m).utilization)}%" onclick="openStaffModal('${m.id}')">${initials(m.firstName, m.lastName)}</div>`).join('')}
+                                            ${t.members.length > 8 ? `<div class="member-avatar" style="background:var(--ink-muted)">+${t.members.length - 8}</div>` : ''}
+                                        </div>
                                     </div>
-                                    <div class="capacity-bar">
-                                        <div class="capacity-fill" style="width:${Math.min(t.utilization, 100)}%; background:${capacityColor(t.utilization)}"></div>
-                                    </div>
-                                    <div class="capacity-label">
-                                        <span>Utilization</span>
-                                        <span style="color:${capacityColor(t.utilization)}; font-weight:700;">${t.utilization}%</span>
-                                    </div>
-                                    <div class="members-row">
-                                        ${t.members.slice(0, 6).map(m => `
-                                            <div class="member-avatar" style="background:${color(t.name)}" title="${m.firstName} ${m.lastName}: ${getMemberEffort(m).currentEffort.toFixed(1)} PTS / ${getMemberEffort(m).weeklyCapacity} PTS">
-                                                ${initials(m.firstName, m.lastName)}
-                                            </div>
-                                        `).join('')}
-                                        ${t.members.length > 6 ? `<div class="member-avatar" style="background:#999">+${t.members.length - 6}</div>` : ''}
-                                    </div>
-                                </div>
-                            `).join('')}
+                                `).join('')}
+                            </div>
                         </div>
                     `}
                 </div>
@@ -314,45 +1056,146 @@
         }
 
         function renderCapacity() {
+            const forecastedProjects = projects.filter(p => {
+                const stage = (p.dealStage || '').toLowerCase();
+                const status = (p.status || p.productionWorkflowStatus || '').toLowerCase();
+                return (stage.includes('agreed') || stage.includes('won')) && !status.includes('in production') && !status.includes('complete') && ((p.movingAssetCount > 0) || (p.staticAssetCount > 0));
+            });
+            const forecastedHours = forecastedProjects.reduce((sum, p) => sum + (p.movingAssetCount || 0) * 4 + (p.staticAssetCount || 0) * 2, 0);
+            const totalCapacity = staff.reduce((sum, m) => sum + getWeeklyCapacity(m), 0);
+            const currentEffort = staff.reduce((sum, m) => sum + getMemberEffort(m).currentEffort, 0);
+            const forecastedUtilization = totalCapacity > 0 ? ((currentEffort + forecastedHours) / totalCapacity) * 100 : 0;
+
             return `
+                ${forecastedProjects.length > 0 ? `
+                    <div class="forecast-card">
+                        <div class="forecast-header">
+                            <div>
+                                <div class="forecast-title">Forecasted Pipeline</div>
+                                <div class="forecast-value">${forecastedHours} <span style="font-size:16px;font-weight:600;color:var(--ink-sub)">hours</span></div>
+                                <div class="forecast-label">${forecastedProjects.length} projects in pipeline</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:11px;color:var(--ink-sub);text-transform:uppercase;font-weight:700;">Projected Utilisation</div>
+                                <div style="font-size:32px;font-weight:900;color:${capacityColor(forecastedUtilization)}">${Math.round(forecastedUtilization)}%</div>
+                            </div>
+                        </div>
+                        <div class="forecast-bar"><div class="forecast-fill" style="width:${Math.min(forecastedUtilization, 100)}%; background:${capacityColor(forecastedUtilization)}"></div></div>
+                        ${forecastedUtilization > 100 ? `<div class="forecast-warning"><span>⚠️</span><span>Team capacity will be exceeded. Consider resource planning.</span></div>` : ''}
+                    </div>
+                ` : ''}
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title-row">
-                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                            <h2 class="card-title">Individual Capacity</h2>
-                        </div>
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Individual Capacity</span>
+                        <span class="card-meta">${staff.length} team members</span>
                     </div>
-                    ${staff.length === 0 ? `
-                        <div class="empty">
-                            <div class="empty-icon">👥</div>
-                            <div class="empty-title">No Staff</div>
-                            <div class="empty-sub">Add staff in Admin Console.</div>
-                        </div>
-                    ` : `
-                        <div style="padding: 16px;">
-                            ${staff.map(s => {
-                                const stats = getMemberEffort(s);
-                                return `
-                                <div style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #F5F5F5;">
+                    ${staff.length === 0 ? `<div class="empty"><div class="empty-icon">👤</div><div class="empty-title">No Staff</div><div class="empty-subtitle">Add staff members to track capacity.</div></div>` : `
+                        <div>${staff.map(s => {
+                            const stats = getMemberEffort(s);
+                            return `
+                                <div class="list-item" onclick="openStaffModal('${s.id}')">
                                     <div class="avatar" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div>
-                                    <div style="flex:1;">
-                                        <div style="font-weight:700; font-size:13px;">${s.firstName} ${s.lastName}</div>
-                                        <div style="font-size:11px; color:var(--ink-sub);">${s.team} • ${s.role || 'Team Member'} • ${stats.currentEffort.toFixed(1)} PTS</div>
+                                    <div class="list-item-info">
+                                        <div class="list-item-title">${s.firstName} ${s.lastName}</div>
+                                        <div class="list-item-subtitle">${s.team || 'No team'} • ${s.role || 'Team Member'}</div>
                                     </div>
-                                    <div style="width:120px;">
-                                        <div class="capacity-bar" style="margin-bottom:4px;">
-                                            <div class="capacity-fill" style="width:${Math.min(stats.utilization, 100)}%; background:${capacityColor(stats.utilization)}"></div>
-                                        </div>
+                                    <div style="display:flex;align-items:center;gap:14px;">
+                                        <div style="text-align:right;"><div style="font-size:11px;color:var(--ink-sub);">${stats.currentEffort.toFixed(1)} / ${stats.weeklyCapacity} PTS</div></div>
+                                        <div style="width:110px;"><div class="capacity-bar" style="height:8px;"><div class="capacity-fill" style="width:${Math.min(stats.utilization, 100)}%; background:${capacityColor(stats.utilization)}"></div></div></div>
+                                        <div style="width:50px; text-align:right; font-weight:800; color:${capacityColor(stats.utilization)}">${Math.round(stats.utilization)}%</div>
                                     </div>
-                                    <div style="width:50px; text-align:right; font-weight:800; color:${capacityColor(stats.utilization)}">${Math.round(stats.utilization)}%</div>
-                                    <input type="range" min="0" max="60" value="${stats.weeklyCapacity}" 
-                                           style="width:80px;" 
-                                           onchange="window.updateCapacity('${s.id}', this.value)">
                                 </div>
-                            `; }).join('')}
-                        </div>
+                            `;
+                        }).join('')}</div>
                     `}
                 </div>
+            `;
+        }
+
+        function renderAvailability() {
+            const weekDates = getWeekDates(calendarWeekOffset);
+            const approved = rotaRequests.filter(r => r.status === 'approved').map(r => ({
+                ...r,
+                start: r.startDate?.toDate ? r.startDate.toDate() : r.startDate ? new Date(r.startDate) : null,
+                end: r.endDate?.toDate ? r.endDate.toDate() : r.endDate ? new Date(r.endDate) : null
+            }));
+
+            const getStatusForDay = (person, date) => {
+                const name = `${person.firstName || ''} ${person.lastName || ''}`.toLowerCase();
+                const request = approved.find(r => {
+                    const reqName = `${r.firstName || r.name || ''} ${r.lastName || ''}`.toLowerCase();
+                    return reqName.includes(name.split(' ')[0]) && isWithinRange(date, r.start, r.end);
+                });
+                if (request) {
+                    const type = (request.type || 'leave').toLowerCase();
+                    if (type === 'wfh') return { icon: '🏠', label: 'WFH' };
+                    if (type === 'sick') return { icon: '🤒', label: 'Sick' };
+                    return { icon: '🏖️', label: 'Leave' };
+                }
+                return { icon: '🏢', label: 'Office' };
+            };
+
+            const weekLabel = `Week of ${weekDates[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+            const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+            return `
+                <div class="card">
+                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Weekly Attendance</span></div>
+                    <div class="card-body">
+                        <div class="calendar-nav">
+                            <button class="btn btn-ghost btn-sm" onclick="changeWeek(-1)">← Previous</button>
+                            <span class="calendar-title">${weekLabel}</span>
+                            <button class="btn btn-ghost btn-sm" onclick="changeWeek(1)">Next →</button>
+                        </div>
+                        <div class="calendar-grid">
+                            <div class="calendar-header">Team Member</div>
+                            ${dayLabels.map((d, i) => `<div class="calendar-header">${d} ${weekDates[i].getDate()}</div>`).join('')}
+                            ${staff.slice(0, 15).map(s => `
+                                <div class="calendar-row-name"><div class="avatar avatar-sm" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div><span>${s.firstName}</span></div>
+                                ${weekDates.map(date => { const status = getStatusForDay(s, date); return `<div class="calendar-cell" title="${status.label}"><span class="calendar-icon">${status.icon}</span></div>`; }).join('')}
+                            `).join('')}
+                        </div>
+                        <div class="calendar-legend">
+                            <div class="legend-item"><span>🏢</span> Office</div>
+                            <div class="legend-item"><span>🏠</span> Working from Home</div>
+                            <div class="legend-item"><span>🏖️</span> Annual Leave</div>
+                            <div class="legend-item"><span>🤒</span> Sick</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderApprovals() {
+            const pending = pendingChanges.filter(c => c.status === 'pending');
+            const recent = pendingChanges.filter(c => c.status !== 'pending').slice(0, 10);
+            const formatFieldName = (f) => ({ creativeWorkflowStatus: 'Creative Status', productionWorkflowStatus: 'Production Status', socialWorkflowStatus: 'Social Status', dealStage: 'Deal Stage' }[f] || f);
+
+            return `
+                <div class="card">
+                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Pending Approvals</span><span class="card-meta">${pending.length} awaiting review</span></div>
+                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All Caught Up</div><div class="empty-subtitle">No pending status changes require your approval.</div></div>` : `
+                        <div class="card-body">${pending.map(c => `
+                            <div class="approval-card">
+                                <div class="approval-header">
+                                    <div><div class="approval-project">${c.projectTitle || 'Unknown Project'}</div><div class="approval-field">${formatFieldName(c.field)} change requested</div></div>
+                                    <span class="pill pill-warning">Pending</span>
+                                </div>
+                                <div class="approval-change">
+                                    <span class="approval-value" style="background:var(--surface-alt);">${c.currentValue || 'None'}</span>
+                                    <span class="approval-arrow">→</span>
+                                    <span class="approval-value" style="background:var(--dmg-blue-soft);color:var(--dmg-blue);">${c.requestedValue}</span>
+                                </div>
+                                <div class="approval-meta"><span>Requested by ${c.requestedByName || 'Unknown'}</span><span>•</span><span>${formatDateTime(c.requestedAt)}</span></div>
+                                <div class="approval-actions">
+                                    <button class="btn btn-success btn-sm" onclick="approveChange('${c.id}')">Approve</button>
+                                    <button class="btn btn-danger btn-sm" onclick="rejectChange('${c.id}')">Reject</button>
+                                </div>
+                            </div>
+                        `).join('')}</div>
+                    `}
+                </div>
+                ${recent.length > 0 ? `<div class="card"><div class="card-header"><span class="card-title">Recently Processed</span></div><div>${recent.map(c => `<div class="list-item" style="opacity:0.8;cursor:default;"><div class="list-item-info"><div class="list-item-title">${c.projectTitle}</div><div class="list-item-subtitle">${formatFieldName(c.field)}: ${c.currentValue} → ${c.requestedValue}</div></div><span class="pill ${c.status === 'approved' ? 'pill-success' : 'pill-danger'}">${c.status}</span></div>`).join('')}</div></div>` : ''}
             `;
         }
 
@@ -362,426 +1205,381 @@
 
             return `
                 <div class="card">
-                    <div class="card-header">
-                        <div class="card-title-row">
-                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                            <h2 class="card-title">Pending Requests</h2>
-                        </div>
-                        <span class="card-meta">${pending.length} awaiting</span>
-                    </div>
-                    ${pending.length === 0 ? `
-                        <div class="empty">
-                            <div class="empty-icon">✅</div>
-                            <div class="empty-title">All Clear</div>
-                            <div class="empty-sub">No pending rota requests. Requests appear here when staff submit via the Rota Request widget.</div>
-                        </div>
-                    ` : `
-                        <div class="rota-list">
-                            ${pending.map(r => `
-                                <div class="rota-item">
-                                    <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName || '')}</div>
-                                    <div class="rota-info">
-                                        <div class="rota-name">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div>
-                                        <div class="rota-detail">${r.team || 'No team'} • ${r.reason || 'No reason given'}</div>
-                                        <div class="rota-dates">${formatDate(r.startDate)} → ${formatDate(r.endDate)}</div>
-                                    </div>
-                                    <span class="rota-type ${(r.type || 'leave').toLowerCase()}">${r.type || 'Leave'}</span>
-                                    <div class="rota-actions">
-                                        <button class="btn btn-success btn-sm" onclick="window.approveRota('${r.id}')">Approve</button>
-                                        <button class="btn btn-danger btn-sm" onclick="window.rejectRota('${r.id}')">Reject</button>
-                                    </div>
+                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Rota Requests</span><span class="card-meta">${pending.length} awaiting</span></div>
+                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">No Pending Requests</div><div class="empty-subtitle">Rota requests from team members will appear here.</div></div>` : `
+                        <div>${pending.map(r => `
+                            <div class="list-item">
+                                <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName)}</div>
+                                <div class="list-item-info">
+                                    <div class="list-item-title">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div>
+                                    <div class="list-item-subtitle">${r.team || 'No team'} • ${r.reason || 'No reason given'}</div>
+                                    <div class="list-item-meta">${formatDate(r.startDate)} → ${formatDate(r.endDate)}</div>
                                 </div>
-                            `).join('')}
-                        </div>
+                                <span class="pill ${(r.type || 'leave').toLowerCase() === 'wfh' ? 'pill-blue' : (r.type || 'leave').toLowerCase() === 'sick' ? 'pill-danger' : 'pill-warning'}">${r.type || 'Leave'}</span>
+                                <div class="list-item-actions">
+                                    <button class="btn btn-success btn-sm" onclick="approveRota('${r.id}')">Approve</button>
+                                    <button class="btn btn-danger btn-sm" onclick="rejectRota('${r.id}')">Reject</button>
+                                </div>
+                            </div>
+                        `).join('')}</div>
                     `}
                 </div>
-
-                ${processed.length > 0 ? `
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title-row">
-                                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                                <h2 class="card-title">Processed</h2>
-                            </div>
-                        </div>
-                        <div class="rota-list">
-                            ${processed.slice(0, 10).map(r => `
-                                <div class="rota-item" style="opacity:0.7;">
-                                    <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName || '')}</div>
-                                    <div class="rota-info">
-                                        <div class="rota-name">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div>
-                                        <div class="rota-dates">${formatDate(r.startDate)} → ${formatDate(r.endDate)}</div>
-                                    </div>
-                                    <span class="rota-type" style="background:${r.status === 'approved' ? '#DCFCE7' : '#FEE2E2'}; color:${r.status === 'approved' ? '#166534' : '#B91C1C'}">${r.status}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                ` : ''}
+                ${processed.length > 0 ? `<div class="card"><div class="card-header"><span class="card-title">Recently Processed</span></div><div>${processed.slice(0, 10).map(r => `<div class="list-item" style="opacity:0.7;cursor:default;"><div class="avatar avatar-sm" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName)}</div><div class="list-item-info"><div class="list-item-title">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div><div class="list-item-subtitle">${formatDate(r.startDate)} → ${formatDate(r.endDate)}</div></div><span class="pill ${r.status === 'approved' ? 'pill-success' : 'pill-danger'}">${r.status}</span></div>`).join('')}</div></div>` : ''}
             `;
         }
 
-        function renderAvailability() {
-            const today = new Date();
-            const weekEnd = new Date();
-            weekEnd.setDate(today.getDate() + 6);
-
-            const approved = rotaRequests.filter(r => r.status === 'approved');
-            const formatted = approved.map(r => {
-                const start = r.startDate?.toDate ? r.startDate.toDate() : r.startDate ? new Date(r.startDate) : null;
-                const end = r.endDate?.toDate ? r.endDate.toDate() : r.endDate ? new Date(r.endDate) : null;
-                return { ...r, start, end };
-            });
-
-            const teamSummaries = TEAMS.map(team => {
-                const teamRequests = formatted.filter(r => (r.team || 'Unassigned') === team);
-                const outToday = teamRequests.filter(r => isWithinRange(today, r.start, r.end)).length;
-                const outWeek = teamRequests.filter(r => isRangeOverlapping(r.start, r.end, today, weekEnd)).length;
-                return { team, outToday, outWeek };
-            }).filter(t => t.outToday > 0 || t.outWeek > 0);
-
-            const outTodayList = formatted.filter(r => isWithinRange(today, r.start, r.end));
-            const outWeekList = formatted.filter(r => isRangeOverlapping(r.start, r.end, today, weekEnd));
-
+        function renderStaff() {
             return `
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title-row">
-                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                            <h2 class="card-title">Team Availability</h2>
-                        </div>
-                        <span class="card-meta">Next 7 days</span>
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Team Directory</span>
+                        <button class="btn btn-primary btn-sm" onclick="openAddStaffModal()">+ Add Member</button>
                     </div>
-                    ${(teamSummaries.length === 0 && outTodayList.length === 0) ? `
-                        <div class="empty">
-                            <div class="empty-icon">🟢</div>
-                            <div class="empty-title">Everyone In</div>
-                            <div class="empty-sub">No approved absences recorded for the next week.</div>
-                        </div>
-                    ` : `
-                        <div class="availability-grid">
-                            ${teamSummaries.map(t => `
-                                <div class="availability-card">
-                                    <div class="availability-title">${t.team}</div>
-                                    <div class="availability-meta">${t.outWeek} out this week • ${t.outToday} out today</div>
-                                    <div class="availability-row">
-                                        <span>Today</span>
-                                        <span class="availability-pill ${t.outToday > 0 ? 'out' : 'in'}">${t.outToday > 0 ? `${t.outToday} out` : 'All in'}</span>
-                                    </div>
-                                    <div class="availability-row">
-                                        <span>This week</span>
-                                        <span class="availability-pill ${t.outWeek > 0 ? 'out' : 'in'}">${t.outWeek > 0 ? `${t.outWeek} out` : 'All in'}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
+                    ${staff.length === 0 ? `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No Staff Members</div><div class="empty-subtitle">Click "Add Member" to add your first team member.</div></div>` : `
+                        <div class="table-wrapper">
+                            <table>
+                                <thead><tr><th>Name</th><th>Team</th><th>Role</th><th>Seniority</th><th>Capacity</th><th>Status</th><th></th></tr></thead>
+                                <tbody>
+                                    ${staff.map(s => `
+                                        <tr>
+                                            <td><div style="display:flex;align-items:center;gap:12px;"><div class="avatar avatar-sm" style="background:${color(s.team)}">${initials(s.firstName, s.lastName)}</div><div><div style="font-weight:700;">${s.firstName} ${s.lastName}</div><div style="font-size:11px;color:var(--ink-sub);">${s.email || 'No email'}</div></div></div></td>
+                                            <td><span class="pill" style="background:${colorSoft(s.team)};color:${color(s.team)}">${s.team || 'Unassigned'}</span></td>
+                                            <td>${s.role || '—'}</td>
+                                            <td>${s.seniority || '—'}</td>
+                                            <td>${getWeeklyCapacity(s)} PTS</td>
+                                            <td><span class="pill ${s.active !== false ? 'pill-success' : 'pill-gray'}">${s.active !== false ? 'Active' : 'Inactive'}</span></td>
+                                            <td><button class="btn btn-ghost btn-sm" onclick="openStaffModal('${s.id}')">Edit</button></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
                         </div>
                     `}
                 </div>
-
-                ${outTodayList.length > 0 ? `
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title-row">
-                                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                                <h2 class="card-title">Out Today</h2>
-                            </div>
-                            <span class="card-meta">${outTodayList.length} people</span>
-                        </div>
-                        <div class="rota-list">
-                            ${outTodayList.map(r => `
-                                <div class="rota-item">
-                                    <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName || '')}</div>
-                                    <div class="rota-info">
-                                        <div class="rota-name">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div>
-                                        <div class="rota-detail">${r.team || 'No team'} • ${r.reason || r.type || 'Out'}</div>
-                                        <div class="rota-dates">${formatDate(r.start)} → ${formatDate(r.end)}</div>
-                                    </div>
-                                    <span class="rota-type ${(r.type || 'leave').toLowerCase()}">${r.type || 'Leave'}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                ` : ''}
-
-                ${outWeekList.length > 0 ? `
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title-row">
-                                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                                <h2 class="card-title">Out This Week</h2>
-                            </div>
-                            <span class="card-meta">${outWeekList.length} entries</span>
-                        </div>
-                        <div class="rota-list">
-                            ${outWeekList.slice(0, 12).map(r => `
-                                <div class="rota-item">
-                                    <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName || '')}</div>
-                                    <div class="rota-info">
-                                        <div class="rota-name">${r.firstName || r.name || 'Unknown'} ${r.lastName || ''}</div>
-                                        <div class="rota-detail">${r.team || 'No team'} • ${r.reason || r.type || 'Out'}</div>
-                                        <div class="rota-dates">${formatDate(r.start)} → ${formatDate(r.end)}</div>
-                                    </div>
-                                    <span class="rota-type ${(r.type || 'leave').toLowerCase()}">${r.type || 'Leave'}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                ` : ''}
             `;
         }
 
-        function renderBudgets() {
+        function renderEffortConfig() {
+            const config = effortConfig || {
+                taskTypes: { video_edit_short: { baseHours: 4, label: 'Video Edit (Short)' }, video_edit_long: { baseHours: 8, label: 'Video Edit (Long)' }, thumbnail: { baseHours: 2, label: 'Thumbnail Design' }, social_cutdown: { baseHours: 1, label: 'Social Cutdown' }, script: { baseHours: 3, label: 'Script Writing' }, graphics_pack: { baseHours: 6, label: 'Graphics Pack' } },
+                seniorityMultipliers: { intern: 1.5, junior: 1.3, midweight: 1.0, senior: 0.85, lead: 0.75 }
+            };
+
             return `
                 <div class="card">
-                    <div class="card-header">
-                        <div class="card-title-row">
-                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                            <h2 class="card-title">Project Budgets</h2>
-                        </div>
-                        <span class="card-meta">Manager view</span>
+                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Task Effort Scores</span><button class="btn btn-primary btn-sm" onclick="addTaskType()">+ Add Task Type</button></div>
+                    <div class="table-wrapper">
+                        <table><thead><tr><th>Task Type</th><th>Label</th><th>Base Hours</th><th></th></tr></thead>
+                            <tbody>${Object.entries(config.taskTypes).map(([key, val]) => `<tr><td><code class="mono" style="font-size:11px;background:var(--surface-alt);padding:6px 10px;border-radius:4px;">${key}</code></td><td><input class="table-input" style="width:180px;" value="${val.label}" onchange="updateTaskType('${key}', 'label', this.value)"></td><td><input class="table-input" type="number" value="${val.baseHours}" onchange="updateTaskType('${key}', 'baseHours', this.value)"></td><td><button class="btn btn-ghost btn-sm" onclick="removeTaskType('${key}')">Remove</button></td></tr>`).join('')}</tbody>
+                        </table>
                     </div>
-                    <div class="empty">
-                        <div class="empty-icon">💷</div>
-                        <div class="empty-title">Budget Tracking Coming Soon</div>
-                        <div class="empty-sub">Hook this section to your finance data or Notion budget database when ready.</div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span class="card-title">Seniority Multipliers</span><span class="card-meta">Adjust effort based on experience level</span></div>
+                    <div class="table-wrapper">
+                        <table><thead><tr><th>Seniority Level</th><th>Multiplier</th><th>Example (4hr task)</th></tr></thead>
+                            <tbody>${Object.entries(config.seniorityMultipliers).map(([key, val]) => `<tr><td style="text-transform:capitalize;">${key}</td><td><input class="table-input" type="number" step="0.05" value="${val}" onchange="updateSeniorityMultiplier('${key}', this.value)"></td><td style="color:var(--ink-sub);">${(4 * val).toFixed(1)} hours</td></tr>`).join('')}</tbody>
+                        </table>
                     </div>
                 </div>
             `;
         }
 
         function renderProjects() {
-            const activeProjects = projects.filter(p =>
-                p.dealStage && ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed'].some(k =>
-                    p.dealStage.toLowerCase().includes(k.toLowerCase())
-                )
-            );
-
-            const creatorsStaff = staff.filter(s => {
-                const role = (s.role || '').toLowerCase();
-                const team = (s.team || '').toLowerCase();
-                return team === 'editorial' || role.includes('creator') || role.includes('talent');
-            });
-
-            const editorsStaff = staff.filter(s => {
-                const role = (s.role || '').toLowerCase();
-                const team = (s.team || '').toLowerCase();
-                return role.includes('editor') || team === 'editorial';
-            });
-
-            const productionStaff = staff.filter(s => {
-                const team = (s.team || '').toLowerCase();
-                return team === 'production' || team === 'creative';
-            });
+            const activeProjects = projects.filter(p => p.dealStage && ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed'].some(k => (p.dealStage || '').toLowerCase().includes(k.toLowerCase())));
+            const productionStaff = staff.filter(s => ['production', 'creative'].includes((s.team || '').toLowerCase()));
+            const editorsStaff = staff.filter(s => (s.role || '').toLowerCase().includes('editor') || (s.team || '').toLowerCase() === 'editorial');
 
             return `
                 <div class="card">
-                    <div class="card-header">
-                        <div class="card-title-row">
-                            <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                            <h2 class="card-title">Project Assignments</h2>
-                        </div>
-                        <span class="card-meta">${activeProjects.length} active projects</span>
-                    </div>
-                    ${activeProjects.length === 0 ? `
-                        <div class="empty">
-                            <div class="empty-icon">📋</div>
-                            <div class="empty-title">No Active Projects</div>
-                            <div class="empty-sub">Projects will appear here once they reach "Deal Agreed" status.</div>
-                        </div>
-                    ` : `
-                        <div style="padding:16px;">
-                            ${activeProjects.map(p => {
-                                const currentCreative = p.creativeLead?.[0]?.name || p.creativeLead || '';
-                                const currentProduction = p.productionLead?.[0]?.name || p.productionLead || '';
-                                const currentSales = p.salesLead?.[0]?.name || p.salesLead || '';
-
-                                return `
-                                <div style="border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; background: var(--bg-soft);">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                                        <div>
-                                            <div style="font-size: 14px; font-weight: 800; text-transform: uppercase;">${p.client || 'Internal'}</div>
-                                            <div style="font-size: 12px; color: var(--ink-sub); margin-top: 2px;">${p.title || 'Untitled Project'}</div>
-                                        </div>
-                                        <span style="font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: ${p.dealStage?.includes('Complete') ? '#DCFCE7' : '#DBEAFE'}; color: ${p.dealStage?.includes('Complete') ? '#166534' : '#1D4ED8'};">
-                                            ${p.dealStage || 'In Progress'}
-                                        </span>
+                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Project Assignments</span><span class="card-meta">${activeProjects.length} active projects</span></div>
+                    ${activeProjects.length === 0 ? `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No Active Projects</div><div class="empty-subtitle">Projects with "Deal Agreed" status will appear here for assignment.</div></div>` : `
+                        <div class="card-body">${activeProjects.map(p => {
+                            const currentCreative = p.creativeLead?.[0]?.name || p.creativeLead || '';
+                            const currentProduction = p.productionLead?.[0]?.name || p.productionLead || '';
+                            return `
+                                <div style="border:1px solid var(--border); border-radius:var(--radius-sm); padding:22px; margin-bottom:18px; background:var(--surface-alt); transition: all 0.25s var(--ease);" onmouseover="this.style.borderColor='var(--dmg-blue)'" onmouseout="this.style.borderColor='var(--border)'">
+                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
+                                        <div><div style="font-size:11px;font-weight:700;color:var(--ink-sub);text-transform:uppercase;letter-spacing:0.05em;">${p.client || 'Internal'}</div><div style="font-size:17px;font-weight:800;margin-top:5px;">${p.title || 'Untitled Project'}</div></div>
+                                        <span class="pill ${(p.dealStage || '').includes('Complete') ? 'pill-success' : 'pill-blue'}">${p.dealStage || 'In Progress'}</span>
                                     </div>
-                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-                                        <div>
-                                            <label style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 4px;">Creative Lead</label>
-                                            <select class="project-assign-select" data-project="${p.id}" data-role="creativeLead" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 11px; background: white;">
-                                                <option value="">Unassigned</option>
-                                                ${productionStaff.map(s => `<option value="${s.id}" ${(currentCreative && currentCreative.includes(s.firstName)) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 4px;">Production Lead</label>
-                                            <select class="project-assign-select" data-project="${p.id}" data-role="productionLead" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 11px; background: white;">
-                                                <option value="">Unassigned</option>
-                                                ${productionStaff.map(s => `<option value="${s.id}" ${(currentProduction && currentProduction.includes(s.firstName)) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style="display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--ink-sub); margin-bottom: 4px;">Editor</label>
-                                            <select class="project-assign-select" data-project="${p.id}" data-role="editor" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 11px; background: white;">
-                                                <option value="">Unassigned</option>
-                                                ${editorsStaff.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName || ''}</option>`).join('')}
-                                            </select>
-                                        </div>
+                                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:18px;">
+                                        <div><label class="form-label">Creative Lead</label><select class="form-select project-assign" data-project="${p.id}" data-role="creativeLead"><option value="">Select...</option>${productionStaff.map(s => `<option value="${s.id}" ${currentCreative.includes(s.firstName) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}</select></div>
+                                        <div><label class="form-label">Production Lead</label><select class="form-select project-assign" data-project="${p.id}" data-role="productionLead"><option value="">Select...</option>${productionStaff.map(s => `<option value="${s.id}" ${currentProduction.includes(s.firstName) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}</select></div>
+                                        <div><label class="form-label">Editor</label><select class="form-select project-assign" data-project="${p.id}" data-role="editor"><option value="">Select...</option>${editorsStaff.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName || ''}</option>`).join('')}</select></div>
                                     </div>
-                                    <div style="margin-top: 12px; text-align: right;">
-                                        <button class="btn btn-primary btn-sm" onclick="window.saveProjectAssignment('${p.id}')">Save Assignment</button>
-                                    </div>
+                                    <div style="margin-top:18px; text-align:right;"><button class="btn btn-primary btn-sm" onclick="saveProjectAssignment('${p.id}')">Save Assignment</button></div>
                                 </div>
-                                `;
-                            }).join('')}
-                        </div>
+                            `;
+                        }).join('')}</div>
                     `}
                 </div>
             `;
         }
 
+        // ========== MAIN RENDER ==========
+
         function render() {
-            const pendingCount = rotaRequests.filter(r => r.status === 'pending').length;
-            const outTodayCount = rotaRequests.filter(r => r.status === 'approved').filter(r => {
-                const start = r.startDate?.toDate ? r.startDate.toDate() : r.startDate ? new Date(r.startDate) : null;
-                const end = r.endDate?.toDate ? r.endDate.toDate() : r.endDate ? new Date(r.endDate) : null;
-                return isWithinRange(new Date(), start, end);
-            }).length;
-            
+            const pendingRota = rotaRequests.filter(r => r.status === 'pending').length;
+            const pendingApprovals = pendingChanges.filter(c => c.status === 'pending').length;
+
             root.innerHTML = `
                 <div class="header">
                     <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                    <div>
-                        <div class="eyebrow">Manager</div>
-                        <h1 class="title">Dashboard</h1>
-                    </div>
-                    <div class="status">
-                        <span class="status-dot"></span>
-                        <span>Live</span>
+                    <div><div class="eyebrow">Manager</div><h1 class="title">Dashboard</h1></div>
+                    <div class="status"><span class="status-dot"></span><span class="status-text">Live</span></div>
+                    <div class="header-actions"><button class="btn btn-ghost btn-icon" onclick="showPinScreen()" title="Lock Dashboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></button></div>
+                </div>
+                <div class="tabs-wrapper">
+                    <div class="tabs">
+                        <button class="tab ${activeTab === 'overview' ? 'active' : ''}" onclick="setTab('overview')">Overview</button>
+                        <button class="tab ${activeTab === 'capacity' ? 'active' : ''}" onclick="setTab('capacity')">Capacity</button>
+                        <button class="tab ${activeTab === 'availability' ? 'active' : ''}" onclick="setTab('availability')">Attendance</button>
+                        <button class="tab ${activeTab === 'approvals' ? 'active' : ''}" onclick="setTab('approvals')">Approvals${pendingApprovals > 0 ? `<span class="tab-badge">${pendingApprovals}</span>` : ''}</button>
+                        <button class="tab ${activeTab === 'rota' ? 'active' : ''}" onclick="setTab('rota')">Rota${pendingRota > 0 ? `<span class="tab-badge">${pendingRota}</span>` : ''}</button>
+                        <button class="tab ${activeTab === 'projects' ? 'active' : ''}" onclick="setTab('projects')">Projects</button>
+                        <button class="tab ${activeTab === 'staff' ? 'active' : ''}" onclick="setTab('staff')">Staff</button>
+                        <button class="tab ${activeTab === 'effort' ? 'active' : ''}" onclick="setTab('effort')">Effort Config</button>
                     </div>
                 </div>
-                
-                <div class="tabs">
-                    <button class="tab ${activeTab === 'overview' ? 'active' : ''}" onclick="window.setTab('overview')">Overview</button>
-                    <button class="tab ${activeTab === 'capacity' ? 'active' : ''}" onclick="window.setTab('capacity')">Capacity</button>
-                    <button class="tab ${activeTab === 'availability' ? 'active' : ''}" onclick="window.setTab('availability')">
-                        Availability
-                        ${outTodayCount > 0 ? `<span class="count">${outTodayCount}</span>` : ''}
-                    </button>
-                    <button class="tab ${activeTab === 'projects' ? 'active' : ''}" onclick="window.setTab('projects')">
-                        Project Assignments
-                        ${projects.filter(p => !p.creativeLead || !p.productionLead).length > 0 ? `<span class="count">${projects.filter(p => !p.creativeLead || !p.productionLead).length}</span>` : ''}
-                    </button>
-                    <button class="tab ${activeTab === 'rota' ? 'active' : ''}" onclick="window.setTab('rota')">
-                        Rota Requests
-                        ${pendingCount > 0 ? `<span class="count">${pendingCount}</span>` : ''}
-                    </button>
-                    <button class="tab ${activeTab === 'budgets' ? 'active' : ''}" onclick="window.setTab('budgets')">Budgets</button>
-                </div>
-
                 ${activeTab === 'overview' ? renderOverview() : ''}
                 ${activeTab === 'capacity' ? renderCapacity() : ''}
                 ${activeTab === 'availability' ? renderAvailability() : ''}
-                ${activeTab === 'projects' ? renderProjects() : ''}
+                ${activeTab === 'approvals' ? renderApprovals() : ''}
                 ${activeTab === 'rota' ? renderRotaRequests() : ''}
-                ${activeTab === 'budgets' ? renderBudgets() : ''}
+                ${activeTab === 'projects' ? renderProjects() : ''}
+                ${activeTab === 'staff' ? renderStaff() : ''}
+                ${activeTab === 'effort' ? renderEffortConfig() : ''}
             `;
         }
 
-        window.setTab = (tab) => { activeTab = tab; render(); };
+        // ========== GLOBAL FUNCTIONS ==========
 
-        // Firebase CRUD operations
-        window.updateCapacity = async (id, value) => {
+        window.setTab = (tab) => { activeTab = tab; render(); };
+        window.changeWeek = (offset) => { calendarWeekOffset += offset; render(); };
+        window.showPinScreen = showPinScreen;
+
+        window.openStaffModal = (id) => {
+            const s = staff.find(m => m.id === id);
+            if (!s) return;
+            const modal = document.getElementById('modal');
+            modal.innerHTML = `
+                <div class="modal-header"><span class="modal-title">Edit Team Member</span><button class="modal-close" onclick="closeModal()">×</button></div>
+                <div class="modal-body">
+                    <div class="form-row"><div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="staffFirstName" value="${s.firstName || ''}"></div><div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="staffLastName" value="${s.lastName || ''}"></div></div>
+                    <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="staffEmail" value="${s.email || ''}"></div>
+                    <div class="form-row"><div class="form-group"><label class="form-label">Team</label><select class="form-select" id="staffTeam"><option value="">Select team...</option>${TEAMS.map(t => `<option value="${t}" ${s.team === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Seniority</label><select class="form-select" id="staffSeniority"><option value="">Select level...</option>${SENIORITY_LEVELS.map(l => `<option value="${l}" ${s.seniority === l ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+                    <div class="form-group"><label class="form-label">Role</label><input class="form-input" id="staffRole" value="${s.role || ''}" placeholder="e.g. Senior Editor, Creative Producer"></div>
+                    <div class="form-group"><label class="form-label">Weekly Capacity (Points)</label><input class="form-input" type="number" id="staffCapacity" value="${getWeeklyCapacity(s)}" min="0" max="80"></div>
+                    <div class="form-group"><label class="form-toggle"><input type="checkbox" id="staffActive" ${s.active !== false ? 'checked' : ''}><span class="toggle-switch"></span><span class="toggle-label">Active</span></label></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger btn-sm" onclick="archiveStaff('${id}')" style="margin-right:auto;">Archive</button>
+                    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveStaff('${id}')">Save & Sync to Notion</button>
+                </div>
+            `;
+            document.getElementById('modalOverlay').classList.add('active');
+        };
+
+        window.openAddStaffModal = () => {
+            const modal = document.getElementById('modal');
+            modal.innerHTML = `
+                <div class="modal-header"><span class="modal-title">Add Team Member</span><button class="modal-close" onclick="closeModal()">×</button></div>
+                <div class="modal-body">
+                    <div class="form-row"><div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="staffFirstName" placeholder="John"></div><div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="staffLastName" placeholder="Smith"></div></div>
+                    <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="staffEmail" placeholder="john@dmg.com"></div>
+                    <div class="form-row"><div class="form-group"><label class="form-label">Team</label><select class="form-select" id="staffTeam"><option value="">Select team...</option>${TEAMS.map(t => `<option value="${t}">${t}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Seniority</label><select class="form-select" id="staffSeniority"><option value="">Select level...</option>${SENIORITY_LEVELS.map(l => `<option value="${l}">${l}</option>`).join('')}</select></div></div>
+                    <div class="form-group"><label class="form-label">Role</label><input class="form-input" id="staffRole" placeholder="e.g. Senior Editor, Creative Producer"></div>
+                    <div class="form-group"><label class="form-label">Weekly Capacity (Points)</label><input class="form-input" type="number" id="staffCapacity" value="40" min="0" max="80"></div>
+                </div>
+                <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveStaff()">Add & Sync to Notion</button></div>
+            `;
+            document.getElementById('modalOverlay').classList.add('active');
+        };
+
+        window.saveStaff = async (id) => {
+            const data = {
+                firstName: document.getElementById('staffFirstName').value.trim(),
+                lastName: document.getElementById('staffLastName').value.trim(),
+                email: document.getElementById('staffEmail').value.trim(),
+                team: document.getElementById('staffTeam').value,
+                seniority: document.getElementById('staffSeniority').value,
+                role: document.getElementById('staffRole').value.trim(),
+                weeklyCapacityPTS: parseInt(document.getElementById('staffCapacity').value) || 40,
+                active: document.getElementById('staffActive')?.checked !== false
+            };
+            if (!data.firstName) { showToast('First name is required', 'error'); return; }
+
             try {
-                await updateDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", id), {
-                    weeklyCapacityPTS: parseInt(value),
-                    updatedAt: serverTimestamp()
-                });
-                showToast('Weekly capacity updated!');
+                // Sync to Notion Staff Directory
+                if (id) {
+                    // Get the Notion page ID from Firebase record
+                    const staffDoc = staff.find(s => s.id === id);
+                    if (staffDoc?.notionId) {
+                        await fetch(`${API_URL}/staff-directory/${staffDoc.notionId}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                    } else {
+                        // Create in Notion if no notionId
+                        const response = await fetch(`${API_URL}/staff-directory`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        });
+                        const result = await response.json();
+                        if (result.success) data.notionId = result.id;
+                    }
+                    // Update Firebase
+                    await updateDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", id), { ...data, updatedAt: serverTimestamp() });
+                    showToast('Team member updated & synced to Notion');
+                } else {
+                    // Create in Notion first
+                    const response = await fetch(`${API_URL}/staff-directory`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    const result = await response.json();
+                    if (result.success) data.notionId = result.id;
+
+                    // Then create in Firebase
+                    await addDoc(collection(db, "artifacts", appId, "public", "data", "staff_directory"), { ...data, createdAt: serverTimestamp() });
+                    showToast('Team member added & synced to Notion');
+                }
+                closeModal();
             } catch (e) {
+                console.error(e);
                 showToast('Error: ' + e.message, 'error');
             }
+        };
+
+        window.archiveStaff = async (id) => {
+            if (!confirm('Archive this team member? They will be marked as inactive.')) return;
+            try {
+                const staffDoc = staff.find(s => s.id === id);
+                if (staffDoc?.notionId) {
+                    await fetch(`${API_URL}/staff-directory/${staffDoc.notionId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ active: false })
+                    });
+                }
+                await updateDoc(doc(db, "artifacts", appId, "public", "data", "staff_directory", id), { active: false, updatedAt: serverTimestamp() });
+                showToast('Team member archived');
+                closeModal();
+            } catch (e) { showToast('Error: ' + e.message, 'error'); }
         };
 
         window.approveRota = async (id) => {
             try {
-                await updateDoc(doc(db, "artifacts", appId, "public", "data", "rota_requests", id), {
-                    status: 'approved',
-                    processedAt: serverTimestamp()
-                });
-                showToast('Request approved!');
-            } catch (e) {
-                showToast('Error: ' + e.message, 'error');
-            }
+                await updateDoc(doc(db, "artifacts", appId, "public", "data", "rota_requests", id), { status: 'approved', processedAt: serverTimestamp() });
+                showToast('Request approved');
+            } catch (e) { showToast('Error: ' + e.message, 'error'); }
         };
 
         window.rejectRota = async (id) => {
             try {
-                await updateDoc(doc(db, "artifacts", appId, "public", "data", "rota_requests", id), {
-                    status: 'rejected',
-                    processedAt: serverTimestamp()
+                await updateDoc(doc(db, "artifacts", appId, "public", "data", "rota_requests", id), { status: 'rejected', processedAt: serverTimestamp() });
+                showToast('Request rejected');
+            } catch (e) { showToast('Error: ' + e.message, 'error'); }
+        };
+
+        window.approveChange = async (id) => {
+            const change = pendingChanges.find(c => c.id === id);
+            if (!change) return;
+            try {
+                await fetch(`${API_URL}/projects/${change.projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [change.field]: change.requestedValue })
                 });
-                showToast('Request rejected.');
-            } catch (e) {
-                showToast('Error: ' + e.message, 'error');
-            }
+                await updateDoc(doc(db, "artifacts", appId, "public", "data", "pendingChanges", id), { status: 'approved', processedAt: serverTimestamp() });
+                showToast('Change approved & synced to Notion');
+            } catch (e) { showToast('Error: ' + e.message, 'error'); }
+        };
+
+        window.rejectChange = async (id) => {
+            try {
+                await updateDoc(doc(db, "artifacts", appId, "public", "data", "pendingChanges", id), { status: 'rejected', processedAt: serverTimestamp() });
+                showToast('Change rejected');
+            } catch (e) { showToast('Error: ' + e.message, 'error'); }
         };
 
         window.saveProjectAssignment = async (projectId) => {
-            const selects = document.querySelectorAll(`.project-assign-select[data-project="${projectId}"]`);
+            const selects = document.querySelectorAll(`.project-assign[data-project="${projectId}"]`);
             const updates = {};
-
             selects.forEach(select => {
                 const role = select.dataset.role;
                 const staffId = select.value;
                 if (staffId) {
-                    const staffMember = staff.find(s => s.id === staffId);
-                    if (staffMember) {
-                        // Store assignment in Firebase for reference
-                        updates[role] = `${staffMember.firstName} ${staffMember.lastName || ''}`.trim();
+                    const member = staff.find(s => s.id === staffId);
+                    if (member) {
+                        updates[role] = `${member.firstName} ${member.lastName || ''}`.trim();
                         updates[`${role}Id`] = staffId;
                     }
                 }
             });
-
-            if (Object.keys(updates).length === 0) {
-                showToast('No assignments to save', 'error');
-                return;
-            }
-
+            if (Object.keys(updates).length === 0) { showToast('No assignments selected', 'error'); return; }
             try {
-                // Save to Firebase project assignments collection
-                await db.collection("artifacts").doc(appId).collection("public").doc("data").collection("project_assignments").doc(projectId).set({
-                    ...updates,
-                    projectId,
-                    updatedAt: serverTimestamp()
-                }, { merge: true });
-
-                showToast('Assignment saved!');
-            } catch (e) {
-                showToast('Error: ' + e.message, 'error');
-            }
+                await setDoc(doc(db, "artifacts", appId, "public", "data", "project_assignments", projectId), { ...updates, projectId, updatedAt: serverTimestamp() }, { merge: true });
+                showToast('Assignment saved');
+            } catch (e) { showToast('Error: ' + e.message, 'error'); }
         };
+
+        window.updateTaskType = async (key, field, value) => {
+            if (!effortConfig) effortConfig = { taskTypes: {}, seniorityMultipliers: {} };
+            if (!effortConfig.taskTypes[key]) effortConfig.taskTypes[key] = {};
+            effortConfig.taskTypes[key][field] = field === 'baseHours' ? parseFloat(value) : value;
+            await saveEffortConfig();
+        };
+
+        window.updateSeniorityMultiplier = async (key, value) => {
+            if (!effortConfig) effortConfig = { taskTypes: {}, seniorityMultipliers: {} };
+            effortConfig.seniorityMultipliers[key] = parseFloat(value);
+            await saveEffortConfig();
+        };
+
+        window.addTaskType = async () => {
+            const key = prompt('Enter task type key (e.g. video_short):');
+            if (!key) return;
+            if (!effortConfig) effortConfig = { taskTypes: {}, seniorityMultipliers: {} };
+            effortConfig.taskTypes[key] = { baseHours: 4, label: key.replace(/_/g, ' ') };
+            await saveEffortConfig();
+            render();
+        };
+
+        window.removeTaskType = async (key) => {
+            if (!confirm(`Remove "${key}"?`)) return;
+            delete effortConfig.taskTypes[key];
+            await saveEffortConfig();
+            render();
+        };
+
+        async function saveEffortConfig() {
+            try {
+                await setDoc(doc(db, "artifacts", appId, "public", "data", "config", "effortScores"), effortConfig);
+                showToast('Configuration saved');
+            } catch (e) { showToast('Error: ' + e.message, 'error'); }
+        }
 
         async function loadProjects() {
             try {
                 const res = await fetch(`${API_URL}/projects`);
                 const data = await res.json();
-                if (data.success) {
-                    projects = data.projects || [];
-                    render();
-                }
-            } catch (e) {
-                console.error('Failed to load projects:', e);
-            }
+                if (data.success) { projects = data.projects || []; render(); }
+            } catch (e) { console.error('Failed to load projects:', e); }
         }
 
-        // Real-time listeners
+        // ========== INITIALIZE ==========
+
         onAuthStateChanged(auth, user => {
             if (user) {
-                // Listen to staff
-                onSnapshot(staffRef(), snap => {
+                if (checkAuth()) hidePinScreen(); else showPinScreen();
+
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "staff_directory"), snap => {
                     staff = [];
                     snap.forEach(d => staff.push({ id: d.id, ...d.data() }));
                     staff.sort((a, b) => (a.firstName || '').localeCompare(b.firstName || ''));
@@ -789,23 +1587,33 @@
                     render();
                 });
 
-                // Listen to rota requests
-                onSnapshot(rotaRef(), snap => {
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "rota_requests"), snap => {
                     rotaRequests = [];
                     snap.forEach(d => rotaRequests.push({ id: d.id, ...d.data() }));
-                    rotaRequests.sort((a, b) => {
-                        const aT = a.submittedAt?.toDate?.() || new Date(0);
-                        const bT = b.submittedAt?.toDate?.() || new Date(0);
-                        return bT - aT;
-                    });
+                    rotaRequests.sort((a, b) => (b.submittedAt?.toDate?.() || new Date(0)) - (a.submittedAt?.toDate?.() || new Date(0)));
                     render();
                 });
 
-                // Load projects from API
+                onSnapshot(collection(db, "artifacts", appId, "public", "data", "pendingChanges"), snap => {
+                    pendingChanges = [];
+                    snap.forEach(d => pendingChanges.push({ id: d.id, ...d.data() }));
+                    pendingChanges.sort((a, b) => (b.requestedAt?.toDate?.() || new Date(0)) - (a.requestedAt?.toDate?.() || new Date(0)));
+                    render();
+                });
+
+                onSnapshot(doc(db, "artifacts", appId, "public", "data", "config", "effortScores"), snap => {
+                    if (snap.exists()) effortConfig = snap.data();
+                });
+
                 loadProjects();
+                setInterval(loadProjects, 60000);
             } else {
                 signInAnonymously(auth);
             }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('modalOverlay').classList.contains('active')) closeModal();
         });
     </script>
 </body>
