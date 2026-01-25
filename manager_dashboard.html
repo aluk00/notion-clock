@@ -831,8 +831,8 @@
         const LINE_MANAGER_OPTIONS = ['Anais Lukaku', 'Ellie Beetham', 'Nev Brook', 'Nick Moar', 'Matthew Macleod', 'Nathan Aspell', 'Williams Olufemi', 'Nick Bolwell', 'Alice Baker', 'Maxine Halperin', 'Deli Koprinkov'];
 
         // State
-        let staff = [], notionStaff = [], rotaRequests = [], projects = [], pendingChanges = [], effortConfig = null;
-        let activeTab = 'overview', loading = true, calendarWeekOffset = 0, staffViewMode = 'team';
+        let staff = [], notionStaff = [], rotaRequests = [], projects = [], pendingChanges = [], effortConfig = null, rundownItems = [];
+        let activeTab = 'overview', loading = true, calendarWeekOffset = 0, staffViewMode = 'team', rundownDate = new Date();
         const root = document.getElementById('root');
 
         // Merge Firebase staff with Notion staff data (Notion has accurate emails)
@@ -1652,8 +1652,11 @@
 
             return `
                 <div class="card">
-                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Pending Approvals</span><span class="card-meta">${pending.length} awaiting review</span></div>
-                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All Caught Up</div><div class="empty-subtitle">No pending status changes require your approval.</div></div>` : `
+                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Project Changes</span><span class="card-meta">${pending.length} awaiting review</span></div>
+                    <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);">
+                        Status changes on projects (e.g., moving from "Briefed" to "In Production", changing editors/designers)
+                    </div>
+                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">All Caught Up</div><div class="empty-subtitle">No pending project changes require your approval.</div></div>` : `
                         <div class="card-body">${pending.map(c => `
                             <div class="approval-card">
                                 <div class="approval-header">
@@ -1684,8 +1687,11 @@
 
             return `
                 <div class="card">
-                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Rota Requests</span><span class="card-meta">${pending.length} awaiting</span></div>
-                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">No Pending Requests</div><div class="empty-subtitle">Rota requests from team members will appear here.</div></div>` : `
+                    <div class="card-header"><span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Leave & WFH Requests</span><span class="card-meta">${pending.length} awaiting</span></div>
+                    <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);">
+                        Staff requests for annual leave, sick days, or working from home
+                    </div>
+                    ${pending.length === 0 ? `<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">No Pending Requests</div><div class="empty-subtitle">Staff leave/WFH requests will appear here for approval.</div></div>` : `
                         <div>${pending.map(r => `
                             <div class="list-item">
                                 <div class="avatar" style="background:${color(r.team)}">${initials(r.firstName || r.name, r.lastName)}</div>
@@ -1977,11 +1983,12 @@
                         <button class="tab ${activeTab === 'overview' ? 'active' : ''}" onclick="setTab('overview')">Overview</button>
                         <button class="tab ${activeTab === 'capacity' ? 'active' : ''}" onclick="setTab('capacity')">Capacity</button>
                         <button class="tab ${activeTab === 'availability' ? 'active' : ''}" onclick="setTab('availability')">Attendance</button>
-                        <button class="tab ${activeTab === 'approvals' ? 'active' : ''}" onclick="setTab('approvals')">Approvals${pendingApprovals > 0 ? `<span class="tab-badge">${pendingApprovals}</span>` : ''}</button>
-                        <button class="tab ${activeTab === 'rota' ? 'active' : ''}" onclick="setTab('rota')">Rota${pendingRota > 0 ? `<span class="tab-badge">${pendingRota}</span>` : ''}</button>
+                        <button class="tab ${activeTab === 'approvals' ? 'active' : ''}" onclick="setTab('approvals')">Project Changes${pendingApprovals > 0 ? `<span class="tab-badge">${pendingApprovals}</span>` : ''}</button>
+                        <button class="tab ${activeTab === 'rota' ? 'active' : ''}" onclick="setTab('rota')">Leave Requests${pendingRota > 0 ? `<span class="tab-badge">${pendingRota}</span>` : ''}</button>
                         <button class="tab ${activeTab === 'projects' ? 'active' : ''}" onclick="setTab('projects')">Projects</button>
                         <button class="tab ${activeTab === 'staff' ? 'active' : ''}" onclick="setTab('staff')">Staff</button>
                         <button class="tab ${activeTab === 'effort' ? 'active' : ''}" onclick="setTab('effort')">Effort Config</button>
+                        <button class="tab ${activeTab === 'rundown' ? 'active' : ''}" onclick="setTab('rundown')">Daily Rundown</button>
                     </div>
                 </div>
                 ${activeTab === 'overview' ? renderOverview() : ''}
@@ -1992,13 +1999,137 @@
                 ${activeTab === 'projects' ? renderProjects() : ''}
                 ${activeTab === 'staff' ? renderStaff() : ''}
                 ${activeTab === 'effort' ? renderEffortConfig() : ''}
+                ${activeTab === 'rundown' ? renderRundown() : ''}
+            `;
+        }
+
+        function renderRundown() {
+            const dateStr = rundownDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+            const isToday = rundownDate.toDateString() === new Date().toDateString();
+
+            const sections = ['Morning', 'Afternoon', 'Evening', 'Carried Over'];
+            const verticalColors = {
+                'Sport': '#43B049', 'UK': '#21A0D8', 'Respawn': '#8B5CF6',
+                'Main': '#1C1C1C', 'Money': '#F59E0B', 'Spotlight': '#E6468B'
+            };
+            const statusColors = { 'Done': '#10B981', 'Pending': '#F59E0B', 'Blocked': '#EF4444', 'Not Started': '#9CA3AF' };
+
+            // Group items by section
+            const itemsBySection = {};
+            sections.forEach(s => itemsBySection[s] = []);
+            rundownItems.forEach(item => {
+                const section = item.section || 'Morning';
+                if (itemsBySection[section]) itemsBySection[section].push(item);
+            });
+
+            return `
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Daily Rundown</span>
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="display:flex;align-items:center;gap:8px;background:var(--surface-alt);padding:6px 12px;border-radius:20px;border:1px solid var(--border);">
+                                <button class="btn btn-ghost btn-sm" onclick="changeRundownDate(-1)" style="padding:4px 8px;">←</button>
+                                <span style="font-size:13px;font-weight:700;min-width:180px;text-align:center;">${dateStr}${isToday ? ' <span style="color:var(--dmg-blue);font-size:10px;">(Today)</span>' : ''}</span>
+                                <button class="btn btn-ghost btn-sm" onclick="changeRundownDate(1)" style="padding:4px 8px;">→</button>
+                            </div>
+                            <button class="btn btn-ghost btn-sm" onclick="loadRundown()" title="Refresh">↻</button>
+                            <a href="daily-rundown-editor.html" target="_blank" class="btn btn-primary btn-sm">Open Full Editor ↗</a>
+                        </div>
+                    </div>
+                    <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);">
+                        Editorial content schedule - drag items between sections or click to update status
+                    </div>
+                    <div class="card-body" style="padding:20px;">
+                        ${rundownItems.length === 0 ? `
+                            <div class="empty">
+                                <div class="empty-icon">📋</div>
+                                <div class="empty-title">No Items for ${isToday ? 'Today' : 'This Day'}</div>
+                                <div class="empty-subtitle">Use the <a href="daily-rundown-editor.html" target="_blank" style="color:var(--dmg-blue);">Full Editor</a> to add content items.</div>
+                            </div>
+                        ` : `
+                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+                                ${sections.map(section => `
+                                    <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:14px;min-height:300px;">
+                                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+                                            <div style="width:8px;height:8px;border-radius:50%;background:var(--editorial);"></div>
+                                            <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-sub);">${section}</span>
+                                            <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--ink-muted);background:white;padding:2px 8px;border-radius:10px;">${itemsBySection[section].length}</span>
+                                        </div>
+                                        <div style="display:flex;flex-direction:column;gap:10px;">
+                                            ${itemsBySection[section].length === 0 ? `
+                                                <div style="text-align:center;padding:20px;color:var(--ink-muted);font-size:11px;">No items</div>
+                                            ` : itemsBySection[section].map(item => `
+                                                <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px;cursor:pointer;transition:all 0.15s;" onclick="cycleRundownStatus('${item.id}')" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                                                    <div style="display:flex;gap:8px;margin-bottom:6px;">
+                                                        <span style="font-size:9px;font-weight:800;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:${verticalColors[item.vertical] || '#9CA3AF'}20;color:${verticalColors[item.vertical] || '#9CA3AF'};">${item.vertical || 'General'}</span>
+                                                        <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:${statusColors[item.status] || '#9CA3AF'}20;color:${statusColors[item.status] || '#9CA3AF'};">${item.status || 'Not Started'}</span>
+                                                    </div>
+                                                    <div style="font-size:12px;font-weight:600;color:var(--ink);line-height:1.4;">${item.title || 'Untitled'}</div>
+                                                    ${item.creator ? `<div style="font-size:10px;color:var(--ink-sub);margin-top:4px;">by ${item.creator}</div>` : ''}
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
             `;
         }
 
         // ========== GLOBAL FUNCTIONS ==========
 
-        window.setTab = (tab) => { activeTab = tab; render(); };
+        window.setTab = (tab) => {
+            activeTab = tab;
+            if (tab === 'rundown') loadRundown();
+            render();
+        };
         window.changeWeek = (offset) => { calendarWeekOffset += offset; render(); };
+
+        window.changeRundownDate = (delta) => {
+            rundownDate.setDate(rundownDate.getDate() + delta);
+            loadRundown();
+        };
+
+        window.loadRundown = async () => {
+            const dateKey = rundownDate.toISOString().split('T')[0];
+            try {
+                const res = await fetch(`${API_URL}/rundown?date=${dateKey}`);
+                const data = await res.json();
+                if (data.success) {
+                    rundownItems = data.items || [];
+                } else {
+                    rundownItems = [];
+                }
+            } catch (e) {
+                console.error('Failed to load rundown:', e);
+                rundownItems = [];
+            }
+            render();
+        };
+
+        window.cycleRundownStatus = async (id) => {
+            const statuses = ['Not Started', 'Pending', 'Done', 'Blocked'];
+            const item = rundownItems.find(i => i.id === id);
+            if (!item) return;
+
+            const currentIdx = statuses.indexOf(item.status || 'Not Started');
+            const nextStatus = statuses[(currentIdx + 1) % statuses.length];
+
+            try {
+                await fetch(`${API_URL}/rundown/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: nextStatus })
+                });
+                item.status = nextStatus;
+                showToast(`Status: ${nextStatus}`);
+                render();
+            } catch (e) {
+                showToast('Failed to update status', 'error');
+            }
+        };
         window.showPinScreen = showPinScreen;
 
         window.openStaffModal = (id) => {
