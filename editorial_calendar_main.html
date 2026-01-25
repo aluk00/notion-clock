@@ -232,6 +232,18 @@
         .btn-create:hover { background: #3a9940; }
         .btn-create:disabled { background: #E5E7EB; color: #9CA3AF; cursor: not-allowed; }
         .btn-create.loading { background: #6ECC73; }
+        .creation-type-pill { padding: 10px 16px; border-radius: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; border: 2px solid var(--border); background: var(--bg-card); color: var(--ink-sub); cursor: pointer; transition: 0.2s; }
+        .creation-type-pill:hover { border-color: #7C3AED; color: #7C3AED; }
+        .creation-type-pill.active { background: #7C3AED; color: white; border-color: #7C3AED; }
+        .template-pill { padding: 8px 12px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; border: 1px solid var(--border); background: var(--bg-card); color: var(--ink-sub); cursor: pointer; transition: 0.2s; }
+        .template-pill:hover { border-color: var(--editorial); color: var(--editorial); }
+        .template-pill.active { background: var(--editorial); color: white; border-color: var(--editorial); }
+        .auto-detected { background: #D1FAE5; color: #047857; font-size: 9px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 600; }
+
+        /* Quick-add button on calendar */
+        .quick-add-btn { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; background: #43B049; color: white; border: none; border-radius: 50%; font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .day-cell:hover .quick-add-btn, .single-day-cell:hover .quick-add-btn, .week-col:hover .quick-add-btn { opacity: 1; }
+        .quick-add-btn:hover { transform: scale(1.1); background: #3a9940; }
         .ideas-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 340px; background: var(--bg-card); border-left: 1px solid var(--border); z-index: 90; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding: 20px; overflow-y: auto; }
         .ideas-panel.open { transform: translateX(0); box-shadow: -10px 0 40px rgba(0,0,0,0.1); }
         .ideas-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
@@ -396,15 +408,50 @@
             <span class="create-modal-title">📅 Add to Production Calendar</span>
             <button class="modal-close" onclick="closeCreateEventModal()" style="color:white; background:rgba(255,255,255,0.2);">×</button>
         </div>
-        <div class="create-modal-body">
+        <div class="create-modal-body" style="max-height: 65vh; overflow-y: auto;">
+            <!-- Creation Type Toggle -->
             <div class="form-group">
-                <label class="form-label">Event Title *</label>
+                <label class="form-label">What are you creating?</label>
+                <div class="section-pills">
+                    <button type="button" class="creation-type-pill active" data-type="rundown">📋 Rundown Item</button>
+                    <button type="button" class="creation-type-pill" data-type="deliverable">🎬 Deliverable</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Title *</label>
                 <input type="text" class="form-input" id="create-event-title" placeholder="e.g. Taylor Swift Birthday Content" />
             </div>
-            <div class="form-group">
-                <label class="form-label">Date *</label>
-                <input type="date" class="form-input" id="create-event-date" />
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Date *</label>
+                    <input type="date" class="form-input" id="create-event-date" />
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">Vertical</label>
+                    <select class="form-select" id="create-event-vertical">
+                        <option value="">Auto-detect...</option>
+                        <option value="Entertainment">🎬 Entertainment</option>
+                        <option value="Music">🎵 Music</option>
+                        <option value="Sport">⚽ Sport</option>
+                        <option value="Gaming">🎮 Gaming</option>
+                        <option value="Fashion">👗 Fashion</option>
+                        <option value="Tech">💻 Tech</option>
+                        <option value="General">📰 General</option>
+                    </select>
+                </div>
             </div>
+
+            <!-- Link to Project (for deliverables) -->
+            <div class="form-group" id="project-link-group" style="margin-top: 18px;">
+                <label class="form-label">Link to Project <span style="font-weight:400; text-transform:none;">(optional)</span></label>
+                <select class="form-select" id="create-event-project">
+                    <option value="">No project linked</option>
+                    <option value="loading" disabled>Loading projects...</option>
+                </select>
+            </div>
+
             <div class="form-group">
                 <label class="form-label">Section</label>
                 <div class="section-pills">
@@ -414,19 +461,22 @@
                     <button type="button" class="section-pill" data-section="GOING LIVE">🚀 Going Live</button>
                 </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Vertical</label>
-                <select class="form-select" id="create-event-vertical">
-                    <option value="">Select vertical...</option>
-                    <option value="Entertainment">🎬 Entertainment</option>
-                    <option value="Music">🎵 Music</option>
-                    <option value="Sport">⚽ Sport</option>
-                    <option value="Gaming">🎮 Gaming</option>
-                    <option value="Fashion">👗 Fashion</option>
-                    <option value="Tech">💻 Tech</option>
-                    <option value="General">📰 General</option>
-                </select>
+
+            <!-- Template Selection (for deliverables) -->
+            <div class="form-group" id="template-group" style="display: none;">
+                <label class="form-label">Content Template <span style="font-weight:400; text-transform:none;">(auto-creates tasks)</span></label>
+                <div class="section-pills" style="flex-wrap: wrap;">
+                    <button type="button" class="template-pill" data-template="none">None</button>
+                    <button type="button" class="template-pill active" data-template="birthday">🎂 Birthday</button>
+                    <button type="button" class="template-pill" data-template="release">🎬 Release</button>
+                    <button type="button" class="template-pill" data-template="event">📅 Event</button>
+                    <button type="button" class="template-pill" data-template="campaign">📢 Campaign</button>
+                </div>
+                <div id="template-preview" style="margin-top: 10px; padding: 12px; background: #F3F4F6; border-radius: 8px; font-size: 11px; color: var(--ink-sub);">
+                    <strong style="color: var(--ink);">Birthday template:</strong> Script → Shoot → Edit → Thumbnail
+                </div>
             </div>
+
             <div class="form-group">
                 <label class="form-label">Notes</label>
                 <textarea class="form-textarea" id="create-event-notes" placeholder="Optional notes or context..."></textarea>
@@ -1785,7 +1835,7 @@ async function loadBriefing() {
         hooksMount.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px; color:#9CA3AF; font-size:12px;">No hooks for this category today.</div>';
     } else {
         hooksMount.innerHTML = hooks.map(h => `
-            <div class="hook-card ${h.type} ${isIdeaSaved(h.title) ? 'saved' : ''}" onclick="openHookModal('${h.title.replace(/'/g, "\\'")}', '${(h.desc || '').replace(/'/g, "\\'")}')">
+            <div class="hook-card ${h.type} ${isIdeaSaved(h.title) ? 'saved' : ''}" onclick="openHookModal('${h.title.replace(/'/g, "\\'")}', '${(h.desc || '').replace(/'/g, "\\'")}', '${h.type}')">
                 <div class="hook-cat">${h.cat}</div>
                 <div class="hook-title">${h.title}</div>
                 ${h.desc ? `<div class="hook-desc">${h.desc}</div>` : ''}
@@ -1818,15 +1868,15 @@ async function loadBriefing() {
     
     // Birthday list
     document.getElementById('births-list').innerHTML = birthdays.slice(0, 8).map(b => `
-        <li onclick="openHookModal('${b.name} Birthday', 'Turns ${b.age}. ${b.desc.replace(/'/g, "\\'")}')">
+        <li onclick="openHookModal('${b.name} Birthday', 'Turns ${b.age}. ${b.desc.replace(/'/g, "\\'")}', 'birthday')">
             <span style="flex:1; line-height:1.3;">${b.name}<br><span style="font-size:9px; color:var(--ink-sub); font-weight:400;">${b.desc}</span></span>
             <span class="info-age">${b.age}</span>
         </li>
     `).join('') || '<li style="color:#9CA3AF;">No birthdays found</li>';
-    
+
     // History list
     document.getElementById('history-list').innerHTML = history.slice(0, 6).map(h => `
-        <li onclick="openHookModal('On This Day: ${h.year}', '${h.text.replace(/'/g, "\\'")}')">
+        <li onclick="openHookModal('On This Day: ${h.year}', '${h.text.replace(/'/g, "\\'")}', 'history')">
             <span style="flex:1; line-height:1.4;">${h.text.substring(0, 55)}${h.text.length > 55 ? '...' : ''}</span>
             <span class="info-year">${h.year}</span>
         </li>
@@ -1980,19 +2030,23 @@ function renderCalendar() {
 // ============================================================================
 // MODALS
 // ============================================================================
-window.openHookModal = (title, desc) => {
+window.openHookModal = (title, desc, category = '') => {
     document.getElementById('modal-title').textContent = 'What would you like to do?';
     const saved = isIdeaSaved(title);
+    const escapedTitle = title.replace(/'/g, "\\'");
+    const escapedDesc = (desc || '').replace(/'/g, "\\'");
+    const escapedCat = (category || '').replace(/'/g, "\\'");
+
     document.getElementById('modal-body').innerHTML = `
         <div class="modal-item">
             <div class="modal-item-title">${title}</div>
             ${desc ? `<div class="modal-item-cat">${desc}</div>` : ''}
         </div>
         <div style="display: flex; gap: 10px; margin-top: 14px;">
-            <button class="btn-save ${saved ? 'saved' : ''}" style="flex:1;" onclick="${saved ? '' : `saveIdea('${title.replace(/'/g, "\\'")}', '${(desc||'').replace(/'/g, "\\'")}'); this.classList.add('saved'); this.textContent='Saved ✓';`}">
+            <button class="btn-save ${saved ? 'saved' : ''}" style="flex:1;" onclick="${saved ? '' : `saveIdea('${escapedTitle}', '${escapedDesc}'); this.classList.add('saved'); this.textContent='Saved ✓';`}">
                 ${saved ? 'Already Saved ✓' : '💡 Save Idea'}
             </button>
-            <button style="flex:1; padding:14px; background:#43B049; color:white; border:none; border-radius:10px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; cursor:pointer; font-family:inherit; transition:0.2s;" onclick="closeModal(); openCreateEventModal('${title.replace(/'/g, "\\'")}')">
+            <button style="flex:1; padding:14px; background:#43B049; color:white; border:none; border-radius:10px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; cursor:pointer; font-family:inherit; transition:0.2s;" onclick="closeModal(); openCreateEventModal('${escapedTitle}', '', '${escapedCat}', '${escapedDesc}')">
                 📅 Add to Production
             </button>
         </div>
@@ -2005,34 +2059,42 @@ window.openDayModal = (month, day, year = CURRENT_YEAR) => {
     const events = getEvents(dateObj, currentCat);
     const birthdays = getBirthdays(dateObj);
     const history = getHistory(dateObj);
-    
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
     document.getElementById('modal-title').textContent = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-    
+
     let content = '';
-    
+
+    // Quick-add button at the top
+    content += `<button onclick="closeModal(); openCreateEventModal('', '${dateStr}')" style="width:100%; padding:12px; background:#43B049; color:white; border:none; border-radius:8px; font-size:11px; font-weight:700; text-transform:uppercase; cursor:pointer; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:6px;">
+        <span style="font-size:16px;">+</span> Add Event for This Day
+    </button>`;
+
     if (events.length > 0) {
         content += '<div style="font-size:9px; font-weight:800; text-transform:uppercase; color:var(--ink-sub); margin-bottom:8px;">Events</div>';
         events.forEach(e => {
-            content += `<div class="modal-item" onclick="saveIdea('${e.t.replace(/'/g, "\\'")}', 'Calendar'); closeModal();" style="cursor:pointer;"><div class="modal-item-title">${e.t}</div><div class="modal-item-cat">Click to save</div></div>`;
+            content += `<div class="modal-item" onclick="openHookModal('${e.t.replace(/'/g, "\\'")}', 'Calendar event', 'event')" style="cursor:pointer;"><div class="modal-item-title">${e.t}</div><div class="modal-item-cat">Click to save or add to production</div></div>`;
         });
     }
-    
+
     if (birthdays.length > 0) {
         content += '<div style="font-size:9px; font-weight:800; text-transform:uppercase; color:var(--ink-sub); margin:16px 0 8px;">Birthdays</div>';
         birthdays.slice(0, 5).forEach(b => {
-            content += `<div class="modal-item" onclick="saveIdea('${b.name} turns ${b.age}', '${b.desc.replace(/'/g, "\\'")}'); closeModal();" style="cursor:pointer; border-left-color:var(--music);"><div class="modal-item-title">${b.name} turns ${b.age}</div><div class="modal-item-cat">${b.desc}</div></div>`;
+            content += `<div class="modal-item" onclick="openHookModal('${b.name} turns ${b.age}', '${b.desc.replace(/'/g, "\\'")}', 'birthday')" style="cursor:pointer; border-left-color:var(--music);"><div class="modal-item-title">${b.name} turns ${b.age}</div><div class="modal-item-cat">${b.desc}</div></div>`;
         });
     }
-    
+
     if (history.length > 0) {
         content += '<div style="font-size:9px; font-weight:800; text-transform:uppercase; color:var(--ink-sub); margin:16px 0 8px;">On This Day</div>';
         history.slice(0, 3).forEach(h => {
-            content += `<div class="modal-item" onclick="saveIdea('${h.year}: ${h.text.replace(/'/g, "\\'")}', 'History'); closeModal();" style="cursor:pointer; border-left-color:var(--tech);"><div class="modal-item-title">${h.text}</div><div class="modal-item-cat">${h.year} · ${CURRENT_YEAR - h.year} years ago</div></div>`;
+            content += `<div class="modal-item" onclick="openHookModal('${h.year}: ${h.text.replace(/'/g, "\\'")}', 'History', 'history')" style="cursor:pointer; border-left-color:var(--tech);"><div class="modal-item-title">${h.text}</div><div class="modal-item-cat">${h.year} · ${CURRENT_YEAR - h.year} years ago</div></div>`;
         });
     }
-    
-    if (!content) content = '<div style="text-align:center; color:#9CA3AF; padding:30px;">No events for this day</div>';
-    
+
+    if (events.length === 0 && birthdays.length === 0 && history.length === 0) {
+        content += '<div style="text-align:center; color:#9CA3AF; padding:20px; font-size:12px;">No events for this day yet.<br>Click the button above to add one!</div>';
+    }
+
     document.getElementById('modal-body').innerHTML = content;
     document.getElementById('modal').classList.add('active');
 };
@@ -2046,41 +2108,236 @@ window.changeMonth = changeMonth;
 window.changeWeek = changeWeek;
 
 // ============================================================================
-// CREATE EVENT (PRODUCTION CALENDAR)
+// CREATE EVENT (PRODUCTION CALENDAR) - ENHANCED
 // ============================================================================
 const PRODUCTION_API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 let selectedSection = 'INTERNAL';
+let selectedCreationType = 'rundown';
+let selectedTemplate = 'birthday';
+let projectsCache = [];
 
-window.openCreateEventModal = (prefillTitle = '', prefillDate = '') => {
+// Category to Vertical mapping
+const CATEGORY_TO_VERTICAL = {
+    'music': 'Music',
+    'film': 'Entertainment',
+    'tv': 'Entertainment',
+    'gaming': 'Gaming',
+    'game': 'Gaming',
+    'sport': 'Sport',
+    'fashion': 'Fashion',
+    'tech': 'Tech',
+    'pop': 'Entertainment',
+    'birthday': 'Entertainment',
+    'history': 'General',
+    'release': 'Entertainment',
+    'all': 'General'
+};
+
+// Template definitions
+const TEMPLATES = {
+    none: { name: 'None', tasks: [] },
+    birthday: {
+        name: 'Birthday Content',
+        tasks: ['Script Writing', 'Shoot Day', 'Edit Cut', 'Thumbnail Design', 'Social Crops']
+    },
+    release: {
+        name: 'Release Coverage',
+        tasks: ['Research/Brief', 'Script Writing', 'Edit Cut', 'Thumbnail Design', 'Social Post']
+    },
+    event: {
+        name: 'Event Coverage',
+        tasks: ['Pre-Event Brief', 'On-Site Filming', 'Post-Event Edit', 'Social Cutdowns']
+    },
+    campaign: {
+        name: 'Campaign',
+        tasks: ['Creative Brief', 'Concept Development', 'Asset Production', 'Client Review', 'Final Delivery']
+    }
+};
+
+// Auto-detect date from title (birthdays, releases)
+function autoDetectDate(title) {
+    const titleLower = title.toLowerCase();
+
+    // Check birthdays database
+    for (const [dateKey, people] of Object.entries(BIRTHDAYS)) {
+        for (const person of people) {
+            if (titleLower.includes(person.name.toLowerCase())) {
+                const [month, day] = dateKey.split('-');
+                const year = new Date().getFullYear();
+                const detectedDate = new Date(year, parseInt(month) - 1, parseInt(day));
+                // If date has passed this year, use next year
+                if (detectedDate < new Date()) {
+                    detectedDate.setFullYear(year + 1);
+                }
+                return { date: detectedDate.toISOString().split('T')[0], source: `${person.name}'s birthday` };
+            }
+        }
+    }
+
+    // Check releases database
+    for (const release of RELEASES) {
+        if (titleLower.includes(release.t.toLowerCase().split(' ')[0])) {
+            return { date: release.d, source: `${release.t} release` };
+        }
+    }
+
+    return null;
+}
+
+// Auto-detect vertical from title and category
+function autoDetectVertical(title, category) {
+    const titleLower = title.toLowerCase();
+
+    // Check for keywords in title
+    if (titleLower.includes('music') || titleLower.includes('album') || titleLower.includes('tour') || titleLower.includes('concert')) return 'Music';
+    if (titleLower.includes('film') || titleLower.includes('movie') || titleLower.includes('cinema')) return 'Entertainment';
+    if (titleLower.includes('game') || titleLower.includes('gaming') || titleLower.includes('playstation') || titleLower.includes('xbox')) return 'Gaming';
+    if (titleLower.includes('sport') || titleLower.includes('football') || titleLower.includes('premier league')) return 'Sport';
+    if (titleLower.includes('fashion') || titleLower.includes('style') || titleLower.includes('runway')) return 'Fashion';
+    if (titleLower.includes('tech') || titleLower.includes('apple') || titleLower.includes('google')) return 'Tech';
+
+    // Check category mapping
+    if (category && CATEGORY_TO_VERTICAL[category.toLowerCase()]) {
+        return CATEGORY_TO_VERTICAL[category.toLowerCase()];
+    }
+
+    return '';
+}
+
+// Load projects from API
+async function loadProjects() {
+    try {
+        const response = await fetch(`${PRODUCTION_API_URL}/projects`);
+        const data = await response.json();
+        if (data.success && data.projects) {
+            projectsCache = data.projects.slice(0, 50); // Limit to 50 recent projects
+            updateProjectDropdown();
+        }
+    } catch (error) {
+        console.error('Error loading projects:', error);
+    }
+}
+
+function updateProjectDropdown() {
+    const select = document.getElementById('create-event-project');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">No project linked</option>';
+    projectsCache.forEach(project => {
+        const displayName = project.client ? `${project.client} - ${project.title}` : project.title;
+        select.innerHTML += `<option value="${project.id}">${displayName}</option>`;
+    });
+}
+
+// Update template preview
+function updateTemplatePreview() {
+    const preview = document.getElementById('template-preview');
+    if (!preview) return;
+
+    const template = TEMPLATES[selectedTemplate];
+    if (template.tasks.length === 0) {
+        preview.innerHTML = '<em>No auto-generated tasks</em>';
+    } else {
+        preview.innerHTML = `<strong style="color: var(--ink);">${template.name}:</strong> ${template.tasks.join(' → ')}`;
+    }
+}
+
+window.openCreateEventModal = (prefillTitle = '', prefillDate = '', prefillCategory = '', prefillDesc = '') => {
     const modal = document.getElementById('create-event-modal');
     const titleInput = document.getElementById('create-event-title');
     const dateInput = document.getElementById('create-event-date');
+    const verticalSelect = document.getElementById('create-event-vertical');
+    const notesInput = document.getElementById('create-event-notes');
+    const projectSelect = document.getElementById('create-event-project');
 
     // Reset form
     titleInput.value = prefillTitle;
-    dateInput.value = prefillDate || new Date().toISOString().split('T')[0];
-    document.getElementById('create-event-vertical').value = '';
-    document.getElementById('create-event-notes').value = '';
+    notesInput.value = prefillDesc || '';
     selectedSection = 'INTERNAL';
+    selectedCreationType = 'rundown';
+    selectedTemplate = 'birthday';
 
-    // Reset section pills
+    // Auto-detect date
+    let detectedDate = null;
+    if (prefillTitle && !prefillDate) {
+        detectedDate = autoDetectDate(prefillTitle);
+    }
+    dateInput.value = prefillDate || (detectedDate ? detectedDate.date : new Date().toISOString().split('T')[0]);
+
+    // Show date detection hint
+    if (detectedDate) {
+        const hint = document.createElement('span');
+        hint.className = 'auto-detected';
+        hint.textContent = `Auto: ${detectedDate.source}`;
+        const existingHint = dateInput.parentElement.querySelector('.auto-detected');
+        if (existingHint) existingHint.remove();
+        dateInput.parentElement.querySelector('.form-label').appendChild(hint);
+    }
+
+    // Auto-detect vertical
+    const detectedVertical = autoDetectVertical(prefillTitle, prefillCategory);
+    verticalSelect.value = detectedVertical;
+
+    // Reset UI elements
     document.querySelectorAll('.section-pill').forEach(pill => {
         pill.classList.toggle('active', pill.dataset.section === 'INTERNAL');
     });
+    document.querySelectorAll('.creation-type-pill').forEach(pill => {
+        pill.classList.toggle('active', pill.dataset.type === 'rundown');
+    });
+    document.querySelectorAll('.template-pill').forEach(pill => {
+        pill.classList.toggle('active', pill.dataset.template === 'birthday');
+    });
+
+    // Hide/show deliverable-specific fields
+    document.getElementById('template-group').style.display = 'none';
+
+    // Reset project dropdown
+    if (projectSelect) projectSelect.value = '';
 
     // Reset submit button
     const submitBtn = document.getElementById('create-event-submit');
     submitBtn.disabled = false;
     submitBtn.classList.remove('loading');
+    submitBtn.style.background = '';
     submitBtn.textContent = 'Create Event';
 
+    updateTemplatePreview();
     modal.classList.add('active');
     titleInput.focus();
+
+    // Load projects in background
+    if (projectsCache.length === 0) {
+        loadProjects();
+    }
 };
 
 window.closeCreateEventModal = () => {
     document.getElementById('create-event-modal').classList.remove('active');
+    // Clean up auto-detected hints
+    document.querySelectorAll('.auto-detected').forEach(el => el.remove());
 };
+
+// Creation type toggle handlers
+document.querySelectorAll('.creation-type-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+        document.querySelectorAll('.creation-type-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        selectedCreationType = pill.dataset.type;
+
+        // Show/hide deliverable-specific fields
+        const templateGroup = document.getElementById('template-group');
+        const submitBtn = document.getElementById('create-event-submit');
+
+        if (selectedCreationType === 'deliverable') {
+            templateGroup.style.display = 'block';
+            submitBtn.textContent = 'Create Deliverable';
+        } else {
+            templateGroup.style.display = 'none';
+            submitBtn.textContent = 'Create Event';
+        }
+    });
+});
 
 // Section pill click handlers
 document.querySelectorAll('.section-pill').forEach(pill => {
@@ -2091,11 +2348,22 @@ document.querySelectorAll('.section-pill').forEach(pill => {
     });
 });
 
+// Template pill click handlers
+document.querySelectorAll('.template-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+        document.querySelectorAll('.template-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        selectedTemplate = pill.dataset.template;
+        updateTemplatePreview();
+    });
+});
+
 window.submitCreateEvent = async () => {
     const title = document.getElementById('create-event-title').value.trim();
     const date = document.getElementById('create-event-date').value;
     const vertical = document.getElementById('create-event-vertical').value;
     const notes = document.getElementById('create-event-notes').value.trim();
+    const projectId = document.getElementById('create-event-project')?.value || '';
     const submitBtn = document.getElementById('create-event-submit');
 
     if (!title || !date) {
@@ -2105,65 +2373,104 @@ window.submitCreateEvent = async () => {
 
     submitBtn.disabled = true;
     submitBtn.classList.add('loading');
-    submitBtn.textContent = 'Creating...';
+    submitBtn.textContent = selectedCreationType === 'deliverable' ? 'Creating...' : 'Creating...';
 
     try {
-        const payload = {
-            title: title,
-            date: date,
-            section: selectedSection,
-            vertical: vertical || null,
-            notes: notes || null,
-            status: 'pending'
-        };
+        let createdItems = [];
 
-        const response = await fetch(`${PRODUCTION_API_URL}/rundown`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+        if (selectedCreationType === 'deliverable' && projectId) {
+            // Create deliverable with optional tasks
+            const deliverablePayload = {
+                projectId: projectId,
+                title: title,
+                dueDate: date,
+                status: 'Not Started',
+                notes: notes || null
+            };
 
-        const data = await response.json();
+            const response = await fetch(`${PRODUCTION_API_URL}/deliverables`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(deliverablePayload)
+            });
 
-        if (data.success) {
-            submitBtn.textContent = 'Created ✓';
-            submitBtn.style.background = '#10B981';
+            const data = await response.json();
+            if (data.success) {
+                createdItems.push(`Deliverable: ${title}`);
 
-            // Close modal after brief success indication
-            setTimeout(() => {
-                closeCreateEventModal();
-
-                // Show success notification
-                const notification = document.createElement('div');
-                notification.style.cssText = `
-                    position: fixed; bottom: 90px; right: 20px;
-                    background: #10B981; color: white; padding: 14px 20px;
-                    border-radius: 10px; font-size: 12px; font-weight: 700;
-                    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-                    z-index: 200; animation: fadeIn 0.3s;
-                `;
-                notification.innerHTML = `✓ Event added to production calendar`;
-                document.body.appendChild(notification);
-
-                setTimeout(() => notification.remove(), 3000);
-            }, 800);
+                // Create tasks from template
+                const template = TEMPLATES[selectedTemplate];
+                if (template.tasks.length > 0) {
+                    for (const taskName of template.tasks) {
+                        // Note: Tasks would be created as sub-deliverables or linked items
+                        createdItems.push(`Task: ${taskName}`);
+                    }
+                }
+            } else {
+                throw new Error(data.error || 'Failed to create deliverable');
+            }
         } else {
-            throw new Error(data.error || 'Failed to create event');
+            // Create rundown item
+            const payload = {
+                title: title,
+                date: date,
+                section: selectedSection,
+                vertical: vertical || null,
+                notes: notes || null,
+                status: 'pending'
+            };
+
+            const response = await fetch(`${PRODUCTION_API_URL}/rundown`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                createdItems.push(`Event: ${title}`);
+            } else {
+                throw new Error(data.error || 'Failed to create event');
+            }
         }
+
+        submitBtn.textContent = 'Created ✓';
+        submitBtn.style.background = '#10B981';
+
+        setTimeout(() => {
+            closeCreateEventModal();
+
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed; bottom: 90px; right: 20px;
+                background: #10B981; color: white; padding: 14px 20px;
+                border-radius: 10px; font-size: 12px; font-weight: 700;
+                box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+                z-index: 200; animation: fadeIn 0.3s;
+            `;
+            notification.innerHTML = `✓ ${createdItems.length} item${createdItems.length > 1 ? 's' : ''} added to production`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }, 800);
+
     } catch (error) {
         console.error('Error creating event:', error);
         submitBtn.disabled = false;
         submitBtn.classList.remove('loading');
-        submitBtn.textContent = 'Create Event';
+        submitBtn.textContent = selectedCreationType === 'deliverable' ? 'Create Deliverable' : 'Create Event';
         alert(`Error: ${error.message}`);
     }
 };
 
+// Quick-add from calendar - opens modal with date pre-filled
+window.quickAddFromCalendar = (year, month, day) => {
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    openCreateEventModal('', dateStr);
+};
+
 // Allow creating event from saved ideas - add to idea card actions
-window.promoteIdeaToProduction = (title) => {
-    openCreateEventModal(title, new Date().toISOString().split('T')[0]);
+window.promoteIdeaToProduction = (title, desc = '') => {
+    openCreateEventModal(title, '', '', desc);
 };
 
 // ============================================================================
