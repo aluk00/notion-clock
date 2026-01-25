@@ -1052,6 +1052,54 @@
             return Number(person.weeklyCapacityPTS ?? person.weeklyCapacityPts ?? person.maxHoursPerWeek ?? 40);
         }
 
+        // Render assigned projects for a staff member in their modal
+        function renderStaffProjects(s) {
+            const name = (s.firstName || '').toLowerCase();
+            const assignedProjects = projects.filter(p => {
+                const creative = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase();
+                const production = (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase();
+                const editor = (p.videoEditor?.[0]?.name || p.videoEditor || '').toLowerCase();
+                const editorial = (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase();
+                return name && (creative.includes(name) || production.includes(name) || editor.includes(name) || editorial.includes(name));
+            });
+
+            if (assignedProjects.length === 0) {
+                return `
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects</div>
+                        <div style="padding:16px;background:var(--surface-alt);border-radius:8px;text-align:center;">
+                            <div style="font-size:12px;color:var(--ink-muted);">No projects currently assigned</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const projectRows = assignedProjects.map(p => {
+                const role = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase().includes(name) ? 'Creative Lead' :
+                             (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase().includes(name) ? 'Production Lead' :
+                             (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase().includes(name) ? 'Editorial Lead' : 'Editor';
+                return `
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.title || 'Untitled'}</div>
+                            <div style="font-size:11px;color:var(--ink-sub);">${p.client || 'No client'} · ${role}</div>
+                        </div>
+                        <span style="font-size:10px;padding:4px 8px;background:var(--dmg-blue-soft);color:var(--dmg-blue);border-radius:4px;">${p.dealStage || p.status || 'Active'}</span>
+                        ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:10px;color:var(--ink-muted);" title="Open in Notion">↗</a>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects (${assignedProjects.length})</div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        ${projectRows}
+                    </div>
+                </div>
+            `;
+        }
+
         function getMemberEffort(person) {
             const name = normalizeName(`${person.firstName || ''} ${person.lastName || ''}`);
             let currentEffort = 0;
@@ -2325,45 +2373,7 @@
                     </div>
 
                     <!-- Section: Assigned Projects -->
-                    ${(() => {
-                        const name = (s.firstName || '').toLowerCase();
-                        const assignedProjects = projects.filter(p => {
-                            const creative = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase();
-                            const production = (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase();
-                            const editor = (p.videoEditor?.[0]?.name || p.videoEditor || '').toLowerCase();
-                            const editorial = (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase();
-                            return name && (creative.includes(name) || production.includes(name) || editor.includes(name) || editorial.includes(name));
-                        });
-                        return assignedProjects.length > 0 ? \`
-                            <div style="margin-bottom:20px;">
-                                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects (\${assignedProjects.length})</div>
-                                <div style="display:flex;flex-direction:column;gap:8px;">
-                                    \${assignedProjects.map(p => {
-                                        const role = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase().includes(name) ? 'Creative Lead' :
-                                                     (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase().includes(name) ? 'Production Lead' :
-                                                     (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase().includes(name) ? 'Editorial Lead' : 'Editor';
-                                        return \`
-                                            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;">
-                                                <div style="flex:1;min-width:0;">
-                                                    <div style="font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\${p.title || 'Untitled'}</div>
-                                                    <div style="font-size:11px;color:var(--ink-sub);">\${p.client || 'No client'} · \${role}</div>
-                                                </div>
-                                                <span style="font-size:10px;padding:4px 8px;background:var(--dmg-blue-soft);color:var(--dmg-blue);border-radius:4px;">\${p.dealStage || p.status || 'Active'}</span>
-                                                \${p.url ? \`<a href="\${p.url}" target="_blank" style="font-size:10px;color:var(--ink-muted);" title="Open in Notion">↗</a>\` : ''}
-                                            </div>
-                                        \`;
-                                    }).join('')}
-                                </div>
-                            </div>
-                        \` : \`
-                            <div style="margin-bottom:20px;">
-                                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects</div>
-                                <div style="padding:16px;background:var(--surface-alt);border-radius:8px;text-align:center;">
-                                    <div style="font-size:12px;color:var(--ink-muted);">No projects currently assigned</div>
-                                </div>
-                            </div>
-                        \`;
-                    })()}
+                    ${renderStaffProjects(s)}
 
                     ${s.notionUrl ? `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);"><a href="${s.notionUrl}" target="_blank" style="font-size:12px;color:var(--dmg-blue);">View full profile in Notion ↗</a></div>` : ''}
                 </div>
