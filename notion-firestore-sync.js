@@ -115,8 +115,7 @@ async function syncStaffDirectory() {
             if (dryRun) {
                 console.log(`[DRY RUN] Would update: ${docId}`, staffData);
             } else {
-                const docRef = db.collection(BASE_PATH).doc('staff_directory')
-                    .collection('staff_directory').doc(docId);
+                const docRef = db.collection(`${BASE_PATH}/staff_directory`).doc(docId);
                 batch.set(docRef, staffData, { merge: true });
                 updateCount++;
             }
@@ -205,8 +204,7 @@ async function syncProjects() {
             if (dryRun) {
                 console.log(`[DRY RUN] Would update: ${docId}`, projectData);
             } else {
-                const docRef = db.collection(BASE_PATH).doc('projects')
-                    .collection('projects').doc(docId);
+                const docRef = db.collection(`${BASE_PATH}/projects`).doc(docId);
                 batch.set(docRef, projectData, { merge: true });
                 updateCount++;
             }
