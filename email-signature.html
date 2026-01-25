@@ -4,55 +4,358 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Signature | DMG</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #F5F5F7; margin: 0; padding: 20px; color: var(--ink); }
-        .container { max-width: 800px; margin: 0 auto; }
-        .card { background: #FFF; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
-        .header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
-        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 2px; }
-        .dot-grid span { width: 5px; height: 5px; border-radius: 50%; background: var(--dmg-blue); animation: pulse 2.5s infinite ease-in-out; }
+        :root {
+            --dmg-blue: #21a0d8;
+            --dmg-blue-soft: rgba(33, 160, 216, 0.1);
+            --dmg-blue-glow: rgba(33, 160, 216, 0.15);
+            --border: #E5E7EB;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --bg-soft: #F9FAFB;
+            --surface: #FFFFFF;
+            --success: #22C55E;
+            --success-soft: rgba(34, 197, 94, 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #FFFFFF;
+            padding: 20px;
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 680px; margin: 0 auto; }
+
+        /* Animations */
         @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-        .title { font-size: 14px; font-weight: 800; }
-        .body { padding: 20px; }
-        
-        .form-group { margin-bottom: 16px; }
-        .form-label { display: block; font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 6px; }
-        .form-input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; }
-        .form-input:focus { outline: none; border-color: var(--dmg-blue); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Header */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dot-grid span {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--dmg-blue);
+            animation: pulse 2.5s infinite ease-in-out;
+        }
+        .dot-grid span:nth-child(2) { animation-delay: 0.15s; }
+        .dot-grid span:nth-child(3) { animation-delay: 0.3s; }
+        .dot-grid span:nth-child(4) { animation-delay: 0.45s; }
+        .page-title { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; }
+
+        /* Manager Dashboard Button */
+        .manager-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #FFF;
+            font-size: 11px;
+            font-weight: 700;
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            transition: all 0.25s var(--ease);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .manager-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .manager-btn:active { transform: translateY(0); }
+        .manager-btn svg { width: 14px; height: 14px; }
+
+        /* Card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 16px;
+            transition: box-shadow 0.25s var(--ease);
+        }
+        .card:hover { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); }
+        .card-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink);
+            background: var(--bg-soft);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .card-body { padding: 18px; }
+
+        /* Custom Dropdown */
+        .dropdown-wrapper { position: relative; }
+        .dropdown-trigger {
+            width: 100%;
+            padding: 12px 16px;
+            padding-right: 44px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: inherit;
+            font-weight: 500;
+            background: var(--surface);
+            color: var(--ink);
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+            text-align: left;
+            position: relative;
+        }
+        .dropdown-trigger:hover { border-color: var(--dmg-blue); }
+        .dropdown-trigger:focus, .dropdown-trigger.active {
+            outline: none;
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 3px var(--dmg-blue-soft);
+        }
+        .dropdown-trigger .placeholder { color: var(--ink-sub); }
+        .dropdown-arrow {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--ink-sub);
+            transition: transform 0.25s var(--ease);
+            pointer-events: none;
+        }
+        .dropdown-trigger.active .dropdown-arrow { transform: translateY(-50%) rotate(180deg); }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+            z-index: 100;
+            max-height: 320px;
+            overflow: hidden;
+            display: none;
+            animation: slideDown 0.2s var(--ease-out);
+        }
+        .dropdown-menu.open { display: block; }
+
+        .dropdown-search {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+        }
+        .dropdown-search input {
+            width: 100%;
+            padding: 10px 12px;
+            padding-left: 36px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            background: var(--bg-soft);
+            transition: all 0.2s var(--ease);
+        }
+        .dropdown-search input:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+            background: var(--surface);
+        }
+        .dropdown-search-icon {
+            position: absolute;
+            left: 22px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            color: var(--ink-sub);
+        }
+
+        .dropdown-options {
+            max-height: 260px;
+            overflow-y: auto;
+            padding: 6px;
+        }
+        .dropdown-option {
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s var(--ease);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dropdown-option:hover { background: var(--bg-soft); }
+        .dropdown-option.selected { background: var(--dmg-blue-soft); }
+        .dropdown-option.selected .option-name { color: var(--dmg-blue); font-weight: 600; }
+
+        .option-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            color: #FFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .option-info { flex: 1; min-width: 0; }
+        .option-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+        .option-role { font-size: 11px; color: var(--ink-sub); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .dropdown-empty {
+            padding: 24px;
+            text-align: center;
+            color: var(--ink-sub);
+            font-size: 12px;
+        }
+
+        .dropdown-hint {
+            font-size: 11px;
+            color: var(--ink-sub);
+            margin-top: 8px;
+        }
+
+        /* Form */
+        .form-group { margin-bottom: 14px; }
+        .form-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--surface);
+            transition: all 0.2s var(--ease);
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 3px var(--dmg-blue-soft);
+        }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        
-        .btn { padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; }
+
+        /* Buttons */
+        .btn {
+            padding: 11px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s var(--ease);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:active { transform: scale(0.98); }
         .btn-primary { background: var(--dmg-blue); color: #FFF; }
-        .btn-primary:hover { background: #1a8bc0; }
-        .btn-secondary { background: var(--bg-soft); color: var(--ink); }
-        
-        .preview-label { font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; margin-bottom: 12px; }
-        .signature-preview { background: #FFF; border: 1px solid var(--border); border-radius: 8px; padding: 20px; font-family: Arial, sans-serif; }
-        .sig-name { font-size: 16px; font-weight: bold; color: #1C1C1C; margin-bottom: 2px; }
-        .sig-role { font-size: 13px; color: #666; margin-bottom: 8px; }
-        .sig-company { font-size: 13px; font-weight: bold; color: #E94B4B; margin-bottom: 8px; }
-        .sig-details { font-size: 12px; color: #666; line-height: 1.6; }
-        .sig-details a { color: #21a0d8; text-decoration: none; }
-        .sig-social { margin-top: 10px; }
-        .sig-social a { display: inline-block; margin-right: 8px; color: #21a0d8; font-size: 12px; text-decoration: none; }
-        
-        .copy-box { margin-top: 16px; padding: 12px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; font-size: 12px; color: #166534; display: none; }
-        .copy-box.show { display: block; }
-        
-        .empty { padding: 40px 20px; text-align: center; }
-        .empty-icon { font-size: 40px; margin-bottom: 12px; }
-        .empty-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
-        .empty-sub { font-size: 12px; color: var(--ink-sub); margin-bottom: 16px; }
+        .btn-primary:hover { background: #1a8bc0; box-shadow: 0 4px 12px rgba(33, 160, 216, 0.3); }
+        .btn-secondary { background: var(--bg-soft); color: var(--ink); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #E5E7EB; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        /* Signature Preview */
+        .signature-container {
+            background: #FFFFFF;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 24px;
+        }
+        .signature-preview {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #333333;
+        }
+
+        /* Copy feedback */
+        .copy-box {
+            margin-top: 14px;
+            padding: 12px 14px;
+            background: var(--success-soft);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            color: #065F46;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 0.25s var(--ease-out);
+        }
+        .copy-box.show { display: flex; }
+        .copy-box svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            color: var(--ink-sub);
+            font-size: 12px;
+            gap: 10px;
+            flex-direction: column;
+        }
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border);
+            border-top-color: var(--dmg-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .loading-text { font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="root"></div>
+        <div id="root">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span class="loading-text">Loading staff directory...</span>
+            </div>
+        </div>
     </div>
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -65,91 +368,240 @@
             messagingSenderId: "223535956454",
             appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
         });
-        
+
         var db = firebase.firestore();
         var auth = firebase.auth();
         var appId = "dmg-command-centre-native";
         var root = document.getElementById('root');
-        
-        var params = new URLSearchParams(window.location.search);
-        var staffId = params.get('id');
-        var profile = null;
-        var copied = false;
+
+        var staffList = [];
+        var selectedStaff = null;
+        var dropdownOpen = false;
+        var searchQuery = '';
+
+        // Team colors
+        var TEAM_COLORS = {
+            Editorial: '#E94B4B',
+            Creative: '#E6468B',
+            Production: '#43B049',
+            Social: '#F2C316',
+            Operations: '#21A0D8',
+            Executive: '#1C1C1C'
+        };
+
+        function getInitials(firstName, lastName) {
+            return ((firstName || '?')[0] + (lastName || '?')[0]).toUpperCase();
+        }
+
+        function getTeamColor(team) {
+            return TEAM_COLORS[team] || '#21A0D8';
+        }
 
         function render() {
+            var firstName = selectedStaff ? (selectedStaff.firstName || '') : '';
+            var lastName = selectedStaff ? (selectedStaff.lastName || '') : '';
+            var role = selectedStaff ? (selectedStaff.role || '') : '';
+            var email = selectedStaff ? (selectedStaff.email || '') : '';
+            var phone = selectedStaff ? (selectedStaff.phone || '') : '';
+
+            var selectedDisplay = selectedStaff
+                ? '<span class="option-name">' + selectedStaff.firstName + ' ' + selectedStaff.lastName + '</span>'
+                : '<span class="placeholder">Select your name...</span>';
+
+            var filteredStaff = staffList.filter(function(s) {
+                if (!searchQuery) return true;
+                var fullName = ((s.firstName || '') + ' ' + (s.lastName || '')).toLowerCase();
+                var roleText = (s.role || '').toLowerCase();
+                var query = searchQuery.toLowerCase();
+                return fullName.includes(query) || roleText.includes(query);
+            });
+
+            var optionsHTML = filteredStaff.length === 0
+                ? '<div class="dropdown-empty">No staff found</div>'
+                : filteredStaff.map(function(s) {
+                    var isSelected = selectedStaff && selectedStaff.id === s.id;
+                    var color = getTeamColor(s.team);
+                    return '\
+                        <div class="dropdown-option ' + (isSelected ? 'selected' : '') + '" onclick="selectStaff(\'' + s.id + '\')">\
+                            <div class="option-avatar" style="background: ' + color + '">' + getInitials(s.firstName, s.lastName) + '</div>\
+                            <div class="option-info">\
+                                <div class="option-name">' + (s.firstName || '') + ' ' + (s.lastName || '') + '</div>\
+                                <div class="option-role">' + (s.role || 'No role assigned') + '</div>\
+                            </div>\
+                        </div>';
+                }).join('');
+
             root.innerHTML = '\
-                <div class="card">\
-                    <div class="header">\
+                <div class="page-header">\
+                    <div class="header-left">\
                         <div class="dot-grid"><span></span><span></span><span></span><span></span></div>\
-                        <h2 class="title">Email Signature Generator</h2>\
+                        <h1 class="page-title">Email Signature</h1>\
                     </div>\
-                    <div class="body">\
-                        <div class="form-row">\
-                            <div class="form-group">\
-                                <label class="form-label">First Name</label>\
-                                <input type="text" id="firstName" class="form-input" value="' + (profile ? profile.firstName || '' : '') + '" placeholder="Your first name" oninput="updatePreview()">\
+                    <a href="https://aluk00.github.io/notion-clock/manager_dashboard.html" target="_blank" class="manager-btn">\
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">\
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>\
+                            <circle cx="9" cy="7" r="4"/>\
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>\
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>\
+                        </svg>\
+                        Manager Dashboard\
+                    </a>\
+                </div>\
+                \
+                <div class="card">\
+                    <div class="card-header">Select Your Profile</div>\
+                    <div class="card-body">\
+                        <div class="form-group">\
+                            <label class="form-label">Choose from Staff Directory</label>\
+                            <div class="dropdown-wrapper">\
+                                <button type="button" class="dropdown-trigger ' + (dropdownOpen ? 'active' : '') + '" onclick="toggleDropdown()">\
+                                    ' + selectedDisplay + '\
+                                    <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>\
+                                </button>\
+                                <div class="dropdown-menu ' + (dropdownOpen ? 'open' : '') + '">\
+                                    <div class="dropdown-search">\
+                                        <svg class="dropdown-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>\
+                                        <input type="text" id="staffSearch" placeholder="Search by name or role..." value="' + searchQuery + '" oninput="filterStaff(this.value)" onclick="event.stopPropagation()">\
+                                    </div>\
+                                    <div class="dropdown-options">' + optionsHTML + '</div>\
+                                </div>\
                             </div>\
-                            <div class="form-group">\
-                                <label class="form-label">Last Name</label>\
-                                <input type="text" id="lastName" class="form-input" value="' + (profile ? profile.lastName || '' : '') + '" placeholder="Your last name" oninput="updatePreview()">\
-                            </div>\
-                        </div>\
-                        <div class="form-group">\
-                            <label class="form-label">Job Title</label>\
-                            <input type="text" id="role" class="form-input" value="' + (profile ? profile.role || '' : '') + '" placeholder="e.g. Senior Creative" oninput="updatePreview()">\
-                        </div>\
-                        <div class="form-group">\
-                            <label class="form-label">Email</label>\
-                            <input type="email" id="email" class="form-input" value="' + (profile ? profile.email || '' : '') + '" placeholder="you@dmgmedia.co.uk" oninput="updatePreview()">\
-                        </div>\
-                        <div class="form-group">\
-                            <label class="form-label">Phone (Optional)</label>\
-                            <input type="text" id="phone" class="form-input" value="' + (profile ? profile.phone || '' : '') + '" placeholder="+44 20 xxxx xxxx" oninput="updatePreview()">\
+                            <div class="dropdown-hint">Select your name to auto-fill details, or enter manually below</div>\
                         </div>\
                     </div>\
                 </div>\
                 \
                 <div class="card">\
-                    <div class="header">\
-                        <h2 class="title">Preview</h2>\
+                    <div class="card-header">Your Details</div>\
+                    <div class="card-body">\
+                        <div class="form-row">\
+                            <div class="form-group">\
+                                <label class="form-label">First Name</label>\
+                                <input type="text" id="firstName" class="form-input" value="' + firstName + '" placeholder="Your first name" oninput="updatePreview()">\
+                            </div>\
+                            <div class="form-group">\
+                                <label class="form-label">Last Name</label>\
+                                <input type="text" id="lastName" class="form-input" value="' + lastName + '" placeholder="Your last name" oninput="updatePreview()">\
+                            </div>\
+                        </div>\
+                        <div class="form-group">\
+                            <label class="form-label">Job Title</label>\
+                            <input type="text" id="role" class="form-input" value="' + role + '" placeholder="e.g. Senior Creative" oninput="updatePreview()">\
+                        </div>\
+                        <div class="form-row">\
+                            <div class="form-group">\
+                                <label class="form-label">Email</label>\
+                                <input type="email" id="email" class="form-input" value="' + email + '" placeholder="you@dmgmedia.co.uk" oninput="updatePreview()">\
+                            </div>\
+                            <div class="form-group">\
+                                <label class="form-label">Phone (Optional)</label>\
+                                <input type="text" id="phone" class="form-input" value="' + phone + '" placeholder="+44 20 xxxx xxxx" oninput="updatePreview()">\
+                            </div>\
+                        </div>\
                     </div>\
-                    <div class="body">\
-                        <div id="signaturePreview" class="signature-preview">\
-                            <div class="sig-name" id="previewName">Your Name</div>\
-                            <div class="sig-role" id="previewRole">Your Role</div>\
-                            <div class="sig-company">DMG Media</div>\
-                            <div class="sig-details">\
-                                <span id="previewEmail">email@dmgmedia.co.uk</span><br>\
-                                <span id="previewPhone"></span>\
-                                Northcliffe House, 2 Derry Street, London W8 5TT\
-                            </div>\
-                            <div class="sig-social">\
-                                <a href="https://www.dailymail.co.uk">dailymail.co.uk</a>\
-                                <a href="https://www.linkedin.com/company/dmg-media">LinkedIn</a>\
+                </div>\
+                \
+                <div class="card">\
+                    <div class="card-header">Signature Preview</div>\
+                    <div class="card-body">\
+                        <div class="signature-container">\
+                            <div id="signaturePreview" class="signature-preview">\
+                                ' + buildSignatureHTML(firstName, lastName, role, email, phone) + '\
                             </div>\
                         </div>\
-                        <div style="margin-top: 16px; display: flex; gap: 10px;">\
-                            <button class="btn btn-primary" onclick="copySignature()">Copy to Clipboard</button>\
-                            <button class="btn btn-secondary" onclick="copyHTML()">Copy HTML</button>\
+                        <div style="margin-top: 16px;">\
+                            <div class="btn-group">\
+                                <button class="btn btn-primary" onclick="copySignature()">\
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>\
+                                    Copy to Clipboard\
+                                </button>\
+                                <button class="btn btn-secondary" onclick="copyHTML()">\
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>\
+                                    Copy HTML\
+                                </button>\
+                            </div>\
                         </div>\
-                        <div id="copyMsg" class="copy-box">✓ Signature copied! Paste into your email client.</div>\
+                        <div id="copyMsg" class="copy-box">\
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">\
+                                <path d="M20 6L9 17l-5-5"/>\
+                            </svg>\
+                            <span id="copyMsgText">Signature copied! Paste into your email client.</span>\
+                        </div>\
                     </div>\
                 </div>\
             ';
-            updatePreview();
+
+            // Focus search input when dropdown opens
+            if (dropdownOpen) {
+                setTimeout(function() {
+                    var searchInput = document.getElementById('staffSearch');
+                    if (searchInput) searchInput.focus();
+                }, 50);
+            }
         }
 
+        function buildSignatureHTML(firstName, lastName, role, email, phone) {
+            var name = ((firstName || 'Your') + ' ' + (lastName || 'Name')).trim();
+            var roleText = role || 'Your Role';
+            var emailText = email || 'email@dmgmedia.co.uk';
+            var phoneHTML = phone ? '<br>' + phone : '';
+
+            return '\
+                <table cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; border-spacing: 0;">\
+                    <tr>\
+                        <td style="vertical-align: top; padding-right: 16px;">\
+                            <img src="https://iabeurope.eu/wp-content/uploads/DMG_Media_logo_NO_IRELAND-01-1024x288-1.png" alt="DMG Media" style="width: 120px; height: auto; display: block;">\
+                        </td>\
+                        <td style="width: 2px; background: #21a0d8;"></td>\
+                        <td style="vertical-align: top; padding-left: 16px;">\
+                            <p style="font-size: 15px; font-weight: bold; color: #1C1C1C; margin: 0 0 2px 0; font-family: Arial, Helvetica, sans-serif;">' + name + '</p>\
+                            <p style="font-size: 13px; color: #666666; margin: 0 0 10px 0; font-family: Arial, Helvetica, sans-serif;">' + roleText + '</p>\
+                            <p style="font-size: 13px; font-weight: bold; color: #E94B4B; margin: 0 0 8px 0; font-family: Arial, Helvetica, sans-serif;">DMG Media</p>\
+                            <p style="font-size: 12px; color: #666666; margin: 0; line-height: 1.6; font-family: Arial, Helvetica, sans-serif;">\
+                                <a href="mailto:' + emailText + '" style="color: #21a0d8; text-decoration: none;">' + emailText + '</a>' + phoneHTML + '\
+                                <br>Northcliffe House, 2 Derry Street, London W8 5TT\
+                                <br><a href="https://www.dailymail.co.uk" style="color: #21a0d8; text-decoration: none;">dailymail.co.uk</a>\
+                            </p>\
+                        </td>\
+                    </tr>\
+                </table>\
+            ';
+        }
+
+        window.toggleDropdown = function() {
+            dropdownOpen = !dropdownOpen;
+            if (!dropdownOpen) searchQuery = '';
+            render();
+        };
+
+        window.filterStaff = function(query) {
+            searchQuery = query;
+            render();
+            // Keep focus on search input
+            setTimeout(function() {
+                var searchInput = document.getElementById('staffSearch');
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.selectionStart = searchInput.selectionEnd = searchInput.value.length;
+                }
+            }, 10);
+        };
+
+        window.selectStaff = function(staffId) {
+            selectedStaff = staffList.find(function(s) { return s.id === staffId; }) || null;
+            dropdownOpen = false;
+            searchQuery = '';
+            render();
+        };
+
         window.updatePreview = function() {
-            var firstName = document.getElementById('firstName').value || 'Your';
-            var lastName = document.getElementById('lastName').value || 'Name';
-            var role = document.getElementById('role').value || 'Your Role';
-            var email = document.getElementById('email').value || 'email@dmgmedia.co.uk';
+            var firstName = document.getElementById('firstName').value;
+            var lastName = document.getElementById('lastName').value;
+            var role = document.getElementById('role').value;
+            var email = document.getElementById('email').value;
             var phone = document.getElementById('phone').value;
-            
-            document.getElementById('previewName').textContent = firstName + ' ' + lastName;
-            document.getElementById('previewRole').textContent = role;
-            document.getElementById('previewEmail').textContent = email;
-            document.getElementById('previewPhone').textContent = phone ? phone + ' | ' : '';
+
+            document.getElementById('signaturePreview').innerHTML = buildSignatureHTML(firstName, lastName, role, email, phone);
         };
 
         window.copySignature = function() {
@@ -160,33 +612,60 @@
             window.getSelection().addRange(range);
             document.execCommand('copy');
             window.getSelection().removeAllRanges();
+
+            document.getElementById('copyMsgText').textContent = 'Signature copied! Paste into your email client.';
             document.getElementById('copyMsg').classList.add('show');
             setTimeout(function() { document.getElementById('copyMsg').classList.remove('show'); }, 3000);
         };
 
         window.copyHTML = function() {
             var sig = document.getElementById('signaturePreview');
-            navigator.clipboard.writeText(sig.outerHTML).then(function() {
-                document.getElementById('copyMsg').textContent = '✓ HTML copied!';
+            navigator.clipboard.writeText(sig.innerHTML).then(function() {
+                document.getElementById('copyMsgText').textContent = 'HTML copied to clipboard!';
                 document.getElementById('copyMsg').classList.add('show');
-                setTimeout(function() { 
-                    document.getElementById('copyMsg').classList.remove('show');
-                    document.getElementById('copyMsg').textContent = '✓ Signature copied! Paste into your email client.';
-                }, 3000);
+                setTimeout(function() { document.getElementById('copyMsg').classList.remove('show'); }, 3000);
             });
         };
 
-        function loadProfile() {
-            if (!staffId) {
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (dropdownOpen && !e.target.closest('.dropdown-wrapper')) {
+                dropdownOpen = false;
+                searchQuery = '';
                 render();
-                return;
             }
-            
-            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory').doc(staffId)
-                .get().then(function(doc) {
-                    if (doc.exists) {
-                        profile = doc.data();
+        });
+
+        // Close dropdown on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && dropdownOpen) {
+                dropdownOpen = false;
+                searchQuery = '';
+                render();
+            }
+        });
+
+        function loadStaff() {
+            db.collection('artifacts').doc(appId).collection('public').doc('data').collection('staff_directory')
+                .get().then(function(snapshot) {
+                    staffList = [];
+                    snapshot.forEach(function(doc) {
+                        staffList.push({ id: doc.id, ...doc.data() });
+                    });
+                    // Sort alphabetically by first name
+                    staffList.sort(function(a, b) {
+                        var nameA = (a.firstName || '').toLowerCase();
+                        var nameB = (b.firstName || '').toLowerCase();
+                        return nameA.localeCompare(nameB);
+                    });
+
+                    // Check if there's an ID in the URL
+                    var params = new URLSearchParams(window.location.search);
+                    var staffId = params.get('id');
+                    if (staffId) {
+                        selectedStaff = staffList.find(function(s) { return s.id === staffId; });
                     }
+
                     render();
                 }).catch(function(error) {
                     console.error('Load error:', error);
@@ -195,7 +674,7 @@
         }
 
         auth.signInAnonymously().then(function() {
-            loadProfile();
+            loadStaff();
         }).catch(function(error) {
             console.error('Auth error:', error);
             render();
