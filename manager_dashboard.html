@@ -1052,6 +1052,54 @@
             return Number(person.weeklyCapacityPTS ?? person.weeklyCapacityPts ?? person.maxHoursPerWeek ?? 40);
         }
 
+        // Render assigned projects for a staff member in their modal
+        function renderStaffProjects(s) {
+            const name = (s.firstName || '').toLowerCase();
+            const assignedProjects = projects.filter(p => {
+                const creative = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase();
+                const production = (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase();
+                const editor = (p.videoEditor?.[0]?.name || p.videoEditor || '').toLowerCase();
+                const editorial = (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase();
+                return name && (creative.includes(name) || production.includes(name) || editor.includes(name) || editorial.includes(name));
+            });
+
+            if (assignedProjects.length === 0) {
+                return `
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects</div>
+                        <div style="padding:16px;background:var(--surface-alt);border-radius:8px;text-align:center;">
+                            <div style="font-size:12px;color:var(--ink-muted);">No projects currently assigned</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const projectRows = assignedProjects.map(p => {
+                const role = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase().includes(name) ? 'Creative Lead' :
+                             (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase().includes(name) ? 'Production Lead' :
+                             (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase().includes(name) ? 'Editorial Lead' : 'Editor';
+                return `
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.title || 'Untitled'}</div>
+                            <div style="font-size:11px;color:var(--ink-sub);">${p.client || 'No client'} · ${role}</div>
+                        </div>
+                        <span style="font-size:10px;padding:4px 8px;background:var(--dmg-blue-soft);color:var(--dmg-blue);border-radius:4px;">${p.dealStage || p.status || 'Active'}</span>
+                        ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:10px;color:var(--ink-muted);" title="Open in Notion">↗</a>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects (${assignedProjects.length})</div>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        ${projectRows}
+                    </div>
+                </div>
+            `;
+        }
+
         function getMemberEffort(person) {
             const name = normalizeName(`${person.firstName || ''} ${person.lastName || ''}`);
             let currentEffort = 0;
@@ -1938,135 +1986,140 @@
         }
 
         function renderProjects() {
-            // Debug: log all projects loaded from API
             console.log('[Projects] Total loaded from API:', projects.length);
-            if (projects.length > 0) {
-                console.log('[Projects] Sample deal stages:', projects.slice(0, 5).map(p => p.dealStage || p.status || 'none'));
-            }
 
-            // Show projects that are active (not cancelled/archived)
-            const activeProjects = projects.filter(p => {
-                const stage = (p.dealStage || p.status || p.projectStatus || '').toLowerCase();
-                const excluded = ['cancelled', 'archived', 'lost'];
-                const included = ['agreed', 'won', 'confirmed', 'active', 'in production', 'in progress', 'filming', 'edit', 'review', 'pre-production', 'briefed'];
-                if (excluded.some(e => stage.includes(e))) return false;
-                if (included.some(i => stage.includes(i))) return true;
-                return !!(p.creativeLead || p.productionLead || p.videoEditor || stage);
-            });
-            console.log('[Projects] After filtering:', activeProjects.length);
-
-            const mergedStaff = getMergedStaff();
-            const productionStaff = mergedStaff.filter(s => ['production', 'creative'].includes((s.team || '').toLowerCase()));
-            const editorsStaff = mergedStaff.filter(s => (s.role || '').toLowerCase().includes('editor') || (s.team || '').toLowerCase() === 'editorial');
-
+            // Color coding for deal stages
             const getStageColor = (stage) => {
                 const s = (stage || '').toLowerCase();
-                if (s.includes('complete') || s.includes('live')) return { bg: 'rgba(67, 176, 73, 0.1)', color: '#43B049' };
-                if (s.includes('edit') || s.includes('review')) return { bg: 'rgba(249, 115, 22, 0.1)', color: '#F97316' };
-                if (s.includes('filming') || s.includes('shoot') || s.includes('production')) return { bg: 'rgba(33, 160, 216, 0.1)', color: '#21A0D8' };
-                if (s.includes('agreed') || s.includes('briefed') || s.includes('pre-prod')) return { bg: 'rgba(139, 92, 246, 0.1)', color: '#8B5CF6' };
+                if (s.includes('complete')) return { bg: 'rgba(67, 176, 73, 0.15)', color: '#22863a' };
+                if (s.includes('agreed')) return { bg: 'rgba(139, 92, 246, 0.15)', color: '#7c3aed' };
+                if (s.includes('progress')) return { bg: 'rgba(33, 160, 216, 0.15)', color: '#0969da' };
+                if (s.includes('pitch') || s.includes('sent')) return { bg: 'rgba(249, 115, 22, 0.15)', color: '#bc4c00' };
+                if (s.includes('brief') || s.includes('received')) return { bg: 'rgba(234, 179, 8, 0.15)', color: '#9a6700' };
+                return { bg: 'rgba(107, 114, 128, 0.15)', color: '#57606a' };
+            };
+
+            const getStatusColor = (status) => {
+                const s = (status || '').toLowerCase();
+                if (s.includes('active') || s.includes('progress')) return { bg: 'rgba(33, 160, 216, 0.15)', color: '#0969da' };
+                if (s.includes('complete')) return { bg: 'rgba(67, 176, 73, 0.15)', color: '#22863a' };
+                if (s.includes('pipeline')) return { bg: 'rgba(107, 114, 128, 0.15)', color: '#57606a' };
                 return { bg: 'rgba(107, 114, 128, 0.1)', color: '#6B7280' };
             };
 
+            // Group projects by Deal Stage for the summary
+            const byDealStage = {};
+            projects.forEach(p => {
+                const stage = p.dealStage || 'No Stage';
+                if (!byDealStage[stage]) byDealStage[stage] = [];
+                byDealStage[stage].push(p);
+            });
+
+            // Calculate totals
+            const totalValue = projects.reduce((sum, p) => sum + (p.dealValue || 0), 0);
+            const agreedProjects = projects.filter(p => (p.dealStage || '').toLowerCase().includes('agreed'));
+            const inProgressProjects = projects.filter(p => (p.projectStatus || '').toLowerCase().includes('progress'));
+
+            const formatMoney = (val) => val >= 1000 ? `£${(val/1000).toFixed(0)}k` : `£${val}`;
+
             return `
-                <div class="card">
+                <div class="card" style="margin-bottom:16px;">
                     <div class="card-header">
-                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Project Assignments</span>
-                        <span class="card-meta">${activeProjects.length} active projects</span>
-                        <button class="btn btn-ghost btn-sm" onclick="loadProjects()" title="Refresh projects">↻ Refresh</button>
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Pipeline Overview</span>
+                        <button class="btn btn-ghost btn-sm" onclick="loadProjects()" title="Refresh">↻ Refresh</button>
                     </div>
                     <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);line-height:1.5;">
-                        <strong>Assign team members to projects:</strong> Select Creative Lead, Production Lead, and Editor for each project.
-                        Click "View Details" for full project info including budget, deliverables, and change requests.
-                        Assignments sync to Notion and affect team member capacity calculations.
+                        <strong>What you're seeing:</strong> All projects from your Notion Master Ledger.
+                        <strong>Deal Stage</strong> = where in the sales funnel (Pitch Sent → Deal Agreed → Complete).
+                        <strong>Project Status</strong> = production state (Pipeline → In Progress → Complete).
                     </div>
-                    ${activeProjects.length === 0 ? `
+                    ${projects.length === 0 ? `
                         <div class="empty">
                             <div class="empty-icon">📋</div>
-                            <div class="empty-title">No Active Projects</div>
-                            <div class="empty-subtitle">${projects.length === 0
-                                ? 'No projects loaded from Notion. Check API connection and console for errors.'
-                                : `${projects.length} projects loaded but none match active criteria. Projects need a Deal Stage like "Deal Agreed", "In Progress", "Filming", etc.`}</div>
+                            <div class="empty-title">No Projects Loaded</div>
+                            <div class="empty-subtitle">Check API connection. Projects should load from your Notion Master Ledger.</div>
                         </div>
                     ` : `
-                        <div class="card-body" style="padding:16px;">
-                            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:16px;">
-                                ${activeProjects.map(p => {
-                                    const currentCreative = p.creativeLead?.[0]?.name || p.creativeLead || '';
-                                    const currentProduction = p.productionLead?.[0]?.name || p.productionLead || '';
-                                    const stageColors = getStageColor(p.dealStage || p.status);
-                                    const dueDate = p.dueDate ? new Date(p.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : null;
-                                    return `
-                                        <div class="project-card" style="
-                                            background: white;
-                                            border: 1px solid var(--border);
-                                            border-radius: 12px;
-                                            padding: 0;
-                                            overflow: hidden;
-                                            transition: all 0.2s var(--ease);
-                                            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-                                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.08)'; this.style.borderColor='var(--dmg-blue)'"
-                                           onmouseout="this.style.transform=''; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'; this.style.borderColor='var(--border)'">
+                        <!-- Summary Stats -->
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);">
+                            <div style="background:white;padding:16px;text-align:center;">
+                                <div style="font-size:24px;font-weight:900;color:var(--ink);">${projects.length}</div>
+                                <div style="font-size:11px;color:var(--ink-sub);">Total Projects</div>
+                            </div>
+                            <div style="background:white;padding:16px;text-align:center;">
+                                <div style="font-size:24px;font-weight:900;color:#7c3aed;">${agreedProjects.length}</div>
+                                <div style="font-size:11px;color:var(--ink-sub);">Deal Agreed</div>
+                            </div>
+                            <div style="background:white;padding:16px;text-align:center;">
+                                <div style="font-size:24px;font-weight:900;color:#0969da;">${inProgressProjects.length}</div>
+                                <div style="font-size:11px;color:var(--ink-sub);">In Progress</div>
+                            </div>
+                            <div style="background:white;padding:16px;text-align:center;">
+                                <div style="font-size:24px;font-weight:900;color:var(--ink);">${formatMoney(totalValue)}</div>
+                                <div style="font-size:11px;color:var(--ink-sub);">Total Pipeline</div>
+                            </div>
+                        </div>
 
-                                            <div style="padding:18px 18px 14px; border-bottom:1px solid var(--border); background:var(--surface-alt);">
-                                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-                                                    <div style="flex:1; min-width:0;">
-                                                        <div style="font-size:10px; font-weight:700; color:var(--ink-sub); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">${p.client || 'Internal Project'}</div>
-                                                        <div style="font-size:15px; font-weight:800; color:var(--ink); line-height:1.3; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${p.title || 'Untitled Project'}</div>
-                                                    </div>
-                                                    <span style="
-                                                        flex-shrink:0;
-                                                        font-size:10px;
-                                                        font-weight:700;
-                                                        padding:5px 10px;
-                                                        border-radius:6px;
-                                                        background:${stageColors.bg};
-                                                        color:${stageColors.color};
-                                                        text-transform:uppercase;
-                                                        letter-spacing:0.02em;
-                                                    ">${p.dealStage || p.status || 'Active'}</span>
-                                                </div>
-                                                ${dueDate ? `<div style="margin-top:10px; font-size:11px; color:var(--ink-sub);"><span style="opacity:0.7;">Due:</span> <strong>${dueDate}</strong></div>` : ''}
-                                            </div>
-
-                                            <div style="padding:14px 18px;">
-                                                <div style="display:flex; flex-direction:column; gap:10px;">
-                                                    <div style="display:flex; align-items:center; gap:10px;">
-                                                        <span style="font-size:11px; color:var(--ink-sub); width:90px;">Creative</span>
-                                                        <select class="form-select project-assign" data-project="${p.id}" data-role="creativeLead" style="flex:1; font-size:12px; padding:6px 10px;">
-                                                            <option value="">Unassigned</option>
-                                                            ${productionStaff.map(s => `<option value="${s.id}" ${currentCreative.includes(s.firstName) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}
-                                                        </select>
-                                                    </div>
-                                                    <div style="display:flex; align-items:center; gap:10px;">
-                                                        <span style="font-size:11px; color:var(--ink-sub); width:90px;">Production</span>
-                                                        <select class="form-select project-assign" data-project="${p.id}" data-role="productionLead" style="flex:1; font-size:12px; padding:6px 10px;">
-                                                            <option value="">Unassigned</option>
-                                                            ${productionStaff.map(s => `<option value="${s.id}" ${currentProduction.includes(s.firstName) ? 'selected' : ''}>${s.firstName} ${s.lastName || ''}</option>`).join('')}
-                                                        </select>
-                                                    </div>
-                                                    <div style="display:flex; align-items:center; gap:10px;">
-                                                        <span style="font-size:11px; color:var(--ink-sub); width:90px;">Editor</span>
-                                                        <select class="form-select project-assign" data-project="${p.id}" data-role="editor" style="flex:1; font-size:12px; padding:6px 10px;">
-                                                            <option value="">Unassigned</option>
-                                                            ${editorsStaff.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName || ''}</option>`).join('')}
-                                                        </select>
-                                                    </div>
-                                                </div>
-
-                                                <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                                                    <div style="display:flex; gap:12px; align-items:center;">
-                                                        ${p.url ? `<a href="${p.url}" target="_blank" style="font-size:10px; color:var(--ink-muted); text-decoration:none; opacity:0.7;" title="Open in Notion">↗ Notion</a>` : ''}
-                                                        <button class="btn btn-ghost btn-sm" onclick="openProjectDetailModal('${p.id}')" style="font-size:10px; padding:4px 10px; color:var(--dmg-blue);">View Details</button>
-                                                    </div>
-                                                    <button class="btn btn-primary btn-sm" onclick="saveProjectAssignment('${p.id}')" style="font-size:11px; padding:6px 14px;">Save</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `;
+                        <!-- Projects by Deal Stage -->
+                        <div style="padding:16px;">
+                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;">By Deal Stage</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                ${Object.entries(byDealStage).map(([stage, projs]) => {
+                                    const colors = getStageColor(stage);
+                                    return `<span style="padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;background:${colors.bg};color:${colors.color};">${stage}: ${projs.length}</span>`;
                                 }).join('')}
                             </div>
                         </div>
+                    `}
+                </div>
+
+                <!-- Projects Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">All Projects</span>
+                        <span class="card-meta">${projects.length} projects</span>
+                    </div>
+                    ${projects.length === 0 ? '' : `
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>Client</th>
+                                        <th>Deal Stage</th>
+                                        <th>Project Status</th>
+                                        <th>Value</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${projects.slice(0, 50).map(p => {
+                                        const stageColors = getStageColor(p.dealStage);
+                                        const statusColors = getStatusColor(p.projectStatus || p.status1);
+                                        return `
+                                            <tr style="cursor:pointer;" onclick="window.open('${p.url}', '_blank')">
+                                                <td>
+                                                    <div style="font-weight:600;color:var(--ink);">${p.title || 'Untitled'}</div>
+                                                    <div style="font-size:11px;color:var(--ink-sub);">${p.vertical || p.contentType || ''}</div>
+                                                </td>
+                                                <td style="font-size:13px;">${p.client || '—'}</td>
+                                                <td>
+                                                    ${p.dealStage ? `<span style="padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${stageColors.bg};color:${stageColors.color};">${p.dealStage}</span>` : '—'}
+                                                </td>
+                                                <td>
+                                                    ${(p.projectStatus || p.status1) ? `<span style="padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${statusColors.bg};color:${statusColors.color};">${p.projectStatus || p.status1}</span>` : '—'}
+                                                </td>
+                                                <td style="font-size:13px;font-weight:600;">${p.dealValue ? formatMoney(p.dealValue) : '—'}</td>
+                                                <td onclick="event.stopPropagation()">
+                                                    ${p.url ? `<a href="${p.url}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:10px;padding:4px 8px;">↗</a>` : ''}
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        ${projects.length > 50 ? `<div style="padding:12px 20px;text-align:center;font-size:12px;color:var(--ink-sub);">Showing first 50 of ${projects.length} projects</div>` : ''}
                     `}
                 </div>
             `;
@@ -2325,45 +2378,7 @@
                     </div>
 
                     <!-- Section: Assigned Projects -->
-                    ${(() => {
-                        const name = (s.firstName || '').toLowerCase();
-                        const assignedProjects = projects.filter(p => {
-                            const creative = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase();
-                            const production = (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase();
-                            const editor = (p.videoEditor?.[0]?.name || p.videoEditor || '').toLowerCase();
-                            const editorial = (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase();
-                            return name && (creative.includes(name) || production.includes(name) || editor.includes(name) || editorial.includes(name));
-                        });
-                        return assignedProjects.length > 0 ? \`
-                            <div style="margin-bottom:20px;">
-                                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects (\${assignedProjects.length})</div>
-                                <div style="display:flex;flex-direction:column;gap:8px;">
-                                    \${assignedProjects.map(p => {
-                                        const role = (p.creativeLead?.[0]?.name || p.creativeLead || '').toLowerCase().includes(name) ? 'Creative Lead' :
-                                                     (p.productionLead?.[0]?.name || p.productionLead || '').toLowerCase().includes(name) ? 'Production Lead' :
-                                                     (p.editorialLead?.[0]?.name || p.editorialLead || '').toLowerCase().includes(name) ? 'Editorial Lead' : 'Editor';
-                                        return \`
-                                            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;">
-                                                <div style="flex:1;min-width:0;">
-                                                    <div style="font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\${p.title || 'Untitled'}</div>
-                                                    <div style="font-size:11px;color:var(--ink-sub);">\${p.client || 'No client'} · \${role}</div>
-                                                </div>
-                                                <span style="font-size:10px;padding:4px 8px;background:var(--dmg-blue-soft);color:var(--dmg-blue);border-radius:4px;">\${p.dealStage || p.status || 'Active'}</span>
-                                                \${p.url ? \`<a href="\${p.url}" target="_blank" style="font-size:10px;color:var(--ink-muted);" title="Open in Notion">↗</a>\` : ''}
-                                            </div>
-                                        \`;
-                                    }).join('')}
-                                </div>
-                            </div>
-                        \` : \`
-                            <div style="margin-bottom:20px;">
-                                <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-sub);margin-bottom:12px;letter-spacing:0.05em;">Assigned Projects</div>
-                                <div style="padding:16px;background:var(--surface-alt);border-radius:8px;text-align:center;">
-                                    <div style="font-size:12px;color:var(--ink-muted);">No projects currently assigned</div>
-                                </div>
-                            </div>
-                        \`;
-                    })()}
+                    ${renderStaffProjects(s)}
 
                     ${s.notionUrl ? `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);"><a href="${s.notionUrl}" target="_blank" style="font-size:12px;color:var(--dmg-blue);">View full profile in Notion ↗</a></div>` : ''}
                 </div>
