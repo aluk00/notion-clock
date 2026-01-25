@@ -2568,6 +2568,203 @@ app.get('/', (req, res) => {
     });
 });
 
+// ============================================
+// NOTION OAUTH AUTHENTICATION
+// ============================================
+const NOTION_OAUTH_CLIENT_ID = process.env.NOTION_OAUTH_CLIENT_ID;
+const NOTION_OAUTH_CLIENT_SECRET = process.env.NOTION_OAUTH_CLIENT_SECRET;
+const NOTION_OAUTH_REDIRECT_URI = 'https://createnotionproject-223535956454.us-central1.run.app/auth/notion/callback';
+
+// Start OAuth flow - redirects user to Notion authorization
+app.get('/auth/notion', (req, res) => {
+    const { redirect } = req.query;
+
+    if (!NOTION_OAUTH_CLIENT_ID) {
+        return res.status(500).json({ error: 'OAuth not configured' });
+    }
+
+    // Store the redirect URL in state parameter (base64 encoded)
+    const state = redirect ? Buffer.from(redirect).toString('base64') : '';
+
+    const authUrl = new URL('https://api.notion.com/v1/oauth/authorize');
+    authUrl.searchParams.set('client_id', NOTION_OAUTH_CLIENT_ID);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('owner', 'user');
+    authUrl.searchParams.set('redirect_uri', NOTION_OAUTH_REDIRECT_URI);
+    if (state) authUrl.searchParams.set('state', state);
+
+    res.redirect(authUrl.toString());
+});
+
+// OAuth callback - exchange code for token
+app.get('/auth/notion/callback', async (req, res) => {
+    const { code, state, error } = req.query;
+
+    if (error) {
+        console.error('OAuth error:', error);
+        return res.status(400).send(`
+            <html><body style="font-family:sans-serif;text-align:center;padding:50px;">
+                <h2>Authorization Failed</h2>
+                <p>${error}</p>
+                <p><a href="javascript:window.close()">Close this window</a></p>
+            </body></html>
+        `);
+    }
+
+    if (!code) {
+        return res.status(400).json({ error: 'No authorization code provided' });
+    }
+
+    try {
+        // Exchange code for access token
+        const tokenResponse = await fetch('https://api.notion.com/v1/oauth/token', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Basic ' + Buffer.from(`${NOTION_OAUTH_CLIENT_ID}:${NOTION_OAUTH_CLIENT_SECRET}`).toString('base64'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                grant_type: 'authorization_code',
+                code: code,
+                redirect_uri: NOTION_OAUTH_REDIRECT_URI
+            })
+        });
+
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenResponse.ok) {
+            console.error('Token exchange error:', tokenData);
+            throw new Error(tokenData.error || 'Token exchange failed');
+        }
+
+        // Get user info
+        const userInfo = {
+            access_token: tokenData.access_token,
+            workspace_id: tokenData.workspace_id,
+            workspace_name: tokenData.workspace_name,
+            workspace_icon: tokenData.workspace_icon,
+            bot_id: tokenData.bot_id,
+            owner: tokenData.owner
+        };
+
+        // If owner is a user, extract user details
+        if (tokenData.owner?.type === 'user') {
+            userInfo.user = {
+                id: tokenData.owner.user.id,
+                name: tokenData.owner.user.name,
+                email: tokenData.owner.user.person?.email || null,
+                avatar_url: tokenData.owner.user.avatar_url
+            };
+        }
+
+        // Decode redirect URL from state
+        let redirectUrl = 'https://aluk00.github.io/notion-clock/profile-card.html';
+        if (state) {
+            try {
+                redirectUrl = Buffer.from(state, 'base64').toString('utf8');
+            } catch (e) {}
+        }
+
+        // Redirect back to widget with token in hash (more secure than query params)
+        const finalUrl = new URL(redirectUrl);
+        finalUrl.hash = 'notion_auth=' + Buffer.from(JSON.stringify(userInfo)).toString('base64');
+
+        res.redirect(finalUrl.toString());
+
+    } catch (error) {
+        console.error('OAuth callback error:', error);
+        res.status(500).send(`
+            <html><body style="font-family:sans-serif;text-align:center;padding:50px;">
+                <h2>Authentication Error</h2>
+                <p>${error.message}</p>
+                <p><a href="javascript:window.close()">Close this window</a></p>
+            </body></html>
+        `);
+    }
+});
+
+// Get user info from access token
+app.post('/auth/notion/user', async (req, res) => {
+    const { access_token } = req.body;
+
+    if (!access_token) {
+        return res.status(400).json({ error: 'No access token provided' });
+    }
+
+    try {
+        // Use the token to get current user
+        const userClient = new Client({ auth: access_token });
+        const me = await userClient.users.me({});
+
+        res.json({
+            success: true,
+            user: {
+                id: me.id,
+                type: me.type,
+                name: me.name,
+                email: me.person?.email || null,
+                avatar_url: me.avatar_url
+            }
+        });
+    } catch (error) {
+        console.error('User info error:', error);
+        res.status(401).json({ error: 'Invalid or expired token' });
+    }
+});
+
+// Match Notion user to Staff Directory
+app.post('/auth/notion/match-staff', async (req, res) => {
+    const { email, notion_user_id } = req.body;
+
+    if (!email && !notion_user_id) {
+        return res.status(400).json({ error: 'Email or Notion user ID required' });
+    }
+
+    if (!STAFF_DIR_DB) {
+        return res.status(500).json({ error: 'Staff Directory not configured' });
+    }
+
+    try {
+        // Build filter - try email first, then notion user ID
+        let filter;
+        if (email) {
+            filter = {
+                property: 'Email',
+                email: { equals: email.toLowerCase() }
+            };
+        } else {
+            // Search by Notion User (person property contains the user)
+            filter = {
+                property: 'NOTION USER',
+                people: { contains: notion_user_id }
+            };
+        }
+
+        const response = await notion.databases.query({
+            database_id: STAFF_DIR_DB,
+            filter: filter,
+            page_size: 1
+        });
+
+        if (response.results.length === 0) {
+            return res.json({ success: false, found: false, message: 'No matching staff member found' });
+        }
+
+        const page = response.results[0];
+        const member = parseStaffMember(page);
+
+        res.json({
+            success: true,
+            found: true,
+            staff: member
+        });
+
+    } catch (error) {
+        console.error('Staff match error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
