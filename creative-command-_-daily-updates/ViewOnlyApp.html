@@ -485,6 +485,7 @@
     // STATE
     // ═══════════════════════════════════════════════════════════════════════════
     let rundownData = null;
+    let currentDate = new Date(); // Track which date we're viewing
 
     // ═══════════════════════════════════════════════════════════════════════════
     // HELPERS
@@ -562,11 +563,38 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // DATE NAVIGATION
+    // ═══════════════════════════════════════════════════════════════════════════
+    function changeDate(days) {
+        currentDate.setDate(currentDate.getDate() + days);
+        loadData();
+    }
+
+    function goToToday() {
+        currentDate = new Date();
+        loadData();
+    }
+
+    function getDateKey(date) {
+        return date.toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+
+    function isToday(date) {
+        const today = new Date();
+        return date.toDateString() === today.toDateString();
+    }
+
+    // Make functions available globally for onclick handlers
+    window.changeDate = changeDate;
+    window.goToToday = goToToday;
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // DATA LOADING
     // ═══════════════════════════════════════════════════════════════════════════
     async function loadData() {
         try {
-            const response = await fetch(`${API_URL}/daily-rundown`);
+            const dateKey = getDateKey(currentDate);
+            const response = await fetch(`${API_URL}/daily-rundown?date=${dateKey}`);
 
             if (!response.ok) {
                 throw new Error(`API error: ${response.status}`);
@@ -640,13 +668,25 @@
         const green = byStatusTag?.Green || 0;
         const yellow = byStatusTag?.Yellow || 0;
         const red = byStatusTag?.Red || 0;
+        const viewingToday = isToday(currentDate);
 
         return `
-            <div class="stats-bar" style="justify-content: space-between; align-items: center;">
-                <div style="display: flex; gap: 16px;">
+            <div class="stats-bar" style="justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <!-- Date Navigation -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button onclick="changeDate(-1)" style="padding: 8px 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ink-sub);" title="Previous day">← Prev</button>
+                    <div style="text-align: center; min-width: 160px;">
+                        <div style="font-size: 14px; font-weight: 800; color: var(--ink);">${formatDate(currentDate)}</div>
+                        ${!viewingToday ? `<button onclick="goToToday()" style="font-size: 10px; color: var(--hero-blue); background: none; border: none; cursor: pointer; text-decoration: underline; margin-top: 2px;">Back to Today</button>` : '<div style="font-size: 10px; color: var(--production-green); font-weight: 600;">Today</div>'}
+                    </div>
+                    <button onclick="changeDate(1)" style="padding: 8px 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ink-sub);" title="Next day">Next →</button>
+                </div>
+
+                <!-- Stats -->
+                <div style="display: flex; gap: 12px;">
                     <div class="stat-item">
                         <div class="stat-num" style="color: var(--ink);">${total}</div>
-                        <div class="stat-label">Total Items</div>
+                        <div class="stat-label">Total</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-num" style="color: var(--green);">${green}</div>
@@ -661,8 +701,9 @@
                         <div class="stat-label">Blocked</div>
                     </div>
                 </div>
+
+                <!-- Actions -->
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <span class="meta-badge">${formatDate(new Date())}</span>
                     ${lastFetched ? `<span class="meta-badge">Updated ${formatTime(lastFetched)}</span>` : ''}
                     <button class="slack-btn" id="openSlack">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -745,13 +786,23 @@
     }
 
     function renderEmpty() {
+        const viewingToday = isToday(currentDate);
         document.getElementById('root').innerHTML = `
             <div class="widget-main">
+                <!-- Date Navigation even when empty -->
+                <div class="stats-bar" style="justify-content: center; align-items: center; gap: 12px;">
+                    <button onclick="changeDate(-1)" style="padding: 8px 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ink-sub);">← Prev</button>
+                    <div style="text-align: center; min-width: 160px;">
+                        <div style="font-size: 14px; font-weight: 800; color: var(--ink);">${formatDate(currentDate)}</div>
+                        ${!viewingToday ? `<button onclick="goToToday()" style="font-size: 10px; color: var(--hero-blue); background: none; border: none; cursor: pointer; text-decoration: underline; margin-top: 2px;">Back to Today</button>` : '<div style="font-size: 10px; color: var(--production-green); font-weight: 600;">Today</div>'}
+                    </div>
+                    <button onclick="changeDate(1)" style="padding: 8px 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--ink-sub);">Next →</button>
+                </div>
                 <div class="empty-state">
                     <div style="font-size: 48px; opacity: 0.3;">📋</div>
-                    <span class="empty-text">No items for today</span>
+                    <span class="empty-text">No items for ${viewingToday ? 'today' : formatDate(currentDate)}</span>
                     <p style="font-size: 12px; color: var(--ink-sub); max-width: 300px;">
-                        Add items to Commercial Snapshot in Notion with today's Snapshot Date to see them here.
+                        ${viewingToday ? 'Add items to the Daily Rundown in Notion with today\'s date to see them here.' : 'Try navigating to a different day, or go back to today.'}
                     </p>
                 </div>
             </div>
