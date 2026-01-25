@@ -1286,7 +1286,15 @@
         }
 
         function renderProjects() {
-            const activeProjects = projects.filter(p => p.dealStage && ['Deal Agreed', 'Campaign Complete', 'Won', 'Agreed'].some(k => (p.dealStage || '').toLowerCase().includes(k.toLowerCase())));
+            // Show projects that are active (not cancelled/archived)
+            const activeProjects = projects.filter(p => {
+                const stage = (p.dealStage || p.status || p.projectStatus || '').toLowerCase();
+                const excluded = ['cancelled', 'archived', 'lost'];
+                const included = ['agreed', 'won', 'confirmed', 'active', 'in production', 'in progress', 'filming', 'edit', 'review', 'pre-production', 'briefed'];
+                if (excluded.some(e => stage.includes(e))) return false;
+                if (included.some(i => stage.includes(i))) return true;
+                return !!(p.creativeLead || p.productionLead || p.videoEditor || stage);
+            });
             const productionStaff = staff.filter(s => ['production', 'creative'].includes((s.team || '').toLowerCase()));
             const editorsStaff = staff.filter(s => (s.role || '').toLowerCase().includes('editor') || (s.team || '').toLowerCase() === 'editorial');
 
