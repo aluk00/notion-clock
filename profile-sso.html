@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In | DMG Command Centre</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21A0D8;
+            --dmg-blue-soft: rgba(33, 160, 216, 0.1);
+            --dmg-blue-glow: rgba(33, 160, 216, 0.15);
+            --ms-blue: #2F2F2F;
+            --success: #43B049;
+            --error: #EF4444;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --border: #E5E7EB;
+            --surface: #FFFFFF;
+            --bg: #F8FAFC;
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(145deg, var(--bg) 0%, #E2E8F0 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.08);
+            text-align: center;
+            animation: slideUp 0.5s var(--ease);
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dots {
+            display: inline-grid;
+            grid-template-columns: repeat(2, 8px);
+            gap: 4px;
+            margin-bottom: 20px;
+        }
+        .dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+        }
+        .dots span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
+        .dots span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        .dots span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        .title { font-size: 24px; font-weight: 800; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.02em; }
+        .subtitle { font-size: 14px; color: var(--ink-sub); margin-bottom: 32px; line-height: 1.5; }
+
+        .ms-btn {
+            width: 100%;
+            padding: 16px 24px;
+            background: var(--ms-blue);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: all 0.25s var(--ease);
+            font-family: inherit;
+        }
+        .ms-btn:hover { background: #1a1a1a; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+        .ms-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .ms-btn svg { width: 20px; height: 20px; }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 28px 0;
+            color: var(--ink-sub);
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .guest-btn {
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            color: var(--ink-sub);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+            font-family: inherit;
+        }
+        .guest-btn:hover { border-color: var(--dmg-blue); color: var(--dmg-blue); }
+
+        .message {
+            padding: 14px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s var(--ease);
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .message.error { background: rgba(239, 68, 68, 0.1); color: #DC2626; }
+        .message.success { background: rgba(67, 176, 73, 0.1); color: var(--success); }
+        .message.info { background: var(--dmg-blue-soft); color: var(--dmg-blue); }
+
+        /* Profile View */
+        .profile-view { display: none; }
+        .profile-view.active { display: block; }
+        .login-view.hidden { display: none; }
+
+        .avatar {
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 24px var(--dmg-blue-glow);
+        }
+        .profile-name { font-size: 22px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+        .profile-email { font-size: 14px; color: var(--ink-sub); margin-bottom: 8px; }
+        .profile-meta { font-size: 13px; color: var(--dmg-blue); font-weight: 600; margin-bottom: 24px; }
+        .profile-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(67, 176, 73, 0.1);
+            color: var(--success);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+        .profile-badge svg { width: 14px; height: 14px; }
+
+        .signout-btn {
+            padding: 12px 24px;
+            background: transparent;
+            color: var(--ink-sub);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+            font-family: inherit;
+        }
+        .signout-btn:hover { border-color: var(--error); color: var(--error); }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .setup-form { margin-top: 24px; text-align: left; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-sub); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .form-select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--surface);
+            cursor: pointer;
+            transition: border-color 0.2s var(--ease);
+        }
+        .form-select:focus { outline: none; border-color: var(--dmg-blue); }
+        .save-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--dmg-blue);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s var(--ease);
+            font-family: inherit;
+            margin-top: 8px;
+        }
+        .save-btn:hover { background: #1a8bc0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="dots"><span></span><span></span><span></span><span></span></div>
+
+        <div id="messageArea"></div>
+
+        <!-- Login View -->
+        <div id="loginView" class="login-view">
+            <h1 class="title">DMG Command Centre</h1>
+            <p class="subtitle">Sign in with your work email to get started</p>
+
+            <button class="ms-btn" id="msSignInBtn">
+                <svg viewBox="0 0 21 21" fill="none">
+                    <rect width="10" height="10" fill="#F25022"/>
+                    <rect x="11" width="10" height="10" fill="#7FBA00"/>
+                    <rect y="11" width="10" height="10" fill="#00A4EF"/>
+                    <rect x="11" y="11" width="10" height="10" fill="#FFB900"/>
+                </svg>
+                Sign in with Microsoft
+            </button>
+
+            <div class="divider">or</div>
+
+            <button class="guest-btn" id="guestBtn">Continue as Guest</button>
+        </div>
+
+        <!-- Profile View -->
+        <div id="profileView" class="profile-view">
+            <div class="avatar" id="avatar">?</div>
+            <div class="profile-name" id="profileName">Loading...</div>
+            <div class="profile-email" id="profileEmail"></div>
+            <div class="profile-meta" id="profileMeta"></div>
+
+            <div class="profile-badge" id="notionBadge" style="display: none;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Connected to Notion
+            </div>
+
+            <!-- First-time setup form -->
+            <div class="setup-form" id="setupForm" style="display: none;">
+                <p style="font-size: 13px; color: var(--ink-sub); margin-bottom: 20px; text-align: center;">Tell us about yourself so we can set up your workspace</p>
+                <div class="form-group">
+                    <label class="form-label">What team are you on?</label>
+                    <select class="form-select" id="teamSelect">
+                        <option value="">Choose your team...</option>
+                        <option value="Editorial">Editorial</option>
+                        <option value="Creative">Creative</option>
+                        <option value="Production">Production</option>
+                        <option value="Social">Social</option>
+                        <option value="Design">Design</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Operations">Operations</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">What do you do?</label>
+                    <select class="form-select" id="roleSelect">
+                        <option value="">Choose your role...</option>
+                        <option value="Creator">Creator</option>
+                        <option value="Editor">Editor</option>
+                        <option value="Designer">Designer</option>
+                        <option value="Producer">Producer</option>
+                        <option value="Channel Lead">Channel Lead</option>
+                        <option value="Account Manager">Account Manager</option>
+                        <option value="Strategist">Strategist</option>
+                        <option value="Manager">Manager</option>
+                    </select>
+                </div>
+                <button class="save-btn" id="saveProfileBtn">Complete Setup</button>
+            </div>
+
+            <button class="signout-btn" id="signOutBtn">Sign Out</button>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        // Make.com webhook URL - UPDATE THIS after creating your scenario
+        const MAKE_WEBHOOK_URL = 'YOUR_MAKE_WEBHOOK_URL_HERE';
+
+        // API URL for direct Notion sync (if Make.com not used)
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const appId = "dmg-command-centre-native";
+
+        // ============================================
+        // HELPERS
+        // ============================================
+        function showMessage(text, type = 'info') {
+            const area = document.getElementById('messageArea');
+            area.innerHTML = `<div class="message ${type}">${text}</div>`;
+            if (type !== 'error') setTimeout(() => area.innerHTML = '', 5000);
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        function showView(view) {
+            document.getElementById('loginView').classList.toggle('hidden', view !== 'login');
+            document.getElementById('profileView').classList.toggle('active', view === 'profile');
+        }
+
+        // ============================================
+        // NOTION SYNC (via API or Make.com)
+        // ============================================
+        async function syncToNotion(userData) {
+            // Try Make.com webhook first
+            if (MAKE_WEBHOOK_URL && !MAKE_WEBHOOK_URL.includes('YOUR_MAKE')) {
+                try {
+                    const res = await fetch(MAKE_WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(userData)
+                    });
+                    if (res.ok) {
+                        const result = await res.json();
+                        return result;
+                    }
+                } catch (e) {
+                    console.warn('Make.com webhook failed, trying direct API');
+                }
+            }
+
+            // Fallback: direct API call
+            try {
+                // Check if user exists by email
+                const searchRes = await fetch(`${API_URL}/staff-directory?email=${encodeURIComponent(userData.email)}`);
+                if (searchRes.ok) {
+                    const searchData = await searchRes.json();
+                    if (searchData.members && searchData.members.length > 0) {
+                        // Update existing
+                        const existingId = searchData.members[0].id;
+                        await fetch(`${API_URL}/staff-directory/${existingId}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(userData)
+                        });
+                        return { success: true, notionId: existingId, action: 'updated' };
+                    }
+                }
+
+                // Create new
+                const createRes = await fetch(`${API_URL}/staff-directory`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+                if (createRes.ok) {
+                    const createData = await createRes.json();
+                    return { success: true, notionId: createData.id, action: 'created' };
+                }
+            } catch (e) {
+                console.warn('Direct API sync failed:', e);
+            }
+
+            return { success: false };
+        }
+
+        // ============================================
+        // AUTH STATE HANDLER
+        // ============================================
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                showView('login');
+                return;
+            }
+
+            showView('profile');
+
+            // Update UI with user info
+            document.getElementById('avatar').textContent = getInitials(user.displayName || user.email);
+            document.getElementById('profileName').textContent = user.displayName || 'User';
+            document.getElementById('profileEmail').textContent = user.email || '';
+
+            // Check for existing profile
+            try {
+                const profileDoc = await db.doc(`artifacts/${appId}/public/data/user_profiles/${user.uid}`).get();
+
+                if (profileDoc.exists) {
+                    const data = profileDoc.data();
+                    const metaParts = [];
+                    if (data.role) metaParts.push(data.role);
+                    if (data.team) metaParts.push(data.team);
+                    document.getElementById('profileMeta').textContent = metaParts.join(' • ');
+
+                    if (data.notionId) {
+                        document.getElementById('notionBadge').style.display = 'inline-flex';
+                    }
+                    document.getElementById('setupForm').style.display = 'none';
+                } else {
+                    // First time - show setup form
+                    document.getElementById('profileMeta').textContent = 'Complete your profile setup';
+                    document.getElementById('setupForm').style.display = 'block';
+                }
+            } catch (e) {
+                console.error('Profile fetch error:', e);
+            }
+        });
+
+        // ============================================
+        // MICROSOFT SIGN IN
+        // ============================================
+        document.getElementById('msSignInBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('msSignInBtn');
+            const originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Signing in...';
+
+            try {
+                const provider = new firebase.auth.OAuthProvider('microsoft.com');
+                provider.setCustomParameters({
+                    tenant: 'common', // or your specific tenant ID
+                    prompt: 'select_account'
+                });
+
+                const result = await auth.signInWithPopup(provider);
+                const user = result.user;
+
+                showMessage('Signed in successfully!', 'success');
+
+                // Create/update profile
+                const nameParts = (user.displayName || '').split(' ');
+                const profileData = {
+                    fullName: user.displayName || '',
+                    firstName: nameParts[0] || '',
+                    lastName: nameParts.slice(1).join(' ') || '',
+                    email: user.email || '',
+                    authProvider: 'microsoft',
+                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                // Check if profile exists
+                const existingDoc = await db.doc(`artifacts/${appId}/public/data/user_profiles/${user.uid}`).get();
+                if (existingDoc.exists) {
+                    // Update last login
+                    await db.doc(`artifacts/${appId}/public/data/user_profiles/${user.uid}`).update({
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else {
+                    // Create new profile
+                    await db.doc(`artifacts/${appId}/public/data/user_profiles/${user.uid}`).set({
+                        ...profileData,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+
+            } catch (e) {
+                console.error('Microsoft sign in error:', e);
+                let msg = 'Sign in failed. Please try again.';
+                if (e.code === 'auth/popup-closed-by-user') msg = 'Sign in cancelled';
+                if (e.code === 'auth/popup-blocked') msg = 'Popup blocked. Please allow popups for this site.';
+                if (e.code === 'auth/account-exists-with-different-credential') msg = 'An account already exists with this email using a different sign-in method.';
+                showMessage(msg, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            }
+        });
+
+        // ============================================
+        // SAVE PROFILE & SYNC TO NOTION
+        // ============================================
+        document.getElementById('saveProfileBtn').addEventListener('click', async () => {
+            const team = document.getElementById('teamSelect').value;
+            const role = document.getElementById('roleSelect').value;
+
+            if (!team || !role) {
+                showMessage('Please select your team and role', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('saveProfileBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            const user = auth.currentUser;
+            const nameParts = (user.displayName || '').split(' ');
+
+            try {
+                // Prepare data for Notion
+                const notionData = {
+                    firstName: nameParts[0] || '',
+                    lastName: nameParts.slice(1).join(' ') || '',
+                    email: user.email,
+                    team: team,
+                    role: role,
+                    active: true
+                };
+
+                // Sync to Notion
+                showMessage('Syncing to Notion...', 'info');
+                const notionResult = await syncToNotion(notionData);
+
+                // Update Firebase profile
+                await db.doc(`artifacts/${appId}/public/data/user_profiles/${user.uid}`).update({
+                    team: team,
+                    role: role,
+                    notionId: notionResult.notionId || null,
+                    notionSynced: notionResult.success,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Update UI
+                document.getElementById('profileMeta').textContent = `${role} • ${team}`;
+                document.getElementById('setupForm').style.display = 'none';
+
+                if (notionResult.success) {
+                    document.getElementById('notionBadge').style.display = 'inline-flex';
+                    showMessage(`Profile ${notionResult.action || 'synced'} to Notion!`, 'success');
+                } else {
+                    showMessage('Profile saved (Notion sync pending)', 'info');
+                }
+
+            } catch (e) {
+                console.error('Save error:', e);
+                showMessage('Error saving profile: ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Complete Setup';
+            }
+        });
+
+        // ============================================
+        // GUEST & SIGN OUT
+        // ============================================
+        document.getElementById('guestBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('guestBtn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            try {
+                await auth.signInAnonymously();
+            } catch (e) {
+                showMessage('Guest login failed', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Continue as Guest';
+            }
+        });
+
+        document.getElementById('signOutBtn').addEventListener('click', () => auth.signOut());
+    </script>
+</body>
+</html>

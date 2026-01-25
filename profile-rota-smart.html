@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Rota | DMG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #0F172A;
+            --ink-sub: #64748B;
+            --ink-muted: #94A3B8;
+            --border: #E2E8F0;
+            --surface: #FFFFFF;
+            --surface-alt: #F8FAFC;
+            --dmg-blue: #21A0D8;
+            --dmg-blue-soft: rgba(33, 160, 216, 0.1);
+            --success: #43B049;
+            --success-soft: rgba(67, 176, 73, 0.1);
+            --warning: #F59E0B;
+            --warning-soft: rgba(245, 158, 11, 0.1);
+            --danger: #E94B4B;
+            --danger-soft: rgba(233, 75, 75, 0.1);
+            --st-office: #43B049;
+            --st-wfh: #F59E0B;
+            --st-shoot: #21A0D8;
+            --st-leave: #E94B4B;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: transparent; padding: 12px; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+        .widget {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            max-width: 380px;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .dot-grid { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dmg-blue); }
+        .dot:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
+        .dot:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dot:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        .dot:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        .title { font-size: 11px; font-weight: 800; flex: 1; text-transform: uppercase; letter-spacing: 0.08em; }
+        .week-nav { display: flex; align-items: center; gap: 4px; background: var(--surface-alt); padding: 3px; border-radius: 8px; border: 1px solid var(--border); }
+        .week-btn { width: 26px; height: 26px; border: none; background: var(--surface); border-radius: 6px; font-size: 14px; cursor: pointer; color: var(--ink-sub); transition: all 0.2s var(--ease); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+        .week-btn:hover { background: var(--dmg-blue); color: white; }
+        .week-label { font-size: 10px; font-weight: 700; color: var(--ink-sub); padding: 0 8px; }
+        .week-current { background: var(--dmg-blue-soft); color: var(--dmg-blue); padding: 2px 6px; border-radius: 4px; font-size: 8px; font-weight: 800; margin-left: 4px; }
+
+        .body { padding: 16px; }
+
+        /* Profile Card */
+        .profile-card {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px; background: var(--surface-alt); border-radius: var(--radius-sm);
+            margin-bottom: 16px; border: 1px solid var(--border);
+        }
+        .profile-avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: var(--dmg-blue); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px; font-weight: 800;
+        }
+        .profile-info { flex: 1; }
+        .profile-name { font-size: 14px; font-weight: 700; }
+        .profile-role { font-size: 11px; color: var(--ink-sub); margin-top: 2px; }
+        .profile-manager { font-size: 10px; color: var(--ink-muted); margin-top: 4px; }
+        .profile-manager strong { color: var(--ink-sub); }
+        .profile-change { font-size: 10px; color: var(--dmg-blue); cursor: pointer; font-weight: 600; }
+        .profile-change:hover { text-decoration: underline; }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 4px 10px; border-radius: 99px; font-size: 10px; font-weight: 700;
+        }
+        .status-badge.pending { background: var(--warning-soft); color: #92400E; }
+        .status-badge.approved { background: var(--success-soft); color: #166534; }
+        .status-badge.new { background: var(--surface-alt); color: var(--ink-sub); }
+
+        /* Day Row */
+        .day-row {
+            display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+            background: var(--surface-alt); border-radius: var(--radius-sm); margin-bottom: 6px;
+            transition: all 0.15s var(--ease); border: 1px solid transparent;
+        }
+        .day-row:hover { background: var(--surface); border-color: var(--border); }
+        .day-row.today { background: var(--dmg-blue-soft); border-color: var(--dmg-blue); }
+        .day-name { font-size: 10px; font-weight: 700; width: 32px; text-transform: uppercase; }
+        .day-date { font-size: 10px; color: var(--ink-muted); width: 50px; font-weight: 500; }
+        .day-status { flex: 1; }
+
+        /* Custom Select */
+        .custom-select { position: relative; }
+        .select-trigger {
+            padding: 6px 10px; background: var(--surface); border: 1px solid var(--border);
+            border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.15s var(--ease);
+        }
+        .select-trigger:hover { border-color: var(--dmg-blue); }
+        .select-options {
+            position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 150; display: none;
+        }
+        .select-options.show { display: block; }
+        .option {
+            padding: 10px 12px; font-size: 11px; font-weight: 500; cursor: pointer;
+            display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--surface-alt);
+            transition: background 0.1s var(--ease);
+        }
+        .option:last-child { border-bottom: none; }
+        .option:hover { background: var(--surface-alt); }
+        .option.selected { background: var(--dmg-blue-soft); color: var(--dmg-blue); font-weight: 600; }
+
+        .footer { padding: 16px; border-top: 1px solid var(--border); background: var(--surface-alt); }
+        .submit-btn {
+            width: 100%; padding: 12px; background: var(--dmg-blue); color: #FFF; border: none;
+            border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s var(--ease);
+        }
+        .submit-btn:hover { transform: translateY(-1px); background: #1a8ac0; box-shadow: 0 4px 12px rgba(33, 160, 216, 0.3); }
+        .submit-btn:disabled { background: #CBD5E1; cursor: not-allowed; transform: none; }
+        .submit-btn.success { background: var(--success); }
+
+        /* Setup Screen */
+        .setup { padding: 32px 24px; text-align: center; }
+        .setup-icon { font-size: 40px; margin-bottom: 16px; }
+        .setup-title { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+        .setup-sub { font-size: 12px; color: var(--ink-sub); margin-bottom: 24px; line-height: 1.5; }
+        .setup-input {
+            width: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 14px; font-weight: 500; text-align: center; margin-bottom: 12px;
+        }
+        .setup-input:focus { outline: none; border-color: var(--dmg-blue); box-shadow: 0 0 0 3px var(--dmg-blue-soft); }
+        .setup-error { color: var(--danger); font-size: 11px; margin-bottom: 12px; font-weight: 600; }
+
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; gap: 12px; }
+        .spinner { width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--dmg-blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 10px; font-weight: 700; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .success-state { text-align: center; padding: 40px 24px; }
+        .success-icon { font-size: 48px; margin-bottom: 16px; }
+        .success-title { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+        .success-sub { font-size: 12px; color: var(--ink-sub); margin-bottom: 24px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.appspot.com",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
+
+        const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+        const STATUSES = [
+            { id: 'In Building', label: 'In Building', emoji: '🏢', color: '#2E7D32' },
+            { id: 'Remote', label: 'Remote', emoji: '🏠', color: '#F9A825' },
+            { id: 'Off-Site (Shoot)', label: 'Off-Site (Shoot)', emoji: '🎥', color: '#2196F3' },
+            { id: 'Off-Site (Client)', label: 'Off-Site (Client)', emoji: '🤝', color: '#2196F3' },
+            { id: 'On Leave', label: 'On Leave', emoji: '🌴', color: '#F44336' }
+        ];
+        const WEEKEND_STATUSES = [
+            { id: 'Weekend', label: 'Weekend', emoji: '✨', color: '#6B7280' },
+            { id: 'Off-Site (Shoot)', label: 'Off-Site (Shoot)', emoji: '🎥', color: '#2196F3' },
+            { id: 'Off-Site (Client)', label: 'Off-Site (Client)', emoji: '🤝', color: '#2196F3' }
+        ];
+
+        // Team colors
+        const TEAM_COLORS = {
+            Editorial: '#E94B4B', Creative: '#E6468B', Production: '#43B049',
+            Social: '#F2C316', Operations: '#9333EA', Sales: '#F97316', Design: '#8B5CF6'
+        };
+
+        let state = {
+            view: 'loading', // loading, setup, main, success
+            currentUser: null,
+            weekOffset: 1, // Default to next week
+            schedule: {},
+            existingDocId: null,
+            existingStatus: null,
+            error: null
+        };
+
+        const STORAGE_KEY = 'dmg_rota_user_email';
+
+        const getMonday = offset => {
+            const d = new Date();
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            d.setDate(diff + (7 * offset));
+            d.setHours(0,0,0,0);
+            return d;
+        };
+
+        const formatDate = d => d.toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+        const initials = (f, l) => `${(f||'?')[0]}${(l||'?')[0]}`.toUpperCase();
+
+        const initSchedule = (existing = null) => {
+            state.schedule = {};
+            DAYS.forEach((day, i) => {
+                if (existing && existing[i]) {
+                    state.schedule[day] = existing[i];
+                } else if (existing && existing[day]) {
+                    state.schedule[day] = existing[day];
+                } else {
+                    state.schedule[day] = { status: i >= 5 ? 'Weekend' : 'In Building' };
+                }
+            });
+        };
+
+        async function lookupUserByEmail(email) {
+            const q = query(
+                collection(db, "artifacts", appId, "public", "data", "staff_directory"),
+                where("email", "==", email.toLowerCase().trim())
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                return { id: snap.docs[0].id, ...snap.docs[0].data() };
+            }
+            return null;
+        }
+
+        async function checkExistingRota() {
+            if (!state.currentUser) return;
+            const weekStart = getMonday(state.weekOffset).toISOString().split('T')[0];
+
+            const q = query(
+                collection(db, "artifacts", appId, "public", "data", "rota_requests"),
+                where("staffId", "==", state.currentUser.id),
+                where("weekStart", "==", weekStart)
+            );
+
+            try {
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    const docData = snap.docs[0].data();
+                    state.existingDocId = snap.docs[0].id;
+                    state.existingStatus = docData.status || 'pending';
+                    initSchedule(docData.schedule);
+                } else {
+                    state.existingDocId = null;
+                    state.existingStatus = null;
+                    initSchedule();
+                }
+            } catch (e) {
+                console.error("Query error", e);
+                initSchedule();
+            }
+            render();
+        }
+
+        async function init() {
+            const savedEmail = localStorage.getItem(STORAGE_KEY);
+            if (savedEmail) {
+                const user = await lookupUserByEmail(savedEmail);
+                if (user) {
+                    state.currentUser = user;
+                    state.view = 'main';
+                    await checkExistingRota();
+                    return;
+                }
+            }
+            state.view = 'setup';
+            render();
+        }
+
+        window.submitEmail = async () => {
+            const email = document.getElementById('email-input').value.trim();
+            if (!email || !email.includes('@')) {
+                state.error = 'Please enter a valid email address';
+                render();
+                return;
+            }
+
+            state.view = 'loading';
+            render();
+
+            const user = await lookupUserByEmail(email);
+            if (user) {
+                localStorage.setItem(STORAGE_KEY, email.toLowerCase());
+                state.currentUser = user;
+                state.view = 'main';
+                state.error = null;
+                await checkExistingRota();
+            } else {
+                state.view = 'setup';
+                state.error = 'Email not found in Staff Directory. Please check with your manager.';
+                render();
+            }
+        };
+
+        window.changeUser = () => {
+            localStorage.removeItem(STORAGE_KEY);
+            state.currentUser = null;
+            state.view = 'setup';
+            state.error = null;
+            render();
+        };
+
+        window.prevWeek = () => { state.weekOffset--; checkExistingRota(); };
+        window.nextWeek = () => { state.weekOffset++; checkExistingRota(); };
+
+        window.updateStatus = (day, val) => {
+            state.schedule[day].status = val;
+            document.querySelectorAll('.select-options').forEach(o => o.classList.remove('show'));
+            render();
+        };
+
+        window.toggleDropdown = (day) => {
+            const el = document.getElementById(`options-${day}`);
+            document.querySelectorAll('.select-options').forEach(o => { if(o.id !== `options-${day}`) o.classList.remove('show'); });
+            el.classList.toggle('show');
+        };
+
+        window.submitRota = async () => {
+            const monday = getMonday(state.weekOffset);
+            const payload = {
+                staffId: state.currentUser.id,
+                name: `${state.currentUser.firstName} ${state.currentUser.lastName}`,
+                firstName: state.currentUser.firstName,
+                lastName: state.currentUser.lastName,
+                email: state.currentUser.email,
+                team: state.currentUser.team,
+                manager: state.currentUser.lineManagerDropdown || state.currentUser.lineManagerName || '',
+                weekStart: monday.toISOString().split('T')[0],
+                weekId: monday.toISOString().split('T')[0],
+                schedule: DAYS.map(d => ({ status: state.schedule[d].status })),
+                status: 'pending',
+                submittedAt: serverTimestamp()
+            };
+
+            try {
+                if (state.existingDocId) {
+                    await updateDoc(doc(db, "artifacts", appId, "public", "data", "rota_requests", state.existingDocId), payload);
+                } else {
+                    await addDoc(collection(db, "artifacts", appId, "public", "data", "rota_requests"), payload);
+                }
+                state.view = 'success';
+                render();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        };
+
+        window.submitAnother = () => {
+            state.view = 'main';
+            state.weekOffset++;
+            checkExistingRota();
+        };
+
+        function render() {
+            const root = document.getElementById('root');
+
+            if (state.view === 'loading') {
+                root.innerHTML = `
+                    <div class="widget">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <span class="loading-text">Loading your profile...</span>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (state.view === 'setup') {
+                root.innerHTML = `
+                    <div class="widget">
+                        <div class="setup">
+                            <div class="setup-icon">👋</div>
+                            <div class="setup-title">Welcome!</div>
+                            <div class="setup-sub">Enter your work email to access your rota. We'll remember you for next time.</div>
+                            ${state.error ? `<div class="setup-error">${state.error}</div>` : ''}
+                            <input type="email" id="email-input" class="setup-input" placeholder="your.name@dailymail.co.uk" onkeypress="if(event.key==='Enter')submitEmail()">
+                            <button class="submit-btn" onclick="submitEmail()">Continue</button>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            if (state.view === 'success') {
+                root.innerHTML = `
+                    <div class="widget">
+                        <div class="success-state">
+                            <div class="success-icon">✅</div>
+                            <div class="success-title">Rota ${state.existingDocId ? 'Updated' : 'Submitted'}</div>
+                            <div class="success-sub">Your schedule for w/c ${formatDate(getMonday(state.weekOffset))} has been sent to your manager for approval.</div>
+                            <button class="submit-btn" onclick="submitAnother()">Submit Another Week</button>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            // Main view
+            const u = state.currentUser;
+            const monday = getMonday(state.weekOffset);
+            const today = new Date();
+            const todayDayIndex = (today.getDay() + 6) % 7;
+            const isCurrentWeek = state.weekOffset === 0;
+            const teamColor = TEAM_COLORS[u.team] || '#21A0D8';
+            const managerName = u.lineManagerDropdown || u.lineManagerName || u.lineManager || '';
+
+            const daysHtml = DAYS.map((day, i) => {
+                const d = new Date(monday); d.setDate(monday.getDate() + i);
+                const currentStatus = state.schedule[day]?.status || (i >= 5 ? 'Weekend' : 'In Building');
+                const isWeekend = i >= 5;
+                const pool = isWeekend ? WEEKEND_STATUSES : STATUSES;
+                const statusObj = pool.find(s => s.id === currentStatus) || pool[0];
+                const isToday = state.weekOffset === 0 && i === todayDayIndex;
+
+                return `
+                    <div class="day-row ${isToday ? 'today' : ''}">
+                        <span class="day-name">${day.slice(0,3)}</span>
+                        <span class="day-date">${formatDate(d)}</span>
+                        <div class="day-status">
+                            <div class="custom-select">
+                                <div class="select-trigger" onclick="toggleDropdown('${day}')">
+                                    <span style="display:flex; align-items:center; gap:6px;">
+                                        <span>${statusObj.emoji}</span>
+                                        <span style="color:${statusObj.color}">${statusObj.label}</span>
+                                    </span>
+                                    <span style="font-size:9px; color:var(--ink-muted);">▾</span>
+                                </div>
+                                <div class="select-options" id="options-${day}">
+                                    ${pool.map(st => `
+                                        <div class="option ${currentStatus === st.id ? 'selected' : ''}" onclick="updateStatus('${day}','${st.id}')">
+                                            <span>${st.emoji}</span>
+                                            <span style="color:${st.color}">${st.label}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            root.innerHTML = `
+                <div class="widget">
+                    <div class="header">
+                        <div class="dot-grid"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+                        <h2 class="title">My Rota</h2>
+                        <div class="week-nav">
+                            <button class="week-btn" onclick="prevWeek()">‹</button>
+                            <span class="week-label">${formatDate(monday)}${isCurrentWeek ? '<span class="week-current">NOW</span>' : ''}</span>
+                            <button class="week-btn" onclick="nextWeek()">›</button>
+                        </div>
+                    </div>
+                    <div class="body">
+                        <div class="profile-card">
+                            <div class="profile-avatar" style="background:${teamColor}">${initials(u.firstName, u.lastName)}</div>
+                            <div class="profile-info">
+                                <div class="profile-name">${u.firstName} ${u.lastName}</div>
+                                <div class="profile-role">${u.team || 'Team Member'}${u.role ? ' • ' + u.role : ''}</div>
+                                ${managerName ? `<div class="profile-manager">Reports to <strong>${managerName}</strong></div>` : ''}
+                            </div>
+                            <span class="profile-change" onclick="changeUser()">Not you?</span>
+                        </div>
+                        ${state.existingDocId ? `
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                                <span style="font-size:10px;color:var(--ink-sub);font-weight:600;">Already submitted for this week</span>
+                                <span class="status-badge ${state.existingStatus}">${state.existingStatus === 'approved' ? '✓ Approved' : '⏳ Pending'}</span>
+                            </div>
+                        ` : `
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                                <span style="font-size:10px;color:var(--ink-sub);font-weight:600;">Set your schedule for this week</span>
+                                <span class="status-badge new">New</span>
+                            </div>
+                        `}
+                        <div class="day-grid">${daysHtml}</div>
+                    </div>
+                    <div class="footer">
+                        <button class="submit-btn" onclick="submitRota()">
+                            ${state.existingDocId ? '✓ Update Rota' : '→ Submit for Approval'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.custom-select')) {
+                document.querySelectorAll('.select-options').forEach(o => o.classList.remove('show'));
+            }
+        });
+
+        onAuthStateChanged(auth, user => { if(user) init(); else signInAnonymously(auth); });
+    </script>
+</body>
+</html>

@@ -838,63 +838,126 @@ app.get('/staff', async (req, res) => {
 // ============================================
 
 // Helper: Parse Staff Directory item
+// Schema: FULL NAME (title), FIRST NAME (text), LAST NAME (text), EMAIL (formula),
+// ROLE (select), TEAM (select), SENIORITY (select), STATUS (select: Active/On Leave/Inactive),
+// PHONE (phone), SLACK ID (text), NOTION USER (person), IS LINE MANAGER (checkbox),
+// LINE MANAGER (person), LINE MANAGER (DROPDOWN) (select), LINE MANAGER NAME (API) (formula)
 function parseStaffMember(page) {
     const props = page.properties;
+    const status = parseProperty(props['STATUS']) || parseProperty(props['Status']) || 'Active';
     return {
         id: page.id,
         notionUrl: page.url,
-        firstName: parseProperty(props['First Name']) || parseProperty(props['FIRST NAME']) || '',
-        lastName: parseProperty(props['Last Name']) || parseProperty(props['LAST NAME']) || '',
-        email: parseProperty(props['Email']) || parseProperty(props['EMAIL']) || '',
-        team: parseProperty(props['Team']) || parseProperty(props['TEAM']) || parseProperty(props['Primary Team']) || '',
-        role: parseProperty(props['Role']) || parseProperty(props['ROLE']) || parseProperty(props['Job Title']) || '',
-        seniority: parseProperty(props['Seniority']) || parseProperty(props['SENIORITY']) || '',
-        weeklyCapacityPTS: parseProperty(props['Weekly Capacity']) || parseProperty(props['WEEKLY CAPACITY']) || parseProperty(props['Capacity']) || 40,
-        active: parseProperty(props['Active']) !== false && parseProperty(props['ACTIVE']) !== false && parseProperty(props['Status']) !== 'Inactive',
-        slackId: parseProperty(props['Slack ID']) || parseProperty(props['SLACK ID']) || '',
-        phone: parseProperty(props['Phone']) || parseProperty(props['PHONE']) || '',
-        jobRoles: parseProperty(props['Job Roles']) || parseProperty(props['JOB ROLES']) || [],
+        fullName: parseProperty(props['FULL NAME']) || parseProperty(props['Full Name']) || '',
+        firstName: parseProperty(props['FIRST NAME']) || parseProperty(props['First Name']) || '',
+        lastName: parseProperty(props['LAST NAME']) || parseProperty(props['Last Name']) || '',
+        middleName: parseProperty(props['MIDDLE NAME']) || '',
+        email: parseProperty(props['EMAIL']) || parseProperty(props['Email']) || '',
+        team: parseProperty(props['TEAM']) || parseProperty(props['Team']) || '',
+        role: parseProperty(props['ROLE']) || parseProperty(props['Role']) || '',
+        secondaryRoles: parseProperty(props['SECONDARY ROLE(S)']) || [],
+        seniority: parseProperty(props['SENIORITY']) || parseProperty(props['Seniority']) || '',
+        employmentType: parseProperty(props['EMPLOYMENT TYPE']) || '',
+        status: status,
+        active: status === 'Active',
+        weeklyCapacityPTS: parseProperty(props['WEEKLY CAPACITY (PTS)']) || parseProperty(props['Weekly Capacity']) || 0,
+        maxHoursPerWeek: parseProperty(props['MAX HOURS PER WEEK']) || 40,
+        slackId: parseProperty(props['SLACK ID']) || parseProperty(props['Slack ID']) || '',
+        phone: parseProperty(props['PHONE']) || parseProperty(props['Phone']) || '',
+        notionUser: parseProperty(props['NOTION USER']) || '',
+        // Line Manager fields
+        isLineManager: parseProperty(props['IS LINE MANAGER']) || false,
+        lineManager: parseProperty(props['LINE MANAGER']) || '',
+        lineManagerName: parseProperty(props['LINE MANAGER NAME (API)']) || '',
+        lineManagerDropdown: parseProperty(props['LINE MANAGER (DROPDOWN)']) || '',
+        // Capability flags
+        isCreator: parseProperty(props['IS CREATOR']) || false,
+        isEditor: parseProperty(props['IS EDITOR']) || false,
+        isProducer: parseProperty(props['IS PRODUCER']) || false,
         createdAt: page.created_time,
         updatedAt: page.last_edited_time
     };
 }
 
 // Helper: Build Staff Directory properties for Notion
+// Note: Cannot write to formula fields (EMAIL, WEEKLY CAPACITY (PTS), LINE MANAGER NAME (API))
 function buildStaffProperties(data) {
     const props = {};
 
+    // FULL NAME is the title field
+    if (data.fullName !== undefined) {
+        props['FULL NAME'] = { title: [{ text: { content: data.fullName || '' } }] };
+    }
+    // FIRST NAME, MIDDLE NAME, LAST NAME are text fields
     if (data.firstName !== undefined) {
-        props['First Name'] = { title: [{ text: { content: data.firstName || '' } }] };
+        props['FIRST NAME'] = { rich_text: data.firstName ? [{ text: { content: data.firstName } }] : [] };
+    }
+    if (data.middleName !== undefined) {
+        props['MIDDLE NAME'] = { rich_text: data.middleName ? [{ text: { content: data.middleName } }] : [] };
     }
     if (data.lastName !== undefined) {
-        props['Last Name'] = { rich_text: data.lastName ? [{ text: { content: data.lastName } }] : [] };
+        props['LAST NAME'] = { rich_text: data.lastName ? [{ text: { content: data.lastName } }] : [] };
     }
-    if (data.email !== undefined) {
-        props['Email'] = { email: data.email || null };
-    }
+    // TEAM is a select
     if (data.team !== undefined) {
-        props['Team'] = data.team ? { select: { name: data.team } } : { select: null };
+        props['TEAM'] = data.team ? { select: { name: data.team } } : { select: null };
     }
+    // ROLE is a select
     if (data.role !== undefined) {
-        props['Role'] = { rich_text: data.role ? [{ text: { content: data.role } }] : [] };
+        props['ROLE'] = data.role ? { select: { name: data.role } } : { select: null };
     }
+    // SECONDARY ROLE(S) is multi_select
+    if (data.secondaryRoles !== undefined && Array.isArray(data.secondaryRoles)) {
+        props['SECONDARY ROLE(S)'] = { multi_select: data.secondaryRoles.map(r => ({ name: r })) };
+    }
+    // SENIORITY is a select
     if (data.seniority !== undefined) {
-        props['Seniority'] = data.seniority ? { select: { name: data.seniority } } : { select: null };
+        props['SENIORITY'] = data.seniority ? { select: { name: data.seniority } } : { select: null };
     }
-    if (data.weeklyCapacityPTS !== undefined) {
-        props['Weekly Capacity'] = { number: parseInt(data.weeklyCapacityPTS) || 40 };
+    // EMPLOYMENT TYPE is a select
+    if (data.employmentType !== undefined) {
+        props['EMPLOYMENT TYPE'] = data.employmentType ? { select: { name: data.employmentType } } : { select: null };
     }
-    if (data.active !== undefined) {
-        props['Active'] = { checkbox: data.active !== false };
+    // STATUS is a select (Active/On Leave/Inactive)
+    if (data.status !== undefined) {
+        props['STATUS'] = data.status ? { select: { name: data.status } } : { select: null };
     }
+    // MAX HOURS PER WEEK is a number
+    if (data.maxHoursPerWeek !== undefined) {
+        props['MAX HOURS PER WEEK'] = { number: parseInt(data.maxHoursPerWeek) || null };
+    }
+    // SLACK ID is text
     if (data.slackId !== undefined) {
-        props['Slack ID'] = { rich_text: data.slackId ? [{ text: { content: data.slackId } }] : [] };
+        props['SLACK ID'] = { rich_text: data.slackId ? [{ text: { content: data.slackId } }] : [] };
     }
+    // PHONE is phone_number
     if (data.phone !== undefined) {
-        props['Phone'] = { phone_number: data.phone || null };
+        props['PHONE'] = { phone_number: data.phone || null };
     }
-    if (data.jobRoles !== undefined && Array.isArray(data.jobRoles)) {
-        props['Job Roles'] = { multi_select: data.jobRoles.map(r => ({ name: r })) };
+    // EMERGENCY CONTACT is text
+    if (data.emergencyContact !== undefined) {
+        props['EMERGENCY CONTACT'] = { rich_text: data.emergencyContact ? [{ text: { content: data.emergencyContact } }] : [] };
+    }
+    // NOTION INVITE SENT? is checkbox
+    if (data.notionInviteSent !== undefined) {
+        props['NOTION INVITE SENT?'] = { checkbox: data.notionInviteSent === true };
+    }
+    // Line Manager fields
+    if (data.isLineManager !== undefined) {
+        props['IS LINE MANAGER'] = { checkbox: data.isLineManager === true };
+    }
+    if (data.lineManagerDropdown !== undefined) {
+        props['LINE MANAGER (DROPDOWN)'] = data.lineManagerDropdown ? { select: { name: data.lineManagerDropdown } } : { select: null };
+    }
+    // Capability checkboxes
+    if (data.isCreator !== undefined) {
+        props['IS CREATOR'] = { checkbox: data.isCreator === true };
+    }
+    if (data.isEditor !== undefined) {
+        props['IS EDITOR'] = { checkbox: data.isEditor === true };
+    }
+    if (data.isProducer !== undefined) {
+        props['IS PRODUCER'] = { checkbox: data.isProducer === true };
     }
 
     return props;
@@ -927,8 +990,8 @@ app.get('/staff-directory', async (req, res) => {
         const response = await notion.databases.query({
             database_id: STAFF_DIR_DB,
             filter,
-            page_size: 100,
-            sorts: [{ property: 'First Name', direction: 'ascending' }]
+            page_size: 100
+            // Sort removed - property names vary between databases
         });
 
         const staff = response.results.map(parseStaffMember);
@@ -2554,6 +2617,203 @@ app.get('/', (req, res) => {
             'GET /commercial-snapshot/projects'
         ]
     });
+});
+
+// ============================================
+// NOTION OAUTH AUTHENTICATION
+// ============================================
+const NOTION_OAUTH_CLIENT_ID = process.env.NOTION_OAUTH_CLIENT_ID;
+const NOTION_OAUTH_CLIENT_SECRET = process.env.NOTION_OAUTH_CLIENT_SECRET;
+const NOTION_OAUTH_REDIRECT_URI = 'https://createnotionproject-223535956454.us-central1.run.app/auth/notion/callback';
+
+// Start OAuth flow - redirects user to Notion authorization
+app.get('/auth/notion', (req, res) => {
+    const { redirect } = req.query;
+
+    if (!NOTION_OAUTH_CLIENT_ID) {
+        return res.status(500).json({ error: 'OAuth not configured' });
+    }
+
+    // Store the redirect URL in state parameter (base64 encoded)
+    const state = redirect ? Buffer.from(redirect).toString('base64') : '';
+
+    const authUrl = new URL('https://api.notion.com/v1/oauth/authorize');
+    authUrl.searchParams.set('client_id', NOTION_OAUTH_CLIENT_ID);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('owner', 'user');
+    authUrl.searchParams.set('redirect_uri', NOTION_OAUTH_REDIRECT_URI);
+    if (state) authUrl.searchParams.set('state', state);
+
+    res.redirect(authUrl.toString());
+});
+
+// OAuth callback - exchange code for token
+app.get('/auth/notion/callback', async (req, res) => {
+    const { code, state, error } = req.query;
+
+    if (error) {
+        console.error('OAuth error:', error);
+        return res.status(400).send(`
+            <html><body style="font-family:sans-serif;text-align:center;padding:50px;">
+                <h2>Authorization Failed</h2>
+                <p>${error}</p>
+                <p><a href="javascript:window.close()">Close this window</a></p>
+            </body></html>
+        `);
+    }
+
+    if (!code) {
+        return res.status(400).json({ error: 'No authorization code provided' });
+    }
+
+    try {
+        // Exchange code for access token
+        const tokenResponse = await fetch('https://api.notion.com/v1/oauth/token', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Basic ' + Buffer.from(`${NOTION_OAUTH_CLIENT_ID}:${NOTION_OAUTH_CLIENT_SECRET}`).toString('base64'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                grant_type: 'authorization_code',
+                code: code,
+                redirect_uri: NOTION_OAUTH_REDIRECT_URI
+            })
+        });
+
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenResponse.ok) {
+            console.error('Token exchange error:', tokenData);
+            throw new Error(tokenData.error || 'Token exchange failed');
+        }
+
+        // Get user info
+        const userInfo = {
+            access_token: tokenData.access_token,
+            workspace_id: tokenData.workspace_id,
+            workspace_name: tokenData.workspace_name,
+            workspace_icon: tokenData.workspace_icon,
+            bot_id: tokenData.bot_id,
+            owner: tokenData.owner
+        };
+
+        // If owner is a user, extract user details
+        if (tokenData.owner?.type === 'user') {
+            userInfo.user = {
+                id: tokenData.owner.user.id,
+                name: tokenData.owner.user.name,
+                email: tokenData.owner.user.person?.email || null,
+                avatar_url: tokenData.owner.user.avatar_url
+            };
+        }
+
+        // Decode redirect URL from state
+        let redirectUrl = 'https://aluk00.github.io/notion-clock/profile-card.html';
+        if (state) {
+            try {
+                redirectUrl = Buffer.from(state, 'base64').toString('utf8');
+            } catch (e) {}
+        }
+
+        // Redirect back to widget with token in hash (more secure than query params)
+        const finalUrl = new URL(redirectUrl);
+        finalUrl.hash = 'notion_auth=' + Buffer.from(JSON.stringify(userInfo)).toString('base64');
+
+        res.redirect(finalUrl.toString());
+
+    } catch (error) {
+        console.error('OAuth callback error:', error);
+        res.status(500).send(`
+            <html><body style="font-family:sans-serif;text-align:center;padding:50px;">
+                <h2>Authentication Error</h2>
+                <p>${error.message}</p>
+                <p><a href="javascript:window.close()">Close this window</a></p>
+            </body></html>
+        `);
+    }
+});
+
+// Get user info from access token
+app.post('/auth/notion/user', async (req, res) => {
+    const { access_token } = req.body;
+
+    if (!access_token) {
+        return res.status(400).json({ error: 'No access token provided' });
+    }
+
+    try {
+        // Use the token to get current user
+        const userClient = new Client({ auth: access_token });
+        const me = await userClient.users.me({});
+
+        res.json({
+            success: true,
+            user: {
+                id: me.id,
+                type: me.type,
+                name: me.name,
+                email: me.person?.email || null,
+                avatar_url: me.avatar_url
+            }
+        });
+    } catch (error) {
+        console.error('User info error:', error);
+        res.status(401).json({ error: 'Invalid or expired token' });
+    }
+});
+
+// Match Notion user to Staff Directory
+app.post('/auth/notion/match-staff', async (req, res) => {
+    const { email, notion_user_id } = req.body;
+
+    if (!email && !notion_user_id) {
+        return res.status(400).json({ error: 'Email or Notion user ID required' });
+    }
+
+    if (!STAFF_DIR_DB) {
+        return res.status(500).json({ error: 'Staff Directory not configured' });
+    }
+
+    try {
+        // Build filter - try email first, then notion user ID
+        let filter;
+        if (email) {
+            filter = {
+                property: 'Email',
+                email: { equals: email.toLowerCase() }
+            };
+        } else {
+            // Search by Notion User (person property contains the user)
+            filter = {
+                property: 'NOTION USER',
+                people: { contains: notion_user_id }
+            };
+        }
+
+        const response = await notion.databases.query({
+            database_id: STAFF_DIR_DB,
+            filter: filter,
+            page_size: 1
+        });
+
+        if (response.results.length === 0) {
+            return res.json({ success: false, found: false, message: 'No matching staff member found' });
+        }
+
+        const page = response.results[0];
+        const member = parseStaffMember(page);
+
+        res.json({
+            success: true,
+            found: true,
+            staff: member
+        });
+
+    } catch (error) {
+        console.error('Staff match error:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 const PORT = process.env.PORT || 8080;
