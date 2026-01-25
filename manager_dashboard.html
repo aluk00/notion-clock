@@ -824,7 +824,7 @@
         };
         const TEAMS = Object.keys(TEAM_COLORS);
         const SENIORITY_LEVELS = ['Intern', 'Junior', 'Midweight', 'Senior', 'Lead', 'Head of', 'Director'];
-        const JOB_ROLES = ['Creative', 'Producer', 'Editor', 'Designer', 'Channel Lead', 'Creator', 'Account Manager', 'Strategist'];
+        const JOB_ROLES = ['Creator', 'Editor', 'Designer', 'Producer', 'Channel Lead', 'Account Manager', 'Strategist', 'Manager', 'Admin'];
 
         // State
         let staff = [], rotaRequests = [], projects = [], pendingChanges = [], effortConfig = null;
@@ -1377,7 +1377,7 @@
                     <div class="form-row"><div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="staffFirstName" value="${s.firstName || ''}"></div><div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="staffLastName" value="${s.lastName || ''}"></div></div>
                     <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="staffEmail" value="${s.email || ''}"></div>
                     <div class="form-row"><div class="form-group"><label class="form-label">Team</label><select class="form-select" id="staffTeam"><option value="">Select team...</option>${TEAMS.map(t => `<option value="${t}" ${s.team === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Seniority</label><select class="form-select" id="staffSeniority"><option value="">Select level...</option>${SENIORITY_LEVELS.map(l => `<option value="${l}" ${s.seniority === l ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
-                    <div class="form-group"><label class="form-label">Role</label><input class="form-input" id="staffRole" value="${s.role || ''}" placeholder="e.g. Senior Editor, Creative Producer"></div>
+                    <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="staffRole"><option value="">Select role...</option>${JOB_ROLES.map(r => `<option value="${r}" ${s.role === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
                     <div class="form-group"><label class="form-label">Weekly Capacity (Points)</label><input class="form-input" type="number" id="staffCapacity" value="${getWeeklyCapacity(s)}" min="0" max="80"></div>
                     <div class="form-group"><label class="form-toggle"><input type="checkbox" id="staffActive" ${s.active !== false ? 'checked' : ''}><span class="toggle-switch"></span><span class="toggle-label">Active</span></label></div>
                 </div>
@@ -1398,7 +1398,7 @@
                     <div class="form-row"><div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="staffFirstName" placeholder="John"></div><div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="staffLastName" placeholder="Smith"></div></div>
                     <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="staffEmail" placeholder="john@dmg.com"></div>
                     <div class="form-row"><div class="form-group"><label class="form-label">Team</label><select class="form-select" id="staffTeam"><option value="">Select team...</option>${TEAMS.map(t => `<option value="${t}">${t}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Seniority</label><select class="form-select" id="staffSeniority"><option value="">Select level...</option>${SENIORITY_LEVELS.map(l => `<option value="${l}">${l}</option>`).join('')}</select></div></div>
-                    <div class="form-group"><label class="form-label">Role</label><input class="form-input" id="staffRole" placeholder="e.g. Senior Editor, Creative Producer"></div>
+                    <div class="form-group"><label class="form-label">Role</label><select class="form-select" id="staffRole"><option value="">Select role...</option>${JOB_ROLES.map(r => `<option value="${r}">${r}</option>`).join('')}</select></div>
                     <div class="form-group"><label class="form-label">Weekly Capacity (Points)</label><input class="form-input" type="number" id="staffCapacity" value="40" min="0" max="80"></div>
                 </div>
                 <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveStaff()">Add & Sync to Notion</button></div>
@@ -1413,7 +1413,7 @@
                 email: document.getElementById('staffEmail').value.trim(),
                 team: document.getElementById('staffTeam').value,
                 seniority: document.getElementById('staffSeniority').value,
-                role: document.getElementById('staffRole').value.trim(),
+                role: document.getElementById('staffRole').value,
                 weeklyCapacityPTS: parseInt(document.getElementById('staffCapacity').value) || 40,
                 active: document.getElementById('staffActive')?.checked !== false
             };
@@ -1429,11 +1429,24 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(body)
                     });
-                    if (!response.ok) throw new Error('API error');
                     const text = await response.text();
-                    if (text.startsWith('<!')) throw new Error('API not configured');
-                    const result = JSON.parse(text);
-                    return result;
+                    // Check for HTML error pages
+                    if (!text || text.trim().startsWith('<!') || text.trim().startsWith('<html')) {
+                        console.warn('Notion API returned HTML - endpoint not configured');
+                        return null;
+                    }
+                    // Try to parse JSON safely
+                    try {
+                        const result = JSON.parse(text);
+                        if (!response.ok) {
+                            console.warn('Notion API error:', result.error || 'Unknown error');
+                            return null;
+                        }
+                        return result;
+                    } catch (parseErr) {
+                        console.warn('Notion API returned invalid JSON:', text.substring(0, 100));
+                        return null;
+                    }
                 } catch (e) {
                     console.warn('Notion sync unavailable:', e.message);
                     return null;
