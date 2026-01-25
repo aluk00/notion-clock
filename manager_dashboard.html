@@ -2004,75 +2004,15 @@
         }
 
         function renderRundown() {
-            const dateStr = rundownDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
-            const isToday = rundownDate.toDateString() === new Date().toDateString();
-
-            const sections = ['Morning', 'Afternoon', 'Evening', 'Carried Over'];
-            const verticalColors = {
-                'Sport': '#43B049', 'UK': '#21A0D8', 'Respawn': '#8B5CF6',
-                'Main': '#1C1C1C', 'Money': '#F59E0B', 'Spotlight': '#E6468B'
-            };
-            const statusColors = { 'Done': '#10B981', 'Pending': '#F59E0B', 'Blocked': '#EF4444', 'Not Started': '#9CA3AF' };
-
-            // Group items by section
-            const itemsBySection = {};
-            sections.forEach(s => itemsBySection[s] = []);
-            rundownItems.forEach(item => {
-                const section = item.section || 'Morning';
-                if (itemsBySection[section]) itemsBySection[section].push(item);
-            });
-
+            // Embed the full editor directly in an iframe
             return `
-                <div class="card">
-                    <div class="card-header">
-                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Daily Rundown</span>
-                        <div style="display:flex;align-items:center;gap:12px;">
-                            <div style="display:flex;align-items:center;gap:8px;background:var(--surface-alt);padding:6px 12px;border-radius:20px;border:1px solid var(--border);">
-                                <button class="btn btn-ghost btn-sm" onclick="changeRundownDate(-1)" style="padding:4px 8px;">←</button>
-                                <span style="font-size:13px;font-weight:700;min-width:180px;text-align:center;">${dateStr}${isToday ? ' <span style="color:var(--dmg-blue);font-size:10px;">(Today)</span>' : ''}</span>
-                                <button class="btn btn-ghost btn-sm" onclick="changeRundownDate(1)" style="padding:4px 8px;">→</button>
-                            </div>
-                            <button class="btn btn-ghost btn-sm" onclick="loadRundown()" title="Refresh">↻</button>
-                            <a href="daily-rundown-editor.html" target="_blank" class="btn btn-primary btn-sm">Open Full Editor ↗</a>
-                        </div>
+                <div class="card" style="overflow:hidden;">
+                    <div class="card-header" style="padding:12px 20px;">
+                        <span class="card-title"><div class="dot-grid"><span></span><span></span><span></span><span></span></div>Daily Rundown Editor</span>
+                        <a href="daily-rundown-editor.html" target="_blank" class="btn btn-ghost btn-sm" style="font-size:11px;">Open in New Tab ↗</a>
                     </div>
-                    <div style="padding:12px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border);font-size:12px;color:var(--ink-sub);">
-                        Editorial content schedule - drag items between sections or click to update status
-                    </div>
-                    <div class="card-body" style="padding:20px;">
-                        ${rundownItems.length === 0 ? `
-                            <div class="empty">
-                                <div class="empty-icon">📋</div>
-                                <div class="empty-title">No Items for ${isToday ? 'Today' : 'This Day'}</div>
-                                <div class="empty-subtitle">Use the <a href="daily-rundown-editor.html" target="_blank" style="color:var(--dmg-blue);">Full Editor</a> to add content items.</div>
-                            </div>
-                        ` : `
-                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
-                                ${sections.map(section => `
-                                    <div style="background:var(--surface-alt);border-radius:var(--radius-sm);padding:14px;min-height:300px;">
-                                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);">
-                                            <div style="width:8px;height:8px;border-radius:50%;background:var(--editorial);"></div>
-                                            <span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-sub);">${section}</span>
-                                            <span style="margin-left:auto;font-size:10px;font-weight:700;color:var(--ink-muted);background:white;padding:2px 8px;border-radius:10px;">${itemsBySection[section].length}</span>
-                                        </div>
-                                        <div style="display:flex;flex-direction:column;gap:10px;">
-                                            ${itemsBySection[section].length === 0 ? `
-                                                <div style="text-align:center;padding:20px;color:var(--ink-muted);font-size:11px;">No items</div>
-                                            ` : itemsBySection[section].map(item => `
-                                                <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px;cursor:pointer;transition:all 0.15s;" onclick="cycleRundownStatus('${item.id}')" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-                                                    <div style="display:flex;gap:8px;margin-bottom:6px;">
-                                                        <span style="font-size:9px;font-weight:800;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:${verticalColors[item.vertical] || '#9CA3AF'}20;color:${verticalColors[item.vertical] || '#9CA3AF'};">${item.vertical || 'General'}</span>
-                                                        <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:${statusColors[item.status] || '#9CA3AF'}20;color:${statusColors[item.status] || '#9CA3AF'};">${item.status || 'Not Started'}</span>
-                                                    </div>
-                                                    <div style="font-size:12px;font-weight:600;color:var(--ink);line-height:1.4;">${item.title || 'Untitled'}</div>
-                                                    ${item.creator ? `<div style="font-size:10px;color:var(--ink-sub);margin-top:4px;">by ${item.creator}</div>` : ''}
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        `}
+                    <div style="height:calc(100vh - 200px);min-height:600px;">
+                        <iframe src="daily-rundown-editor.html" style="width:100%;height:100%;border:none;"></iframe>
                     </div>
                 </div>
             `;
