@@ -90,7 +90,7 @@ async function syncStaffDirectory() {
                 status: getSelectProperty(props['STATUS']),
                 maxHoursPerWeek: getNumberProperty(props['MAX HOURS PER WEEK']),
                 weeklyCapacityPTS: getNumberProperty(props['MAX HOURS PER WEEK']),
-                managerName: getFormulaStringProperty(props['MANAGER NAME (API)']),
+                manager: getFormulaStringProperty(props['MANAGER NAME (API)']),
                 isManager: getCheckboxProperty(props['IS MANAGER']),
                 isEditor: getCheckboxProperty(props['IS EDITOR']),
                 isCreator: getCheckboxProperty(props['IS CREATOR']),
