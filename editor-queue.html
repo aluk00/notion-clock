@@ -7,39 +7,101 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        :root { --dmg-blue: #21a0d8; --border: #EAECEF; --ink: #1C1C1C; --ink-sub: #757575; --bg-soft: #F9FAFB; --production: #43B049; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: transparent; margin: 0; padding: 12px; color: var(--ink); }
-        .widget { background: #FFF; border: 1px solid var(--border); border-radius: 16px; max-width: 500px; overflow: hidden; }
-        .header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
-        .dot-grid { display: grid; grid-template-columns: repeat(2, 5px); gap: 2px; }
-        .dot-grid span { width: 5px; height: 5px; border-radius: 50%; background: var(--production); animation: pulse 2.5s infinite ease-in-out; }
-        @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
-        .title { font-size: 13px; font-weight: 800; }
-        .count { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: #DCFCE7; color: #166534; margin-left: auto; }
-        .list { max-height: 300px; overflow-y: auto; }
-        .item { padding: 14px 20px; border-bottom: 1px solid #F5F5F5; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: background 0.15s; }
-        .item:hover { background: var(--bg-soft); }
-        .item:last-child { border-bottom: none; }
-        .item-icon { width: 36px; height: 36px; border-radius: 10px; background: #DCFCE7; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-        .item-info { flex: 1; min-width: 0; }
-        .item-title { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .item-sub { font-size: 11px; color: var(--ink-sub); }
-        .item-priority { font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 99px; text-transform: uppercase; }
-        .priority-high { background: #FEE2E2; color: #B91C1C; }
-        .priority-medium { background: #FEF3C7; color: #B45309; }
-        .priority-low { background: #E5E5E5; color: #525252; }
-        .source-legend { font-size: 9px; color: var(--ink-sub); margin-top: 4px; }
-        .source-legend span { font-weight: 600; }
-        .empty { padding: 50px 20px; text-align: center; }
-        .empty-icon { font-size: 40px; margin-bottom: 12px; }
-        .empty-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
-        .empty-sub { font-size: 12px; color: var(--ink-sub); }
-        .loading { display: flex; align-items: center; justify-content: center; padding: 50px; color: var(--ink-sub); font-size: 12px; }
-        .spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--production); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        :root {
+            --dmg-blue: #21a0d8;
+            --border: #EAECEF;
+            --ink: #1C1C1C;
+            --ink-sub: #757575;
+            --bg-soft: #F9FAFB;
+            --production: #43B049;
+            --editorial: #E94B4B;
+            --creative: #E6468B;
+            --urgent: #EF4444;
+            --warning: #F59E0B;
+            --success: #10B981;
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: transparent; padding: 16px; color: var(--ink); -webkit-font-smoothing: antialiased; }
 
-        /* ===== PROJECT DETAIL VIEW - Clean transition (no dark overlay for Notion-embedded feel) ===== */
+        .dots { display: grid; grid-template-columns: repeat(2, 6px); gap: 3px; }
+        .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--production); }
+        .dots span:nth-child(1) { animation: pulse 2s ease-in-out infinite; }
+        .dots span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dots span:nth-child(3) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        .dots span:nth-child(4) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        .top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        .queue-label { font-size: 11px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; }
+        .stats { margin-left: auto; display: flex; gap: 16px; }
+        .stat { display: flex; align-items: center; gap: 6px; }
+        .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .stat-value { font-size: 12px; font-weight: 700; }
+        .stat-label { font-size: 10px; color: var(--ink-sub); }
+
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .tab { padding: 8px 14px; border-radius: 10px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: white; cursor: pointer; transition: all 0.25s var(--ease); }
+        .tab:hover { border-color: var(--ink-sub); }
+        .tab.active { background: var(--ink); color: white; border-color: var(--ink); }
+
+        .legend { display: flex; gap: 12px; margin-left: auto; font-size: 9px; align-items: center; }
+        .legend-item { display: flex; align-items: center; gap: 4px; color: var(--ink-sub); }
+        .legend-badge { font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; }
+
+        .columns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        @media (max-width: 1200px) { .columns { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 700px) { .columns { grid-template-columns: 1fr; } }
+
+        .column { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 16px; min-height: 400px; transition: all 0.3s var(--ease); }
+        .column:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .column.forecasted { background: linear-gradient(180deg, rgba(33, 160, 216, 0.03) 0%, white 100%); border-color: rgba(33, 160, 216, 0.2); }
+
+        .column-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .column-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .column-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-sub); }
+        .column-count { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--ink-sub); background: var(--bg-soft); padding: 2px 8px; border-radius: 10px; }
+        .column-effort { font-size: 9px; font-weight: 600; color: var(--production); background: rgba(67, 176, 73, 0.1); padding: 2px 8px; border-radius: 10px; margin-left: 4px; }
+
+        .cards { display: flex; flex-direction: column; gap: 10px; }
+
+        .card { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 10px; padding: 14px; position: relative; cursor: pointer; transition: all 0.25s var(--ease); }
+        .card:hover { border-color: var(--ink-sub); transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+
+        .card-priority { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; border-radius: 10px 0 0 10px; }
+        .card-priority.high { background: var(--urgent); }
+        .card-priority.medium { background: var(--warning); }
+        .card-priority.low { background: var(--success); }
+        .card-priority.forecasted { background: var(--dmg-blue); }
+
+        .card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .card-type { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; background: rgba(67, 176, 73, 0.1); color: var(--production); }
+        .card-source { font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; }
+        .card-source.api { background: rgba(33, 160, 216, 0.1); color: #21A0D8; }
+        .card-source.rundown { background: rgba(233, 75, 75, 0.1); color: #E94B4B; }
+        .card-source.firebase { background: rgba(67, 176, 73, 0.1); color: #43B049; }
+        .card-source.forecasted { background: rgba(33, 160, 216, 0.15); color: #21A0D8; }
+        .card-effort { font-size: 9px; font-weight: 600; color: var(--ink-sub); margin-left: auto; }
+        .card-effort-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(67, 176, 73, 0.1); color: var(--production); }
+        .card-notion-link { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 4px; background: white; color: var(--ink-sub); text-decoration: none; transition: 0.2s var(--ease); }
+        .card-notion-link:hover { background: #21A0D8; color: white; }
+
+        .card-title { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.4; margin-bottom: 6px; }
+        .card-project { font-size: 10px; color: var(--ink-sub); margin-bottom: 10px; }
+
+        .card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .card-due { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: white; }
+        .card-due.overdue { background: rgba(239, 68, 68, 0.1); color: var(--urgent); }
+        .card-due.soon { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .card-live { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .card-editor { font-size: 10px; color: var(--ink-sub); margin-left: auto; }
+
+        .empty { text-align: center; padding: 40px 20px; color: var(--ink-sub); font-size: 11px; font-weight: 500; }
+        .empty-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.5; }
+        .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; gap: 12px; }
+        .loading-text { font-size: 11px; font-weight: 600; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.1em; }
+
+        /* Project Detail Modal */
         .project-overlay {
             position: fixed;
             inset: 0;
@@ -47,12 +109,9 @@
             z-index: 1000;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.3s var(--ease);
         }
-        .project-overlay.visible {
-            opacity: 1;
-            visibility: visible;
-        }
+        .project-overlay.visible { opacity: 1; visibility: visible; }
 
         .project-detail {
             position: fixed;
@@ -68,7 +127,7 @@
             z-index: 1001;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.4s var(--ease);
             display: flex;
             flex-direction: column;
             box-shadow: 0 20px 60px rgba(0,0,0,0.12);
@@ -100,129 +159,85 @@
             background: #FFF;
             cursor: pointer;
             color: var(--ink-sub);
-            transition: all 0.2s ease;
+            transition: all 0.2s var(--ease);
             flex-shrink: 0;
         }
-        .project-back-btn:hover {
-            background: var(--bg-soft);
-            border-color: #D1D5DB;
-            color: var(--ink);
-        }
+        .project-back-btn:hover { background: var(--bg-soft); border-color: #D1D5DB; color: var(--ink); }
         .project-back-btn svg { width: 14px; height: 14px; }
 
         .project-title-section { flex: 1; }
-        .project-client-name {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 4px;
-        }
-        .project-title-main {
-            font-size: 20px;
-            font-weight: 900;
-            color: var(--ink);
-            line-height: 1.2;
-            letter-spacing: -0.02em;
-        }
+        .project-client-name { font-size: 10px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+        .project-title-main { font-size: 20px; font-weight: 900; color: var(--ink); line-height: 1.2; letter-spacing: -0.02em; }
 
-        .project-status-badge {
-            font-size: 10px;
-            font-weight: 700;
-            padding: 8px 16px;
-            border-radius: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
+        .project-status-badge { font-size: 10px; font-weight: 700; padding: 8px 16px; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.03em; }
 
-        .project-detail-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        @media (max-width: 700px) {
-            .project-detail-content { grid-template-columns: 1fr; }
-        }
+        .project-detail-content { flex: 1; overflow-y: auto; padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 700px) { .project-detail-content { grid-template-columns: 1fr; } }
 
-        .detail-section {
-            background: #FFF;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-        }
-        .detail-section-title {
-            font-size: 10px;
-            font-weight: 800;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .detail-section-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
+        .detail-section { background: #FFF; border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+        .detail-section-title { font-size: 10px; font-weight: 800; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .detail-section-dot { width: 8px; height: 8px; border-radius: 50%; }
 
-        .detail-field {
-            margin-bottom: 12px;
-        }
+        .detail-field { margin-bottom: 12px; }
         .detail-field:last-child { margin-bottom: 0; }
-        .detail-field-label {
-            font-size: 9px;
-            font-weight: 700;
-            color: var(--ink-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 4px;
-        }
-        .detail-field-value {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--ink);
-        }
+        .detail-field-label { font-size: 9px; font-weight: 700; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+        .detail-field-value { font-size: 13px; font-weight: 600; color: var(--ink); }
         .detail-field-value.empty { color: var(--ink-sub); font-style: italic; }
 
-        .detail-actions {
-            padding: 16px 24px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        .detail-action-btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 700;
-            border: 1px solid var(--border);
-            background: #FFF;
-            cursor: pointer;
-            color: var(--ink);
-            text-decoration: none;
-            transition: all 0.15s ease;
-        }
-        .detail-action-btn:hover {
-            background: var(--production);
-            color: white;
-            border-color: var(--production);
-        }
-        .detail-action-btn.primary {
-            background: var(--production);
-            color: white;
-            border-color: var(--production);
-        }
+        .detail-actions { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+        .detail-action-btn { padding: 10px 20px; border-radius: 8px; font-size: 11px; font-weight: 700; border: 1px solid var(--border); background: #FFF; cursor: pointer; color: var(--ink); text-decoration: none; transition: all 0.2s var(--ease); }
+        .detail-action-btn:hover { background: var(--production); color: white; border-color: var(--production); }
+        .detail-action-btn.primary { background: var(--production); color: white; border-color: var(--production); }
+
+        /* Config badge */
+        .config-status { font-size: 9px; font-weight: 600; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }
+        .config-status.active { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+        .config-status.loading { background: rgba(245, 158, 11, 0.1); color: #F59E0B; }
     </style>
 </head>
 <body>
-    <div id="root"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    <div class="top-bar">
+        <div class="dots"><span></span><span></span><span></span><span></span></div>
+        <span class="queue-label">Edit Queue</span>
+        <span class="config-status loading" id="configStatus">Loading config...</span>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-dot" style="background: var(--urgent)"></div>
+                <span class="stat-value" id="urgentCount">0</span>
+                <span class="stat-label">Urgent</span>
+            </div>
+            <div class="stat">
+                <div class="stat-dot" style="background: var(--dmg-blue)"></div>
+                <span class="stat-value" id="forecastedCount">0</span>
+                <span class="stat-label">Forecasted</span>
+            </div>
+            <div class="stat">
+                <div class="stat-dot" style="background: var(--production)"></div>
+                <span class="stat-value" id="totalEffort">0</span>
+                <span class="stat-label">Total Hrs</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" data-view="all" onclick="switchTab('all')">All</div>
+        <div class="tab" data-view="in-queue" onclick="switchTab('in-queue')">In Queue</div>
+        <div class="tab" data-view="in-progress" onclick="switchTab('in-progress')">In Progress</div>
+        <div class="tab" data-view="review" onclick="switchTab('review')">Review</div>
+        <div class="tab" data-view="forecasted" onclick="switchTab('forecasted')">Forecasted</div>
+        <div class="legend">
+            <div class="legend-item"><span class="legend-badge" style="background: rgba(33, 160, 216, 0.1); color: #21A0D8;">API</span> Master Ledger</div>
+            <div class="legend-item"><span class="legend-badge" style="background: rgba(233, 75, 75, 0.1); color: #E94B4B;">RUN</span> Daily Rundown</div>
+            <div class="legend-item"><span class="legend-badge" style="background: rgba(33, 160, 216, 0.15); color: #21A0D8;">⏳</span> Forecasted</div>
+        </div>
+    </div>
+
+    <div class="columns" id="columns">
+        <div class="loading">
+            <div class="dots"><span></span><span></span><span></span><span></span></div>
+            <span class="loading-text">Loading queue...</span>
+        </div>
+    </div>
 
     <div class="project-overlay" id="projectOverlay" onclick="closeProjectDetail()"></div>
     <div class="project-detail" id="projectDetail"></div>
@@ -230,7 +245,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, onSnapshot, getDocs, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const app = initializeApp({
             apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
@@ -243,7 +258,86 @@
         const auth = getAuth(app), db = getFirestore(app), appId = "dmg-command-centre-native";
         const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
 
-        let items = [], rundownItems = [], apiDeliverables = [], loading = true;
+        // Effort configuration - loaded from Firebase
+        let effortConfig = {
+            taskTypes: {
+                video_edit_short: { baseHours: 4, label: 'Video Edit (Short)' },
+                video_edit_medium: { baseHours: 8, label: 'Video Edit (Medium)' },
+                video_edit_long: { baseHours: 16, label: 'Video Edit (Long)' },
+                motion_graphics: { baseHours: 6, label: 'Motion Graphics' },
+                colour_grade: { baseHours: 2, label: 'Colour Grade' },
+                sound_mix: { baseHours: 3, label: 'Sound Mix' },
+                revision_round: { baseHours: 2, label: 'Revision Round' }
+            },
+            seniorityMultipliers: {
+                intern: 1.5,
+                junior: 1.3,
+                midweight: 1.0,
+                senior: 0.85,
+                lead: 0.75
+            }
+        };
+        let staffDirectory = {};
+        let rotaData = {};
+        let currentView = 'all';
+
+        const COLUMNS = [
+            { key: 'forecasted', title: 'Forecasted', color: 'var(--dmg-blue)', filter: i => i.isForecasted === true },
+            { key: 'in-queue', title: 'In Queue', color: 'var(--warning)', filter: i => !i.isForecasted && (i.status === 'Not Started' || i.status === 'Queued' || i.status === 'To Do') },
+            { key: 'in-progress', title: 'In Progress', color: 'var(--production)', filter: i => !i.isForecasted && (i.status === 'In Progress' || i.status === 'Edit' || i.status === 'Filming') },
+            { key: 'review', title: 'Review', color: '#8B5CF6', filter: i => !i.isForecasted && (i.status === 'Review' || i.status === 'Stakeholder Review' || i.status === 'Internal Review' || i.status === 'Client Review') }
+        ];
+
+        let items = [], rundownItems = [], apiDeliverables = [], forecastedItems = [];
+
+        // Calculate effort based on task type and editor seniority
+        function calculateEffort(item) {
+            // Try to match task type
+            let baseHours = 4; // Default
+            const taskType = (item.editType || item.type || item.format || '').toLowerCase();
+
+            if (taskType.includes('short') || taskType.includes('reel') || taskType.includes('tiktok')) {
+                baseHours = effortConfig.taskTypes.video_edit_short?.baseHours || 4;
+            } else if (taskType.includes('long') || taskType.includes('documentary') || taskType.includes('feature')) {
+                baseHours = effortConfig.taskTypes.video_edit_long?.baseHours || 16;
+            } else if (taskType.includes('motion') || taskType.includes('animation')) {
+                baseHours = effortConfig.taskTypes.motion_graphics?.baseHours || 6;
+            } else if (taskType.includes('colour') || taskType.includes('color') || taskType.includes('grade')) {
+                baseHours = effortConfig.taskTypes.colour_grade?.baseHours || 2;
+            } else if (taskType.includes('sound') || taskType.includes('audio') || taskType.includes('mix')) {
+                baseHours = effortConfig.taskTypes.sound_mix?.baseHours || 3;
+            } else {
+                baseHours = effortConfig.taskTypes.video_edit_medium?.baseHours || 8;
+            }
+
+            // Apply seniority multiplier if we know the editor
+            let multiplier = 1.0;
+            const editorName = item.editor || '';
+            const staffMember = Object.values(staffDirectory).find(s =>
+                `${s.firstName} ${s.lastName}`.toLowerCase() === editorName.toLowerCase() ||
+                s.firstName?.toLowerCase() === editorName.toLowerCase()
+            );
+
+            if (staffMember?.seniority) {
+                const seniority = staffMember.seniority.toLowerCase();
+                multiplier = effortConfig.seniorityMultipliers[seniority] || 1.0;
+            }
+
+            return Math.round(baseHours * multiplier * 10) / 10;
+        }
+
+        // Check if editor is available (not on leave)
+        function isEditorAvailable(editorName) {
+            if (!editorName || !rotaData) return true;
+            const today = new Date().toISOString().split('T')[0];
+            const staffMember = Object.entries(staffDirectory).find(([id, s]) =>
+                `${s.firstName} ${s.lastName}`.toLowerCase() === editorName.toLowerCase()
+            );
+            if (!staffMember) return true;
+            const staffId = staffMember[0];
+            const todayRota = rotaData[staffId]?.[today];
+            return !todayRota || todayRota === 'Office' || todayRota === 'WFH';
+        }
 
         // Project Detail View Functions
         window.openProjectDetail = function(itemData) {
@@ -251,6 +345,7 @@
             const statusColor = getStatusColor(itemData.status);
             const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Not set';
             const formatCurrency = (val) => val ? `£${Number(val).toLocaleString()}` : 'Not set';
+            const effort = calculateEffort(itemData);
 
             detail.innerHTML = `
                 <div class="project-detail-header">
@@ -262,15 +357,18 @@
                         <div class="project-client-name">${itemData.clientName || itemData.projectTitle || 'Edit Task'}</div>
                         <div class="project-title-main">${itemData.title || 'Untitled Edit'}</div>
                     </div>
-                    <div class="project-status-badge" style="background: ${statusColor}15; color: ${statusColor}">${itemData.priority || 'Medium'}</div>
+                    <div class="project-status-badge" style="background: ${statusColor}15; color: ${statusColor}">${itemData.isForecasted ? 'Forecasted' : itemData.priority || 'Medium'}</div>
                 </div>
 
                 <div class="project-detail-content">
-                    <!-- Task Details Section -->
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <div class="detail-section-dot" style="background: var(--production)"></div>
                             Task Details
+                        </div>
+                        <div class="detail-field">
+                            <div class="detail-field-label">Effort (Calculated)</div>
+                            <div class="detail-field-value" style="color: var(--production); font-weight: 700;">${effort} hours</div>
                         </div>
                         <div class="detail-field">
                             <div class="detail-field-label">Priority</div>
@@ -278,19 +376,14 @@
                         </div>
                         <div class="detail-field">
                             <div class="detail-field-label">Status</div>
-                            <div class="detail-field-value">${itemData.status || 'Not Started'}</div>
+                            <div class="detail-field-value">${itemData.isForecasted ? 'Forecasted (Pipeline)' : itemData.status || 'Not Started'}</div>
                         </div>
                         <div class="detail-field">
-                            <div class="detail-field-label">Format</div>
-                            <div class="detail-field-value ${!itemData.format ? 'empty' : ''}">${itemData.format || 'Not specified'}</div>
-                        </div>
-                        <div class="detail-field">
-                            <div class="detail-field-label">Source</div>
-                            <div class="detail-field-value">${itemData.source === 'api' ? 'Master Ledger' : itemData.source === 'rundown' ? 'Daily Rundown' : 'Edit Queue'}</div>
+                            <div class="detail-field-label">Format / Type</div>
+                            <div class="detail-field-value ${!itemData.format && !itemData.editType ? 'empty' : ''}">${itemData.editType || itemData.format || 'Video Edit'}</div>
                         </div>
                     </div>
 
-                    <!-- Team Section -->
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <div class="detail-section-dot" style="background: #9333EA"></div>
@@ -298,15 +391,11 @@
                         </div>
                         <div class="detail-field">
                             <div class="detail-field-label">Video Editor</div>
-                            <div class="detail-field-value">${itemData.editor || 'Unassigned'}</div>
+                            <div class="detail-field-value">${itemData.editor || 'Unassigned'}${!isEditorAvailable(itemData.editor) ? ' <span style="color: var(--warning); font-size: 10px;">(On Leave)</span>' : ''}</div>
                         </div>
                         <div class="detail-field">
                             <div class="detail-field-label">Creative Lead</div>
                             <div class="detail-field-value ${!itemData.creativeLead ? 'empty' : ''}">${itemData.creativeLead || 'Not assigned'}</div>
-                        </div>
-                        <div class="detail-field">
-                            <div class="detail-field-label">Sales Lead</div>
-                            <div class="detail-field-value ${!itemData.salesLead ? 'empty' : ''}">${itemData.salesLead || 'Not assigned'}</div>
                         </div>
                         <div class="detail-field">
                             <div class="detail-field-label">Producer</div>
@@ -314,7 +403,6 @@
                         </div>
                     </div>
 
-                    <!-- Project Info Section -->
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <div class="detail-section-dot" style="background: #21A0D8"></div>
@@ -328,74 +416,32 @@
                             <div class="detail-field-label">Project</div>
                             <div class="detail-field-value ${!itemData.projectTitle ? 'empty' : ''}">${itemData.projectTitle || 'Not specified'}</div>
                         </div>
-                        ${itemData.budget || itemData.dealValue ? `
+                        ${itemData.dealValue ? `
                         <div class="detail-field">
-                            <div class="detail-field-label">Project Budget</div>
-                            <div class="detail-field-value" style="color: #22C55E; font-weight: 700;">${formatCurrency(itemData.budget || itemData.dealValue)}</div>
-                        </div>` : ''}
-                        ${itemData.editBudget ? `
-                        <div class="detail-field">
-                            <div class="detail-field-label">Edit Allocation</div>
-                            <div class="detail-field-value" style="color: #22C55E;">${formatCurrency(itemData.editBudget)}</div>
+                            <div class="detail-field-label">Deal Value</div>
+                            <div class="detail-field-value" style="color: #22C55E; font-weight: 700;">${formatCurrency(itemData.dealValue)}</div>
                         </div>` : ''}
                     </div>
 
-                    <!-- Key Dates Section -->
                     <div class="detail-section">
                         <div class="detail-section-title">
                             <div class="detail-section-dot" style="background: #F59E0B"></div>
                             Key Dates
                         </div>
                         <div class="detail-field">
-                            <div class="detail-field-label">Client Due Date</div>
-                            <div class="detail-field-value ${!itemData.clientDueDate && !itemData.dueDate ? 'empty' : ''}">${formatDate(itemData.clientDueDate || itemData.dueDate)}</div>
+                            <div class="detail-field-label">Due Date</div>
+                            <div class="detail-field-value ${!itemData.dueDate ? 'empty' : ''}">${formatDate(itemData.dueDate)}</div>
                         </div>
                         <div class="detail-field">
                             <div class="detail-field-label">Live Date</div>
                             <div class="detail-field-value ${!itemData.liveDate ? 'empty' : ''}">${formatDate(itemData.liveDate)}</div>
                         </div>
+                        ${itemData.isForecasted ? `
                         <div class="detail-field">
-                            <div class="detail-field-label">Feedback Due</div>
-                            <div class="detail-field-value ${!itemData.feedbackDue ? 'empty' : ''}">${formatDate(itemData.feedbackDue)}</div>
-                        </div>
-                        ${itemData.feedbackStatus ? `
-                        <div class="detail-field">
-                            <div class="detail-field-label">Feedback Status</div>
-                            <div class="detail-field-value">${itemData.feedbackStatus}</div>
+                            <div class="detail-field-label">Deal Stage</div>
+                            <div class="detail-field-value" style="color: var(--dmg-blue);">${itemData.dealStage || 'Pipeline'}</div>
                         </div>` : ''}
                     </div>
-
-                    <!-- Deliverables Section (if available) -->
-                    ${itemData.deliverables && itemData.deliverables.length > 0 ? `
-                    <div class="detail-section" style="grid-column: 1 / -1;">
-                        <div class="detail-section-title">
-                            <div class="detail-section-dot" style="background: #E6468B"></div>
-                            Related Deliverables
-                            <span style="font-size: 9px; background: #E5E5E5; padding: 2px 8px; border-radius: 10px; margin-left: auto;">${itemData.deliverables.length}</span>
-                        </div>
-                        <div style="display: grid; gap: 8px;">
-                            ${itemData.deliverables.map(d => `
-                                <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-soft); border-radius: 8px; cursor: pointer; transition: all 0.15s ease;" onclick="window.open('${d.url || '#'}', '_blank')" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
-                                    <div style="width: 8px; height: 8px; border-radius: 50%; background: ${getStatusColor(d.status)};"></div>
-                                    <div style="flex: 1; min-width: 0;">
-                                        <div style="font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${d.title || 'Untitled'}</div>
-                                        <div style="font-size: 10px; color: var(--ink-sub);">${d.format || d.type || 'Asset'} • ${d.status || 'Not Started'}</div>
-                                    </div>
-                                    ${d.budget ? `<div style="font-size: 11px; font-weight: 700; color: #22C55E;">${formatCurrency(d.budget)}</div>` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>` : ''}
-
-                    <!-- Notes Section -->
-                    ${itemData.notes ? `
-                    <div class="detail-section" style="grid-column: 1 / -1;">
-                        <div class="detail-section-title">
-                            <div class="detail-section-dot" style="background: var(--ink-sub)"></div>
-                            Notes
-                        </div>
-                        <div style="font-size: 12px; color: var(--ink-sub); line-height: 1.5; white-space: pre-wrap;">${itemData.notes}</div>
-                    </div>` : ''}
                 </div>
 
                 <div class="detail-actions">
@@ -420,16 +466,94 @@
         function getStatusColor(status) {
             const statusLower = (status || '').toLowerCase();
             if (statusLower.includes('high') || statusLower.includes('urgent')) return '#EF4444';
-            if (statusLower.includes('medium')) return '#F59E0B';
-            if (statusLower.includes('low')) return '#22C55E';
+            if (statusLower.includes('medium') || statusLower.includes('progress')) return '#F59E0B';
+            if (statusLower.includes('review')) return '#8B5CF6';
+            if (statusLower.includes('forecasted')) return '#21A0D8';
             return '#9CA3AF';
         }
 
-        // Fetch deliverables from Cloud Run API (canonical Notion data)
-        // This is optional - widget still works with just Firebase data
+        function isOverdue(dateStr) {
+            if (!dateStr) return false;
+            return new Date(dateStr) < new Date();
+        }
+
+        function isDueSoon(dateStr) {
+            if (!dateStr) return false;
+            const due = new Date(dateStr);
+            const now = new Date();
+            const diff = (due - now) / (1000 * 60 * 60 * 24);
+            return diff >= 0 && diff <= 2;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+            if (diff < 0) return `${Math.abs(diff)}d overdue`;
+            if (diff === 0) return 'Today';
+            if (diff === 1) return 'Tomorrow';
+            return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        }
+
+        function getPriority(item) {
+            if (item.isForecasted) return 'forecasted';
+            if (item.priority === 'High' || item.priority === 'Urgent') return 'high';
+            if (item.priority === 'Medium') return 'medium';
+            return 'low';
+        }
+
+        // Load forecasted items from API (pipeline projects)
+        async function loadForecastedItems() {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 10000);
+
+                const res = await fetch(`${API_URL}/projects`, { signal: controller.signal });
+                clearTimeout(timeout);
+
+                if (!res.ok) return;
+
+                const data = await res.json();
+                const projects = data.projects || [];
+
+                // Filter for pipeline projects with moving assets
+                forecastedItems = projects.filter(p => {
+                    const dealStage = (p.dealStage || p.status1 || '').toLowerCase();
+                    const hasAssets = (p.movingAssetCount > 0 || p.movingAssetsNeeded?.length > 0);
+                    const isPipeline = dealStage.includes('agreed') || dealStage.includes('won') || dealStage.includes('verbal') || dealStage.includes('confirmed');
+                    const notInProduction = !(p.productionWorkflowStatus || '').toLowerCase().includes('progress');
+                    return hasAssets && isPipeline && notInProduction;
+                }).map(p => ({
+                    id: p.id,
+                    title: p.title || 'Untitled Project',
+                    editor: p.videoEditor || 'TBC',
+                    priority: 'Pipeline',
+                    dueDate: p.dueDate || p.clientDueDate,
+                    liveDate: p.plannedLiveDate || p.liveDate,
+                    status: 'Forecasted',
+                    clientName: p.client,
+                    projectTitle: p.title,
+                    projectId: p.id,
+                    source: 'forecasted',
+                    isForecasted: true,
+                    dealStage: p.dealStage || p.status1,
+                    dealValue: p.dealValue || p.projectBudget,
+                    movingAssetCount: p.movingAssetCount || p.movingAssetsNeeded?.length || 1,
+                    editType: 'Video Edit',
+                    url: p.url
+                }));
+
+                console.log('[Editor Queue] Loaded', forecastedItems.length, 'forecasted items');
+                render();
+            } catch (err) {
+                console.warn('[Editor Queue] Could not load forecasted items');
+            }
+        }
+
+        // Load deliverables from API
         async function loadApiDeliverables() {
             try {
-                // Try /deliverables first with timeout
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 10000);
 
@@ -437,16 +561,15 @@
                 clearTimeout(timeout);
 
                 if (!res.ok) {
-                    console.warn('[Editor Queue] API returned', res.status, '- using Firebase data only');
+                    console.warn('[Editor Queue] API returned', res.status);
                     return;
                 }
 
                 let data = await res.json();
                 let deliverables = data.deliverables || data.projects || [];
 
-                // If empty, try /projects
                 if (deliverables.length === 0) {
-                    const projRes = await fetch(`${API_URL}/projects`, { signal: controller.signal });
+                    const projRes = await fetch(`${API_URL}/projects`);
                     if (projRes.ok) {
                         data = await projRes.json();
                         deliverables = data.projects || [];
@@ -456,10 +579,9 @@
                 // Filter for items that need editing
                 apiDeliverables = deliverables.filter(d => {
                     const status = (d.status || d.productionWorkflowStatus || '').toLowerCase();
-                    const discipline = (d.discipline || '').toLowerCase();
                     if (status === 'live' || status === 'published' || status === 'complete' || status === 'done') return false;
                     if (d.movingAssetsNeeded?.length > 0 || d.movingAssetCount > 0) return true;
-                    if (discipline === 'editor') return true;
+                    if ((d.discipline || '').toLowerCase() === 'editor') return true;
                     if (status.includes('edit') || status.includes('filming') || status.includes('review')) return true;
                     if (d.videoEditor) return true;
                     return false;
@@ -476,19 +598,21 @@
                     status: d.status || d.productionWorkflowStatus || 'Not Started',
                     clientName: d.client,
                     projectTitle: d.projectTitle || d.client,
+                    projectId: d.projectId || d.id,
                     source: 'api',
+                    isForecasted: false,
+                    editType: d.editType || d.format,
                     url: d.url
                 }));
 
                 console.log('[Editor Queue] Loaded', apiDeliverables.length, 'items from API');
                 render();
             } catch (err) {
-                // Silently fail - widget works fine with just Firebase data
-                console.warn('[Editor Queue] API unavailable, using Firebase data only');
+                console.warn('[Editor Queue] API unavailable');
             }
         }
 
-        // Fetch rundown items that need editing (optional enhancement)
+        // Load rundown items
         async function loadRundownItems() {
             try {
                 const controller = new AbortController();
@@ -514,7 +638,7 @@
                             );
                             allItems.push(...editItems);
                         }
-                    } catch (e) { /* skip failed date */ }
+                    } catch (e) { /* skip */ }
                 }
                 clearTimeout(timeout);
 
@@ -525,9 +649,10 @@
                     priority: r.plannedLiveDate && new Date(r.plannedLiveDate) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium',
                     dueDate: r.plannedLiveDate || r.date,
                     liveDate: r.plannedLiveDate,
-                    status: r.section,
+                    status: r.section === 'FILMING' ? 'In Progress' : 'Not Started',
                     projectTitle: r.vertical || 'Daily Rundown',
                     source: 'rundown',
+                    isForecasted: false,
                     url: r.url
                 }));
                 render();
@@ -535,112 +660,181 @@
                 console.warn('[Editor Queue] Rundown API unavailable');
             }
         }
-        const root = document.getElementById('root');
+
+        // Tab switching
+        window.switchTab = (view) => {
+            currentView = view;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[data-view="${view}"]`).classList.add('active');
+            render();
+        };
 
         function render() {
-            if (loading) { root.innerHTML = `<div class="widget"><div class="loading"><div class="spinner"></div>Loading queue...</div></div>`; return; }
-
-            // Merge all data sources, avoiding duplicates
-            // Priority: Firebase edit_queue > API deliverables > Rundown items
+            // Merge all data sources
             const existingIds = new Set(items.map(i => i.id));
-            const allItems = [
-                ...items,
-                ...apiDeliverables.filter(d => !existingIds.has(d.id)),
-                ...rundownItems.filter(r => !existingIds.has(r.id) && !apiDeliverables.some(d => d.id === r.id))
+            let allItems = [
+                ...forecastedItems,
+                ...items.filter(i => !forecastedItems.some(f => f.id === i.id)),
+                ...apiDeliverables.filter(d => !existingIds.has(d.id) && !forecastedItems.some(f => f.id === d.id)),
+                ...rundownItems.filter(r => !existingIds.has(r.id) && !apiDeliverables.some(d => d.id === r.id) && !forecastedItems.some(f => f.id === r.id))
             ];
-            const priorityOrder = { high: 0, medium: 1, low: 2 };
-            allItems.sort((a, b) => (priorityOrder[a.priority?.toLowerCase()] || 2) - (priorityOrder[b.priority?.toLowerCase()] || 2));
 
-            root.innerHTML = `
-                <div class="widget">
-                    <div class="header">
-                        <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                        <div>
-                            <h2 class="title">Edit Queue</h2>
-                            <div class="source-legend"><span style="color: #21A0D8;">API</span> = Master Ledger &nbsp; <span style="color: #E94B4B;">RUN</span> = Daily Rundown</div>
+            // Filter based on current view
+            if (currentView !== 'all') {
+                const col = COLUMNS.find(c => c.key === currentView);
+                if (col) {
+                    allItems = allItems.filter(col.filter);
+                }
+            }
+
+            // Calculate stats
+            const urgent = allItems.filter(i => getPriority(i) === 'high').length;
+            const forecasted = allItems.filter(i => i.isForecasted).length;
+            const totalEffort = allItems.reduce((sum, item) => sum + calculateEffort(item), 0);
+
+            document.getElementById('urgentCount').textContent = urgent;
+            document.getElementById('forecastedCount').textContent = forecasted;
+            document.getElementById('totalEffort').textContent = Math.round(totalEffort);
+
+            // Render columns
+            document.getElementById('columns').innerHTML = COLUMNS.map(col => {
+                const colItems = allItems.filter(col.filter);
+                colItems.sort((a, b) => {
+                    const pOrder = { high: 0, medium: 1, low: 2, forecasted: 3 };
+                    if (pOrder[getPriority(a)] !== pOrder[getPriority(b)]) return pOrder[getPriority(a)] - pOrder[getPriority(b)];
+                    if (!a.dueDate) return 1;
+                    if (!b.dueDate) return -1;
+                    return new Date(a.dueDate) - new Date(b.dueDate);
+                });
+
+                const colEffort = colItems.reduce((sum, item) => sum + calculateEffort(item), 0);
+
+                return `
+                    <div class="column ${col.key === 'forecasted' ? 'forecasted' : ''}">
+                        <div class="column-header">
+                            <div class="column-dot" style="background: ${col.color}"></div>
+                            <span class="column-title">${col.title}</span>
+                            <span class="column-count">${colItems.length}</span>
+                            <span class="column-effort">${Math.round(colEffort)}h</span>
                         </div>
-                        <span class="count">${allItems.length} in queue</span>
-                    </div>
-                    ${allItems.length === 0 ? `
-                        <div class="empty">
-                            <div class="empty-icon">🎬</div>
-                            <div class="empty-title">Queue Empty</div>
-                            <div class="empty-sub">No edits pending. Add items via Daily Rundown or Commercial Hub.</div>
-                        </div>
-                    ` : `
-                        <div class="list">
-                            ${allItems.map(item => {
-                                const dueDate = item.dueDate || item.deliveryDue || item.internalDueDate || '';
-                                const liveDate = item.liveDate || item.goLiveDate || item.plannedLiveDate || '';
-                                const clientDue = item.clientDueDate || item.feedbackDue || item.dueDate || '';
-                                const feedbackStatus = item.feedbackStatus || '';
-                                const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
-                                const isOverdue = (d) => d && new Date(d) < new Date();
-                                const isDueSoon = (d) => { if (!d) return false; const diff = (new Date(d) - new Date()) / (1000*60*60*24); return diff >= 0 && diff <= 2; };
+                        <div class="cards">
+                            ${colItems.length === 0 ? `<div class="empty"><div class="empty-icon">${col.key === 'forecasted' ? '📊' : '🎬'}</div>No items</div>` : colItems.map(item => {
+                                const overdue = isOverdue(item.dueDate);
+                                const soon = isDueSoon(item.dueDate);
+                                const effort = calculateEffort(item);
                                 const itemData = JSON.stringify(item).replace(/"/g, '&quot;');
+                                const available = isEditorAvailable(item.editor);
+
                                 return `
-                                <div class="item" onclick="openProjectDetail(${itemData})" style="cursor: pointer;">
-                                    <div class="item-icon">🎬</div>
-                                    <div class="item-info">
-                                        <div class="item-title">${item.title || 'Untitled Edit'}</div>
-                                        <div class="item-sub">
-                                            ${item.editor || 'Unassigned'} • ${item.clientName || item.projectTitle || 'Project'}
-                                            ${item.source === 'rundown' ? '<span style="font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: rgba(233, 75, 75, 0.1); color: #E94B4B; margin-left: 4px;">RUN</span>' : ''}
-                                            ${item.source === 'api' ? '<span style="font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 3px; background: rgba(33, 160, 216, 0.1); color: #21A0D8; margin-left: 4px;">API</span>' : ''}
-                                            ${item.url ? `<a href="${item.url}" target="_blank" onclick="event.stopPropagation()" style="display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 4px; background: var(--bg-soft); color: var(--ink-sub); text-decoration: none; margin-left: 4px; transition: 0.15s;" onmouseover="this.style.background='#21A0D8';this.style.color='white'" onmouseout="this.style.background='var(--bg-soft)';this.style.color='var(--ink-sub)'" title="Open in Notion"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
+                                    <div class="card" onclick="openProjectDetail(${itemData})">
+                                        <div class="card-priority ${getPriority(item)}"></div>
+                                        <div class="card-top">
+                                            <span class="card-type">${item.editType || 'Edit'}</span>
+                                            <span class="card-source ${item.source}">${item.isForecasted ? '⏳' : (item.source === 'api' ? 'API' : (item.source === 'rundown' ? 'RUN' : 'FB'))}</span>
+                                            <span class="card-effort-badge">${effort}h</span>
+                                            ${item.projectId ? `<a href="project-detail.html?id=${item.projectId}" target="_blank" class="card-notion-link" title="View Project" onclick="event.stopPropagation()" style="background: rgba(67, 176, 73, 0.1); color: var(--production);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></a>` : ''}
+                                            ${item.url ? `<a href="${item.url}" target="_blank" class="card-notion-link" title="Open in Notion" onclick="event.stopPropagation()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>` : ''}
                                         </div>
-                                        <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
-                                            ${clientDue ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: ${isOverdue(clientDue) ? '#FEE2E2' : isDueSoon(clientDue) ? '#FEF3C7' : '#E5E5E5'}; color: ${isOverdue(clientDue) ? '#B91C1C' : isDueSoon(clientDue) ? '#B45309' : '#525252'};">Client: ${formatDate(clientDue)}</span>` : ''}
-                                            ${liveDate ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #DCFCE7; color: #166534;">Live: ${formatDate(liveDate)}</span>` : ''}
-                                            ${feedbackStatus ? `<span style="font-size: 9px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #DBEAFE; color: #1E40AF;">${feedbackStatus}</span>` : ''}
+                                        <div class="card-title">${item.title || 'Untitled Edit'}</div>
+                                        ${item.projectTitle ? `<div class="card-project">${item.clientName || ''} ${item.clientName && item.projectTitle ? '•' : ''} ${item.projectTitle}</div>` : ''}
+                                        <div class="card-meta">
+                                            ${item.dueDate ? `<span class="card-due ${overdue ? 'overdue' : (soon ? 'soon' : '')}">${formatDate(item.dueDate)}</span>` : ''}
+                                            ${item.liveDate ? `<span class="card-live">Live: ${formatDate(item.liveDate)}</span>` : ''}
+                                            ${item.isForecasted && item.movingAssetCount ? `<span style="font-size: 9px; font-weight: 600; padding: 3px 6px; border-radius: 4px; background: rgba(33, 160, 216, 0.1); color: var(--dmg-blue);">${item.movingAssetCount} assets</span>` : ''}
+                                            <span class="card-editor">${item.editor || 'Unassigned'}${!available ? ' 🏖️' : ''}</span>
                                         </div>
                                     </div>
-                                    <span class="item-priority priority-${(item.priority || 'low').toLowerCase()}">${item.priority || 'Low'}</span>
-                                </div>
-                            `}).join('')}
+                                `;
+                            }).join('')}
                         </div>
-                    `}
-                </div>
-            `;
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Load effort config from Firebase
+        async function loadEffortConfig() {
+            try {
+                const configDoc = await getDoc(doc(db, "artifacts", appId, "public", "config", "effortScores"));
+                if (configDoc.exists()) {
+                    effortConfig = { ...effortConfig, ...configDoc.data() };
+                    document.getElementById('configStatus').textContent = 'Config loaded';
+                    document.getElementById('configStatus').className = 'config-status active';
+                    console.log('[Editor Queue] Loaded effort config from Firebase');
+                } else {
+                    document.getElementById('configStatus').textContent = 'Using defaults';
+                    document.getElementById('configStatus').className = 'config-status';
+                }
+                render();
+            } catch (err) {
+                console.warn('[Editor Queue] Could not load effort config, using defaults');
+                document.getElementById('configStatus').textContent = 'Using defaults';
+                document.getElementById('configStatus').className = 'config-status';
+            }
+        }
+
+        // Load staff directory
+        async function loadStaffDirectory() {
+            try {
+                const snap = await getDocs(collection(db, "artifacts", appId, "public", "data", "staff_directory"));
+                snap.docs.forEach(d => { staffDirectory[d.id] = d.data(); });
+                console.log('[Editor Queue] Loaded', Object.keys(staffDirectory).length, 'staff members');
+            } catch (err) {
+                console.warn('[Editor Queue] Could not load staff directory');
+            }
+        }
+
+        // Load rota data
+        async function loadRotaData() {
+            try {
+                const snap = await getDocs(collection(db, "artifacts", appId, "public", "data", "rota"));
+                snap.docs.forEach(d => { rotaData[d.id] = d.data(); });
+                console.log('[Editor Queue] Loaded rota data');
+            } catch (err) {
+                console.warn('[Editor Queue] Could not load rota data');
+            }
         }
 
         onAuthStateChanged(auth, user => {
             if (user) {
-                // Load API deliverables (canonical Notion data)
-                loadApiDeliverables();
+                // Load configurations
+                loadEffortConfig();
+                loadStaffDirectory();
+                loadRotaData();
 
-                // Load rundown items
+                // Load data sources
+                loadForecastedItems();
+                loadApiDeliverables();
                 loadRundownItems();
 
-                // Refresh both every minute
+                // Refresh every minute
                 setInterval(() => {
+                    loadForecastedItems();
                     loadApiDeliverables();
                     loadRundownItems();
                 }, 60000);
 
-                // Listen to edit_queue - now synced from Commercial Hub
+                // Listen to Firebase edit_queue
                 onSnapshot(collection(db, "artifacts", appId, "public", "data", "edit_queue"), snap => {
-                    items = []; snap.forEach(d => items.push({ id: d.id, ...d.data() }));
-                    // Sort by priority: high > medium > low
+                    items = []; snap.forEach(d => items.push({ id: d.id, ...d.data(), isForecasted: false }));
                     const priorityOrder = { high: 0, medium: 1, low: 2 };
                     items.sort((a, b) => (priorityOrder[a.priority?.toLowerCase()] || 2) - (priorityOrder[b.priority?.toLowerCase()] || 2));
-                    loading = false; render();
-                }, e => { console.error(e); loading = false; render(); });
+                    render();
+                }, e => console.error(e));
 
-                // Also listen to asset_metadata for additional edit tasks
+                // Listen to asset_metadata
                 onSnapshot(collection(db, "artifacts", appId, "public", "data", "asset_metadata"), snap => {
                     const assets = [];
                     snap.forEach(d => {
                         const data = d.data();
-                        // Include assets in edit phase that have an editor assigned
                         if (data.editor && ['Edit', 'Filming', 'Review'].includes(data.status)) {
-                            // Check if not already in edit_queue
                             if (!items.some(i => i.id === d.id)) {
                                 assets.push({
                                     id: d.id,
                                     title: data.assetTitle || 'Untitled',
                                     editor: data.editor,
                                     format: data.assetFormat,
+                                    editType: data.assetFormat,
                                     priority: data.deliveryDue && new Date(data.deliveryDue) < new Date(Date.now() + 2*24*60*60*1000) ? 'High' : 'Medium',
                                     dueDate: data.deliveryDue,
                                     liveDate: data.liveDate || data.plannedLiveDate,
@@ -649,12 +843,12 @@
                                     status: data.status,
                                     clientName: data.clientName,
                                     projectTitle: data.projectTitle,
-                                    source: 'asset-metadata'
+                                    source: 'asset-metadata',
+                                    isForecasted: false
                                 });
                             }
                         }
                     });
-                    // Merge and re-sort
                     const editQueueIds = new Set(items.filter(i => i.source !== 'asset-metadata').map(i => i.id));
                     const newItems = [...items.filter(i => i.source !== 'asset-metadata'), ...assets.filter(a => !editQueueIds.has(a.id))];
                     const priorityOrder = { high: 0, medium: 1, low: 2 };
@@ -662,17 +856,26 @@
                     items = newItems;
                     render();
                 }, e => console.error(e));
+
+                // Listen for effort config changes
+                onSnapshot(doc(db, "artifacts", appId, "public", "config", "effortScores"), snap => {
+                    if (snap.exists()) {
+                        effortConfig = { ...effortConfig, ...snap.data() };
+                        document.getElementById('configStatus').textContent = 'Config loaded';
+                        document.getElementById('configStatus').className = 'config-status active';
+                        render();
+                    }
+                });
+
             } else {
-                signInAnonymously(auth).catch(e => { loading = false; render(); });
+                signInAnonymously(auth).catch(e => console.error(e));
             }
         });
 
-        // Close project detail on Escape key
+        // Close on Escape
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                if (document.getElementById('projectOverlay').classList.contains('visible')) {
-                    closeProjectDetail();
-                }
+            if (e.key === 'Escape' && document.getElementById('projectOverlay').classList.contains('visible')) {
+                closeProjectDetail();
             }
         });
     </script>
