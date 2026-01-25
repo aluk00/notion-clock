@@ -838,68 +838,109 @@ app.get('/staff', async (req, res) => {
 // ============================================
 
 // Helper: Parse Staff Directory item
+// Schema: FULL NAME (title), FIRST NAME (text), LAST NAME (text), EMAIL (formula),
+// ROLE (select), TEAM (select), SENIORITY (select), STATUS (select: Active/On Leave/Inactive),
+// PHONE (phone), SLACK ID (text), NOTION USER (person), IS LINE MANAGER (checkbox),
+// LINE MANAGER (person), LINE MANAGER (DROPDOWN) (select), LINE MANAGER NAME (API) (formula)
 function parseStaffMember(page) {
     const props = page.properties;
+    const status = parseProperty(props['STATUS']) || parseProperty(props['Status']) || 'Active';
     return {
         id: page.id,
         notionUrl: page.url,
-        firstName: parseProperty(props['First Name']) || parseProperty(props['FIRST NAME']) || '',
-        lastName: parseProperty(props['Last Name']) || parseProperty(props['LAST NAME']) || '',
-        email: parseProperty(props['Email']) || parseProperty(props['EMAIL']) || '',
-        team: parseProperty(props['Team']) || parseProperty(props['TEAM']) || parseProperty(props['Primary Team']) || '',
-        role: parseProperty(props['Role']) || parseProperty(props['ROLE']) || parseProperty(props['Job Title']) || '',
-        seniority: parseProperty(props['Seniority']) || parseProperty(props['SENIORITY']) || '',
-        weeklyCapacityPTS: parseProperty(props['Weekly Capacity']) || parseProperty(props['WEEKLY CAPACITY']) || parseProperty(props['Capacity']) || 40,
-        active: parseProperty(props['Active']) !== false && parseProperty(props['ACTIVE']) !== false && parseProperty(props['Status']) !== 'Inactive',
-        slackId: parseProperty(props['Slack ID']) || parseProperty(props['SLACK ID']) || '',
-        phone: parseProperty(props['Phone']) || parseProperty(props['PHONE']) || '',
-        jobRoles: parseProperty(props['Job Roles']) || parseProperty(props['JOB ROLES']) || [],
+        fullName: parseProperty(props['FULL NAME']) || parseProperty(props['Full Name']) || '',
+        firstName: parseProperty(props['FIRST NAME']) || parseProperty(props['First Name']) || '',
+        lastName: parseProperty(props['LAST NAME']) || parseProperty(props['Last Name']) || '',
+        middleName: parseProperty(props['MIDDLE NAME']) || '',
+        email: parseProperty(props['EMAIL']) || parseProperty(props['Email']) || '',
+        team: parseProperty(props['TEAM']) || parseProperty(props['Team']) || '',
+        role: parseProperty(props['ROLE']) || parseProperty(props['Role']) || '',
+        secondaryRoles: parseProperty(props['SECONDARY ROLE(S)']) || [],
+        seniority: parseProperty(props['SENIORITY']) || parseProperty(props['Seniority']) || '',
+        employmentType: parseProperty(props['EMPLOYMENT TYPE']) || '',
+        status: status,
+        active: status === 'Active',
+        weeklyCapacityPTS: parseProperty(props['WEEKLY CAPACITY (PTS)']) || parseProperty(props['Weekly Capacity']) || 0,
+        maxHoursPerWeek: parseProperty(props['MAX HOURS PER WEEK']) || 40,
+        slackId: parseProperty(props['SLACK ID']) || parseProperty(props['Slack ID']) || '',
+        phone: parseProperty(props['PHONE']) || parseProperty(props['Phone']) || '',
+        notionUser: parseProperty(props['NOTION USER']) || '',
         // Line Manager fields
-        isLineManager: parseProperty(props['IS LINE MANAGER']) || parseProperty(props['Is Line Manager']) || false,
-        lineManager: parseProperty(props['LINE MANAGER']) || parseProperty(props['Line Manager']) || '',
-        lineManagerName: parseProperty(props['LINE MANAGER NAME (API)']) || parseProperty(props['Line Manager Name (API)']) || '',
-        lineManagerDropdown: parseProperty(props['LINE MANAGER (DROPDOWN)']) || parseProperty(props['Line Manager (Dropdown)']) || '',
+        isLineManager: parseProperty(props['IS LINE MANAGER']) || false,
+        lineManager: parseProperty(props['LINE MANAGER']) || '',
+        lineManagerName: parseProperty(props['LINE MANAGER NAME (API)']) || '',
+        lineManagerDropdown: parseProperty(props['LINE MANAGER (DROPDOWN)']) || '',
+        // Capability flags
+        isCreator: parseProperty(props['IS CREATOR']) || false,
+        isEditor: parseProperty(props['IS EDITOR']) || false,
+        isProducer: parseProperty(props['IS PRODUCER']) || false,
         createdAt: page.created_time,
         updatedAt: page.last_edited_time
     };
 }
 
 // Helper: Build Staff Directory properties for Notion
+// Note: Cannot write to formula fields (EMAIL, WEEKLY CAPACITY (PTS), LINE MANAGER NAME (API))
 function buildStaffProperties(data) {
     const props = {};
 
+    // FULL NAME is the title field
+    if (data.fullName !== undefined) {
+        props['FULL NAME'] = { title: [{ text: { content: data.fullName || '' } }] };
+    }
+    // FIRST NAME, MIDDLE NAME, LAST NAME are text fields
     if (data.firstName !== undefined) {
-        props['First Name'] = { title: [{ text: { content: data.firstName || '' } }] };
+        props['FIRST NAME'] = { rich_text: data.firstName ? [{ text: { content: data.firstName } }] : [] };
+    }
+    if (data.middleName !== undefined) {
+        props['MIDDLE NAME'] = { rich_text: data.middleName ? [{ text: { content: data.middleName } }] : [] };
     }
     if (data.lastName !== undefined) {
-        props['Last Name'] = { rich_text: data.lastName ? [{ text: { content: data.lastName } }] : [] };
+        props['LAST NAME'] = { rich_text: data.lastName ? [{ text: { content: data.lastName } }] : [] };
     }
-    if (data.email !== undefined) {
-        props['Email'] = { email: data.email || null };
-    }
+    // TEAM is a select
     if (data.team !== undefined) {
-        props['Team'] = data.team ? { select: { name: data.team } } : { select: null };
+        props['TEAM'] = data.team ? { select: { name: data.team } } : { select: null };
     }
+    // ROLE is a select
     if (data.role !== undefined) {
-        props['Role'] = { rich_text: data.role ? [{ text: { content: data.role } }] : [] };
+        props['ROLE'] = data.role ? { select: { name: data.role } } : { select: null };
     }
+    // SECONDARY ROLE(S) is multi_select
+    if (data.secondaryRoles !== undefined && Array.isArray(data.secondaryRoles)) {
+        props['SECONDARY ROLE(S)'] = { multi_select: data.secondaryRoles.map(r => ({ name: r })) };
+    }
+    // SENIORITY is a select
     if (data.seniority !== undefined) {
-        props['Seniority'] = data.seniority ? { select: { name: data.seniority } } : { select: null };
+        props['SENIORITY'] = data.seniority ? { select: { name: data.seniority } } : { select: null };
     }
-    if (data.weeklyCapacityPTS !== undefined) {
-        props['Weekly Capacity'] = { number: parseInt(data.weeklyCapacityPTS) || 40 };
+    // EMPLOYMENT TYPE is a select
+    if (data.employmentType !== undefined) {
+        props['EMPLOYMENT TYPE'] = data.employmentType ? { select: { name: data.employmentType } } : { select: null };
     }
-    if (data.active !== undefined) {
-        props['Active'] = { checkbox: data.active !== false };
+    // STATUS is a select (Active/On Leave/Inactive)
+    if (data.status !== undefined) {
+        props['STATUS'] = data.status ? { select: { name: data.status } } : { select: null };
     }
+    // MAX HOURS PER WEEK is a number
+    if (data.maxHoursPerWeek !== undefined) {
+        props['MAX HOURS PER WEEK'] = { number: parseInt(data.maxHoursPerWeek) || null };
+    }
+    // SLACK ID is text
     if (data.slackId !== undefined) {
-        props['Slack ID'] = { rich_text: data.slackId ? [{ text: { content: data.slackId } }] : [] };
+        props['SLACK ID'] = { rich_text: data.slackId ? [{ text: { content: data.slackId } }] : [] };
     }
+    // PHONE is phone_number
     if (data.phone !== undefined) {
-        props['Phone'] = { phone_number: data.phone || null };
+        props['PHONE'] = { phone_number: data.phone || null };
     }
-    if (data.jobRoles !== undefined && Array.isArray(data.jobRoles)) {
-        props['Job Roles'] = { multi_select: data.jobRoles.map(r => ({ name: r })) };
+    // EMERGENCY CONTACT is text
+    if (data.emergencyContact !== undefined) {
+        props['EMERGENCY CONTACT'] = { rich_text: data.emergencyContact ? [{ text: { content: data.emergencyContact } }] : [] };
+    }
+    // NOTION INVITE SENT? is checkbox
+    if (data.notionInviteSent !== undefined) {
+        props['NOTION INVITE SENT?'] = { checkbox: data.notionInviteSent === true };
     }
     // Line Manager fields
     if (data.isLineManager !== undefined) {
@@ -907,6 +948,16 @@ function buildStaffProperties(data) {
     }
     if (data.lineManagerDropdown !== undefined) {
         props['LINE MANAGER (DROPDOWN)'] = data.lineManagerDropdown ? { select: { name: data.lineManagerDropdown } } : { select: null };
+    }
+    // Capability checkboxes
+    if (data.isCreator !== undefined) {
+        props['IS CREATOR'] = { checkbox: data.isCreator === true };
+    }
+    if (data.isEditor !== undefined) {
+        props['IS EDITOR'] = { checkbox: data.isEditor === true };
+    }
+    if (data.isProducer !== undefined) {
+        props['IS PRODUCER'] = { checkbox: data.isProducer === true };
     }
 
     return props;
