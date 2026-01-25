@@ -3,79 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stacked Digital Clock</title>
+    <title>Staff Clock Widget</title>
     <style>
         /* Core Layout */
         body {
             margin: 0;
             padding: 0;
             display: flex;
-            justify-content: center; /* ALIGNED TO CENTER */
+            justify-content: center;
             align-items: center;
-            /* Drastically reduce overall height to remove excess padding */
-            height: 100%; 
-            background-color: transparent; 
+            height: 100%;
+            background-color: transparent;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             overflow: hidden;
         }
 
-        /* Clock Container */
-        .clock-container {
+        /* Main Widget Container - 15% bigger and more wide than long */
+        .widget-container {
             display: flex;
-            flex-direction: column;
-            /* Tighter line height to stack them closely */
-            line-height: 0.8; 
-            font-weight: 900; 
-            color: #000000; 
-            /* Push container down slightly to compensate for line-height */
-            margin-top: 5px; 
-            /* Explicitly set the wrapper size to control Notion iframe height */
-            padding: 5px 0; 
+            flex-direction: row;
+            align-items: center;
+            gap: 20px;
+            padding: 8px 16px;
         }
 
-        /* Hour and Minute Styling */
-        .time-segment {
-            /* Reduced size significantly to match screenshot visually */
-            font-size: 3rem; 
-            letter-spacing: -0.05em; 
+        /* Clock Container - Horizontal layout */
+        .clock-container {
+            display: flex;
+            flex-direction: row;
+            align-items: baseline;
+            line-height: 1;
+            font-weight: 900;
+            color: #000000;
         }
-        
-        .minute-segment {
-            font-size: 3rem;
+
+        /* Hour and Minute Styling - 15% bigger (3rem * 1.15 ≈ 3.45rem) */
+        .time-segment {
+            font-size: 3.45rem;
+            letter-spacing: -0.03em;
+        }
+
+        .time-separator {
+            font-size: 3.45rem;
+            margin: 0 2px;
+            opacity: 0.7;
+        }
+
+        /* Staff Count Display */
+        .staff-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            font-size: 0.9rem;
+            color: #333;
+            border-left: 2px solid #e0e0e0;
+            padding-left: 16px;
+        }
+
+        .staff-count {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #2E7D32;
+            line-height: 1.1;
+        }
+
+        .staff-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .staff-loading {
+            color: #999;
+            font-style: italic;
         }
 
         /* Responsive scaling */
         @media (max-width: 600px) {
-            .time-segment { font-size: 2.5rem; }
-            .minute-segment { font-size: 2.5rem; }
+            .time-segment { font-size: 2.9rem; }
+            .time-separator { font-size: 2.9rem; }
+            .widget-container { gap: 12px; padding: 6px 12px; }
+            .staff-info { padding-left: 12px; }
+            .staff-count { font-size: 1.3rem; }
         }
     </style>
 </head>
 <body>
 
-    <div class="clock-container">
-        <span id="hour" class="time-segment">--</span>
-        <span id="minute" class="minute-segment">--</span>
+    <div class="widget-container">
+        <div class="clock-container">
+            <span id="hour" class="time-segment">--</span>
+            <span class="time-separator">:</span>
+            <span id="minute" class="time-segment">--</span>
+        </div>
+        <div class="staff-info">
+            <span id="staff-count" class="staff-count staff-loading">...</span>
+            <span class="staff-label">In Office</span>
+        </div>
     </div>
 
     <script>
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
         function updateTime() {
             const now = new Date();
-            
-            // Get hours in 24-hour format (00-23)
             const hours = String(now.getHours()).padStart(2, '0');
-            
-            // Get minutes (00-59)
             const minutes = String(now.getMinutes()).padStart(2, '0');
-            
+
             document.getElementById('hour').textContent = hours;
             document.getElementById('minute').textContent = minutes;
         }
 
-        // Initial call
+        async function fetchStaffCount() {
+            const countEl = document.getElementById('staff-count');
+            try {
+                const response = await fetch(`${API_URL}/staff-directory`);
+                if (!response.ok) throw new Error('API error');
+
+                const data = await response.json();
+                if (data.success && data.data) {
+                    // Count staff marked as "In Office" or similar active status
+                    const inOffice = data.data.filter(staff =>
+                        staff.status === 'Office' ||
+                        staff.status === 'In Office' ||
+                        staff.current_status === 'Office'
+                    ).length;
+
+                    countEl.textContent = inOffice;
+                    countEl.classList.remove('staff-loading');
+                } else {
+                    countEl.textContent = data.data?.length || '0';
+                    countEl.classList.remove('staff-loading');
+                }
+            } catch (error) {
+                console.error('Failed to fetch staff data:', error);
+                countEl.textContent = '--';
+                countEl.classList.remove('staff-loading');
+            }
+        }
+
+        // Initial calls
         updateTime();
-        // Update every second (1000ms)
+        fetchStaffCount();
+
+        // Update time every second
         setInterval(updateTime, 1000);
+
+        // Refresh staff count every 5 minutes
+        setInterval(fetchStaffCount, 5 * 60 * 1000);
     </script>
 
 </body>
