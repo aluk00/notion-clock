@@ -7,7 +7,18 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
         :root {
@@ -20,6 +31,7 @@
             --dmg-blue: #21A0D8;
             --success: #22C55E;
             --amber: #F59E0B;
+            --danger: #EF4444;
             --purple: #8B5CF6;
         }
 
@@ -30,40 +42,28 @@
             background: var(--white);
             color: var(--ink);
             height: 100vh;
-            max-height: 600px; /* Notion widget constraint */
-            padding: 16px;
+            max-height: 700px;
             overflow: hidden;
         }
 
-        /* --- Animation --- */
-        @keyframes pulse {
-            0%, 100% { opacity: 0.3; transform: scale(0.9); }
-            50% { opacity: 1; transform: scale(1); }
+        /* Layout */
+        .app-container {
+            display: flex;
+            height: 100%;
         }
 
-        /* --- Container --- */
-        .widget-container {
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            height: 100%;
-            background: var(--white);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
+            background: var(--surface);
         }
 
-        /* --- Header --- */
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 14px 18px;
+        .sidebar-header {
+            padding: 16px;
             border-bottom: 1px solid var(--border);
-            background: var(--white);
-            gap: 12px;
-        }
-
-        .header-left {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -79,40 +79,47 @@
             height: 5px;
             border-radius: 50%;
             background: var(--dmg-blue);
+            animation: pulse 2s ease-in-out infinite;
         }
-        .dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
-        .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
-        .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
-        .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
+        .dot-grid span:nth-child(2) { animation-delay: 0.3s; }
+        .dot-grid span:nth-child(3) { animation-delay: 0.9s; }
+        .dot-grid span:nth-child(4) { animation-delay: 0.6s; }
 
-        .header-title {
-            font-size: 13px;
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        .sidebar-title {
+            font-size: 14px;
             font-weight: 700;
             color: var(--ink);
         }
 
-        .search-box {
-            flex: 1;
-            max-width: 250px;
-            position: relative;
+        .sidebar-search {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
         }
 
-        .search-box input {
+        .search-input {
             width: 100%;
             padding: 8px 12px 8px 32px;
             border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 12px;
             font-family: inherit;
-            background: var(--surface);
-            transition: all 0.15s;
+            background: var(--white);
+            position: relative;
         }
-        .search-box input:focus {
+        .search-input:focus {
             outline: none;
             border-color: var(--dmg-blue);
-            background: var(--white);
         }
-        .search-box svg {
+
+        .search-wrapper {
+            position: relative;
+        }
+        .search-wrapper svg {
             position: absolute;
             left: 10px;
             top: 50%;
@@ -122,46 +129,83 @@
             color: var(--ink-muted);
         }
 
-        .view-toggle {
-            display: flex;
-            gap: 4px;
-        }
-        .view-btn {
-            padding: 6px 10px;
-            border: 1px solid var(--border);
-            background: var(--white);
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--ink-sub);
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-        .view-btn.active {
-            background: var(--dmg-blue);
-            border-color: var(--dmg-blue);
-            color: white;
-        }
-        .view-btn:hover:not(.active) {
-            border-color: var(--ink-muted);
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
         }
 
-        /* --- Breadcrumb --- */
+        .nav-section {
+            margin-bottom: 16px;
+        }
+
+        .nav-section-title {
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-muted);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 13px;
+            color: var(--ink);
+        }
+        .nav-item:hover { background: rgba(0,0,0,0.04); }
+        .nav-item.active {
+            background: rgba(33, 160, 216, 0.1);
+            color: var(--dmg-blue);
+            font-weight: 600;
+        }
+        .nav-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+        .nav-item .count {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--ink-muted);
+            background: var(--white);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
         .breadcrumb {
             display: flex;
             align-items: center;
             gap: 6px;
-            padding: 10px 18px;
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            font-size: 12px;
-            min-height: 38px;
+            font-size: 13px;
         }
         .breadcrumb-item {
             color: var(--ink-sub);
             cursor: pointer;
             font-weight: 500;
-            transition: color 0.15s;
         }
         .breadcrumb-item:hover { color: var(--dmg-blue); }
         .breadcrumb-item.current {
@@ -169,72 +213,128 @@
             font-weight: 600;
             cursor: default;
         }
-        .breadcrumb-sep {
-            color: var(--ink-muted);
-            font-size: 10px;
-        }
+        .breadcrumb-sep { color: var(--ink-muted); font-size: 10px; }
 
-        /* --- Content Area --- */
-        .content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-        }
-        .content::-webkit-scrollbar { width: 5px; }
-        .content::-webkit-scrollbar-track { background: transparent; }
-        .content::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 10px; }
-
-        /* --- Section --- */
-        .section {
-            margin-bottom: 16px;
-        }
-        .section:last-child { margin-bottom: 0; }
-
-        .section-header {
+        .header-actions {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 6px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--ink-sub);
-            cursor: pointer;
-            user-select: none;
-        }
-        .section-header svg {
-            width: 12px;
-            height: 12px;
-            transition: transform 0.2s;
-        }
-        .section-header.collapsed svg {
-            transform: rotate(-90deg);
-        }
-        .section-count {
-            background: var(--surface);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: 600;
         }
 
-        .section-content {
+        .btn {
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+            border: 1px solid transparent;
+        }
+        .btn svg { width: 14px; height: 14px; }
+        .btn-primary {
+            background: var(--dmg-blue);
+            color: white;
+            border-color: var(--dmg-blue);
+        }
+        .btn-primary:hover { background: #1a8bc4; }
+        .btn-secondary {
+            background: var(--white);
+            color: var(--ink);
+            border-color: var(--border);
+        }
+        .btn-secondary:hover { border-color: var(--ink-muted); }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .file-browser {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 32px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: var(--surface);
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--dmg-blue);
+            background: rgba(33, 160, 216, 0.05);
+        }
+        .upload-zone.uploading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .upload-zone svg {
+            width: 40px;
+            height: 40px;
+            color: var(--ink-muted);
+            margin-bottom: 12px;
+        }
+        .upload-zone-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 4px;
+        }
+        .upload-zone-hint {
+            font-size: 12px;
+            color: var(--ink-muted);
+        }
+
+        /* Upload Progress */
+        .upload-progress {
+            display: none;
+            margin-bottom: 16px;
+        }
+        .upload-progress.active { display: block; }
+        .progress-bar {
+            height: 6px;
+            background: var(--surface);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--dmg-blue);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .progress-text {
+            font-size: 11px;
+            color: var(--ink-sub);
+            margin-top: 6px;
+        }
+
+        /* Folder Grid */
+        .folder-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 8px;
-        }
-        .section-header.collapsed + .section-content {
-            display: none;
+            gap: 12px;
+            margin-bottom: 24px;
         }
 
-        /* --- Folder / Project Card --- */
         .folder-card {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 8px;
-            padding: 14px 10px;
+            padding: 16px 12px;
             background: var(--white);
             border: 1px solid var(--border);
             border-radius: 10px;
@@ -247,25 +347,16 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
-
-        .folder-icon {
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .folder-icon svg {
+        .folder-card svg {
             width: 36px;
             height: 36px;
         }
-        .folder-icon.client svg { color: var(--dmg-blue); }
-        .folder-icon.active svg { color: var(--success); }
-        .folder-icon.pipeline svg { color: var(--amber); }
-        .folder-icon.completed svg { color: var(--purple); }
+        .folder-card.client svg { color: var(--dmg-blue); }
+        .folder-card.project svg { color: var(--success); }
+        .folder-card.deliverable svg { color: var(--amber); }
 
         .folder-name {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
             color: var(--ink);
             line-height: 1.3;
@@ -276,17 +367,36 @@
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
         }
-
         .folder-meta {
             font-size: 10px;
             color: var(--ink-muted);
         }
 
-        /* --- Project List Item (inside client folder) --- */
-        .project-item {
+        /* File List */
+        .file-section {
+            margin-bottom: 20px;
+        }
+        .file-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .file-item {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             padding: 10px 12px;
             background: var(--white);
             border: 1px solid var(--border);
@@ -294,57 +404,219 @@
             cursor: pointer;
             transition: all 0.15s;
         }
-        .project-item:hover {
+        .file-item:hover {
             border-color: var(--dmg-blue);
-            background: rgba(33, 160, 216, 0.03);
+            background: rgba(33, 160, 216, 0.02);
         }
 
-        .project-item .folder-icon {
-            width: 28px;
-            height: 28px;
+        .file-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
-        .project-item .folder-icon svg {
-            width: 24px;
-            height: 24px;
-        }
+        .file-icon svg { width: 18px; height: 18px; }
+        .file-icon.pdf { background: #FEE2E2; color: #DC2626; }
+        .file-icon.doc { background: #DBEAFE; color: #2563EB; }
+        .file-icon.image { background: #D1FAE5; color: #059669; }
+        .file-icon.video { background: #EDE9FE; color: #7C3AED; }
+        .file-icon.psd { background: #E0E7FF; color: #4F46E5; }
+        .file-icon.other { background: var(--surface); color: var(--ink-sub); }
 
-        .project-info {
+        .file-info {
             flex: 1;
             min-width: 0;
         }
-        .project-info .name {
-            font-size: 12px;
-            font-weight: 600;
+        .file-name {
+            font-size: 13px;
+            font-weight: 500;
             color: var(--ink);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .project-info .meta {
-            font-size: 10px;
+        .file-meta {
+            font-size: 11px;
             color: var(--ink-muted);
             margin-top: 2px;
         }
 
-        .project-status {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 9px;
+        .file-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .file-item:hover .file-actions { opacity: 1; }
+
+        .icon-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-sub);
+            transition: all 0.15s;
+        }
+        .icon-btn:hover {
+            background: var(--surface);
+            color: var(--ink);
+        }
+        .icon-btn.danger:hover {
+            background: #FEE2E2;
+            color: var(--danger);
+        }
+        .icon-btn svg { width: 14px; height: 14px; }
+
+        /* Activity Panel */
+        .activity-panel {
+            width: 280px;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+        }
+
+        .activity-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
-        .status-active { background: rgba(34, 197, 94, 0.1); color: var(--success); }
-        .status-pipeline { background: rgba(245, 158, 11, 0.1); color: var(--amber); }
-        .status-completed { background: rgba(139, 92, 246, 0.1); color: var(--purple); }
+        .activity-header .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+        }
 
-        /* --- Empty State --- */
+        .activity-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: var(--white);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .activity-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .activity-text {
+            font-size: 12px;
+            color: var(--ink);
+            line-height: 1.4;
+        }
+        .activity-text strong { font-weight: 600; }
+        .activity-text .highlight {
+            color: var(--dmg-blue);
+            font-weight: 500;
+        }
+        .activity-time {
+            font-size: 10px;
+            color: var(--ink-muted);
+            margin-top: 4px;
+        }
+
+        /* Team Sidebar within folders */
+        .team-section {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            background: var(--white);
+        }
+        .team-section-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-muted);
+            margin-bottom: 10px;
+        }
+        .team-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .team-member {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px 4px 4px;
+            background: var(--surface);
+            border-radius: 16px;
+            font-size: 11px;
+            color: var(--ink);
+        }
+        .team-member .avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--purple);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+        }
+        .add-team-btn {
+            padding: 4px 10px;
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            background: transparent;
+            font-size: 11px;
+            color: var(--ink-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .add-team-btn:hover {
+            border-color: var(--dmg-blue);
+            color: var(--dmg-blue);
+        }
+
+        /* Empty State */
         .empty-state {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 60px 20px;
             text-align: center;
             color: var(--ink-sub);
         }
@@ -352,328 +624,979 @@
             width: 48px;
             height: 48px;
             color: var(--ink-muted);
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
-        .empty-state p {
-            font-size: 13px;
-            font-weight: 500;
+        .empty-state-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .empty-state-text {
+            font-size: 12px;
+            color: var(--ink-muted);
         }
 
-        /* --- Loading State --- */
+        /* Loading State */
         .loading-state {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 60px 20px;
-            gap: 12px;
-        }
-        .loading-state .dot-grid {
-            transform: scale(1.5);
+            gap: 16px;
         }
         .loading-text {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
             color: var(--ink-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 12px 20px;
+            background: var(--ink);
+            color: white;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal {
+            background: var(--white);
+            border-radius: 12px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 6px;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d5d5d5; }
+
+        /* Search Results */
+        .search-results {
+            padding: 12px;
+        }
+        .search-result-group {
+            margin-bottom: 16px;
+        }
+        .search-result-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-muted);
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
-    <div class="widget-container">
-        <div class="header">
-            <div class="header-left">
-                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                <span class="header-title">Project Library</span>
-            </div>
-            <div class="search-box">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
-                <input type="text" id="searchInput" placeholder="Search clients or projects...">
-            </div>
-            <div class="view-toggle">
-                <button class="view-btn active" data-view="active">Active</button>
-                <button class="view-btn" data-view="pipeline">Pipeline</button>
-                <button class="view-btn" data-view="all">All</button>
-            </div>
-        </div>
+    <div id="root"></div>
 
-        <div class="breadcrumb" id="breadcrumb">
-            <span class="breadcrumb-item current">All Clients</span>
-        </div>
-
-        <div class="content" id="content">
-            <div class="loading-state">
-                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
-                <div class="loading-text">Loading projects...</div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // --- CONFIG ---
-        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
-
-        // --- STATE ---
-        let allProjects = [];
-        let currentView = 'active'; // 'active', 'pipeline', 'all'
-        let currentClient = null; // null = root level (all clients)
-        let searchTerm = '';
-
-        // --- ICONS ---
-        const ICONS = {
-            folder: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>`,
-            folderOpen: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2H4z" opacity="0.3"/><path d="M2.5 10.5A1.5 1.5 0 0 1 4 9h16a1.5 1.5 0 0 1 1.45 1.88l-2 8A1.5 1.5 0 0 1 18 20H4a1.5 1.5 0 0 1-1.45-1.12l-1.5-6A1.5 1.5 0 0 1 2.5 10.5z"/></svg>`,
-            project: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.06-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.38a1.5 1.5 0 0 1-1.06-.44z"/></svg>`,
-            chevron: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/></svg>`,
-            empty: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.06-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.38a1.5 1.5 0 0 1-1.06-.44z"/></svg>`
+    <script type="text/babel">
+        // ═══════════════════════════════════════════════════════════════════════════
+        // CONFIGURATION
+        // ═══════════════════════════════════════════════════════════════════════════
+        const CONFIG = {
+            API_URL: 'https://createnotionproject-223535956454.us-central1.run.app',
+            FIREBASE: {
+                apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+                authDomain: "dmg-command-centre-native.firebaseapp.com",
+                projectId: "dmg-command-centre-native",
+                storageBucket: "dmg-command-centre-native.firebasestorage.app",
+                messagingSenderId: "223535956454",
+                appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+            },
+            MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB for video files
+            ALLOWED_TYPES: [
+                'application/pdf', 'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/psd',
+                'video/mp4', 'video/quicktime', 'video/x-msvideo',
+                'application/x-photoshop', 'image/vnd.adobe.photoshop',
+                'text/plain', 'text/csv'
+            ]
         };
 
-        // --- HELPERS ---
-        function getProjectStatus(project) {
-            const stage = (project.dealStage || '').toLowerCase();
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FIREBASE INITIALIZATION
+        // ═══════════════════════════════════════════════════════════════════════════
+        if (!firebase.apps.length) {
+            firebase.initializeApp(CONFIG.FIREBASE);
+        }
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+        const auth = firebase.auth();
 
-            // Active = Won/In Production
-            if (stage.includes('won') || stage.includes('production') || stage.includes('complete')) {
-                if (stage.includes('complete')) return 'completed';
-                return 'active';
-            }
+        // Collections
+        const filesCollection = db.collection('artifacts').doc('dmg-command-centre-native')
+            .collection('public').doc('data').collection('files');
+        const activitiesCollection = db.collection('artifacts').doc('dmg-command-centre-native')
+            .collection('public').doc('data').collection('activities');
 
-            // Pipeline = Brief sent, awaiting decision (not won, not lost)
-            if (stage.includes('brief') || stage.includes('pitch') || stage.includes('proposal') || stage.includes('pending')) {
-                return 'pipeline';
-            }
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ICONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        const Icons = {
+            folder: <svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>,
+            file: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+            upload: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+            search: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>,
+            download: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+            trash: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+            link: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+            users: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            plus: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+            home: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+            clock: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            star: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+        };
 
-            // Treat anything else with a client as pipeline
-            if (project.client) return 'pipeline';
+        // ═══════════════════════════════════════════════════════════════════════════
+        // UTILITY FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        const formatFileSize = (bytes) => {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+        };
 
+        const formatTimeAgo = (date) => {
+            const now = new Date();
+            const then = new Date(date);
+            const seconds = Math.floor((now - then) / 1000);
+
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+            if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+            return then.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        };
+
+        const getFileType = (filename, mimeType) => {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (['pdf'].includes(ext)) return 'pdf';
+            if (['doc', 'docx'].includes(ext)) return 'doc';
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
+            if (['mp4', 'mov', 'avi', 'mkv'].includes(ext)) return 'video';
+            if (['psd', 'psb'].includes(ext)) return 'psd';
             return 'other';
-        }
+        };
 
-        function groupByClient(projects) {
-            const groups = {};
-            projects.forEach(p => {
-                const client = p.client || 'Unknown Client';
-                if (!groups[client]) {
-                    groups[client] = [];
+        const getInitials = (name) => {
+            if (!name) return '??';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        };
+
+        const getCurrentUser = () => {
+            // Try to get from localStorage or return default
+            const stored = localStorage.getItem('dmg_user');
+            if (stored) return JSON.parse(stored);
+            return { name: 'Unknown User', initials: 'U' };
+        };
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TOAST COMPONENT
+        // ═══════════════════════════════════════════════════════════════════════════
+        const Toast = ({ message, type, show }) => (
+            <div className={`toast ${show ? 'show' : ''} ${type}`}>{message}</div>
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // MAIN APP COMPONENT
+        // ═══════════════════════════════════════════════════════════════════════════
+        const App = () => {
+            // State
+            const [loading, setLoading] = React.useState(true);
+            const [projects, setProjects] = React.useState([]);
+            const [files, setFiles] = React.useState([]);
+            const [activities, setActivities] = React.useState([]);
+            const [searchQuery, setSearchQuery] = React.useState('');
+            const [currentPath, setCurrentPath] = React.useState([]); // [{type, id, name}]
+            const [toast, setToast] = React.useState({ show: false, message: '', type: '' });
+            const [uploadProgress, setUploadProgress] = React.useState({ active: false, percent: 0, fileName: '' });
+            const [dragOver, setDragOver] = React.useState(false);
+            const [showModal, setShowModal] = React.useState(null);
+            const fileInputRef = React.useRef(null);
+
+            // Show toast helper
+            const showToast = (message, type = '') => {
+                setToast({ show: true, message, type });
+                setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // DATA FETCHING
+            // ─────────────────────────────────────────────────────────────────────
+
+            // Fetch projects from Notion API
+            const fetchProjects = async () => {
+                try {
+                    const res = await fetch(`${CONFIG.API_URL}/projects`);
+                    if (!res.ok) throw new Error('API error');
+                    const data = await res.json();
+
+                    const projectList = (data.projects || data || []).map(p => ({
+                        id: p.id,
+                        title: p.title || p.name || 'Untitled',
+                        client: p.client || 'Unknown Client',
+                        dealStage: p.dealStage || null,
+                        team: p.team || [],
+                        creativeLead: p.creativeLead || null,
+                        salesLead: p.salesLead || null,
+                        briefLink: p.briefLink || null,
+                        responseLink: p.creativeResponseLink || null,
+                        driveFolder: p.driveFolder || null,
+                        frameIo: p.frameIo || null,
+                        deliverables: p.deliverables || []
+                    }));
+
+                    setProjects(projectList);
+                } catch (err) {
+                    console.error('Failed to fetch projects:', err);
+                    showToast('Failed to load projects', 'error');
                 }
-                groups[client].push(p);
-            });
-            return groups;
-        }
+            };
 
-        function matchesSearch(project, term) {
-            if (!term) return true;
-            const lower = term.toLowerCase();
-            return (project.title || '').toLowerCase().includes(lower) ||
-                   (project.client || '').toLowerCase().includes(lower);
-        }
+            // Fetch files from Firebase
+            const fetchFiles = async () => {
+                try {
+                    const snapshot = await filesCollection.orderBy('uploadedAt', 'desc').limit(500).get();
+                    const fileList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setFiles(fileList);
+                } catch (err) {
+                    console.error('Failed to fetch files:', err);
+                }
+            };
 
-        function filterProjects(projects) {
-            return projects.filter(p => {
-                // Search filter
-                if (!matchesSearch(p, searchTerm)) return false;
+            // Subscribe to activities (real-time)
+            React.useEffect(() => {
+                const unsubscribe = activitiesCollection
+                    .orderBy('timestamp', 'desc')
+                    .limit(50)
+                    .onSnapshot(snapshot => {
+                        const activityList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        setActivities(activityList);
+                    }, err => {
+                        console.error('Activity subscription error:', err);
+                    });
 
-                // View filter
-                const status = getProjectStatus(p);
-                if (currentView === 'active') return status === 'active';
-                if (currentView === 'pipeline') return status === 'pipeline';
-                return status !== 'other'; // 'all' shows active + pipeline + completed
-            });
-        }
+                return () => unsubscribe();
+            }, []);
 
-        // --- RENDERING ---
-        function renderBreadcrumb() {
-            const breadcrumb = document.getElementById('breadcrumb');
-            if (!currentClient) {
-                breadcrumb.innerHTML = '<span class="breadcrumb-item current">All Clients</span>';
-            } else {
-                breadcrumb.innerHTML = `
-                    <span class="breadcrumb-item" onclick="navigateToRoot()">All Clients</span>
-                    <span class="breadcrumb-sep">›</span>
-                    <span class="breadcrumb-item current">${currentClient}</span>
-                `;
-            }
-        }
+            // Initial data load
+            React.useEffect(() => {
+                const loadData = async () => {
+                    setLoading(true);
+                    await Promise.all([fetchProjects(), fetchFiles()]);
+                    setLoading(false);
+                };
+                loadData();
+            }, []);
 
-        function renderClientFolders() {
-            const filtered = filterProjects(allProjects);
-            const grouped = groupByClient(filtered);
-            const clients = Object.keys(grouped).sort();
+            // ─────────────────────────────────────────────────────────────────────
+            // FILE UPLOAD
+            // ─────────────────────────────────────────────────────────────────────
+            const handleFileUpload = async (fileList) => {
+                const currentLocation = getCurrentLocation();
+                if (!currentLocation.projectId) {
+                    showToast('Navigate to a project folder to upload files', 'error');
+                    return;
+                }
 
-            if (clients.length === 0) {
-                return `
-                    <div class="empty-state">
-                        ${ICONS.empty}
-                        <p>No ${currentView === 'all' ? '' : currentView + ' '}projects found</p>
+                const uploadFiles = Array.from(fileList);
+
+                for (const file of uploadFiles) {
+                    // Validate
+                    if (file.size > CONFIG.MAX_FILE_SIZE) {
+                        showToast(`${file.name} is too large (max 100MB)`, 'error');
+                        continue;
+                    }
+
+                    try {
+                        setUploadProgress({ active: true, percent: 0, fileName: file.name });
+
+                        // Create storage path
+                        const timestamp = Date.now();
+                        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                        const storagePath = `projects/${currentLocation.clientName}/${currentLocation.projectName}/${currentLocation.deliverableName || 'General'}/${timestamp}_${safeName}`;
+
+                        // Upload to Firebase Storage
+                        const storageRef = storage.ref(storagePath);
+                        const uploadTask = storageRef.put(file);
+
+                        await new Promise((resolve, reject) => {
+                            uploadTask.on('state_changed',
+                                (snapshot) => {
+                                    const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                    setUploadProgress({ active: true, percent, fileName: file.name });
+                                },
+                                reject,
+                                async () => {
+                                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+
+                                    // Save file metadata to Firestore
+                                    const user = getCurrentUser();
+                                    const fileDoc = {
+                                        name: file.name,
+                                        type: file.type,
+                                        size: file.size,
+                                        path: storagePath,
+                                        url: downloadURL,
+                                        clientId: currentLocation.clientName,
+                                        clientName: currentLocation.clientName,
+                                        projectId: currentLocation.projectId,
+                                        projectName: currentLocation.projectName,
+                                        deliverableId: currentLocation.deliverableId || null,
+                                        deliverableName: currentLocation.deliverableName || 'General',
+                                        uploadedBy: user,
+                                        uploadedAt: new Date().toISOString()
+                                    };
+
+                                    await filesCollection.doc(timestamp.toString()).set(fileDoc);
+
+                                    // Log activity
+                                    await logActivity({
+                                        type: 'file_upload',
+                                        action: 'uploaded',
+                                        fileName: file.name,
+                                        fileType: getFileType(file.name, file.type),
+                                        ...currentLocation
+                                    });
+
+                                    resolve();
+                                }
+                            );
+                        });
+
+                        showToast(`${file.name} uploaded successfully`, 'success');
+                        await fetchFiles(); // Refresh file list
+
+                    } catch (err) {
+                        console.error('Upload error:', err);
+                        showToast(`Failed to upload ${file.name}`, 'error');
+                    } finally {
+                        setUploadProgress({ active: false, percent: 0, fileName: '' });
+                    }
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // ACTIVITY LOGGING
+            // ─────────────────────────────────────────────────────────────────────
+            const logActivity = async (data) => {
+                const user = getCurrentUser();
+                const activity = {
+                    ...data,
+                    user,
+                    timestamp: new Date().toISOString()
+                };
+
+                try {
+                    await activitiesCollection.add(activity);
+                } catch (err) {
+                    console.error('Failed to log activity:', err);
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // FILE OPERATIONS
+            // ─────────────────────────────────────────────────────────────────────
+            const deleteFile = async (file) => {
+                if (!confirm(`Delete "${file.name}"? This cannot be undone.`)) return;
+
+                try {
+                    // Delete from Storage
+                    await storage.ref(file.path).delete();
+                    // Delete from Firestore
+                    await filesCollection.doc(file.id).delete();
+
+                    // Log activity
+                    await logActivity({
+                        type: 'file_delete',
+                        action: 'deleted',
+                        fileName: file.name,
+                        projectId: file.projectId,
+                        projectName: file.projectName
+                    });
+
+                    showToast('File deleted', 'success');
+                    await fetchFiles();
+                } catch (err) {
+                    console.error('Delete error:', err);
+                    showToast('Failed to delete file', 'error');
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // NAVIGATION HELPERS
+            // ─────────────────────────────────────────────────────────────────────
+            const getCurrentLocation = () => {
+                const loc = { clientName: null, projectId: null, projectName: null, deliverableId: null, deliverableName: null };
+                currentPath.forEach(p => {
+                    if (p.type === 'client') loc.clientName = p.name;
+                    if (p.type === 'project') { loc.projectId = p.id; loc.projectName = p.name; }
+                    if (p.type === 'deliverable') { loc.deliverableId = p.id; loc.deliverableName = p.name; }
+                });
+                return loc;
+            };
+
+            const navigateTo = (type, id, name) => {
+                if (type === 'root') {
+                    setCurrentPath([]);
+                } else if (type === 'client') {
+                    setCurrentPath([{ type: 'client', id: name, name }]);
+                } else if (type === 'project') {
+                    const clientPath = currentPath.find(p => p.type === 'client');
+                    setCurrentPath([clientPath, { type: 'project', id, name }].filter(Boolean));
+                } else if (type === 'deliverable') {
+                    const filtered = currentPath.filter(p => p.type !== 'deliverable');
+                    setCurrentPath([...filtered, { type: 'deliverable', id, name }]);
+                }
+            };
+
+            const navigateBack = (index) => {
+                setCurrentPath(currentPath.slice(0, index + 1));
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // FILTERING & GROUPING
+            // ─────────────────────────────────────────────────────────────────────
+            const groupProjectsByClient = () => {
+                const groups = {};
+                projects.forEach(p => {
+                    const client = p.client || 'Unknown Client';
+                    if (!groups[client]) groups[client] = [];
+                    groups[client].push(p);
+                });
+                return groups;
+            };
+
+            const getFilesForCurrentPath = () => {
+                const loc = getCurrentLocation();
+                return files.filter(f => {
+                    if (loc.deliverableId && f.deliverableId !== loc.deliverableId) return false;
+                    if (loc.projectId && f.projectId !== loc.projectId) return false;
+                    if (loc.clientName && f.clientName !== loc.clientName) return false;
+                    return true;
+                });
+            };
+
+            // Search
+            const getSearchResults = () => {
+                if (!searchQuery.trim()) return null;
+                const query = searchQuery.toLowerCase();
+
+                const matchedProjects = projects.filter(p =>
+                    p.title.toLowerCase().includes(query) ||
+                    p.client.toLowerCase().includes(query)
+                );
+
+                const matchedFiles = files.filter(f =>
+                    f.name.toLowerCase().includes(query) ||
+                    (f.uploadedBy?.name || '').toLowerCase().includes(query)
+                );
+
+                return { projects: matchedProjects, files: matchedFiles };
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // RENDER HELPERS
+            // ─────────────────────────────────────────────────────────────────────
+            const renderBreadcrumb = () => {
+                return (
+                    <div className="breadcrumb">
+                        <span className={`breadcrumb-item ${currentPath.length === 0 ? 'current' : ''}`}
+                              onClick={() => navigateTo('root')}>
+                            All Clients
+                        </span>
+                        {currentPath.map((item, idx) => (
+                            <React.Fragment key={idx}>
+                                <span className="breadcrumb-sep">›</span>
+                                <span className={`breadcrumb-item ${idx === currentPath.length - 1 ? 'current' : ''}`}
+                                      onClick={() => navigateBack(idx)}>
+                                    {item.name}
+                                </span>
+                            </React.Fragment>
+                        ))}
                     </div>
-                `;
-            }
+                );
+            };
 
-            return `
-                <div class="section">
-                    <div class="section-content">
-                        ${clients.map(client => {
-                            const projects = grouped[client];
-                            const hasActive = projects.some(p => getProjectStatus(p) === 'active');
-                            const iconClass = hasActive ? 'active' : 'pipeline';
-                            return `
-                                <div class="folder-card" onclick="openClient('${client.replace(/'/g, "\\'")}')">
-                                    <div class="folder-icon ${iconClass}">${ICONS.folder}</div>
-                                    <div class="folder-name">${client}</div>
-                                    <div class="folder-meta">${projects.length} project${projects.length !== 1 ? 's' : ''}</div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-            `;
-        }
+            const renderUploadZone = () => {
+                const loc = getCurrentLocation();
+                if (!loc.projectId) return null; // Only show in project/deliverable folders
 
-        function renderProjectList(client) {
-            const clientProjects = filterProjects(allProjects).filter(p => p.client === client);
-
-            // Group by status
-            const active = clientProjects.filter(p => getProjectStatus(p) === 'active');
-            const pipeline = clientProjects.filter(p => getProjectStatus(p) === 'pipeline');
-            const completed = clientProjects.filter(p => getProjectStatus(p) === 'completed');
-
-            if (clientProjects.length === 0) {
-                return `
-                    <div class="empty-state">
-                        ${ICONS.empty}
-                        <p>No projects found for ${client}</p>
-                    </div>
-                `;
-            }
-
-            let html = '';
-
-            if (active.length > 0) {
-                html += renderProjectSection('Active Projects', active, 'active');
-            }
-            if (pipeline.length > 0) {
-                html += renderProjectSection('Pipeline', pipeline, 'pipeline');
-            }
-            if (completed.length > 0) {
-                html += renderProjectSection('Completed', completed, 'completed');
-            }
-
-            return html;
-        }
-
-        function renderProjectSection(title, projects, statusType) {
-            return `
-                <div class="section">
-                    <div class="section-header" onclick="toggleSection(this)">
-                        ${ICONS.chevron}
-                        ${title}
-                        <span class="section-count">${projects.length}</span>
-                    </div>
-                    <div class="section-content" style="grid-template-columns: 1fr;">
-                        ${projects.map(p => `
-                            <div class="project-item" onclick="openProject('${p.id}')">
-                                <div class="folder-icon ${statusType}">${ICONS.project}</div>
-                                <div class="project-info">
-                                    <div class="name">${p.title || 'Untitled'}</div>
-                                    <div class="meta">${p.dealStage || 'No status'}</div>
-                                </div>
-                                <span class="project-status status-${statusType}">${statusType}</span>
+                return (
+                    <>
+                        <div className={`upload-zone ${dragOver ? 'drag-over' : ''} ${uploadProgress.active ? 'uploading' : ''}`}
+                             onClick={() => fileInputRef.current?.click()}
+                             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                             onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+                             onDrop={(e) => {
+                                 e.preventDefault();
+                                 setDragOver(false);
+                                 handleFileUpload(e.dataTransfer.files);
+                             }}>
+                            {Icons.upload}
+                            <div className="upload-zone-title">Drop files here or click to upload</div>
+                            <div className="upload-zone-hint">Videos, PSDs, PDFs, images up to 100MB</div>
+                            <input type="file" ref={fileInputRef} multiple style={{ display: 'none' }}
+                                   onChange={(e) => handleFileUpload(e.target.files)} />
+                        </div>
+                        <div className={`upload-progress ${uploadProgress.active ? 'active' : ''}`}>
+                            <div className="progress-bar">
+                                <div className="progress-fill" style={{ width: `${uploadProgress.percent}%` }} />
                             </div>
-                        `).join('')}
+                            <div className="progress-text">Uploading {uploadProgress.fileName}... {Math.round(uploadProgress.percent)}%</div>
+                        </div>
+                    </>
+                );
+            };
+
+            const renderFolderGrid = () => {
+                // Search mode
+                const searchResults = getSearchResults();
+                if (searchResults) {
+                    return (
+                        <div className="search-results">
+                            {searchResults.projects.length > 0 && (
+                                <div className="search-result-group">
+                                    <div className="search-result-title">Projects ({searchResults.projects.length})</div>
+                                    <div className="folder-grid">
+                                        {searchResults.projects.map(p => (
+                                            <div key={p.id} className="folder-card project"
+                                                 onClick={() => {
+                                                     setSearchQuery('');
+                                                     navigateTo('client', p.client, p.client);
+                                                     setTimeout(() => navigateTo('project', p.id, p.title), 0);
+                                                 }}>
+                                                {Icons.folder}
+                                                <div className="folder-name">{p.title}</div>
+                                                <div className="folder-meta">{p.client}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {searchResults.files.length > 0 && (
+                                <div className="search-result-group">
+                                    <div className="search-result-title">Files ({searchResults.files.length})</div>
+                                    <div className="file-list">
+                                        {searchResults.files.slice(0, 20).map(f => renderFileItem(f))}
+                                    </div>
+                                </div>
+                            )}
+                            {searchResults.projects.length === 0 && searchResults.files.length === 0 && (
+                                <div className="empty-state">
+                                    {Icons.search}
+                                    <div className="empty-state-title">No results found</div>
+                                    <div className="empty-state-text">Try a different search term</div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                }
+
+                // Root level - show clients
+                if (currentPath.length === 0) {
+                    const grouped = groupProjectsByClient();
+                    const clients = Object.keys(grouped).sort();
+
+                    return (
+                        <div className="folder-grid">
+                            {clients.map(client => (
+                                <div key={client} className="folder-card client"
+                                     onClick={() => navigateTo('client', client, client)}>
+                                    {Icons.folder}
+                                    <div className="folder-name">{client}</div>
+                                    <div className="folder-meta">{grouped[client].length} projects</div>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                }
+
+                // Client level - show projects
+                const currentClient = currentPath.find(p => p.type === 'client');
+                const currentProject = currentPath.find(p => p.type === 'project');
+
+                if (currentClient && !currentProject) {
+                    const clientProjects = projects.filter(p => p.client === currentClient.name);
+
+                    return (
+                        <div className="folder-grid">
+                            {clientProjects.map(p => (
+                                <div key={p.id} className="folder-card project"
+                                     onClick={() => navigateTo('project', p.id, p.title)}>
+                                    {Icons.folder}
+                                    <div className="folder-name">{p.title}</div>
+                                    <div className="folder-meta">{p.dealStage || 'No status'}</div>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                }
+
+                // Project level - show deliverables + files
+                if (currentProject) {
+                    const project = projects.find(p => p.id === currentProject.id);
+                    const currentDeliverable = currentPath.find(p => p.type === 'deliverable');
+                    const currentFiles = getFilesForCurrentPath();
+
+                    // Show deliverable folders if at project level (not inside a deliverable)
+                    const deliverableFolders = !currentDeliverable ? [
+                        { id: 'production', name: 'Production' },
+                        { id: 'creative', name: 'Creative' },
+                        { id: 'final', name: 'Final Deliverables' }
+                    ] : [];
+
+                    // External links from Notion
+                    const externalLinks = [];
+                    if (project?.briefLink) externalLinks.push({ name: 'Brief', url: project.briefLink, type: 'doc' });
+                    if (project?.responseLink) externalLinks.push({ name: 'Creative Response', url: project.responseLink, type: 'doc' });
+                    if (project?.driveFolder) externalLinks.push({ name: 'Google Drive', url: project.driveFolder, type: 'link' });
+                    if (project?.frameIo) externalLinks.push({ name: 'Frame.io', url: project.frameIo, type: 'link' });
+
+                    return (
+                        <>
+                            {renderUploadZone()}
+
+                            {deliverableFolders.length > 0 && (
+                                <div className="file-section">
+                                    <div className="file-section-title">Folders</div>
+                                    <div className="folder-grid">
+                                        {deliverableFolders.map(d => (
+                                            <div key={d.id} className="folder-card deliverable"
+                                                 onClick={() => navigateTo('deliverable', d.id, d.name)}>
+                                                {Icons.folder}
+                                                <div className="folder-name">{d.name}</div>
+                                                <div className="folder-meta">
+                                                    {currentFiles.filter(f => f.deliverableName === d.name).length} files
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {externalLinks.length > 0 && !currentDeliverable && (
+                                <div className="file-section">
+                                    <div className="file-section-title">Project Links (from Notion)</div>
+                                    <div className="file-list">
+                                        {externalLinks.map((link, idx) => (
+                                            <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
+                                               className="file-item" style={{ textDecoration: 'none' }}>
+                                                <div className={`file-icon ${link.type}`}>
+                                                    {link.type === 'doc' ? Icons.file : Icons.link}
+                                                </div>
+                                                <div className="file-info">
+                                                    <div className="file-name">{link.name}</div>
+                                                    <div className="file-meta">External link</div>
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentFiles.length > 0 && (
+                                <div className="file-section">
+                                    <div className="file-section-title">
+                                        Files {currentDeliverable ? `in ${currentDeliverable.name}` : ''}
+                                    </div>
+                                    <div className="file-list">
+                                        {currentFiles.map(f => renderFileItem(f))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentFiles.length === 0 && currentDeliverable && (
+                                <div className="empty-state">
+                                    {Icons.upload}
+                                    <div className="empty-state-title">No files yet</div>
+                                    <div className="empty-state-text">Drop files here to upload</div>
+                                </div>
+                            )}
+
+                            {/* Team Section */}
+                            {project && !currentDeliverable && (
+                                <div className="team-section">
+                                    <div className="team-section-title">Team</div>
+                                    <div className="team-list">
+                                        {project.creativeLead && (
+                                            <div className="team-member">
+                                                <div className="avatar">{getInitials(project.creativeLead)}</div>
+                                                {project.creativeLead} (Creative Lead)
+                                            </div>
+                                        )}
+                                        {project.salesLead && (
+                                            <div className="team-member">
+                                                <div className="avatar" style={{ background: '#F59E0B' }}>{getInitials(project.salesLead)}</div>
+                                                {project.salesLead} (Sales Lead)
+                                            </div>
+                                        )}
+                                        <button className="add-team-btn" onClick={() => showToast('Team editing coming soon')}>
+                                            + Add member
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    );
+                }
+
+                return null;
+            };
+
+            const renderFileItem = (file) => (
+                <div key={file.id} className="file-item">
+                    <div className={`file-icon ${getFileType(file.name, file.type)}`}>
+                        {Icons.file}
+                    </div>
+                    <div className="file-info">
+                        <div className="file-name">{file.name}</div>
+                        <div className="file-meta">
+                            {formatFileSize(file.size)} • {file.uploadedBy?.name || 'Unknown'} • {formatTimeAgo(file.uploadedAt)}
+                        </div>
+                    </div>
+                    <div className="file-actions">
+                        <button className="icon-btn" title="Download" onClick={() => window.open(file.url, '_blank')}>
+                            {Icons.download}
+                        </button>
+                        <button className="icon-btn danger" title="Delete" onClick={() => deleteFile(file)}>
+                            {Icons.trash}
+                        </button>
                     </div>
                 </div>
-            `;
-        }
+            );
 
-        function render() {
-            const content = document.getElementById('content');
-            renderBreadcrumb();
-
-            if (currentClient) {
-                content.innerHTML = renderProjectList(currentClient);
-            } else {
-                content.innerHTML = renderClientFolders();
-            }
-        }
-
-        // --- NAVIGATION ---
-        function navigateToRoot() {
-            currentClient = null;
-            render();
-        }
-
-        function openClient(client) {
-            currentClient = client;
-            render();
-        }
-
-        function openProject(projectId) {
-            // Open project detail page
-            window.open(`project-detail.html?id=${projectId}`, '_blank');
-        }
-
-        function toggleSection(header) {
-            header.classList.toggle('collapsed');
-        }
-
-        // --- EVENT HANDLERS ---
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentView = btn.dataset.view;
-                currentClient = null; // Reset to root when changing view
-                render();
-            });
-        });
-
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            searchTerm = e.target.value;
-            currentClient = null; // Reset to root when searching
-            render();
-        });
-
-        // --- FETCH DATA ---
-        async function fetchProjects() {
-            try {
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 15000);
-
-                const res = await fetch(`${API_URL}/projects`, { signal: controller.signal });
-                clearTimeout(timeout);
-
-                if (!res.ok) throw new Error('API error');
-
-                const data = await res.json();
-
-                // Extract projects from the response
-                allProjects = (data.projects || data || []).map(p => ({
-                    id: p.id,
-                    title: p.title || p.name || 'Untitled',
-                    client: p.client || null,
-                    dealStage: p.dealStage || p.status || null,
-                    dueDate: p.dueDate || null,
-                    briefLink: p.briefLink || null,
-                    driveFolder: p.driveFolder || null
-                }));
-
-                render();
-            } catch (err) {
-                console.error('Failed to fetch projects:', err);
-                document.getElementById('content').innerHTML = `
-                    <div class="empty-state">
-                        ${ICONS.empty}
-                        <p>Failed to load projects. Check your connection.</p>
+            const renderActivityFeed = () => (
+                <div className="activity-panel">
+                    <div className="activity-header">
+                        Activity Feed
+                        <div className="live-dot" title="Live updates" />
                     </div>
-                `;
-            }
-        }
+                    <div className="activity-list">
+                        {activities.length === 0 ? (
+                            <div className="empty-state" style={{ padding: '20px' }}>
+                                <div className="empty-state-text">No activity yet</div>
+                            </div>
+                        ) : (
+                            activities.map(a => (
+                                <div key={a.id} className="activity-item">
+                                    <div className="activity-avatar">{a.user?.initials || '?'}</div>
+                                    <div className="activity-content">
+                                        <div className="activity-text">
+                                            <strong>{a.user?.name || 'Someone'}</strong> {a.action}{' '}
+                                            <span className="highlight">{a.fileName || a.deliverableName || ''}</span>
+                                            {a.projectName && (
+                                                <> to <span className="highlight">{a.clientName} › {a.projectName}</span></>
+                                            )}
+                                        </div>
+                                        <div className="activity-time">{formatTimeAgo(a.timestamp)}</div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
 
-        // --- INIT ---
-        fetchProjects();
+            const renderSidebar = () => {
+                const grouped = groupProjectsByClient();
+                const activeProjects = projects.filter(p =>
+                    p.dealStage?.toLowerCase().includes('won') ||
+                    p.dealStage?.toLowerCase().includes('production')
+                );
+
+                return (
+                    <div className="sidebar">
+                        <div className="sidebar-header">
+                            <div className="dot-grid"><span/><span/><span/><span/></div>
+                            <span className="sidebar-title">Project Library</span>
+                        </div>
+
+                        <div className="sidebar-search">
+                            <div className="search-wrapper">
+                                {Icons.search}
+                                <input type="text" className="search-input"
+                                       placeholder="Search files, projects..."
+                                       value={searchQuery}
+                                       onChange={(e) => setSearchQuery(e.target.value)} />
+                            </div>
+                        </div>
+
+                        <div className="sidebar-nav">
+                            <div className="nav-section">
+                                <div className="nav-section-title">Quick Access</div>
+                                <div className={`nav-item ${currentPath.length === 0 && !searchQuery ? 'active' : ''}`}
+                                     onClick={() => { setSearchQuery(''); navigateTo('root'); }}>
+                                    {Icons.home}
+                                    All Clients
+                                    <span className="count">{Object.keys(grouped).length}</span>
+                                </div>
+                                <div className="nav-item" onClick={() => setSearchQuery('active')}>
+                                    {Icons.star}
+                                    Active Projects
+                                    <span className="count">{activeProjects.length}</span>
+                                </div>
+                                <div className="nav-item" onClick={() => showToast('Recent files coming soon')}>
+                                    {Icons.clock}
+                                    Recent Files
+                                </div>
+                            </div>
+
+                            <div className="nav-section">
+                                <div className="nav-section-title">Clients</div>
+                                {Object.keys(grouped).sort().slice(0, 10).map(client => (
+                                    <div key={client}
+                                         className={`nav-item ${currentPath[0]?.name === client ? 'active' : ''}`}
+                                         onClick={() => { setSearchQuery(''); navigateTo('client', client, client); }}>
+                                        {Icons.folder}
+                                        {client}
+                                        <span className="count">{grouped[client].length}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // MAIN RENDER
+            // ─────────────────────────────────────────────────────────────────────
+            if (loading) {
+                return (
+                    <div className="app-container">
+                        <div className="loading-state" style={{ flex: 1 }}>
+                            <div className="dot-grid" style={{ transform: 'scale(2)' }}>
+                                <span/><span/><span/><span/>
+                            </div>
+                            <div className="loading-text">Loading projects...</div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="app-container">
+                    {renderSidebar()}
+
+                    <div className="main-content">
+                        <div className="main-header">
+                            {renderBreadcrumb()}
+                            <div className="header-actions">
+                                {getCurrentLocation().projectId && (
+                                    <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()}>
+                                        {Icons.upload}
+                                        Upload
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="content-area">
+                            <div className="file-browser">
+                                {renderFolderGrid()}
+                            </div>
+                            {renderActivityFeed()}
+                        </div>
+                    </div>
+
+                    <Toast {...toast} />
+                </div>
+            );
+        };
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // MOUNT APP
+        // ═══════════════════════════════════════════════════════════════════════════
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
