@@ -1100,6 +1100,60 @@
         .folder-option.selected { background: rgba(33, 160, 216, 0.1); }
         .folder-option svg { width: 16px; height: 16px; color: var(--amber); }
         .folder-option .name { font-size: 13px; }
+
+        /* Subfolder styling */
+        .folder-card.subfolder svg { color: #6B7280; }
+        .folder-card.subfolder.script svg { color: #EC4899; }
+        .folder-card.subfolder.production svg { color: #22C55E; }
+        .folder-card.subfolder.rushes svg { color: #7C3AED; }
+        .folder-card.subfolder.edits svg { color: #21A0D8; }
+        .folder-card.subfolder.graphics svg { color: #F59E0B; }
+        .folder-card.subfolder.client-assets svg { color: #EF4444; }
+
+        /* Enhanced folder grid for nested view */
+        .folder-grid.compact {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        /* File uploaded by highlight */
+        .uploader-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: rgba(33, 160, 216, 0.1);
+            border-radius: 12px;
+            font-size: 10px;
+            color: var(--dmg-blue);
+            font-weight: 500;
+        }
+
+        /* Team grid styling */
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .team-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .team-card .role {
+            font-size: 10px;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+        .team-card .name {
+            font-size: 13px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -1604,6 +1658,7 @@
                                         projectName: currentLocation.projectName,
                                         deliverableId: currentLocation.deliverableId || null,
                                         deliverableName: currentLocation.deliverableName || 'General',
+                                        subfolder: currentLocation.subfolder || null,
                                         uploadedBy: user,
                                         uploadedAt: new Date().toISOString()
                                     };
@@ -1734,6 +1789,30 @@
                 }
             };
 
+            // Move file to a subfolder (Script, Production, Edits, etc.)
+            const moveFileToSubfolder = async (file, subfolderId, subfolderName) => {
+                try {
+                    await filesCollection.doc(file.id).update({
+                        subfolder: subfolderId
+                    });
+                    await logActivity({
+                        type: 'file_move',
+                        action: 'moved',
+                        fileName: file.name,
+                        subfolder: subfolderName,
+                        projectId: file.projectId,
+                        projectName: file.projectName
+                    });
+                    showToast(`Moved to ${subfolderName}`, 'success');
+                    setShowModal(null);
+                    setModalData(null);
+                    await fetchFiles();
+                } catch (err) {
+                    console.error('Move error:', err);
+                    showToast('Failed to move file', 'error');
+                }
+            };
+
             // Pin/unpin file with document type
             const togglePinFile = async (file, docType = null) => {
                 try {
@@ -1808,11 +1887,19 @@
             // NAVIGATION HELPERS
             // ─────────────────────────────────────────────────────────────────────
             const getCurrentLocation = () => {
-                const loc = { clientName: null, projectId: null, projectName: null, deliverableId: null, deliverableName: null };
+                const loc = {
+                    clientName: null,
+                    projectId: null,
+                    projectName: null,
+                    deliverableId: null,
+                    deliverableName: null,
+                    subfolder: null // For nested folders within deliverables (Production, Edits, etc.)
+                };
                 currentPath.forEach(p => {
                     if (p.type === 'client') loc.clientName = p.name;
                     if (p.type === 'project') { loc.projectId = p.id; loc.projectName = p.name; }
                     if (p.type === 'deliverable') { loc.deliverableId = p.id; loc.deliverableName = p.name; }
+                    if (p.type === 'subfolder') loc.subfolder = p.name;
                 });
                 return loc;
             };
@@ -1826,8 +1913,13 @@
                     const clientPath = currentPath.find(p => p.type === 'client');
                     setCurrentPath([clientPath, { type: 'project', id, name }].filter(Boolean));
                 } else if (type === 'deliverable') {
-                    const filtered = currentPath.filter(p => p.type !== 'deliverable');
+                    // Keep client and project, add deliverable
+                    const filtered = currentPath.filter(p => p.type === 'client' || p.type === 'project');
                     setCurrentPath([...filtered, { type: 'deliverable', id, name }]);
+                } else if (type === 'subfolder') {
+                    // Keep everything up to deliverable, add subfolder
+                    const filtered = currentPath.filter(p => p.type !== 'subfolder');
+                    setCurrentPath([...filtered, { type: 'subfolder', id, name }]);
                 }
             };
 
@@ -1852,6 +1944,7 @@
                 const loc = getCurrentLocation();
                 return files.filter(f => {
                     // Location filters
+                    if (loc.subfolder && f.subfolder !== loc.subfolder) return false;
                     if (loc.deliverableId && f.deliverableId !== loc.deliverableId) return false;
                     if (loc.projectId && f.projectId !== loc.projectId) return false;
                     if (loc.clientName && f.clientName !== loc.clientName) return false;
@@ -2036,115 +2129,232 @@
                     );
                 }
 
-                // Project level - show deliverables + files
+                // Project level - SharePoint-style nested folder structure
                 if (currentProject) {
                     const project = projects.find(p => p.id === currentProject.id);
                     const currentDeliverable = currentPath.find(p => p.type === 'deliverable');
+                    const currentSubfolder = currentPath.find(p => p.type === 'subfolder');
                     const currentFiles = getFilesForCurrentPath();
+                    const loc = getCurrentLocation();
 
-                    // Show deliverable folders if at project level (not inside a deliverable)
-                    const deliverableFolders = !currentDeliverable ? [
-                        { id: 'production', name: 'Production' },
-                        { id: 'creative', name: 'Creative' },
-                        { id: 'final', name: 'Final Deliverables' }
-                    ] : [];
+                    // LEVEL 1: At project root - show Brief, Response Doc, Team, Deliverables folder
+                    if (!currentDeliverable && !currentSubfolder) {
+                        // Get deliverables from Notion (Layer 2)
+                        const deliverables = project?.deliverables || [];
 
-                    // External links from Notion
-                    const externalLinks = [];
-                    if (project?.briefLink) externalLinks.push({ name: 'Brief', url: project.briefLink, type: 'doc' });
-                    if (project?.responseLink) externalLinks.push({ name: 'Creative Response', url: project.responseLink, type: 'doc' });
-                    if (project?.driveFolder) externalLinks.push({ name: 'Google Drive', url: project.driveFolder, type: 'link' });
-                    if (project?.frameIo) externalLinks.push({ name: 'Frame.io', url: project.frameIo, type: 'link' });
-
-                    return (
-                        <>
-                            {renderUploadZone()}
-
-                            {/* Frame.io Section - prominent for video projects */}
-                            {!currentDeliverable && renderFrameIoSection(project)}
-
-                            {deliverableFolders.length > 0 && (
+                        return (
+                            <>
+                                {/* Key Documents Section */}
                                 <div className="file-section">
-                                    <div className="file-section-title">Folders</div>
-                                    <div className="folder-grid">
-                                        {deliverableFolders.map(d => (
-                                            <div key={d.id} className="folder-card deliverable"
-                                                 onClick={() => navigateTo('deliverable', d.id, d.name)}>
-                                                {Icons.folder}
-                                                <div className="folder-name">{d.name}</div>
-                                                <div className="folder-meta">
-                                                    {currentFiles.filter(f => f.deliverableName === d.name).length} files
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {externalLinks.length > 0 && !currentDeliverable && (
-                                <div className="file-section">
-                                    <div className="file-section-title">Project Links (from Notion)</div>
+                                    <div className="file-section-title">Key Documents</div>
                                     <div className="file-list">
-                                        {externalLinks.map((link, idx) => (
-                                            <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
+                                        {project?.briefLink && (
+                                            <a href={project.briefLink} target="_blank" rel="noopener noreferrer"
                                                className="file-item" style={{ textDecoration: 'none' }}>
-                                                <div className={`file-icon ${link.type}`}>
-                                                    {link.type === 'doc' ? Icons.file : Icons.link}
-                                                </div>
+                                                <div className="file-icon pdf">{Icons.file}</div>
                                                 <div className="file-info">
-                                                    <div className="file-name">{link.name}</div>
-                                                    <div className="file-meta">External link</div>
+                                                    <div className="file-name">Brief</div>
+                                                    <div className="file-meta">Project brief document</div>
                                                 </div>
+                                                <div style={{ marginLeft: 'auto' }}>{Icons.externalLink}</div>
                                             </a>
-                                        ))}
+                                        )}
+                                        {project?.responseLink && (
+                                            <a href={project.responseLink} target="_blank" rel="noopener noreferrer"
+                                               className="file-item" style={{ textDecoration: 'none' }}>
+                                                <div className="file-icon doc">{Icons.file}</div>
+                                                <div className="file-info">
+                                                    <div className="file-name">Creative Response</div>
+                                                    <div className="file-meta">Response to brief • Google Doc</div>
+                                                </div>
+                                                <div style={{ marginLeft: 'auto' }}>{Icons.externalLink}</div>
+                                            </a>
+                                        )}
+                                        {project?.driveFolder && (
+                                            <a href={project.driveFolder} target="_blank" rel="noopener noreferrer"
+                                               className="file-item" style={{ textDecoration: 'none' }}>
+                                                <div className="file-icon other">{Icons.folder}</div>
+                                                <div className="file-info">
+                                                    <div className="file-name">Google Drive</div>
+                                                    <div className="file-meta">Project folder</div>
+                                                </div>
+                                                <div style={{ marginLeft: 'auto' }}>{Icons.externalLink}</div>
+                                            </a>
+                                        )}
+                                        {!project?.briefLink && !project?.responseLink && (
+                                            <div className="file-item" style={{ opacity: 0.6 }}>
+                                                <div className="file-icon other">{Icons.file}</div>
+                                                <div className="file-info">
+                                                    <div className="file-name" style={{ fontStyle: 'italic' }}>No documents linked yet</div>
+                                                    <div className="file-meta">Add Brief/Response links in Notion</div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            )}
 
-                            {currentFiles.length > 0 && (
+                                {/* Team Section - Editable */}
+                                {renderEditableTeamSection(project)}
+
+                                {/* Deliverables Folder */}
                                 <div className="file-section">
-                                    <div className="file-section-title">
-                                        Files {currentDeliverable ? `in ${currentDeliverable.name}` : ''}
-                                    </div>
-                                    <div className="file-list">
-                                        {currentFiles.map(f => renderFileItem(f))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {currentFiles.length === 0 && currentDeliverable && (
-                                <div className="empty-state">
-                                    {Icons.upload}
-                                    <div className="empty-state-title">No files yet</div>
-                                    <div className="empty-state-text">Drop files here to upload</div>
-                                </div>
-                            )}
-
-                            {/* Team Section */}
-                            {project && !currentDeliverable && (
-                                <div className="team-section">
-                                    <div className="team-section-title">Team</div>
-                                    <div className="team-list">
-                                        {project.creativeLead && (
-                                            <div className="team-member">
-                                                <div className="avatar">{getInitials(project.creativeLead)}</div>
-                                                {project.creativeLead} (Creative Lead)
+                                    <div className="file-section-title">Deliverables</div>
+                                    {deliverables.length > 0 ? (
+                                        <div className="folder-grid">
+                                            {deliverables.map(d => (
+                                                <div key={d.id || d.name} className="folder-card deliverable"
+                                                     onClick={() => navigateTo('deliverable', d.id || d.name, d.title || d.name)}>
+                                                    {Icons.folder}
+                                                    <div className="folder-name">{d.title || d.name}</div>
+                                                    <div className="folder-meta">
+                                                        {files.filter(f => f.deliverableId === d.id).length} files
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="file-item" style={{ opacity: 0.6 }}>
+                                            <div className="file-icon other">{Icons.folder}</div>
+                                            <div className="file-info">
+                                                <div className="file-name" style={{ fontStyle: 'italic' }}>No deliverables yet</div>
+                                                <div className="file-meta">Add episodes/deliverables in Notion (Layer 2)</div>
                                             </div>
-                                        )}
-                                        {project.salesLead && (
-                                            <div className="team-member">
-                                                <div className="avatar" style={{ background: '#F59E0B' }}>{getInitials(project.salesLead)}</div>
-                                                {project.salesLead} (Sales Lead)
-                                            </div>
-                                        )}
-                                        <button className="add-team-btn" onClick={() => showToast('Team editing coming soon')}>
-                                            + Add member
-                                        </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Frame.io Section */}
+                                {renderFrameIoSection(project)}
+                            </>
+                        );
+                    }
+
+                    // LEVEL 2: Inside a deliverable - show subfolders (Production, Edits, etc.)
+                    if (currentDeliverable && !currentSubfolder) {
+                        // Standard subfolders for each deliverable
+                        const subfolders = [
+                            { id: 'script', name: 'Script', icon: 'doc', description: 'Scripts and treatments' },
+                            { id: 'production', name: 'Production', icon: 'folder', description: 'Call sheets, shot lists, receipts' },
+                            { id: 'rushes', name: 'Rushes', icon: 'video', description: 'Raw footage from Frame.io' },
+                            { id: 'edits', name: 'Edits', icon: 'video', description: 'V1, V2, FINAL versions' },
+                            { id: 'graphics', name: 'Graphics', icon: 'image', description: 'Thumbnails, end cards, assets' },
+                            { id: 'client-assets', name: 'Client Assets', icon: 'folder', description: 'Logos, brand guidelines' }
+                        ];
+
+                        return (
+                            <>
+                                {renderUploadZone()}
+
+                                {/* Pinned Files at deliverable level */}
+                                {renderPinnedSection()}
+
+                                <div className="file-section">
+                                    <div className="file-section-title">Folders in {currentDeliverable.name}</div>
+                                    <div className="folder-grid">
+                                        {subfolders.map(sf => {
+                                            const fileCount = files.filter(f =>
+                                                f.deliverableId === currentDeliverable.id &&
+                                                f.subfolder === sf.id
+                                            ).length;
+
+                                            // Special handling for Rushes - link to Frame.io
+                                            if (sf.id === 'rushes' && project?.frameIo) {
+                                                return (
+                                                    <a key={sf.id} href={project.frameIo} target="_blank" rel="noopener noreferrer"
+                                                       className="folder-card deliverable" style={{ textDecoration: 'none' }}>
+                                                        {Icons.video}
+                                                        <div className="folder-name">{sf.name}</div>
+                                                        <div className="folder-meta">Open in Frame.io</div>
+                                                    </a>
+                                                );
+                                            }
+
+                                            return (
+                                                <div key={sf.id} className="folder-card deliverable"
+                                                     onClick={() => navigateTo('subfolder', sf.id, sf.name)}>
+                                                    {sf.icon === 'video' ? Icons.video :
+                                                     sf.icon === 'image' ? Icons.file :
+                                                     sf.icon === 'doc' ? Icons.file : Icons.folder}
+                                                    <div className="folder-name">{sf.name}</div>
+                                                    <div className="folder-meta">{fileCount} files</div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                            )}
-                        </>
-                    );
+
+                                {/* Frame.io assets for this deliverable */}
+                                {frameioAssets.length > 0 && (
+                                    <div className="frameio-section">
+                                        <div className="frameio-header">
+                                            <div className="title">{Icons.video} Video Review</div>
+                                            {project?.frameIo && (
+                                                <a href={project.frameIo} target="_blank" rel="noopener noreferrer" className="frameio-link">
+                                                    Open Frame.io {Icons.externalLink}
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div className="frameio-assets">
+                                            {frameioAssets.map(asset => (
+                                                <div key={asset.id} className="frameio-asset"
+                                                     onClick={() => window.open(`https://app.frame.io/player/${asset.id}`, '_blank')}>
+                                                    <div className="thumb">
+                                                        {asset.thumb_url ?
+                                                            <img src={asset.thumb_url} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> :
+                                                            Icons.video
+                                                        }
+                                                    </div>
+                                                    <div className="name">
+                                                        {asset.name}
+                                                        {asset.commentCount > 0 && <span style={{ marginLeft: 4, opacity: 0.7 }}>💬 {asset.commentCount}</span>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Files not in any subfolder */}
+                                {files.filter(f => f.deliverableId === currentDeliverable.id && !f.subfolder).length > 0 && (
+                                    <div className="file-section">
+                                        <div className="file-section-title">Other Files</div>
+                                        <div className="file-list">
+                                            {files.filter(f => f.deliverableId === currentDeliverable.id && !f.subfolder).map(f => renderFileItem(f))}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        );
+                    }
+
+                    // LEVEL 3: Inside a subfolder - show files
+                    if (currentSubfolder) {
+                        return (
+                            <>
+                                {renderUploadZone()}
+
+                                {/* Date Filter */}
+                                {renderDateFilter()}
+
+                                {currentFiles.length > 0 ? (
+                                    <div className="file-section">
+                                        <div className="file-section-title">
+                                            {currentSubfolder.name} ({currentFiles.length} files)
+                                        </div>
+                                        <div className="file-list">
+                                            {currentFiles.map(f => renderFileItem(f))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="empty-state">
+                                        {Icons.upload}
+                                        <div className="empty-state-title">No files in {currentSubfolder.name}</div>
+                                        <div className="empty-state-text">Drop files here or click to upload</div>
+                                    </div>
+                                )}
+                            </>
+                        );
+                    }
                 }
 
                 return null;
@@ -2173,8 +2383,10 @@
                         </div>
                         <div className="file-info">
                             <div className="file-name">{file.name}</div>
-                            <div className="file-meta">
-                                {file.isExternal ? 'External link' : formatFileSize(file.size)} • {file.uploadedBy?.name || 'Unknown'} • {formatTimeAgo(file.uploadedAt)}
+                            <div className="file-meta" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {file.isExternal ? 'External link' : formatFileSize(file.size)}
+                                <span style={{ color: 'var(--dmg-blue)', fontWeight: 500 }}>• {file.uploadedBy?.name || 'Unknown'}</span>
+                                • {formatTimeAgo(file.uploadedAt)}
                             </div>
                         </div>
                         <div className="file-actions">
@@ -2235,6 +2447,116 @@
                                     </div>
                                 );
                             })}
+                        </div>
+                    </div>
+                );
+            };
+
+            // Editable Team Section with roles
+            const [editingTeam, setEditingTeam] = React.useState(false);
+            const [teamMembers, setTeamMembers] = React.useState({});
+
+            // Load team from Firebase when project changes
+            React.useEffect(() => {
+                const loadTeam = async () => {
+                    const loc = getCurrentLocation();
+                    if (!loc.projectId) return;
+
+                    try {
+                        const doc = await configCollection.doc(`team-${loc.projectId}`).get();
+                        if (doc.exists) {
+                            setTeamMembers(doc.data().members || {});
+                        } else {
+                            // Initialize with Notion data
+                            const project = projects.find(p => p.id === loc.projectId);
+                            if (project) {
+                                setTeamMembers({
+                                    creative: project.creativeLead || '',
+                                    sales: project.salesLead || '',
+                                    producer: '',
+                                    client: ''
+                                });
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Failed to load team:', err);
+                    }
+                };
+                loadTeam();
+            }, [currentPath, projects]);
+
+            const saveTeam = async () => {
+                const loc = getCurrentLocation();
+                if (!loc.projectId) return;
+
+                try {
+                    await configCollection.doc(`team-${loc.projectId}`).set({
+                        members: teamMembers,
+                        updatedAt: new Date().toISOString()
+                    });
+
+                    await logActivity({
+                        type: 'team_update',
+                        action: 'updated team',
+                        projectId: loc.projectId,
+                        projectName: loc.projectName
+                    });
+
+                    showToast('Team saved', 'success');
+                    setEditingTeam(false);
+                } catch (err) {
+                    console.error('Save team error:', err);
+                    showToast('Failed to save team', 'error');
+                }
+            };
+
+            const renderEditableTeamSection = (project) => {
+                const roles = [
+                    { key: 'sales', label: 'Sales Lead', color: '#F59E0B' },
+                    { key: 'creative', label: 'Creative Lead', color: '#8B5CF6' },
+                    { key: 'producer', label: 'Producer', color: '#22C55E' },
+                    { key: 'client', label: 'Client Contact', color: '#21A0D8' }
+                ];
+
+                return (
+                    <div className="file-section">
+                        <div className="file-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            Team
+                            <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}
+                                    onClick={() => editingTeam ? saveTeam() : setEditingTeam(true)}>
+                                {editingTeam ? 'Save' : 'Edit'}
+                            </button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                            {roles.map(role => (
+                                <div key={role.key} className="file-item" style={{ padding: 12 }}>
+                                    <div className="avatar" style={{
+                                        width: 32, height: 32, borderRadius: '50%',
+                                        background: role.color, color: 'white',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 11, fontWeight: 700, flexShrink: 0
+                                    }}>
+                                        {getInitials(teamMembers[role.key] || '?')}
+                                    </div>
+                                    <div className="file-info" style={{ flex: 1 }}>
+                                        <div className="file-meta" style={{ fontSize: 10, marginBottom: 2 }}>{role.label}</div>
+                                        {editingTeam ? (
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                style={{ padding: '4px 8px', fontSize: 12 }}
+                                                value={teamMembers[role.key] || ''}
+                                                placeholder={`Add ${role.label.toLowerCase()}`}
+                                                onChange={(e) => setTeamMembers({ ...teamMembers, [role.key]: e.target.value })}
+                                            />
+                                        ) : (
+                                            <div className="file-name" style={{ fontSize: 13 }}>
+                                                {teamMembers[role.key] || <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Not assigned</span>}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 );
@@ -2379,12 +2701,15 @@
                                             <label className="form-label">Select destination folder</label>
                                             <div className="folder-selector">
                                                 {[
+                                                    { id: 'script', name: 'Script' },
                                                     { id: 'production', name: 'Production' },
-                                                    { id: 'creative', name: 'Creative' },
-                                                    { id: 'final', name: 'Final Deliverables' }
+                                                    { id: 'rushes', name: 'Rushes' },
+                                                    { id: 'edits', name: 'Edits' },
+                                                    { id: 'graphics', name: 'Graphics' },
+                                                    { id: 'client-assets', name: 'Client Assets' }
                                                 ].map(folder => (
-                                                    <div key={folder.id} className={`folder-option ${modalData.deliverableId === folder.id ? 'selected' : ''}`}
-                                                         onClick={() => moveFile(modalData, folder.id, folder.name)}>
+                                                    <div key={folder.id} className={`folder-option ${modalData.subfolder === folder.id ? 'selected' : ''}`}
+                                                         onClick={() => moveFileToSubfolder(modalData, folder.id, folder.name)}>
                                                         {Icons.folder}
                                                         <span className="name">{folder.name}</span>
                                                     </div>
