@@ -541,7 +541,26 @@
                         </div>
                     </div>
 
-                    <div class="notion-link-section">
+                    <!-- OAuth Connect Button (Primary) -->
+                    <button class="btn btn-notion" id="notionOAuthBtn" style="margin-top: 16px;">
+                        <svg width="20" height="20" viewBox="0 0 100 100" fill="none">
+                            <path d="M6.017 4.313l55.333 -4.087c6.797 -0.583 8.543 -0.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277 -1.553 6.807 -6.99 7.193L24.467 99.967c-4.08 0.193 -6.023 -0.39 -8.16 -3.113L3.3 79.94c-2.333 -3.113 -3.3 -5.443 -3.3 -8.167V11.113c0 -3.497 1.553 -6.413 6.017 -6.8z" fill="#fff"/><path d="M61.35 0.227l-55.333 4.087C1.553 4.7 0 7.617 0 11.113v60.66c0 2.723 0.967 5.053 3.3 8.167l13.007 16.913c2.137 2.723 4.08 3.307 8.16 3.113l64.257 -3.89c5.433 -0.387 6.99 -2.917 6.99 -7.193V20.64c0 -2.21 -0.873 -2.847 -3.443 -4.733L74.167 3.143c-4.273 -3.107 -6.02 -3.5 -12.817 -2.917z" fill="#fff"/>
+                        </svg>
+                        Connect with Notion
+                    </button>
+                    <p style="font-size: 11px; color: var(--ink-sub); text-align: center; margin-top: 8px;">
+                        Sign in with your work email when prompted
+                    </p>
+
+                    <!-- Manual Entry Toggle -->
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button id="toggleManualEntry" style="background: none; border: none; font-size: 12px; color: var(--ink-sub); cursor: pointer; text-decoration: underline;">
+                            Or enter User ID manually
+                        </button>
+                    </div>
+
+                    <!-- Manual Entry Section (Hidden by default) -->
+                    <div class="notion-link-section" id="manualEntrySection" style="display: none; margin-top: 12px;">
                         <p style="font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px;">How to find your Notion User ID:</p>
                         <ol class="notion-steps">
                             <li>Open <a href="https://www.notion.so/login" target="_blank" style="color: var(--dmg-blue);">notion.so/login</a> and sign in with your <strong>work email</strong></li>
@@ -552,9 +571,9 @@
                         <div class="form-group" style="margin-bottom: 12px;">
                             <input type="text" class="form-input" id="notionUserIdInput" placeholder="Paste your Notion User ID here...">
                         </div>
-                        <button class="btn btn-notion" id="linkNotionBtn">
+                        <button class="btn btn-secondary" id="linkNotionBtn">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                            Link Notion Account
+                            Link with User ID
                         </button>
                     </div>
                 </div>
@@ -687,7 +706,12 @@
                 unlinked.style.display = 'none';
                 status.className = 'status-badge success';
                 status.textContent = 'Linked';
-                display.textContent = `ID: ${notionUserId.substring(0, 8)}...`;
+                // Show name if available, otherwise show truncated ID
+                if (notionUserName) {
+                    display.textContent = `${notionUserName} (${notionUserId.substring(0, 8)}...)`;
+                } else {
+                    display.textContent = `ID: ${notionUserId.substring(0, 8)}...`;
+                }
             } else {
                 linked.style.display = 'none';
                 unlinked.style.display = 'block';
@@ -722,9 +746,122 @@
 
         document.getElementById('unlinkNotionBtn').addEventListener('click', () => {
             notionUserId = null;
+            notionUserName = null;
             document.getElementById('notionUserIdInput').value = '';
             updateNotionUI();
         });
+
+        // Toggle manual entry section
+        document.getElementById('toggleManualEntry').addEventListener('click', () => {
+            const section = document.getElementById('manualEntrySection');
+            const btn = document.getElementById('toggleManualEntry');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                btn.textContent = 'Hide manual entry';
+            } else {
+                section.style.display = 'none';
+                btn.textContent = 'Or enter User ID manually';
+            }
+        });
+
+        // ============================================
+        // NOTION OAUTH
+        // ============================================
+        let notionUserName = null;
+
+        // OAuth button - redirect to Notion authorization
+        document.getElementById('notionOAuthBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('notionOAuthBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Connecting...';
+
+            try {
+                // Get the authorization URL from our API
+                const response = await fetch(`${API_URL}/notion-oauth/authorize?state=${encodeURIComponent(currentUser?.email || '')}`);
+                const data = await response.json();
+
+                if (!response.ok || !data.authUrl) {
+                    throw new Error(data.error || 'Failed to get authorization URL');
+                }
+
+                // Redirect to Notion OAuth
+                window.location.href = data.authUrl;
+
+            } catch (e) {
+                console.error('OAuth error:', e);
+                showMessage('Notion OAuth not configured. Please use manual entry or contact admin.', 'error');
+                // Show manual entry as fallback
+                document.getElementById('manualEntrySection').style.display = 'block';
+                document.getElementById('toggleManualEntry').textContent = 'Hide manual entry';
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 100 100" fill="none"><path d="M6.017 4.313l55.333 -4.087c6.797 -0.583 8.543 -0.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277 -1.553 6.807 -6.99 7.193L24.467 99.967c-4.08 0.193 -6.023 -0.39 -8.16 -3.113L3.3 79.94c-2.333 -3.113 -3.3 -5.443 -3.3 -8.167V11.113c0 -3.497 1.553 -6.413 6.017 -6.8z" fill="#fff"/><path d="M61.35 0.227l-55.333 4.087C1.553 4.7 0 7.617 0 11.113v60.66c0 2.723 0.967 5.053 3.3 8.167l13.007 16.913c2.137 2.723 4.08 3.307 8.16 3.113l64.257 -3.89c5.433 -0.387 6.99 -2.917 6.99 -7.193V20.64c0 -2.21 -0.873 -2.847 -3.443 -4.733L74.167 3.143c-4.273 -3.107 -6.02 -3.5 -12.817 -2.917z" fill="#fff"/></svg> Connect with Notion';
+            }
+        });
+
+        // Handle OAuth callback (when redirected back from Notion)
+        async function handleOAuthCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const error = params.get('error');
+
+            if (error) {
+                showMessage('Notion authorization was cancelled or denied.', 'error');
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return;
+            }
+
+            if (!code) return; // No OAuth callback
+
+            showView('loadingView');
+            document.querySelector('#loadingView p').textContent = 'Linking Notion account...';
+
+            try {
+                // Exchange code for user info
+                const response = await fetch(`${API_URL}/notion-oauth/callback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to link Notion account');
+                }
+
+                // Store the Notion user info
+                notionUserId = data.notionUser.id;
+                notionUserName = data.notionUser.name;
+
+                // Store in sessionStorage so it persists through the auth flow
+                sessionStorage.setItem('pendingNotionUserId', notionUserId);
+                sessionStorage.setItem('pendingNotionUserName', notionUserName || '');
+
+                showMessage(`Notion account linked: ${notionUserName || notionUserId}`, 'success');
+
+            } catch (e) {
+                console.error('OAuth callback error:', e);
+                showMessage('Failed to link Notion account: ' + e.message, 'error');
+            }
+
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Check for pending Notion link from OAuth
+        function checkPendingNotionLink() {
+            const pendingId = sessionStorage.getItem('pendingNotionUserId');
+            const pendingName = sessionStorage.getItem('pendingNotionUserName');
+            if (pendingId) {
+                notionUserId = pendingId;
+                notionUserName = pendingName || null;
+                sessionStorage.removeItem('pendingNotionUserId');
+                sessionStorage.removeItem('pendingNotionUserName');
+                return true;
+            }
+            return false;
+        }
 
         // ============================================
         // FETCH STAFF PROFILE
@@ -757,18 +894,18 @@
             document.getElementById('role').value = profile.role || '';
             document.getElementById('seniority').value = profile.seniority || '';
 
-            // Notion User ID
-            if (profile.notionUser) {
+            // Notion User ID - only set from profile if not already set via OAuth
+            if (!notionUserId && profile.notionUser) {
                 notionUserId = profile.notionUser;
             }
             updateNotionUI();
 
-            // Update checklist
+            // Update checklist - use current notionUserId (could be from OAuth or profile)
             const checks = [
                 { label: 'Name verified', complete: !!(profile.firstName && profile.lastName) },
                 { label: 'Team assigned', complete: !!profile.team },
                 { label: 'Role assigned', complete: !!profile.role },
-                { label: 'Notion account linked', complete: !!profile.notionUser }
+                { label: 'Notion account linked', complete: !!notionUserId }
             ];
             updateChecklist('profileChecklist', checks);
 
@@ -866,6 +1003,9 @@
         // AUTH STATE
         // ============================================
         auth.onAuthStateChanged(async (user) => {
+            // First, handle OAuth callback if present (before auth check)
+            await handleOAuthCallback();
+
             if (!user) {
                 showView('loginView');
                 return;
@@ -873,6 +1013,9 @@
 
             currentUser = user;
             showView('loadingView');
+
+            // Check for pending Notion link from OAuth flow
+            const hadPendingLink = checkPendingNotionLink();
 
             // Update UI with user info
             const initials = getInitials(user.displayName || user.email);
@@ -887,6 +1030,10 @@
 
             if (staffProfile) {
                 populateForm(staffProfile);
+                // If we just linked Notion via OAuth, show a success message
+                if (hadPendingLink) {
+                    showMessage(`Notion account linked${notionUserName ? ': ' + notionUserName : ''}! Don't forget to save.`, 'success');
+                }
                 showView('profileView');
             } else {
                 showView('notFoundView');

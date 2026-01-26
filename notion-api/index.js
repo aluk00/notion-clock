@@ -2828,6 +2828,89 @@ app.post('/auth/notion/match-staff', async (req, res) => {
     }
 });
 
+// ============================================
+// NOTION OAUTH - For linking user accounts
+// ============================================
+
+const NOTION_OAUTH_CLIENT_ID = process.env.NOTION_OAUTH_CLIENT_ID;
+const NOTION_OAUTH_CLIENT_SECRET = process.env.NOTION_OAUTH_CLIENT_SECRET;
+const NOTION_OAUTH_REDIRECT_URI = process.env.NOTION_OAUTH_REDIRECT_URI;
+
+// GET /notion-oauth/authorize - Get the OAuth authorization URL
+app.get('/notion-oauth/authorize', (req, res) => {
+    if (!NOTION_OAUTH_CLIENT_ID) {
+        return res.status(500).json({ error: 'Notion OAuth not configured' });
+    }
+
+    const state = req.query.state || ''; // Optional state parameter for CSRF protection
+    const authUrl = `https://api.notion.com/v1/oauth/authorize?client_id=${NOTION_OAUTH_CLIENT_ID}&response_type=code&owner=user&redirect_uri=${encodeURIComponent(NOTION_OAUTH_REDIRECT_URI)}${state ? `&state=${encodeURIComponent(state)}` : ''}`;
+
+    res.json({ success: true, authUrl });
+});
+
+// POST /notion-oauth/callback - Exchange code for token and get user info
+app.post('/notion-oauth/callback', async (req, res) => {
+    const { code } = req.body;
+
+    if (!code) {
+        return res.status(400).json({ error: 'Authorization code required' });
+    }
+
+    if (!NOTION_OAUTH_CLIENT_ID || !NOTION_OAUTH_CLIENT_SECRET) {
+        return res.status(500).json({ error: 'Notion OAuth not configured' });
+    }
+
+    try {
+        // Exchange code for access token
+        const tokenResponse = await fetch('https://api.notion.com/v1/oauth/token', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Basic ${Buffer.from(`${NOTION_OAUTH_CLIENT_ID}:${NOTION_OAUTH_CLIENT_SECRET}`).toString('base64')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                grant_type: 'authorization_code',
+                code: code,
+                redirect_uri: NOTION_OAUTH_REDIRECT_URI
+            })
+        });
+
+        if (!tokenResponse.ok) {
+            const errorData = await tokenResponse.json();
+            console.error('Notion OAuth token error:', errorData);
+            return res.status(400).json({ error: 'Failed to exchange code for token', details: errorData });
+        }
+
+        const tokenData = await tokenResponse.json();
+
+        // Extract user info from the response
+        // For user-owned tokens, owner contains the user object
+        const owner = tokenData.owner;
+        if (!owner || owner.type !== 'user') {
+            return res.status(400).json({ error: 'Expected user-owned token, got workspace token' });
+        }
+
+        const notionUser = {
+            id: owner.user.id,
+            name: owner.user.name,
+            email: owner.user.person?.email || null,
+            avatarUrl: owner.user.avatar_url || null
+        };
+
+        res.json({
+            success: true,
+            notionUser,
+            workspaceId: tokenData.workspace_id,
+            workspaceName: tokenData.workspace_name,
+            workspaceIcon: tokenData.workspace_icon
+        });
+
+    } catch (error) {
+        console.error('Notion OAuth error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
