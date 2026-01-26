@@ -963,6 +963,14 @@ function buildStaffProperties(data) {
     if (data.isProducer !== undefined) {
         props['IS PRODUCER'] = { checkbox: data.isProducer === true };
     }
+    // NOTION USER is a people field - accepts Notion User ID
+    if (data.notionUserId !== undefined) {
+        if (data.notionUserId) {
+            props['NOTION USER'] = { people: [{ id: data.notionUserId }] };
+        } else {
+            props['NOTION USER'] = { people: [] };
+        }
+    }
 
     return props;
 }
@@ -1029,7 +1037,7 @@ app.post('/staff-directory', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Staff Directory DB not configured' });
         }
 
-        const { firstName, lastName, email, team, role, seniority, weeklyCapacityPTS, active, jobRoles, phone, slackId } = req.body;
+        const { firstName, lastName, email, team, role, seniority, weeklyCapacityPTS, active, jobRoles, phone, slackId, notionUserId } = req.body;
 
         if (!firstName) {
             return res.status(400).json({ success: false, error: 'firstName is required' });
@@ -1037,7 +1045,7 @@ app.post('/staff-directory', async (req, res) => {
 
         const properties = buildStaffProperties({
             firstName, lastName, email, team, role, seniority,
-            weeklyCapacityPTS, active: active !== false, jobRoles, phone, slackId
+            weeklyCapacityPTS, active: active !== false, jobRoles, phone, slackId, notionUserId
         });
 
         const page = await notion.pages.create({
