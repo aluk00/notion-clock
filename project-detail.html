@@ -894,6 +894,96 @@
         }
         .submit-btn:hover { background: #1a8ac0; }
         .submit-btn:disabled { background: var(--ink-muted); cursor: not-allowed; }
+
+        /* Project Resources Grid */
+        .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .resource-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 16px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+        .resource-btn:hover {
+            border-color: var(--dmg-blue);
+            background: rgba(33, 160, 216, 0.05);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(33, 160, 216, 0.15);
+        }
+        .resource-btn.empty {
+            border-style: dashed;
+            background: var(--surface-alt);
+        }
+        .resource-btn.empty:hover {
+            border-color: var(--success);
+            background: rgba(34, 197, 94, 0.05);
+        }
+        .resource-icon {
+            font-size: 20px;
+        }
+        .resource-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .resource-btn.empty .resource-label {
+            color: var(--ink-muted);
+        }
+        .resource-add {
+            font-size: 9px;
+            font-weight: 600;
+            color: var(--success);
+            position: absolute;
+            bottom: 4px;
+            right: 6px;
+        }
+
+        /* Slack Button */
+        .slack-link-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #611f69 0%, #4a154b 100%);
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.15s ease;
+        }
+        .slack-link-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 21, 75, 0.3);
+        }
+
+        /* Notion Mini Link */
+        .notion-mini-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: var(--ink-muted);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+        .notion-mini-link:hover {
+            color: var(--dmg-blue);
+        }
     </style>
 </head>
 <body>
@@ -931,6 +1021,55 @@
         let deliverables = [];
         let expenses = [];
         let itemLayer = 1; // 1 = Project, 2 = Episode, 3 = Task
+
+        // Generate Slack channel name from client and title
+        function generateSlackChannel(client, title) {
+            if (!client && !title) return 'general';
+            const base = (client || title || '').toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .substring(0, 20);
+            const month = new Date().toLocaleDateString('en-GB', { month: '2-digit' });
+            const year = new Date().getFullYear().toString().slice(-2);
+            return `${base}-${month}${year}`;
+        }
+
+        // Prompt user to add a missing link
+        async function promptAddLink(fieldName, fieldLabel) {
+            const url = prompt(`Enter ${fieldLabel} URL:`);
+            if (!url) return;
+
+            // Validate URL
+            try {
+                new URL(url);
+            } catch (e) {
+                alert('Please enter a valid URL');
+                return;
+            }
+
+            // Update in Notion via API
+            try {
+                const updateData = {};
+                updateData[fieldName] = url;
+
+                const res = await fetch(`${API_URL}/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (res.ok) {
+                    // Update local data and re-render
+                    project[fieldName] = url;
+                    render();
+                } else {
+                    throw new Error('Failed to update');
+                }
+            } catch (e) {
+                console.error('Update error:', e);
+                alert('Failed to save link. Please try again.');
+            }
+        }
 
         // Get project ID from URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -1585,6 +1724,66 @@
                         </div>
 
                         <div class="side-column">
+                            <!-- PROJECT RESOURCES - This is the first thing you need -->
+                            <div class="card" style="border: 2px solid var(--dmg-blue); background: linear-gradient(135deg, rgba(33, 160, 216, 0.03) 0%, white 100%);">
+                                <div class="card-header" style="background: linear-gradient(135deg, rgba(33, 160, 216, 0.08) 0%, rgba(33, 160, 216, 0.02) 100%); border-bottom-color: rgba(33, 160, 216, 0.2);">
+                                    <div class="card-title" style="color: var(--dmg-blue);">
+                                        <div class="card-dot" style="background: var(--dmg-blue)"></div>
+                                        Project Resources
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="resource-grid">
+                                        <!-- Brief Document -->
+                                        <a href="${p.briefLink || '#'}" target="_blank" class="resource-btn ${p.briefLink ? '' : 'empty'}" ${!p.briefLink ? 'onclick="event.preventDefault(); promptAddLink(\'briefLink\', \'Brief Document\');"' : ''}>
+                                            <span class="resource-icon">📋</span>
+                                            <span class="resource-label">Brief</span>
+                                            ${!p.briefLink ? '<span class="resource-add">+ Add</span>' : ''}
+                                        </a>
+
+                                        <!-- Creative Response -->
+                                        <a href="${p.creativeResponseLink || '#'}" target="_blank" class="resource-btn ${p.creativeResponseLink ? '' : 'empty'}" ${!p.creativeResponseLink ? 'onclick="event.preventDefault(); promptAddLink(\'creativeResponseLink\', \'Response Doc\');"' : ''}>
+                                            <span class="resource-icon">🎨</span>
+                                            <span class="resource-label">Response</span>
+                                            ${!p.creativeResponseLink ? '<span class="resource-add">+ Add</span>' : ''}
+                                        </a>
+
+                                        <!-- Frame.io -->
+                                        <a href="${p.frameIoLink || '#'}" target="_blank" class="resource-btn ${p.frameIoLink ? '' : 'empty'}" ${!p.frameIoLink ? 'onclick="event.preventDefault(); promptAddLink(\'frameIoLink\', \'Frame.io Link\');"' : ''}>
+                                            <span class="resource-icon">🎬</span>
+                                            <span class="resource-label">Frame.io</span>
+                                            ${!p.frameIoLink ? '<span class="resource-add">+ Add</span>' : ''}
+                                        </a>
+
+                                        <!-- Drive Folder -->
+                                        <a href="${p.driveFolder || '#'}" target="_blank" class="resource-btn ${p.driveFolder ? '' : 'empty'}" ${!p.driveFolder ? 'onclick="event.preventDefault(); promptAddLink(\'driveFolder\', \'Drive Folder\');"' : ''}>
+                                            <span class="resource-icon">📁</span>
+                                            <span class="resource-label">Drive</span>
+                                            ${!p.driveFolder ? '<span class="resource-add">+ Add</span>' : ''}
+                                        </a>
+                                    </div>
+
+                                    <!-- Slack Channel -->
+                                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                                        <a href="https://dmgmedia.slack.com/app_redirect?channel=${generateSlackChannel(p.client, p.title)}" target="_blank" class="slack-link-btn">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
+                                            <span>Open Slack: #${generateSlackChannel(p.client, p.title)}</span>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                        </a>
+                                    </div>
+
+                                    <!-- Notion Link -->
+                                    ${p.url ? `
+                                        <div style="margin-top: 8px;">
+                                            <a href="${p.url}" target="_blank" class="notion-mini-link">
+                                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                                Edit in Notion
+                                            </a>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+
                             <!-- Hierarchy Info -->
                             <div class="card" style="border-left: 3px solid ${layer.color};">
                                 <div class="card-header">
@@ -1680,61 +1879,7 @@
                                 </div>
                             </div>
 
-                            <!-- Links -->
-                            ${hasLinks ? `
-                                <div class="card">
-                                    <div class="card-header">
-                                        <div class="card-title">
-                                            <div class="card-dot" style="background: var(--dmg-blue)"></div>
-                                            Links
-                                        </div>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="links-list">
-                                            ${p.briefLink ? `
-                                                <a href="${p.briefLink}" target="_blank" class="link-item">
-                                                    <div class="link-icon">📋</div>
-                                                    <div class="link-info">
-                                                        <div class="link-title">Brief</div>
-                                                        <div class="link-desc">View project brief</div>
-                                                    </div>
-                                                    <svg class="link-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                                                </a>
-                                            ` : ''}
-                                            ${p.creativeResponseLink ? `
-                                                <a href="${p.creativeResponseLink}" target="_blank" class="link-item">
-                                                    <div class="link-icon">🎨</div>
-                                                    <div class="link-info">
-                                                        <div class="link-title">Creative Response</div>
-                                                        <div class="link-desc">View creative deck</div>
-                                                    </div>
-                                                    <svg class="link-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                                                </a>
-                                            ` : ''}
-                                            ${p.frameIoLink ? `
-                                                <a href="${p.frameIoLink}" target="_blank" class="link-item">
-                                                    <div class="link-icon">🎬</div>
-                                                    <div class="link-info">
-                                                        <div class="link-title">Frame.io</div>
-                                                        <div class="link-desc">Review video assets</div>
-                                                    </div>
-                                                    <svg class="link-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                                                </a>
-                                            ` : ''}
-                                            ${p.driveFolder ? `
-                                                <a href="${p.driveFolder}" target="_blank" class="link-item">
-                                                    <div class="link-icon">📁</div>
-                                                    <div class="link-info">
-                                                        <div class="link-title">Drive Folder</div>
-                                                        <div class="link-desc">Project files & assets</div>
-                                                    </div>
-                                                    <svg class="link-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                                                </a>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : ''}
+                            <!-- Links moved to Project Resources section at top -->
 
                             <!-- Workflow Status -->
                             <div class="card">

@@ -515,7 +515,17 @@ app.get('/projects/:id', async (req, res) => {
             // Parent relation (for Layer 2/3 items)
             parentItemIds: parseProperty(props['PARENT ITEM']),
             // Sub-items relation (for hierarchy)
-            subItemIds: parseProperty(props['SUB-ITEM'])
+            subItemIds: parseProperty(props['SUB-ITEM']),
+            // Layer 2/3 specific fields (Episodes/Tasks)
+            discipline: parseProperty(props['DISCIPLINE']),
+            format: parseProperty(props['FORMAT']),
+            channel: parseProperty(props['CHANNEL']),
+            status: parseProperty(props['STATUS']),
+            status1: parseProperty(props['STATUS 1']),
+            feedbackStatus: parseProperty(props['FEEDBACK STATUS']),
+            assignedTo: parseProperty(props['ASSIGNED TO 1']),
+            liveLink: parseProperty(props['LIVE LINK']),
+            effortPts: parseProperty(props['EFFORT (PTS)'])
         };
 
         res.json({ success: true, project });

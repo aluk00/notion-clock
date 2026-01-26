@@ -1,0 +1,2681 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Library | DMG</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
+    <!-- React -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        :root {
+            --ink: #111827;
+            --ink-sub: #6B7280;
+            --ink-muted: #9CA3AF;
+            --border: #E5E7EB;
+            --white: #FFFFFF;
+            --surface: #F9FAFB;
+            --dmg-blue: #21A0D8;
+            --success: #22C55E;
+            --amber: #F59E0B;
+            --danger: #EF4444;
+            --purple: #8B5CF6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--white);
+            color: var(--ink);
+            height: 100vh;
+            max-height: 700px;
+            overflow: hidden;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            height: 100%;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .dot-grid span:nth-child(2) { animation-delay: 0.3s; }
+        .dot-grid span:nth-child(3) { animation-delay: 0.9s; }
+        .dot-grid span:nth-child(4) { animation-delay: 0.6s; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .sidebar-search {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 12px 8px 32px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: inherit;
+            background: var(--white);
+            position: relative;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+        .search-wrapper svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            color: var(--ink-muted);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .nav-section {
+            margin-bottom: 16px;
+        }
+
+        .nav-section-title {
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-muted);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 13px;
+            color: var(--ink);
+        }
+        .nav-item:hover { background: rgba(0,0,0,0.04); }
+        .nav-item.active {
+            background: rgba(33, 160, 216, 0.1);
+            color: var(--dmg-blue);
+            font-weight: 600;
+        }
+        .nav-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+        .nav-item .count {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--ink-muted);
+            background: var(--white);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        .breadcrumb-item {
+            color: var(--ink-sub);
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .breadcrumb-item:hover { color: var(--dmg-blue); }
+        .breadcrumb-item.current {
+            color: var(--ink);
+            font-weight: 600;
+            cursor: default;
+        }
+        .breadcrumb-sep { color: var(--ink-muted); font-size: 10px; }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+            border: 1px solid transparent;
+        }
+        .btn svg { width: 14px; height: 14px; }
+        .btn-primary {
+            background: var(--dmg-blue);
+            color: white;
+            border-color: var(--dmg-blue);
+        }
+        .btn-primary:hover { background: #1a8bc4; }
+        .btn-secondary {
+            background: var(--white);
+            color: var(--ink);
+            border-color: var(--border);
+        }
+        .btn-secondary:hover { border-color: var(--ink-muted); }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .file-browser {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 32px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: var(--surface);
+        }
+        .upload-zone:hover, .upload-zone.drag-over {
+            border-color: var(--dmg-blue);
+            background: rgba(33, 160, 216, 0.05);
+        }
+        .upload-zone.uploading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .upload-zone svg {
+            width: 40px;
+            height: 40px;
+            color: var(--ink-muted);
+            margin-bottom: 12px;
+        }
+        .upload-zone-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 4px;
+        }
+        .upload-zone-hint {
+            font-size: 12px;
+            color: var(--ink-muted);
+        }
+
+        /* Upload Progress */
+        .upload-progress {
+            display: none;
+            margin-bottom: 16px;
+        }
+        .upload-progress.active { display: block; }
+        .progress-bar {
+            height: 6px;
+            background: var(--surface);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--dmg-blue);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .progress-text {
+            font-size: 11px;
+            color: var(--ink-sub);
+            margin-top: 6px;
+        }
+
+        /* Folder Grid */
+        .folder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .folder-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 12px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+        .folder-card:hover {
+            border-color: var(--dmg-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .folder-card svg {
+            width: 36px;
+            height: 36px;
+        }
+        .folder-card.client svg { color: var(--dmg-blue); }
+        .folder-card.project svg { color: var(--success); }
+        .folder-card.deliverable svg { color: var(--amber); }
+
+        .folder-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink);
+            line-height: 1.3;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .folder-meta {
+            font-size: 10px;
+            color: var(--ink-muted);
+        }
+
+        /* File List */
+        .file-section {
+            margin-bottom: 20px;
+        }
+        .file-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .file-item:hover {
+            border-color: var(--dmg-blue);
+            background: rgba(33, 160, 216, 0.02);
+        }
+
+        .file-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .file-icon svg { width: 18px; height: 18px; }
+        .file-icon.pdf { background: #FEE2E2; color: #DC2626; }
+        .file-icon.doc { background: #DBEAFE; color: #2563EB; }
+        .file-icon.image { background: #D1FAE5; color: #059669; }
+        .file-icon.video { background: #EDE9FE; color: #7C3AED; }
+        .file-icon.psd { background: #E0E7FF; color: #4F46E5; }
+        .file-icon.other { background: var(--surface); color: var(--ink-sub); }
+
+        .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .file-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-meta {
+            font-size: 11px;
+            color: var(--ink-muted);
+            margin-top: 2px;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .file-item:hover .file-actions { opacity: 1; }
+
+        .icon-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-sub);
+            transition: all 0.15s;
+        }
+        .icon-btn:hover {
+            background: var(--surface);
+            color: var(--ink);
+        }
+        .icon-btn.danger:hover {
+            background: #FEE2E2;
+            color: var(--danger);
+        }
+        .icon-btn svg { width: 14px; height: 14px; }
+
+        /* Activity Panel */
+        .activity-panel {
+            width: 280px;
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+        }
+
+        .activity-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .activity-header .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .activity-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: var(--white);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .activity-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .activity-text {
+            font-size: 12px;
+            color: var(--ink);
+            line-height: 1.4;
+        }
+        .activity-text strong { font-weight: 600; }
+        .activity-text .highlight {
+            color: var(--dmg-blue);
+            font-weight: 500;
+        }
+        .activity-time {
+            font-size: 10px;
+            color: var(--ink-muted);
+            margin-top: 4px;
+        }
+
+        /* Team Sidebar within folders */
+        .team-section {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            background: var(--white);
+        }
+        .team-section-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-muted);
+            margin-bottom: 10px;
+        }
+        .team-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .team-member {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px 4px 4px;
+            background: var(--surface);
+            border-radius: 16px;
+            font-size: 11px;
+            color: var(--ink);
+        }
+        .team-member .avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--purple);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+        }
+        .add-team-btn {
+            padding: 4px 10px;
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            background: transparent;
+            font-size: 11px;
+            color: var(--ink-muted);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .add-team-btn:hover {
+            border-color: var(--dmg-blue);
+            color: var(--dmg-blue);
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--ink-sub);
+        }
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            color: var(--ink-muted);
+            margin-bottom: 16px;
+        }
+        .empty-state-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .empty-state-text {
+            font-size: 12px;
+            color: var(--ink-muted);
+        }
+
+        /* Loading State */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 16px;
+        }
+        .loading-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 12px 20px;
+            background: var(--ink);
+            color: white;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal {
+            background: var(--white);
+            border-radius: 12px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 15px;
+            font-weight: 700;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink);
+            margin-bottom: 6px;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d5d5d5; }
+
+        /* Search Results */
+        .search-results {
+            padding: 12px;
+        }
+        .search-result-group {
+            margin-bottom: 16px;
+        }
+        .search-result-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-muted);
+            margin-bottom: 8px;
+        }
+
+        /* Pinned Files Section */
+        .pinned-section {
+            background: linear-gradient(135deg, rgba(33, 160, 216, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+            border: 1px solid rgba(33, 160, 216, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .pinned-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--dmg-blue);
+        }
+        .pinned-header svg { width: 14px; height: 14px; }
+
+        .pinned-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .pinned-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .pinned-card:hover {
+            border-color: var(--dmg-blue);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .pinned-card .doc-type-badge {
+            position: absolute;
+            top: -6px;
+            right: 8px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            color: white;
+        }
+        .pinned-card .pin-icon {
+            position: absolute;
+            top: -6px;
+            left: 8px;
+            width: 16px;
+            height: 16px;
+            background: var(--amber);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pinned-card .pin-icon svg {
+            width: 10px;
+            height: 10px;
+            color: white;
+        }
+
+        /* Document Type Selector in Modal */
+        .doc-type-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .doc-type-option {
+            padding: 8px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .doc-type-option:hover {
+            border-color: var(--ink-muted);
+        }
+        .doc-type-option.selected {
+            border-color: var(--dmg-blue);
+            background: rgba(33, 160, 216, 0.05);
+        }
+        .doc-type-option .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin: 0 auto 6px;
+        }
+
+        /* Frame.io Card */
+        .frameio-section {
+            background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        .frameio-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .frameio-header .title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .frameio-header svg { width: 18px; height: 18px; }
+        .frameio-link {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            text-decoration: none;
+            transition: background 0.15s;
+        }
+        .frameio-link:hover { background: rgba(255,255,255,0.3); }
+        .frameio-link svg { width: 12px; height: 12px; }
+
+        .frameio-assets {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+        .frameio-asset {
+            flex-shrink: 0;
+            width: 120px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .frameio-asset:hover { transform: scale(1.02); }
+        .frameio-asset .thumb {
+            width: 100%;
+            height: 68px;
+            background: rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .frameio-asset .thumb svg { width: 24px; height: 24px; opacity: 0.6; }
+        .frameio-asset .name {
+            padding: 8px;
+            font-size: 10px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Date Filter */
+        .date-filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .date-filter label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+        }
+        .date-filter input {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: inherit;
+        }
+        .date-filter input:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+        }
+        .date-filter .clear-btn {
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            cursor: pointer;
+        }
+        .date-filter .clear-btn:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        /* Large File Warning */
+        .large-file-warning {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #FEF3C7;
+            border: 1px solid #F59E0B;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .large-file-warning svg {
+            width: 20px;
+            height: 20px;
+            color: #D97706;
+            flex-shrink: 0;
+        }
+        .large-file-warning .text {
+            flex: 1;
+            font-size: 12px;
+            color: #92400E;
+        }
+        .large-file-warning .text strong { font-weight: 600; }
+        .large-file-warning .actions {
+            display: flex;
+            gap: 8px;
+        }
+        .large-file-warning .actions button {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+        }
+        .large-file-warning .continue-btn {
+            background: #F59E0B;
+            color: white;
+        }
+        .large-file-warning .link-btn {
+            background: white;
+            border: 1px solid #F59E0B;
+            color: #D97706;
+        }
+
+        /* File context menu (right-click actions) */
+        .file-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            min-width: 160px;
+            z-index: 50;
+            overflow: hidden;
+        }
+        .file-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: var(--ink);
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .file-menu-item:hover { background: var(--surface); }
+        .file-menu-item svg { width: 14px; height: 14px; color: var(--ink-sub); }
+        .file-menu-item.danger { color: var(--danger); }
+        .file-menu-item.danger svg { color: var(--danger); }
+        .file-menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
+        /* Modal improvements */
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-sub);
+        }
+        .modal-close:hover { background: var(--surface); }
+        .modal-close svg { width: 16px; height: 16px; }
+
+        /* Folder selector for move */
+        .folder-selector {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .folder-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .folder-option:hover { background: var(--surface); }
+        .folder-option.selected { background: rgba(33, 160, 216, 0.1); }
+        .folder-option svg { width: 16px; height: 16px; color: var(--amber); }
+        .folder-option .name { font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // ═══════════════════════════════════════════════════════════════════════════
+        // CONFIGURATION
+        // ═══════════════════════════════════════════════════════════════════════════
+        const CONFIG = {
+            API_URL: 'https://createnotionproject-223535956454.us-central1.run.app',
+            FIREBASE: {
+                apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+                authDomain: "dmg-command-centre-native.firebaseapp.com",
+                projectId: "dmg-command-centre-native",
+                storageBucket: "dmg-command-centre-native.firebasestorage.app",
+                messagingSenderId: "223535956454",
+                appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+            },
+            MAX_FILE_SIZE: 500 * 1024 * 1024, // 500MB - Firebase supports resumable uploads
+            LARGE_FILE_THRESHOLD: 50 * 1024 * 1024, // 50MB - show warning for large files
+            ALLOWED_TYPES: [
+                'application/pdf', 'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/psd',
+                'video/mp4', 'video/quicktime', 'video/x-msvideo',
+                'application/x-photoshop', 'image/vnd.adobe.photoshop',
+                'application/octet-stream', // For PSD files
+                'text/plain', 'text/csv'
+            ],
+            // Document type labels for pinned files
+            DOC_TYPES: [
+                { id: 'tracker', label: 'Project Tracker', color: '#22C55E' },
+                { id: 'callsheet', label: 'Call Sheet', color: '#F59E0B' },
+                { id: 'assetlist', label: 'Asset List', color: '#8B5CF6' },
+                { id: 'brief', label: 'Brief', color: '#21A0D8' },
+                { id: 'script', label: 'Script', color: '#EC4899' },
+                { id: 'schedule', label: 'Schedule', color: '#06B6D4' },
+                { id: 'budget', label: 'Budget', color: '#EF4444' },
+                { id: 'reference', label: 'Reference', color: '#6B7280' }
+            ],
+            // Frame.io API (if you have access)
+            FRAMEIO_TOKEN: null // Set this if you have Frame.io API access
+        };
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FIREBASE INITIALIZATION
+        // ═══════════════════════════════════════════════════════════════════════════
+        if (!firebase.apps.length) {
+            firebase.initializeApp(CONFIG.FIREBASE);
+        }
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+        const auth = firebase.auth();
+
+        // Collections
+        const filesCollection = db.collection('artifacts').doc('dmg-command-centre-native')
+            .collection('public').doc('data').collection('files');
+        const activitiesCollection = db.collection('artifacts').doc('dmg-command-centre-native')
+            .collection('public').doc('data').collection('activities');
+        const configCollection = db.collection('artifacts').doc('dmg-command-centre-native')
+            .collection('public').doc('data').collection('config');
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FRAME.IO API INTEGRATION
+        // ═══════════════════════════════════════════════════════════════════════════
+        const FrameIO = {
+            baseUrl: 'https://api.frame.io/v2',
+            token: null,
+
+            // Initialize - try to get token from Firestore
+            async init() {
+                try {
+                    const doc = await configCollection.doc('frameio').get();
+                    if (doc.exists) {
+                        this.token = doc.data().token;
+                    }
+                } catch (err) {
+                    console.log('Frame.io config not found');
+                }
+                return this.token !== null;
+            },
+
+            // Save token to Firestore
+            async saveToken(token) {
+                try {
+                    await configCollection.doc('frameio').set({ token, updatedAt: new Date().toISOString() });
+                    this.token = token;
+                    return true;
+                } catch (err) {
+                    console.error('Failed to save Frame.io token:', err);
+                    return false;
+                }
+            },
+
+            // API request helper
+            async request(endpoint, options = {}) {
+                if (!this.token) throw new Error('No Frame.io token configured');
+
+                const res = await fetch(`${this.baseUrl}${endpoint}`, {
+                    ...options,
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`,
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+
+                if (!res.ok) {
+                    const error = await res.json().catch(() => ({}));
+                    throw new Error(error.message || `Frame.io API error: ${res.status}`);
+                }
+
+                return res.json();
+            },
+
+            // Get current user/account info
+            async getMe() {
+                return this.request('/me');
+            },
+
+            // Get all accounts
+            async getAccounts() {
+                return this.request('/accounts');
+            },
+
+            // Get teams for an account
+            async getTeams(accountId) {
+                return this.request(`/accounts/${accountId}/teams`);
+            },
+
+            // Get projects for a team
+            async getProjects(teamId) {
+                return this.request(`/teams/${teamId}/projects`);
+            },
+
+            // Get items (folders/assets) in a project or folder
+            async getItems(parentId, type = 'all') {
+                const items = await this.request(`/assets/${parentId}/children`);
+                if (type === 'all') return items;
+                return items.filter(item => type === 'folders' ? item.type === 'folder' : item.type !== 'folder');
+            },
+
+            // Get asset details (video/image)
+            async getAsset(assetId) {
+                return this.request(`/assets/${assetId}`);
+            },
+
+            // Get comments for an asset
+            async getComments(assetId) {
+                return this.request(`/assets/${assetId}/comments`);
+            },
+
+            // Get review link for an asset (for sharing)
+            async getReviewLinks(assetId) {
+                return this.request(`/assets/${assetId}/review_links`);
+            },
+
+            // Search for assets by name within a project
+            async searchAssets(projectId, query) {
+                // Frame.io doesn't have a direct search endpoint, so we'll need to traverse
+                // For now, return empty - would need recursive folder traversal
+                return [];
+            },
+
+            // Get assets for a specific folder path (e.g., "Client/Campaign/Deliverable")
+            async getAssetsForPath(rootId, pathParts) {
+                let currentId = rootId;
+
+                // Navigate through the path
+                for (const part of pathParts) {
+                    const items = await this.getItems(currentId, 'folders');
+                    const folder = items.find(f =>
+                        f.name.toLowerCase().includes(part.toLowerCase()) ||
+                        part.toLowerCase().includes(f.name.toLowerCase())
+                    );
+                    if (folder) {
+                        currentId = folder.id;
+                    } else {
+                        // Path not found, return empty
+                        return [];
+                    }
+                }
+
+                // Get all assets in the final folder
+                return this.getItems(currentId, 'assets');
+            }
+        };
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ICONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        const Icons = {
+            folder: <svg fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>,
+            file: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+            upload: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+            search: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>,
+            download: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+            trash: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+            link: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+            users: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            plus: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+            home: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+            clock: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            star: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+            starFilled: <svg fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+            pin: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>,
+            edit: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+            move: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l-3 3-3-3"/><path d="M19 9l3 3-3 3"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>,
+            calendar: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+            video: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>,
+            frameio: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>,
+            x: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+            check: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>,
+            externalLink: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>,
+            filter: <svg fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+        };
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // UTILITY FUNCTIONS
+        // ═══════════════════════════════════════════════════════════════════════════
+        const formatFileSize = (bytes) => {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+        };
+
+        const formatTimeAgo = (date) => {
+            const now = new Date();
+            const then = new Date(date);
+            const seconds = Math.floor((now - then) / 1000);
+
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+            if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+            return then.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        };
+
+        const getFileType = (filename, mimeType) => {
+            const ext = filename.split('.').pop().toLowerCase();
+            if (['pdf'].includes(ext)) return 'pdf';
+            if (['doc', 'docx'].includes(ext)) return 'doc';
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'image';
+            if (['mp4', 'mov', 'avi', 'mkv'].includes(ext)) return 'video';
+            if (['psd', 'psb'].includes(ext)) return 'psd';
+            return 'other';
+        };
+
+        const getInitials = (name) => {
+            if (!name) return '??';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        };
+
+        const getCurrentUser = () => {
+            // Try to get from localStorage or return default
+            const stored = localStorage.getItem('dmg_user');
+            if (stored) return JSON.parse(stored);
+            return { name: 'Unknown User', initials: 'U' };
+        };
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // TOAST COMPONENT
+        // ═══════════════════════════════════════════════════════════════════════════
+        const Toast = ({ message, type, show }) => (
+            <div className={`toast ${show ? 'show' : ''} ${type}`}>{message}</div>
+        );
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // MAIN APP COMPONENT
+        // ═══════════════════════════════════════════════════════════════════════════
+        const App = () => {
+            // State
+            const [loading, setLoading] = React.useState(true);
+            const [projects, setProjects] = React.useState([]);
+            const [files, setFiles] = React.useState([]);
+            const [activities, setActivities] = React.useState([]);
+            const [searchQuery, setSearchQuery] = React.useState('');
+            const [currentPath, setCurrentPath] = React.useState([]); // [{type, id, name}]
+            const [toast, setToast] = React.useState({ show: false, message: '', type: '' });
+            const [uploadProgress, setUploadProgress] = React.useState({ active: false, percent: 0, fileName: '' });
+            const [dragOver, setDragOver] = React.useState(false);
+            const [showModal, setShowModal] = React.useState(null); // 'rename', 'move', 'pin', 'addLink', 'frameioSetup'
+            const [modalData, setModalData] = React.useState(null); // Data for the modal
+            // Frame.io state
+            const [frameioEnabled, setFrameioEnabled] = React.useState(false);
+            const [frameioAssets, setFrameioAssets] = React.useState([]); // Assets for current project
+            const [frameioLoading, setFrameioLoading] = React.useState(false);
+            const [frameioProjects, setFrameioProjects] = React.useState([]); // Frame.io projects list
+            const [dateFilter, setDateFilter] = React.useState({ from: '', to: '' });
+            const [activeFileMenu, setActiveFileMenu] = React.useState(null); // File ID for context menu
+            const [largeFileWarning, setLargeFileWarning] = React.useState(null); // {file, onContinue, onLink}
+            const fileInputRef = React.useRef(null);
+
+            // Show toast helper
+            const showToast = (message, type = '') => {
+                setToast({ show: true, message, type });
+                setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // DATA FETCHING
+            // ─────────────────────────────────────────────────────────────────────
+
+            // Fetch projects from Notion API
+            const fetchProjects = async () => {
+                try {
+                    const res = await fetch(`${CONFIG.API_URL}/projects`);
+                    if (!res.ok) throw new Error('API error');
+                    const data = await res.json();
+
+                    const projectList = (data.projects || data || []).map(p => ({
+                        id: p.id,
+                        title: p.title || p.name || 'Untitled',
+                        client: p.client || 'Unknown Client',
+                        dealStage: p.dealStage || null,
+                        team: p.team || [],
+                        creativeLead: p.creativeLead || null,
+                        salesLead: p.salesLead || null,
+                        briefLink: p.briefLink || null,
+                        responseLink: p.creativeResponseLink || null,
+                        driveFolder: p.driveFolder || null,
+                        frameIo: p.frameIo || null,
+                        deliverables: p.deliverables || []
+                    }));
+
+                    setProjects(projectList);
+                } catch (err) {
+                    console.error('Failed to fetch projects:', err);
+                    showToast('Failed to load projects', 'error');
+                }
+            };
+
+            // Fetch files from Firebase
+            const fetchFiles = async () => {
+                try {
+                    const snapshot = await filesCollection.orderBy('uploadedAt', 'desc').limit(500).get();
+                    const fileList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setFiles(fileList);
+                } catch (err) {
+                    console.error('Failed to fetch files:', err);
+                }
+            };
+
+            // Subscribe to activities (real-time)
+            React.useEffect(() => {
+                const unsubscribe = activitiesCollection
+                    .orderBy('timestamp', 'desc')
+                    .limit(50)
+                    .onSnapshot(snapshot => {
+                        const activityList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        setActivities(activityList);
+                    }, err => {
+                        console.error('Activity subscription error:', err);
+                    });
+
+                return () => unsubscribe();
+            }, []);
+
+            // Initial data load
+            React.useEffect(() => {
+                const loadData = async () => {
+                    setLoading(true);
+                    await Promise.all([fetchProjects(), fetchFiles()]);
+                    // Initialize Frame.io
+                    const hasFrameio = await FrameIO.init();
+                    setFrameioEnabled(hasFrameio);
+                    if (hasFrameio) {
+                        try {
+                            // Load Frame.io project list for mapping
+                            const me = await FrameIO.getMe();
+                            if (me.account_id) {
+                                const teams = await FrameIO.getTeams(me.account_id);
+                                if (teams.length > 0) {
+                                    const projects = await FrameIO.getProjects(teams[0].id);
+                                    setFrameioProjects(projects);
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Failed to load Frame.io projects:', err);
+                        }
+                    }
+                    setLoading(false);
+                };
+                loadData();
+            }, []);
+
+            // Fetch Frame.io assets when project changes
+            React.useEffect(() => {
+                const fetchFrameioAssets = async () => {
+                    const loc = getCurrentLocation();
+                    if (!frameioEnabled || !loc.projectId || !loc.projectName) {
+                        setFrameioAssets([]);
+                        return;
+                    }
+
+                    setFrameioLoading(true);
+                    try {
+                        // Try to find matching Frame.io project by name
+                        const matchingProject = frameioProjects.find(fp =>
+                            fp.name.toLowerCase().includes(loc.projectName.toLowerCase()) ||
+                            loc.projectName.toLowerCase().includes(fp.name.toLowerCase()) ||
+                            (loc.clientName && fp.name.toLowerCase().includes(loc.clientName.toLowerCase()))
+                        );
+
+                        if (matchingProject) {
+                            // Get root items of the project
+                            const items = await FrameIO.getItems(matchingProject.root_asset_id);
+
+                            // If we're in a deliverable folder, try to find matching subfolder
+                            let assets = items.filter(i => i.type !== 'folder');
+                            if (loc.deliverableName) {
+                                const subfolder = items.find(i =>
+                                    i.type === 'folder' &&
+                                    i.name.toLowerCase().includes(loc.deliverableName.toLowerCase())
+                                );
+                                if (subfolder) {
+                                    const subItems = await FrameIO.getItems(subfolder.id);
+                                    assets = subItems.filter(i => i.type !== 'folder');
+                                }
+                            }
+
+                            // Enrich with comment counts
+                            const enrichedAssets = await Promise.all(assets.slice(0, 12).map(async (asset) => {
+                                try {
+                                    const comments = await FrameIO.getComments(asset.id);
+                                    return { ...asset, commentCount: comments.length };
+                                } catch {
+                                    return { ...asset, commentCount: 0 };
+                                }
+                            }));
+
+                            setFrameioAssets(enrichedAssets);
+                        } else {
+                            setFrameioAssets([]);
+                        }
+                    } catch (err) {
+                        console.error('Failed to fetch Frame.io assets:', err);
+                        setFrameioAssets([]);
+                    }
+                    setFrameioLoading(false);
+                };
+
+                fetchFrameioAssets();
+            }, [currentPath, frameioEnabled, frameioProjects]);
+
+            // ─────────────────────────────────────────────────────────────────────
+            // FILE UPLOAD
+            // ─────────────────────────────────────────────────────────────────────
+            const handleFileUpload = async (fileList) => {
+                const currentLocation = getCurrentLocation();
+                if (!currentLocation.projectId) {
+                    showToast('Navigate to a project folder to upload files', 'error');
+                    return;
+                }
+
+                const uploadFiles = Array.from(fileList);
+
+                for (const file of uploadFiles) {
+                    // Validate
+                    if (file.size > CONFIG.MAX_FILE_SIZE) {
+                        showToast(`${file.name} is too large (max 100MB)`, 'error');
+                        continue;
+                    }
+
+                    try {
+                        setUploadProgress({ active: true, percent: 0, fileName: file.name });
+
+                        // Create storage path
+                        const timestamp = Date.now();
+                        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                        const storagePath = `projects/${currentLocation.clientName}/${currentLocation.projectName}/${currentLocation.deliverableName || 'General'}/${timestamp}_${safeName}`;
+
+                        // Upload to Firebase Storage
+                        const storageRef = storage.ref(storagePath);
+                        const uploadTask = storageRef.put(file);
+
+                        await new Promise((resolve, reject) => {
+                            uploadTask.on('state_changed',
+                                (snapshot) => {
+                                    const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                    setUploadProgress({ active: true, percent, fileName: file.name });
+                                },
+                                reject,
+                                async () => {
+                                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+
+                                    // Save file metadata to Firestore
+                                    const user = getCurrentUser();
+                                    const fileDoc = {
+                                        name: file.name,
+                                        type: file.type,
+                                        size: file.size,
+                                        path: storagePath,
+                                        url: downloadURL,
+                                        clientId: currentLocation.clientName,
+                                        clientName: currentLocation.clientName,
+                                        projectId: currentLocation.projectId,
+                                        projectName: currentLocation.projectName,
+                                        deliverableId: currentLocation.deliverableId || null,
+                                        deliverableName: currentLocation.deliverableName || 'General',
+                                        uploadedBy: user,
+                                        uploadedAt: new Date().toISOString()
+                                    };
+
+                                    await filesCollection.doc(timestamp.toString()).set(fileDoc);
+
+                                    // Log activity
+                                    await logActivity({
+                                        type: 'file_upload',
+                                        action: 'uploaded',
+                                        fileName: file.name,
+                                        fileType: getFileType(file.name, file.type),
+                                        ...currentLocation
+                                    });
+
+                                    resolve();
+                                }
+                            );
+                        });
+
+                        showToast(`${file.name} uploaded successfully`, 'success');
+                        await fetchFiles(); // Refresh file list
+
+                    } catch (err) {
+                        console.error('Upload error:', err);
+                        showToast(`Failed to upload ${file.name}`, 'error');
+                    } finally {
+                        setUploadProgress({ active: false, percent: 0, fileName: '' });
+                    }
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // ACTIVITY LOGGING
+            // ─────────────────────────────────────────────────────────────────────
+            const logActivity = async (data) => {
+                const user = getCurrentUser();
+                const activity = {
+                    ...data,
+                    user,
+                    timestamp: new Date().toISOString()
+                };
+
+                try {
+                    await activitiesCollection.add(activity);
+                } catch (err) {
+                    console.error('Failed to log activity:', err);
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // FILE OPERATIONS
+            // ─────────────────────────────────────────────────────────────────────
+            const deleteFile = async (file) => {
+                if (!confirm(`Delete "${file.name}"? This cannot be undone.`)) return;
+
+                try {
+                    // Delete from Storage (if it's an uploaded file, not external link)
+                    if (file.path) {
+                        await storage.ref(file.path).delete();
+                    }
+                    // Delete from Firestore
+                    await filesCollection.doc(file.id).delete();
+
+                    // Log activity
+                    await logActivity({
+                        type: 'file_delete',
+                        action: 'deleted',
+                        fileName: file.name,
+                        projectId: file.projectId,
+                        projectName: file.projectName
+                    });
+
+                    showToast('File deleted', 'success');
+                    setActiveFileMenu(null);
+                    await fetchFiles();
+                } catch (err) {
+                    console.error('Delete error:', err);
+                    showToast('Failed to delete file', 'error');
+                }
+            };
+
+            // Rename file
+            const renameFile = async (file, newName) => {
+                if (!newName || newName === file.name) return;
+
+                try {
+                    await filesCollection.doc(file.id).update({ name: newName });
+                    await logActivity({
+                        type: 'file_rename',
+                        action: 'renamed',
+                        fileName: `${file.name} → ${newName}`,
+                        projectId: file.projectId,
+                        projectName: file.projectName
+                    });
+                    showToast('File renamed', 'success');
+                    setShowModal(null);
+                    setModalData(null);
+                    await fetchFiles();
+                } catch (err) {
+                    console.error('Rename error:', err);
+                    showToast('Failed to rename file', 'error');
+                }
+            };
+
+            // Move file to different folder
+            const moveFile = async (file, newDeliverableId, newDeliverableName) => {
+                try {
+                    await filesCollection.doc(file.id).update({
+                        deliverableId: newDeliverableId,
+                        deliverableName: newDeliverableName
+                    });
+                    await logActivity({
+                        type: 'file_move',
+                        action: 'moved',
+                        fileName: file.name,
+                        deliverableName: newDeliverableName,
+                        projectId: file.projectId,
+                        projectName: file.projectName
+                    });
+                    showToast(`Moved to ${newDeliverableName}`, 'success');
+                    setShowModal(null);
+                    setModalData(null);
+                    await fetchFiles();
+                } catch (err) {
+                    console.error('Move error:', err);
+                    showToast('Failed to move file', 'error');
+                }
+            };
+
+            // Pin/unpin file with document type
+            const togglePinFile = async (file, docType = null) => {
+                try {
+                    const isPinned = !file.pinned;
+                    const updates = {
+                        pinned: isPinned,
+                        docType: isPinned ? docType : null
+                    };
+                    await filesCollection.doc(file.id).update(updates);
+                    await logActivity({
+                        type: isPinned ? 'file_pin' : 'file_unpin',
+                        action: isPinned ? 'pinned' : 'unpinned',
+                        fileName: file.name,
+                        projectId: file.projectId,
+                        projectName: file.projectName
+                    });
+                    showToast(isPinned ? 'File pinned as key document' : 'File unpinned', 'success');
+                    setShowModal(null);
+                    setModalData(null);
+                    await fetchFiles();
+                } catch (err) {
+                    console.error('Pin error:', err);
+                    showToast('Failed to update file', 'error');
+                }
+            };
+
+            // Add external link (Google Docs, Frame.io, etc.)
+            const addExternalLink = async (linkData) => {
+                const currentLocation = getCurrentLocation();
+                if (!currentLocation.projectId) {
+                    showToast('Navigate to a project folder first', 'error');
+                    return;
+                }
+
+                try {
+                    const user = getCurrentUser();
+                    const timestamp = Date.now();
+                    const fileDoc = {
+                        name: linkData.name,
+                        type: 'link',
+                        url: linkData.url,
+                        isExternal: true,
+                        docType: linkData.docType || null,
+                        pinned: linkData.pinned || false,
+                        clientName: currentLocation.clientName,
+                        projectId: currentLocation.projectId,
+                        projectName: currentLocation.projectName,
+                        deliverableId: currentLocation.deliverableId || null,
+                        deliverableName: currentLocation.deliverableName || 'General',
+                        uploadedBy: user,
+                        uploadedAt: new Date().toISOString()
+                    };
+
+                    await filesCollection.doc(timestamp.toString()).set(fileDoc);
+                    await logActivity({
+                        type: 'link_add',
+                        action: 'added link',
+                        fileName: linkData.name,
+                        ...currentLocation
+                    });
+                    showToast('Link added', 'success');
+                    setShowModal(null);
+                    setModalData(null);
+                    await fetchFiles();
+                } catch (err) {
+                    console.error('Add link error:', err);
+                    showToast('Failed to add link', 'error');
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // NAVIGATION HELPERS
+            // ─────────────────────────────────────────────────────────────────────
+            const getCurrentLocation = () => {
+                const loc = { clientName: null, projectId: null, projectName: null, deliverableId: null, deliverableName: null };
+                currentPath.forEach(p => {
+                    if (p.type === 'client') loc.clientName = p.name;
+                    if (p.type === 'project') { loc.projectId = p.id; loc.projectName = p.name; }
+                    if (p.type === 'deliverable') { loc.deliverableId = p.id; loc.deliverableName = p.name; }
+                });
+                return loc;
+            };
+
+            const navigateTo = (type, id, name) => {
+                if (type === 'root') {
+                    setCurrentPath([]);
+                } else if (type === 'client') {
+                    setCurrentPath([{ type: 'client', id: name, name }]);
+                } else if (type === 'project') {
+                    const clientPath = currentPath.find(p => p.type === 'client');
+                    setCurrentPath([clientPath, { type: 'project', id, name }].filter(Boolean));
+                } else if (type === 'deliverable') {
+                    const filtered = currentPath.filter(p => p.type !== 'deliverable');
+                    setCurrentPath([...filtered, { type: 'deliverable', id, name }]);
+                }
+            };
+
+            const navigateBack = (index) => {
+                setCurrentPath(currentPath.slice(0, index + 1));
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // FILTERING & GROUPING
+            // ─────────────────────────────────────────────────────────────────────
+            const groupProjectsByClient = () => {
+                const groups = {};
+                projects.forEach(p => {
+                    const client = p.client || 'Unknown Client';
+                    if (!groups[client]) groups[client] = [];
+                    groups[client].push(p);
+                });
+                return groups;
+            };
+
+            const getFilesForCurrentPath = () => {
+                const loc = getCurrentLocation();
+                return files.filter(f => {
+                    // Location filters
+                    if (loc.deliverableId && f.deliverableId !== loc.deliverableId) return false;
+                    if (loc.projectId && f.projectId !== loc.projectId) return false;
+                    if (loc.clientName && f.clientName !== loc.clientName) return false;
+
+                    // Date filters
+                    if (dateFilter.from) {
+                        const fileDate = new Date(f.uploadedAt);
+                        const fromDate = new Date(dateFilter.from);
+                        if (fileDate < fromDate) return false;
+                    }
+                    if (dateFilter.to) {
+                        const fileDate = new Date(f.uploadedAt);
+                        const toDate = new Date(dateFilter.to);
+                        toDate.setHours(23, 59, 59); // Include the whole day
+                        if (fileDate > toDate) return false;
+                    }
+
+                    return true;
+                });
+            };
+
+            // Get pinned files for current project
+            const getPinnedFiles = () => {
+                const loc = getCurrentLocation();
+                if (!loc.projectId) return [];
+                return files.filter(f => f.pinned && f.projectId === loc.projectId);
+            };
+
+            // Search
+            const getSearchResults = () => {
+                if (!searchQuery.trim()) return null;
+                const query = searchQuery.toLowerCase();
+
+                const matchedProjects = projects.filter(p =>
+                    p.title.toLowerCase().includes(query) ||
+                    p.client.toLowerCase().includes(query)
+                );
+
+                const matchedFiles = files.filter(f =>
+                    f.name.toLowerCase().includes(query) ||
+                    (f.uploadedBy?.name || '').toLowerCase().includes(query)
+                );
+
+                return { projects: matchedProjects, files: matchedFiles };
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // RENDER HELPERS
+            // ─────────────────────────────────────────────────────────────────────
+            const renderBreadcrumb = () => {
+                return (
+                    <div className="breadcrumb">
+                        <span className={`breadcrumb-item ${currentPath.length === 0 ? 'current' : ''}`}
+                              onClick={() => navigateTo('root')}>
+                            All Clients
+                        </span>
+                        {currentPath.map((item, idx) => (
+                            <React.Fragment key={idx}>
+                                <span className="breadcrumb-sep">›</span>
+                                <span className={`breadcrumb-item ${idx === currentPath.length - 1 ? 'current' : ''}`}
+                                      onClick={() => navigateBack(idx)}>
+                                    {item.name}
+                                </span>
+                            </React.Fragment>
+                        ))}
+                    </div>
+                );
+            };
+
+            const renderUploadZone = () => {
+                const loc = getCurrentLocation();
+                if (!loc.projectId) return null; // Only show in project/deliverable folders
+
+                return (
+                    <>
+                        <div className={`upload-zone ${dragOver ? 'drag-over' : ''} ${uploadProgress.active ? 'uploading' : ''}`}
+                             onClick={() => fileInputRef.current?.click()}
+                             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                             onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+                             onDrop={(e) => {
+                                 e.preventDefault();
+                                 setDragOver(false);
+                                 handleFileUpload(e.dataTransfer.files);
+                             }}>
+                            {Icons.upload}
+                            <div className="upload-zone-title">Drop files here or click to upload</div>
+                            <div className="upload-zone-hint">Videos, PSDs, PDFs, images up to 100MB</div>
+                            <input type="file" ref={fileInputRef} multiple style={{ display: 'none' }}
+                                   onChange={(e) => handleFileUpload(e.target.files)} />
+                        </div>
+                        <div className={`upload-progress ${uploadProgress.active ? 'active' : ''}`}>
+                            <div className="progress-bar">
+                                <div className="progress-fill" style={{ width: `${uploadProgress.percent}%` }} />
+                            </div>
+                            <div className="progress-text">Uploading {uploadProgress.fileName}... {Math.round(uploadProgress.percent)}%</div>
+                        </div>
+                    </>
+                );
+            };
+
+            const renderFolderGrid = () => {
+                // Search mode
+                const searchResults = getSearchResults();
+                if (searchResults) {
+                    return (
+                        <div className="search-results">
+                            {searchResults.projects.length > 0 && (
+                                <div className="search-result-group">
+                                    <div className="search-result-title">Projects ({searchResults.projects.length})</div>
+                                    <div className="folder-grid">
+                                        {searchResults.projects.map(p => (
+                                            <div key={p.id} className="folder-card project"
+                                                 onClick={() => {
+                                                     setSearchQuery('');
+                                                     navigateTo('client', p.client, p.client);
+                                                     setTimeout(() => navigateTo('project', p.id, p.title), 0);
+                                                 }}>
+                                                {Icons.folder}
+                                                <div className="folder-name">{p.title}</div>
+                                                <div className="folder-meta">{p.client}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            {searchResults.files.length > 0 && (
+                                <div className="search-result-group">
+                                    <div className="search-result-title">Files ({searchResults.files.length})</div>
+                                    <div className="file-list">
+                                        {searchResults.files.slice(0, 20).map(f => renderFileItem(f))}
+                                    </div>
+                                </div>
+                            )}
+                            {searchResults.projects.length === 0 && searchResults.files.length === 0 && (
+                                <div className="empty-state">
+                                    {Icons.search}
+                                    <div className="empty-state-title">No results found</div>
+                                    <div className="empty-state-text">Try a different search term</div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                }
+
+                // Root level - show clients
+                if (currentPath.length === 0) {
+                    const grouped = groupProjectsByClient();
+                    const clients = Object.keys(grouped).sort();
+
+                    return (
+                        <div className="folder-grid">
+                            {clients.map(client => (
+                                <div key={client} className="folder-card client"
+                                     onClick={() => navigateTo('client', client, client)}>
+                                    {Icons.folder}
+                                    <div className="folder-name">{client}</div>
+                                    <div className="folder-meta">{grouped[client].length} projects</div>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                }
+
+                // Client level - show projects
+                const currentClient = currentPath.find(p => p.type === 'client');
+                const currentProject = currentPath.find(p => p.type === 'project');
+
+                if (currentClient && !currentProject) {
+                    const clientProjects = projects.filter(p => p.client === currentClient.name);
+
+                    return (
+                        <div className="folder-grid">
+                            {clientProjects.map(p => (
+                                <div key={p.id} className="folder-card project"
+                                     onClick={() => navigateTo('project', p.id, p.title)}>
+                                    {Icons.folder}
+                                    <div className="folder-name">{p.title}</div>
+                                    <div className="folder-meta">{p.dealStage || 'No status'}</div>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                }
+
+                // Project level - show deliverables + files
+                if (currentProject) {
+                    const project = projects.find(p => p.id === currentProject.id);
+                    const currentDeliverable = currentPath.find(p => p.type === 'deliverable');
+                    const currentFiles = getFilesForCurrentPath();
+
+                    // Show deliverable folders if at project level (not inside a deliverable)
+                    const deliverableFolders = !currentDeliverable ? [
+                        { id: 'production', name: 'Production' },
+                        { id: 'creative', name: 'Creative' },
+                        { id: 'final', name: 'Final Deliverables' }
+                    ] : [];
+
+                    // External links from Notion
+                    const externalLinks = [];
+                    if (project?.briefLink) externalLinks.push({ name: 'Brief', url: project.briefLink, type: 'doc' });
+                    if (project?.responseLink) externalLinks.push({ name: 'Creative Response', url: project.responseLink, type: 'doc' });
+                    if (project?.driveFolder) externalLinks.push({ name: 'Google Drive', url: project.driveFolder, type: 'link' });
+                    if (project?.frameIo) externalLinks.push({ name: 'Frame.io', url: project.frameIo, type: 'link' });
+
+                    return (
+                        <>
+                            {renderUploadZone()}
+
+                            {/* Frame.io Section - prominent for video projects */}
+                            {!currentDeliverable && renderFrameIoSection(project)}
+
+                            {deliverableFolders.length > 0 && (
+                                <div className="file-section">
+                                    <div className="file-section-title">Folders</div>
+                                    <div className="folder-grid">
+                                        {deliverableFolders.map(d => (
+                                            <div key={d.id} className="folder-card deliverable"
+                                                 onClick={() => navigateTo('deliverable', d.id, d.name)}>
+                                                {Icons.folder}
+                                                <div className="folder-name">{d.name}</div>
+                                                <div className="folder-meta">
+                                                    {currentFiles.filter(f => f.deliverableName === d.name).length} files
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {externalLinks.length > 0 && !currentDeliverable && (
+                                <div className="file-section">
+                                    <div className="file-section-title">Project Links (from Notion)</div>
+                                    <div className="file-list">
+                                        {externalLinks.map((link, idx) => (
+                                            <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer"
+                                               className="file-item" style={{ textDecoration: 'none' }}>
+                                                <div className={`file-icon ${link.type}`}>
+                                                    {link.type === 'doc' ? Icons.file : Icons.link}
+                                                </div>
+                                                <div className="file-info">
+                                                    <div className="file-name">{link.name}</div>
+                                                    <div className="file-meta">External link</div>
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentFiles.length > 0 && (
+                                <div className="file-section">
+                                    <div className="file-section-title">
+                                        Files {currentDeliverable ? `in ${currentDeliverable.name}` : ''}
+                                    </div>
+                                    <div className="file-list">
+                                        {currentFiles.map(f => renderFileItem(f))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentFiles.length === 0 && currentDeliverable && (
+                                <div className="empty-state">
+                                    {Icons.upload}
+                                    <div className="empty-state-title">No files yet</div>
+                                    <div className="empty-state-text">Drop files here to upload</div>
+                                </div>
+                            )}
+
+                            {/* Team Section */}
+                            {project && !currentDeliverable && (
+                                <div className="team-section">
+                                    <div className="team-section-title">Team</div>
+                                    <div className="team-list">
+                                        {project.creativeLead && (
+                                            <div className="team-member">
+                                                <div className="avatar">{getInitials(project.creativeLead)}</div>
+                                                {project.creativeLead} (Creative Lead)
+                                            </div>
+                                        )}
+                                        {project.salesLead && (
+                                            <div className="team-member">
+                                                <div className="avatar" style={{ background: '#F59E0B' }}>{getInitials(project.salesLead)}</div>
+                                                {project.salesLead} (Sales Lead)
+                                            </div>
+                                        )}
+                                        <button className="add-team-btn" onClick={() => showToast('Team editing coming soon')}>
+                                            + Add member
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    );
+                }
+
+                return null;
+            };
+
+            const renderFileItem = (file) => {
+                const docTypeInfo = file.docType ? CONFIG.DOC_TYPES.find(d => d.id === file.docType) : null;
+
+                return (
+                    <div key={file.id} className="file-item" style={{ position: 'relative' }}>
+                        {/* Pinned badge */}
+                        {file.pinned && (
+                            <div className="pin-icon" style={{ position: 'absolute', top: -6, left: 8, width: 16, height: 16, background: '#F59E0B', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: 8, color: 'white' }}>★</span>
+                            </div>
+                        )}
+                        {/* Doc type badge */}
+                        {docTypeInfo && (
+                            <span className="doc-type-badge" style={{ position: 'absolute', top: -6, right: 8, padding: '2px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: docTypeInfo.color, color: 'white' }}>
+                                {docTypeInfo.label}
+                            </span>
+                        )}
+
+                        <div className={`file-icon ${file.isExternal ? 'link' : getFileType(file.name, file.type)}`}>
+                            {file.isExternal ? Icons.link : Icons.file}
+                        </div>
+                        <div className="file-info">
+                            <div className="file-name">{file.name}</div>
+                            <div className="file-meta">
+                                {file.isExternal ? 'External link' : formatFileSize(file.size)} • {file.uploadedBy?.name || 'Unknown'} • {formatTimeAgo(file.uploadedAt)}
+                            </div>
+                        </div>
+                        <div className="file-actions">
+                            <button className="icon-btn" title={file.isExternal ? 'Open' : 'Download'} onClick={() => window.open(file.url, '_blank')}>
+                                {file.isExternal ? Icons.externalLink : Icons.download}
+                            </button>
+                            <button className="icon-btn" title={file.pinned ? 'Unpin' : 'Pin as key document'} onClick={() => {
+                                if (file.pinned) {
+                                    togglePinFile(file);
+                                } else {
+                                    setModalData(file);
+                                    setShowModal('pin');
+                                }
+                            }}>
+                                {file.pinned ? Icons.starFilled : Icons.star}
+                            </button>
+                            <button className="icon-btn" title="Rename" onClick={() => { setModalData(file); setShowModal('rename'); }}>
+                                {Icons.edit}
+                            </button>
+                            <button className="icon-btn" title="Move" onClick={() => { setModalData(file); setShowModal('move'); }}>
+                                {Icons.move}
+                            </button>
+                            <button className="icon-btn danger" title="Delete" onClick={() => deleteFile(file)}>
+                                {Icons.trash}
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Render pinned files section
+            const renderPinnedSection = () => {
+                const pinnedFiles = getPinnedFiles();
+                if (pinnedFiles.length === 0) return null;
+
+                return (
+                    <div className="pinned-section">
+                        <div className="pinned-header">
+                            {Icons.starFilled}
+                            Key Documents
+                        </div>
+                        <div className="pinned-grid">
+                            {pinnedFiles.map(file => {
+                                const docTypeInfo = file.docType ? CONFIG.DOC_TYPES.find(d => d.id === file.docType) : null;
+                                return (
+                                    <div key={file.id} className="pinned-card" onClick={() => window.open(file.url, '_blank')}>
+                                        {docTypeInfo && (
+                                            <span className="doc-type-badge" style={{ background: docTypeInfo.color }}>
+                                                {docTypeInfo.label}
+                                            </span>
+                                        )}
+                                        <div className={`file-icon ${file.isExternal ? 'link' : getFileType(file.name, file.type)}`} style={{ width: 28, height: 28 }}>
+                                            {file.isExternal ? Icons.link : Icons.file}
+                                        </div>
+                                        <div className="file-info" style={{ flex: 1 }}>
+                                            <div className="file-name" style={{ fontSize: 11 }}>{file.name}</div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            };
+
+            // Render Frame.io section (if project has Frame.io link or we have API access)
+            const renderFrameIoSection = (project) => {
+                // Show if project has Frame.io link OR if we have Frame.io API assets
+                if (!project?.frameIo && frameioAssets.length === 0 && !frameioEnabled) return null;
+
+                return (
+                    <div className="frameio-section">
+                        <div className="frameio-header">
+                            <div className="title">
+                                {Icons.video}
+                                Video Review
+                                {frameioAssets.length > 0 && (
+                                    <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8 }}>
+                                        {frameioAssets.length} {frameioAssets.length === 1 ? 'video' : 'videos'}
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {!frameioEnabled && (
+                                    <button className="frameio-link" onClick={() => setShowModal('frameioSetup')} style={{ border: 'none', cursor: 'pointer' }}>
+                                        Connect Frame.io
+                                    </button>
+                                )}
+                                {project?.frameIo && (
+                                    <a href={project.frameIo} target="_blank" rel="noopener noreferrer" className="frameio-link">
+                                        Open Frame.io {Icons.externalLink}
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+
+                        {frameioLoading && (
+                            <div style={{ padding: 16, textAlign: 'center', fontSize: 11, opacity: 0.7 }}>
+                                Loading videos from Frame.io...
+                            </div>
+                        )}
+
+                        {!frameioLoading && frameioAssets.length > 0 && (
+                            <div className="frameio-assets">
+                                {frameioAssets.map(asset => (
+                                    <div key={asset.id} className="frameio-asset" onClick={() => window.open(`https://app.frame.io/player/${asset.id}`, '_blank')}>
+                                        <div className="thumb">
+                                            {asset.thumb_url ? (
+                                                <img src={asset.thumb_url} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                Icons.video
+                                            )}
+                                        </div>
+                                        <div className="name">
+                                            {asset.name}
+                                            {asset.commentCount > 0 && (
+                                                <span style={{ marginLeft: 4, opacity: 0.7 }}>
+                                                    💬 {asset.commentCount}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {asset.label && (
+                                            <div style={{ padding: '0 8px 8px', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                                {asset.label === 'approved' && '✓ Approved'}
+                                                {asset.label === 'in_progress' && '🔄 In Progress'}
+                                                {asset.label === 'needs_review' && '👁 Needs Review'}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {!frameioLoading && frameioAssets.length === 0 && frameioEnabled && (
+                            <div style={{ fontSize: 11, opacity: 0.8 }}>
+                                No videos found in Frame.io for this project
+                            </div>
+                        )}
+
+                        {!frameioEnabled && !project?.frameIo && (
+                            <div style={{ fontSize: 11, opacity: 0.8 }}>
+                                Connect Frame.io to see video thumbnails and comment counts
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Render date filter
+            const renderDateFilter = () => {
+                if (!getCurrentLocation().projectId) return null;
+
+                return (
+                    <div className="date-filter">
+                        {Icons.calendar}
+                        <label>From:</label>
+                        <input type="date" value={dateFilter.from} onChange={(e) => setDateFilter({ ...dateFilter, from: e.target.value })} />
+                        <label>To:</label>
+                        <input type="date" value={dateFilter.to} onChange={(e) => setDateFilter({ ...dateFilter, to: e.target.value })} />
+                        {(dateFilter.from || dateFilter.to) && (
+                            <button className="clear-btn" onClick={() => setDateFilter({ from: '', to: '' })}>Clear</button>
+                        )}
+                    </div>
+                );
+            };
+
+            // Render modals
+            const renderModals = () => {
+                if (!showModal) return null;
+
+                return (
+                    <div className="modal-overlay show" onClick={() => { setShowModal(null); setModalData(null); }}>
+                        <div className="modal" onClick={(e) => e.stopPropagation()}>
+                            {showModal === 'rename' && modalData && (
+                                <>
+                                    <div className="modal-header">
+                                        <span>Rename File</span>
+                                        <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="form-group">
+                                            <label className="form-label">New name</label>
+                                            <input type="text" className="form-input" id="renameInput" defaultValue={modalData.name} autoFocus
+                                                   onKeyDown={(e) => { if (e.key === 'Enter') renameFile(modalData, e.target.value); }} />
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
+                                        <button className="btn btn-primary" onClick={() => renameFile(modalData, document.getElementById('renameInput').value)}>Rename</button>
+                                    </div>
+                                </>
+                            )}
+
+                            {showModal === 'move' && modalData && (
+                                <>
+                                    <div className="modal-header">
+                                        <span>Move to Folder</span>
+                                        <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="form-group">
+                                            <label className="form-label">Select destination folder</label>
+                                            <div className="folder-selector">
+                                                {[
+                                                    { id: 'production', name: 'Production' },
+                                                    { id: 'creative', name: 'Creative' },
+                                                    { id: 'final', name: 'Final Deliverables' }
+                                                ].map(folder => (
+                                                    <div key={folder.id} className={`folder-option ${modalData.deliverableId === folder.id ? 'selected' : ''}`}
+                                                         onClick={() => moveFile(modalData, folder.id, folder.name)}>
+                                                        {Icons.folder}
+                                                        <span className="name">{folder.name}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {showModal === 'pin' && modalData && (
+                                <>
+                                    <div className="modal-header">
+                                        <span>Pin as Key Document</span>
+                                        <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="form-group">
+                                            <label className="form-label">Document Type</label>
+                                            <div className="doc-type-grid">
+                                                {CONFIG.DOC_TYPES.map(docType => (
+                                                    <div key={docType.id} className="doc-type-option" onClick={() => togglePinFile(modalData, docType.id)}>
+                                                        <div className="dot" style={{ background: docType.color }}></div>
+                                                        {docType.label}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {showModal === 'addLink' && (
+                                <>
+                                    <div className="modal-header">
+                                        <span>Add External Link</span>
+                                        <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="form-group">
+                                            <label className="form-label">Name</label>
+                                            <input type="text" className="form-input" id="linkName" placeholder="e.g. Project Tracker" />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">URL</label>
+                                            <input type="url" className="form-input" id="linkUrl" placeholder="https://docs.google.com/..." />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Document Type (optional)</label>
+                                            <select className="form-select" id="linkDocType">
+                                                <option value="">None</option>
+                                                {CONFIG.DOC_TYPES.map(docType => (
+                                                    <option key={docType.id} value={docType.id}>{docType.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="form-group">
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+                                                <input type="checkbox" id="linkPinned" />
+                                                Pin as key document
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
+                                        <button className="btn btn-primary" onClick={() => {
+                                            const name = document.getElementById('linkName').value;
+                                            const url = document.getElementById('linkUrl').value;
+                                            const docType = document.getElementById('linkDocType').value;
+                                            const pinned = document.getElementById('linkPinned').checked;
+                                            if (name && url) addExternalLink({ name, url, docType, pinned });
+                                        }}>Add Link</button>
+                                    </div>
+                                </>
+                            )}
+
+                            {showModal === 'frameioSetup' && (
+                                <>
+                                    <div className="modal-header">
+                                        <span>Connect Frame.io</span>
+                                        <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div style={{ marginBottom: 16, padding: 12, background: '#F3F4F6', borderRadius: 8, fontSize: 12 }}>
+                                            <strong>How to get your Frame.io API token:</strong>
+                                            <ol style={{ margin: '8px 0 0 16px', lineHeight: 1.6 }}>
+                                                <li>Go to <a href="https://developer.frame.io" target="_blank" rel="noopener noreferrer" style={{ color: '#7C3AED' }}>developer.frame.io</a></li>
+                                                <li>Click "Tokens" in the sidebar</li>
+                                                <li>Create a new token with read permissions</li>
+                                                <li>Copy and paste it below</li>
+                                            </ol>
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Frame.io API Token</label>
+                                            <input type="password" className="form-input" id="frameioToken" placeholder="fio-u-xxxxxxxxxxxx" autoFocus />
+                                        </div>
+                                        <div style={{ fontSize: 11, color: '#6B7280' }}>
+                                            Your token is stored securely in Firebase and never exposed in the browser.
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
+                                        <button className="btn btn-primary" style={{ background: '#7C3AED' }} onClick={async () => {
+                                            const token = document.getElementById('frameioToken').value;
+                                            if (!token) return;
+
+                                            showToast('Connecting to Frame.io...');
+                                            const success = await FrameIO.saveToken(token);
+                                            if (success) {
+                                                setFrameioEnabled(true);
+                                                showToast('Frame.io connected!', 'success');
+                                                // Reload Frame.io data
+                                                try {
+                                                    const me = await FrameIO.getMe();
+                                                    if (me.account_id) {
+                                                        const teams = await FrameIO.getTeams(me.account_id);
+                                                        if (teams.length > 0) {
+                                                            const projects = await FrameIO.getProjects(teams[0].id);
+                                                            setFrameioProjects(projects);
+                                                        }
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Frame.io init error:', err);
+                                                    showToast('Connected but could not load projects', 'error');
+                                                }
+                                                setShowModal(null);
+                                            } else {
+                                                showToast('Failed to save token', 'error');
+                                            }
+                                        }}>Connect Frame.io</button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderActivityFeed = () => (
+                <div className="activity-panel">
+                    <div className="activity-header">
+                        Activity Feed
+                        <div className="live-dot" title="Live updates" />
+                    </div>
+                    <div className="activity-list">
+                        {activities.length === 0 ? (
+                            <div className="empty-state" style={{ padding: '20px' }}>
+                                <div className="empty-state-text">No activity yet</div>
+                            </div>
+                        ) : (
+                            activities.map(a => (
+                                <div key={a.id} className="activity-item">
+                                    <div className="activity-avatar">{a.user?.initials || '?'}</div>
+                                    <div className="activity-content">
+                                        <div className="activity-text">
+                                            <strong>{a.user?.name || 'Someone'}</strong> {a.action}{' '}
+                                            <span className="highlight">{a.fileName || a.deliverableName || ''}</span>
+                                            {a.projectName && (
+                                                <> to <span className="highlight">{a.clientName} › {a.projectName}</span></>
+                                            )}
+                                        </div>
+                                        <div className="activity-time">{formatTimeAgo(a.timestamp)}</div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            );
+
+            const renderSidebar = () => {
+                const grouped = groupProjectsByClient();
+                const activeProjects = projects.filter(p =>
+                    p.dealStage?.toLowerCase().includes('won') ||
+                    p.dealStage?.toLowerCase().includes('production')
+                );
+
+                return (
+                    <div className="sidebar">
+                        <div className="sidebar-header">
+                            <div className="dot-grid"><span/><span/><span/><span/></div>
+                            <span className="sidebar-title">Project Library</span>
+                        </div>
+
+                        <div className="sidebar-search">
+                            <div className="search-wrapper">
+                                {Icons.search}
+                                <input type="text" className="search-input"
+                                       placeholder="Search files, projects..."
+                                       value={searchQuery}
+                                       onChange={(e) => setSearchQuery(e.target.value)} />
+                            </div>
+                        </div>
+
+                        <div className="sidebar-nav">
+                            <div className="nav-section">
+                                <div className="nav-section-title">Quick Access</div>
+                                <div className={`nav-item ${currentPath.length === 0 && !searchQuery ? 'active' : ''}`}
+                                     onClick={() => { setSearchQuery(''); navigateTo('root'); }}>
+                                    {Icons.home}
+                                    All Clients
+                                    <span className="count">{Object.keys(grouped).length}</span>
+                                </div>
+                                <div className="nav-item" onClick={() => setSearchQuery('active')}>
+                                    {Icons.star}
+                                    Active Projects
+                                    <span className="count">{activeProjects.length}</span>
+                                </div>
+                                <div className="nav-item" onClick={() => showToast('Recent files coming soon')}>
+                                    {Icons.clock}
+                                    Recent Files
+                                </div>
+                            </div>
+
+                            <div className="nav-section">
+                                <div className="nav-section-title">Clients</div>
+                                {Object.keys(grouped).sort().slice(0, 10).map(client => (
+                                    <div key={client}
+                                         className={`nav-item ${currentPath[0]?.name === client ? 'active' : ''}`}
+                                         onClick={() => { setSearchQuery(''); navigateTo('client', client, client); }}>
+                                        {Icons.folder}
+                                        {client}
+                                        <span className="count">{grouped[client].length}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // MAIN RENDER
+            // ─────────────────────────────────────────────────────────────────────
+            if (loading) {
+                return (
+                    <div className="app-container">
+                        <div className="loading-state" style={{ flex: 1 }}>
+                            <div className="dot-grid" style={{ transform: 'scale(2)' }}>
+                                <span/><span/><span/><span/>
+                            </div>
+                            <div className="loading-text">Loading projects...</div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="app-container">
+                    {renderSidebar()}
+
+                    <div className="main-content">
+                        <div className="main-header">
+                            {renderBreadcrumb()}
+                            <div className="header-actions">
+                                {getCurrentLocation().projectId && (
+                                    <>
+                                        <button className="btn btn-secondary" onClick={() => setShowModal('addLink')}>
+                                            {Icons.link}
+                                            Add Link
+                                        </button>
+                                        <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()}>
+                                            {Icons.upload}
+                                            Upload
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="content-area">
+                            <div className="file-browser">
+                                {renderDateFilter()}
+                                {renderPinnedSection()}
+                                {renderFolderGrid()}
+                            </div>
+                            {renderActivityFeed()}
+                        </div>
+                    </div>
+
+                    <Toast {...toast} />
+                    {renderModals()}
+                </div>
+            );
+        };
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // MOUNT APP
+        // ═══════════════════════════════════════════════════════════════════════════
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
