@@ -985,6 +985,33 @@
                     } catch (e) {
                         console.warn('Could not load parent project:', e);
                     }
+
+                    // If current project has no title, redirect to the top-level parent
+                    if (!project.title && parentProject) {
+                        // Find the Layer 1 (top-level) project
+                        let topLevelId = parentProject.id;
+                        let topLevelProject = parentProject;
+
+                        // Traverse up if parent also has a parent
+                        while (topLevelProject.parentItemIds && topLevelProject.parentItemIds.length > 0) {
+                            try {
+                                const grandparentRes = await fetch(`${API_URL}/projects/${topLevelProject.parentItemIds[0]}`);
+                                const grandparentData = await grandparentRes.json();
+                                if (grandparentData.success) {
+                                    topLevelId = grandparentData.project.id;
+                                    topLevelProject = grandparentData.project;
+                                } else {
+                                    break;
+                                }
+                            } catch (e) {
+                                break;
+                            }
+                        }
+
+                        // Redirect to the top-level project
+                        window.location.href = `project-detail.html?id=${topLevelId}`;
+                        return;
+                    }
                 }
 
                 // Fetch sub-items (children) for this item using the new endpoint
