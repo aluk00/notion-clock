@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Profile | DMG Command Centre</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dmg-blue: #21A0D8;
+            --dmg-blue-soft: rgba(33, 160, 216, 0.1);
+            --success: #43B049;
+            --warning: #F59E0B;
+            --error: #EF4444;
+            --ink: #1C1C1C;
+            --ink-sub: #6B7280;
+            --border: #E5E7EB;
+            --surface: #FFFFFF;
+            --bg: #F8FAFC;
+            --ease: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 640px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .dots {
+            display: inline-grid;
+            grid-template-columns: repeat(2, 8px);
+            gap: 4px;
+            margin-bottom: 16px;
+        }
+        .dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .dots span:nth-child(2) { animation-delay: 0.2s; }
+        .dots span:nth-child(3) { animation-delay: 0.4s; }
+        .dots span:nth-child(4) { animation-delay: 0.6s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        .title { font-size: 28px; font-weight: 800; color: var(--ink); margin-bottom: 8px; letter-spacing: -0.02em; }
+        .subtitle { font-size: 14px; color: var(--ink-sub); line-height: 1.6; }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            animation: slideUp 0.4s var(--ease);
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card-icon.blue { background: var(--dmg-blue-soft); color: var(--dmg-blue); }
+        .card-icon.green { background: rgba(67, 176, 73, 0.1); color: var(--success); }
+        .card-icon.orange { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .card-title { font-size: 16px; font-weight: 700; color: var(--ink); }
+        .card-subtitle { font-size: 12px; color: var(--ink-sub); margin-top: 2px; }
+
+        /* Status badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .status-badge.success { background: rgba(67, 176, 73, 0.1); color: var(--success); }
+        .status-badge.warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .status-badge.error { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+        .status-badge.info { background: var(--dmg-blue-soft); color: var(--dmg-blue); }
+
+        /* Form elements */
+        .form-group { margin-bottom: 16px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--surface);
+            transition: all 0.2s var(--ease);
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+            box-shadow: 0 0 0 3px var(--dmg-blue-soft);
+        }
+        .form-input:disabled, .form-select:disabled {
+            background: var(--bg);
+            color: var(--ink-sub);
+            cursor: not-allowed;
+        }
+        .form-input.verified {
+            border-color: var(--success);
+            background: rgba(67, 176, 73, 0.03);
+        }
+        .form-hint {
+            font-size: 11px;
+            color: var(--ink-sub);
+            margin-top: 6px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s var(--ease);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: var(--dmg-blue);
+            color: white;
+            width: 100%;
+        }
+        .btn-primary:hover { background: #1a8bc0; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--ink-sub);
+            border: 1px solid var(--border);
+            width: 100%;
+        }
+        .btn-secondary:hover { border-color: var(--dmg-blue); color: var(--dmg-blue); }
+
+        .btn-dark {
+            background: var(--ink);
+            color: white;
+            width: 100%;
+        }
+        .btn-dark:hover { background: #333; }
+
+        .btn-notion {
+            background: #000;
+            color: #fff;
+            width: 100%;
+        }
+        .btn-notion:hover { background: #333; }
+
+        /* Messages */
+        .message {
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .message.info { background: var(--dmg-blue-soft); color: var(--dmg-blue); }
+        .message.success { background: rgba(67, 176, 73, 0.1); color: var(--success); }
+        .message.error { background: rgba(239, 68, 68, 0.1); color: #DC2626; }
+        .message.warning { background: rgba(245, 158, 11, 0.1); color: #B45309; }
+        .message-icon { flex-shrink: 0; margin-top: 1px; }
+        .message-content { flex: 1; }
+
+        /* User pill */
+        .user-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px 8px 8px;
+            background: var(--bg);
+            border-radius: 24px;
+            margin-bottom: 16px;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .user-email { font-size: 13px; font-weight: 500; color: var(--ink); }
+
+        /* Notion link section */
+        .notion-link-section {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+        .notion-steps {
+            margin: 16px 0;
+            padding-left: 0;
+            list-style: none;
+            counter-reset: step;
+        }
+        .notion-steps li {
+            position: relative;
+            padding-left: 36px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: var(--ink-sub);
+            line-height: 1.5;
+        }
+        .notion-steps li::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 24px;
+            height: 24px;
+            background: var(--dmg-blue-soft);
+            color: var(--dmg-blue);
+            border-radius: 50%;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .notion-steps li code {
+            background: rgba(0,0,0,0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* Hidden views */
+        .view { display: none; }
+        .view.active { display: block; }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Sign out link */
+        .signout-link {
+            display: block;
+            text-align: center;
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--ink-sub);
+            text-decoration: none;
+        }
+        .signout-link:hover { color: var(--error); }
+
+        /* Checklist */
+        .checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 16px 0;
+        }
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--ink-sub);
+        }
+        .checklist-item.complete { color: var(--success); }
+        .checklist-item.incomplete { color: var(--ink-sub); }
+        .check-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .check-icon.complete { background: rgba(67, 176, 73, 0.1); }
+        .check-icon.incomplete { background: var(--bg); border: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="dots"><span></span><span></span><span></span><span></span></div>
+            <h1 class="title">Verify Your Profile</h1>
+            <p class="subtitle">Confirm your details and link your Notion account</p>
+        </div>
+
+        <div id="messageArea"></div>
+
+        <!-- LOGIN VIEW -->
+        <div id="loginView" class="view active">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Sign in to continue</div>
+                        <div class="card-subtitle">Use your work Microsoft account</div>
+                    </div>
+                </div>
+                <p style="font-size: 13px; color: var(--ink-sub); margin-bottom: 20px; line-height: 1.6;">
+                    Sign in with Microsoft to verify your identity. This ensures your profile data is accurate and matches our org directory.
+                </p>
+                <button class="btn btn-dark" id="msSignInBtn">
+                    <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
+                        <rect width="10" height="10" fill="#F25022"/>
+                        <rect x="11" width="10" height="10" fill="#7FBA00"/>
+                        <rect y="11" width="10" height="10" fill="#00A4EF"/>
+                        <rect x="11" y="11" width="10" height="10" fill="#FFB900"/>
+                    </svg>
+                    Sign in with Microsoft
+                </button>
+            </div>
+        </div>
+
+        <!-- LOADING VIEW -->
+        <div id="loadingView" class="view">
+            <div class="card" style="text-align: center; padding: 48px;">
+                <div class="spinner" style="margin: 0 auto 16px; border-color: rgba(33,160,216,0.2); border-top-color: var(--dmg-blue);"></div>
+                <p style="font-size: 14px; color: var(--ink-sub);">Loading your profile...</p>
+            </div>
+        </div>
+
+        <!-- PROFILE VIEW -->
+        <div id="profileView" class="view">
+            <!-- User identity -->
+            <div class="card">
+                <div class="user-pill">
+                    <div class="user-avatar" id="userAvatar">?</div>
+                    <span class="user-email" id="userEmail">Loading...</span>
+                </div>
+                <div class="status-badge success" id="verifiedBadge" style="display: none;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    Identity Verified via Microsoft
+                </div>
+            </div>
+
+            <!-- Profile completeness -->
+            <div class="card" id="completenessCard">
+                <div class="card-header">
+                    <div class="card-icon orange">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Profile Status</div>
+                        <div class="card-subtitle" id="completenessSubtitle">Checking your profile...</div>
+                    </div>
+                </div>
+                <div class="checklist" id="profileChecklist">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Personal Details -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Personal Details</div>
+                        <div class="card-subtitle">Verify your name and contact info</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">First Name</label>
+                        <input type="text" class="form-input" id="firstName" placeholder="Your first name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last Name</label>
+                        <input type="text" class="form-input" id="lastName" placeholder="Your last name">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email (from Microsoft)</label>
+                    <input type="email" class="form-input verified" id="email" disabled>
+                    <p class="form-hint">Email is verified via Microsoft SSO and cannot be changed</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone (optional)</label>
+                    <input type="tel" class="form-input" id="phone" placeholder="+44 7XXX XXXXXX">
+                </div>
+            </div>
+
+            <!-- Role & Team -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon blue">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div>
+                        <div class="card-title">Role & Team</div>
+                        <div class="card-subtitle">Confirm your position</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Team</label>
+                        <select class="form-select" id="team">
+                            <option value="">Select team...</option>
+                            <option value="Creative">Creative</option>
+                            <option value="Editorial">Editorial</option>
+                            <option value="Production">Production</option>
+                            <option value="Social">Social</option>
+                            <option value="Design">Design</option>
+                            <option value="Sales">Sales</option>
+                            <option value="Operations">Operations</option>
+                            <option value="Tech">Tech</option>
+                            <option value="Finance">Finance</option>
+                            <option value="HR">HR</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <select class="form-select" id="role">
+                            <option value="">Select role...</option>
+                            <option value="Creator">Creator</option>
+                            <option value="Editor">Editor</option>
+                            <option value="Designer">Designer</option>
+                            <option value="Producer">Producer</option>
+                            <option value="Channel Lead">Channel Lead</option>
+                            <option value="Account Manager">Account Manager</option>
+                            <option value="Strategist">Strategist</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Director">Director</option>
+                            <option value="Coordinator">Coordinator</option>
+                            <option value="Assistant">Assistant</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Seniority</label>
+                    <select class="form-select" id="seniority">
+                        <option value="">Select seniority...</option>
+                        <option value="Junior">Junior</option>
+                        <option value="Mid">Mid</option>
+                        <option value="Senior">Senior</option>
+                        <option value="Lead">Lead</option>
+                        <option value="Head">Head</option>
+                        <option value="Director">Director</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Notion Account Link -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon" style="background: rgba(0,0,0,0.05);">
+                        <svg width="20" height="20" viewBox="0 0 100 100" fill="none">
+                            <path d="M6.017 4.313l55.333 -4.087c6.797 -0.583 8.543 -0.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277 -1.553 6.807 -6.99 7.193L24.467 99.967c-4.08 0.193 -6.023 -0.39 -8.16 -3.113L3.3 79.94c-2.333 -3.113 -3.3 -5.443 -3.3 -8.167V11.113c0 -3.497 1.553 -6.413 6.017 -6.8z" fill="#fff"/><path d="M61.35 0.227l-55.333 4.087C1.553 4.7 0 7.617 0 11.113v60.66c0 2.723 0.967 5.053 3.3 8.167l13.007 16.913c2.137 2.723 4.08 3.307 8.16 3.113l64.257 -3.89c5.433 -0.387 6.99 -2.917 6.99 -7.193V20.64c0 -2.21 -0.873 -2.847 -3.443 -4.733L74.167 3.143c-4.273 -3.107 -6.02 -3.5 -12.817 -2.917zM25.92 19.523c-5.247 0.353 -6.437 0.433 -9.417 -1.99L8.927 11.507c-0.77 -0.78 -0.383 -1.753 1.557 -1.947l53.193 -3.887c4.467 -0.39 6.793 1.167 8.54 2.527l9.123 6.61c0.39 0.197 1.36 1.36 0.193 1.36l-54.933 3.307 -0.68 0.047zM19.803 88.3V30.367c0 -2.53 0.777 -3.697 3.103 -3.893L86 22.78c2.14 -0.193 3.107 1.167 3.107 3.693v57.547c0 2.53 -0.39 4.67 -3.883 4.863l-60.377 3.5c-3.493 0.193 -5.043 -0.97 -5.043 -4.083zm59.6 -54.827c0.387 1.75 0 3.5 -1.75 3.7l-2.91 0.577v42.773c-2.527 1.36 -4.853 2.137 -6.797 2.137 -3.107 0 -3.883 -0.973 -6.21 -3.887l-19.03 -29.94v28.967l6.02 1.363s0 3.5 -4.857 3.5l-13.39 0.777c-0.39 -0.78 0 -2.723 1.357 -3.11l3.497 -0.97v-38.3L30.48 40.667c-0.39 -1.75 0.58 -4.277 3.3 -4.473l14.367 -0.967 19.8 30.327v-26.83l-5.047 -0.58c-0.39 -2.143 1.163 -3.7 3.103 -3.89l13.4 -0.78z" fill="#000"/></svg>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="card-title">Link Notion Account</div>
+                        <div class="card-subtitle">Connect your Notion profile for assignments</div>
+                    </div>
+                    <span class="status-badge" id="notionStatus"></span>
+                </div>
+
+                <div id="notionLinked" style="display: none;">
+                    <div class="message success">
+                        <svg class="message-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <div class="message-content">
+                            <strong>Notion account linked!</strong><br>
+                            <span style="font-size: 12px; opacity: 0.8;" id="notionUserIdDisplay"></span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" id="unlinkNotionBtn" style="margin-top: 8px;">
+                        Unlink Notion Account
+                    </button>
+                </div>
+
+                <div id="notionUnlinked">
+                    <div class="message warning">
+                        <svg class="message-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <div class="message-content">
+                            <strong>Notion account not linked</strong><br>
+                            <span style="font-size: 12px;">Link your account so we can assign you to projects</span>
+                        </div>
+                    </div>
+
+                    <!-- OAuth Connect Button (Primary) -->
+                    <button class="btn btn-notion" id="notionOAuthBtn" style="margin-top: 16px;">
+                        <svg width="20" height="20" viewBox="0 0 100 100" fill="none">
+                            <path d="M6.017 4.313l55.333 -4.087c6.797 -0.583 8.543 -0.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277 -1.553 6.807 -6.99 7.193L24.467 99.967c-4.08 0.193 -6.023 -0.39 -8.16 -3.113L3.3 79.94c-2.333 -3.113 -3.3 -5.443 -3.3 -8.167V11.113c0 -3.497 1.553 -6.413 6.017 -6.8z" fill="#fff"/><path d="M61.35 0.227l-55.333 4.087C1.553 4.7 0 7.617 0 11.113v60.66c0 2.723 0.967 5.053 3.3 8.167l13.007 16.913c2.137 2.723 4.08 3.307 8.16 3.113l64.257 -3.89c5.433 -0.387 6.99 -2.917 6.99 -7.193V20.64c0 -2.21 -0.873 -2.847 -3.443 -4.733L74.167 3.143c-4.273 -3.107 -6.02 -3.5 -12.817 -2.917z" fill="#fff"/>
+                        </svg>
+                        Connect with Notion
+                    </button>
+                    <p style="font-size: 11px; color: var(--ink-sub); text-align: center; margin-top: 8px;">
+                        Sign in with your work email when prompted
+                    </p>
+
+                    <!-- Manual Entry Toggle -->
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button id="toggleManualEntry" style="background: none; border: none; font-size: 12px; color: var(--ink-sub); cursor: pointer; text-decoration: underline;">
+                            Or enter User ID manually
+                        </button>
+                    </div>
+
+                    <!-- Manual Entry Section (Hidden by default) -->
+                    <div class="notion-link-section" id="manualEntrySection" style="display: none; margin-top: 12px;">
+                        <p style="font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px;">How to find your Notion User ID:</p>
+                        <ol class="notion-steps">
+                            <li>Open <a href="https://www.notion.so/login" target="_blank" style="color: var(--dmg-blue);">notion.so/login</a> and sign in with your <strong>work email</strong></li>
+                            <li>Click your profile picture (bottom left) and select <strong>"Settings"</strong></li>
+                            <li>Under "My account", click <strong>"Copy user ID"</strong> or look at your profile URL</li>
+                            <li>Paste your User ID below (looks like: <code>abc123-def456...</code>)</li>
+                        </ol>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <input type="text" class="form-input" id="notionUserIdInput" placeholder="Paste your Notion User ID here...">
+                        </div>
+                        <button class="btn btn-secondary" id="linkNotionBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            Link with User ID
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <button class="btn btn-primary" id="saveBtn" style="margin-top: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                Save & Verify Profile
+            </button>
+
+            <a href="#" class="signout-link" id="signOutLink">Sign out</a>
+        </div>
+
+        <!-- NOT FOUND VIEW -->
+        <div id="notFoundView" class="view">
+            <div class="card">
+                <div class="message warning">
+                    <svg class="message-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <div class="message-content">
+                        <strong>Profile not found</strong><br>
+                        <span style="font-size: 12px;">We couldn't find a staff record for your email. You may need to be added to the system first.</span>
+                    </div>
+                </div>
+                <p style="font-size: 13px; color: var(--ink-sub); margin: 16px 0; line-height: 1.6;">
+                    If you believe this is an error, please contact your manager or the Operations team to get added to the Staff Directory.
+                </p>
+                <div class="user-pill" style="margin-bottom: 0;">
+                    <div class="user-avatar" id="notFoundAvatar">?</div>
+                    <span class="user-email" id="notFoundEmail">email@example.com</span>
+                </div>
+            </div>
+            <button class="btn btn-secondary" id="createProfileBtn" style="margin-top: 16px;">
+                Create New Profile
+            </button>
+            <a href="#" class="signout-link" id="signOutLink2">Sign out and try different account</a>
+        </div>
+
+        <!-- SUCCESS VIEW -->
+        <div id="successView" class="view">
+            <div class="card" style="text-align: center; padding: 40px;">
+                <div style="width: 64px; height: 64px; background: rgba(67, 176, 73, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <h2 style="font-size: 24px; font-weight: 800; color: var(--ink); margin-bottom: 8px;">Profile Verified!</h2>
+                <p style="font-size: 14px; color: var(--ink-sub); margin-bottom: 24px;">Your details have been saved to the Staff Directory.</p>
+                <div class="checklist" id="successChecklist" style="text-align: left; max-width: 280px; margin: 0 auto 24px;">
+                    <!-- Populated by JS -->
+                </div>
+                <button class="btn btn-secondary" onclick="location.reload()">Make more changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrV1NuvPO-_CLtQPyOhR_ERsRvE2dxDlY",
+            authDomain: "dmg-command-centre-native.firebaseapp.com",
+            projectId: "dmg-command-centre-native",
+            storageBucket: "dmg-command-centre-native.firebasestorage.app",
+            messagingSenderId: "223535956454",
+            appId: "1:223535956454:web:b25e5bc69d8a4a7f209627"
+        };
+
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // State
+        let currentUser = null;
+        let staffProfile = null;
+        let notionUserId = null;
+
+        // ============================================
+        // HELPERS
+        // ============================================
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function showMessage(text, type = 'info') {
+            const area = document.getElementById('messageArea');
+            const icons = {
+                info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+                success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+                error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+                warning: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+            };
+            area.innerHTML = `<div class="message ${type}"><span class="message-icon">${icons[type]}</span><div class="message-content">${text}</div></div>`;
+            if (type !== 'error') setTimeout(() => area.innerHTML = '', 5000);
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            return name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        function updateChecklist(containerId, items) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = items.map(item => `
+                <div class="checklist-item ${item.complete ? 'complete' : 'incomplete'}">
+                    <span class="check-icon ${item.complete ? 'complete' : 'incomplete'}">
+                        ${item.complete
+                            ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+                            : ''}
+                    </span>
+                    ${item.label}
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // NOTION LINKING
+        // ============================================
+        function updateNotionUI() {
+            const linked = document.getElementById('notionLinked');
+            const unlinked = document.getElementById('notionUnlinked');
+            const status = document.getElementById('notionStatus');
+            const display = document.getElementById('notionUserIdDisplay');
+
+            if (notionUserId) {
+                linked.style.display = 'block';
+                unlinked.style.display = 'none';
+                status.className = 'status-badge success';
+                status.textContent = 'Linked';
+                // Show name if available, otherwise show truncated ID
+                if (notionUserName) {
+                    display.textContent = `${notionUserName} (${notionUserId.substring(0, 8)}...)`;
+                } else {
+                    display.textContent = `ID: ${notionUserId.substring(0, 8)}...`;
+                }
+            } else {
+                linked.style.display = 'none';
+                unlinked.style.display = 'block';
+                status.className = 'status-badge warning';
+                status.textContent = 'Not linked';
+            }
+        }
+
+        document.getElementById('linkNotionBtn').addEventListener('click', () => {
+            const input = document.getElementById('notionUserIdInput');
+            const value = input.value.trim();
+
+            // Basic validation - Notion User IDs are UUIDs
+            const uuidRegex = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+            if (!value) {
+                showMessage('Please paste your Notion User ID', 'error');
+                return;
+            }
+            if (!uuidRegex.test(value.replace(/-/g, ''))) {
+                showMessage('That doesn\'t look like a valid Notion User ID. It should be a UUID like: abc12345-def6-7890-abcd-ef1234567890', 'error');
+                return;
+            }
+
+            // Normalize to include dashes
+            let normalized = value.replace(/-/g, '');
+            normalized = `${normalized.slice(0,8)}-${normalized.slice(8,12)}-${normalized.slice(12,16)}-${normalized.slice(16,20)}-${normalized.slice(20)}`;
+
+            notionUserId = normalized;
+            updateNotionUI();
+            showMessage('Notion account linked! Don\'t forget to save your profile.', 'success');
+        });
+
+        document.getElementById('unlinkNotionBtn').addEventListener('click', () => {
+            notionUserId = null;
+            notionUserName = null;
+            document.getElementById('notionUserIdInput').value = '';
+            updateNotionUI();
+        });
+
+        // Toggle manual entry section
+        document.getElementById('toggleManualEntry').addEventListener('click', () => {
+            const section = document.getElementById('manualEntrySection');
+            const btn = document.getElementById('toggleManualEntry');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                btn.textContent = 'Hide manual entry';
+            } else {
+                section.style.display = 'none';
+                btn.textContent = 'Or enter User ID manually';
+            }
+        });
+
+        // ============================================
+        // NOTION OAUTH
+        // ============================================
+        let notionUserName = null;
+
+        // OAuth button - redirect to Notion authorization
+        document.getElementById('notionOAuthBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('notionOAuthBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Connecting...';
+
+            try {
+                // Get the authorization URL from our API
+                const response = await fetch(`${API_URL}/notion-oauth/authorize?state=${encodeURIComponent(currentUser?.email || '')}`);
+                const data = await response.json();
+
+                if (!response.ok || !data.authUrl) {
+                    throw new Error(data.error || 'Failed to get authorization URL');
+                }
+
+                // Redirect to Notion OAuth
+                window.location.href = data.authUrl;
+
+            } catch (e) {
+                console.error('OAuth error:', e);
+                showMessage('Notion OAuth not configured. Please use manual entry or contact admin.', 'error');
+                // Show manual entry as fallback
+                document.getElementById('manualEntrySection').style.display = 'block';
+                document.getElementById('toggleManualEntry').textContent = 'Hide manual entry';
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 100 100" fill="none"><path d="M6.017 4.313l55.333 -4.087c6.797 -0.583 8.543 -0.19 12.817 2.917l17.663 12.443c2.913 2.14 3.883 2.723 3.883 5.053v68.243c0 4.277 -1.553 6.807 -6.99 7.193L24.467 99.967c-4.08 0.193 -6.023 -0.39 -8.16 -3.113L3.3 79.94c-2.333 -3.113 -3.3 -5.443 -3.3 -8.167V11.113c0 -3.497 1.553 -6.413 6.017 -6.8z" fill="#fff"/><path d="M61.35 0.227l-55.333 4.087C1.553 4.7 0 7.617 0 11.113v60.66c0 2.723 0.967 5.053 3.3 8.167l13.007 16.913c2.137 2.723 4.08 3.307 8.16 3.113l64.257 -3.89c5.433 -0.387 6.99 -2.917 6.99 -7.193V20.64c0 -2.21 -0.873 -2.847 -3.443 -4.733L74.167 3.143c-4.273 -3.107 -6.02 -3.5 -12.817 -2.917z" fill="#fff"/></svg> Connect with Notion';
+            }
+        });
+
+        // Handle OAuth callback (when redirected back from Notion)
+        async function handleOAuthCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const error = params.get('error');
+
+            if (error) {
+                showMessage('Notion authorization was cancelled or denied.', 'error');
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return;
+            }
+
+            if (!code) return; // No OAuth callback
+
+            showView('loadingView');
+            document.querySelector('#loadingView p').textContent = 'Linking Notion account...';
+
+            try {
+                // Exchange code for user info
+                const response = await fetch(`${API_URL}/notion-oauth/callback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to link Notion account');
+                }
+
+                // Store the Notion user info
+                notionUserId = data.notionUser.id;
+                notionUserName = data.notionUser.name;
+
+                // Store in sessionStorage so it persists through the auth flow
+                sessionStorage.setItem('pendingNotionUserId', notionUserId);
+                sessionStorage.setItem('pendingNotionUserName', notionUserName || '');
+
+                showMessage(`Notion account linked: ${notionUserName || notionUserId}`, 'success');
+
+            } catch (e) {
+                console.error('OAuth callback error:', e);
+                showMessage('Failed to link Notion account: ' + e.message, 'error');
+            }
+
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Check for pending Notion link from OAuth
+        function checkPendingNotionLink() {
+            const pendingId = sessionStorage.getItem('pendingNotionUserId');
+            const pendingName = sessionStorage.getItem('pendingNotionUserName');
+            if (pendingId) {
+                notionUserId = pendingId;
+                notionUserName = pendingName || null;
+                sessionStorage.removeItem('pendingNotionUserId');
+                sessionStorage.removeItem('pendingNotionUserName');
+                return true;
+            }
+            return false;
+        }
+
+        // ============================================
+        // FETCH STAFF PROFILE
+        // ============================================
+        async function fetchStaffProfile(email) {
+            try {
+                const response = await fetch(`${API_URL}/staff-directory?email=${encodeURIComponent(email)}`);
+                if (!response.ok) throw new Error('API error');
+
+                const data = await response.json();
+                if (data.staff && data.staff.length > 0) {
+                    return data.staff[0];
+                }
+                return null;
+            } catch (e) {
+                console.error('Error fetching staff profile:', e);
+                return null;
+            }
+        }
+
+        // ============================================
+        // POPULATE FORM
+        // ============================================
+        function populateForm(profile) {
+            document.getElementById('firstName').value = profile.firstName || '';
+            document.getElementById('lastName').value = profile.lastName || '';
+            document.getElementById('email').value = currentUser.email || '';
+            document.getElementById('phone').value = profile.phone || '';
+            document.getElementById('team').value = profile.team || '';
+            document.getElementById('role').value = profile.role || '';
+            document.getElementById('seniority').value = profile.seniority || '';
+
+            // Notion User ID - only set from profile if not already set via OAuth
+            if (!notionUserId && profile.notionUser) {
+                notionUserId = profile.notionUser;
+            }
+            updateNotionUI();
+
+            // Update checklist - use current notionUserId (could be from OAuth or profile)
+            const checks = [
+                { label: 'Name verified', complete: !!(profile.firstName && profile.lastName) },
+                { label: 'Team assigned', complete: !!profile.team },
+                { label: 'Role assigned', complete: !!profile.role },
+                { label: 'Notion account linked', complete: !!notionUserId }
+            ];
+            updateChecklist('profileChecklist', checks);
+
+            const complete = checks.filter(c => c.complete).length;
+            document.getElementById('completenessSubtitle').textContent =
+                `${complete}/${checks.length} fields complete`;
+        }
+
+        // ============================================
+        // SAVE PROFILE
+        // ============================================
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('saveBtn');
+            const originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Saving...';
+
+            try {
+                const payload = {
+                    firstName: document.getElementById('firstName').value.trim(),
+                    lastName: document.getElementById('lastName').value.trim(),
+                    phone: document.getElementById('phone').value.trim(),
+                    team: document.getElementById('team').value,
+                    role: document.getElementById('role').value,
+                    seniority: document.getElementById('seniority').value,
+                    notionUserId: notionUserId || null
+                };
+
+                // Validate required fields
+                if (!payload.firstName || !payload.lastName) {
+                    showMessage('Please enter your first and last name', 'error');
+                    return;
+                }
+
+                const method = staffProfile ? 'PATCH' : 'POST';
+                const url = staffProfile
+                    ? `${API_URL}/staff-directory/${staffProfile.id}`
+                    : `${API_URL}/staff-directory`;
+
+                // If creating new, add email
+                if (!staffProfile) {
+                    payload.email = currentUser.email;
+                }
+
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save profile');
+                }
+
+                // Show success
+                const checks = [
+                    { label: 'Personal details saved', complete: true },
+                    { label: 'Team & role updated', complete: !!(payload.team && payload.role) },
+                    { label: 'Notion account linked', complete: !!notionUserId }
+                ];
+                updateChecklist('successChecklist', checks);
+                showView('successView');
+
+            } catch (e) {
+                console.error('Save error:', e);
+                showMessage('Failed to save: ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            }
+        });
+
+        // ============================================
+        // CREATE PROFILE (for not found users)
+        // ============================================
+        document.getElementById('createProfileBtn').addEventListener('click', () => {
+            staffProfile = null;
+            document.getElementById('firstName').value = currentUser.displayName?.split(' ')[0] || '';
+            document.getElementById('lastName').value = currentUser.displayName?.split(' ').slice(1).join(' ') || '';
+            document.getElementById('email').value = currentUser.email;
+
+            updateChecklist('profileChecklist', [
+                { label: 'Name verified', complete: false },
+                { label: 'Team assigned', complete: false },
+                { label: 'Role assigned', complete: false },
+                { label: 'Notion account linked', complete: false }
+            ]);
+            document.getElementById('completenessSubtitle').textContent = 'New profile - please complete all fields';
+
+            showView('profileView');
+        });
+
+        // ============================================
+        // AUTH STATE
+        // ============================================
+        auth.onAuthStateChanged(async (user) => {
+            // First, handle OAuth callback if present (before auth check)
+            await handleOAuthCallback();
+
+            if (!user) {
+                showView('loginView');
+                return;
+            }
+
+            currentUser = user;
+            showView('loadingView');
+
+            // Check for pending Notion link from OAuth flow
+            const hadPendingLink = checkPendingNotionLink();
+
+            // Update UI with user info
+            const initials = getInitials(user.displayName || user.email);
+            document.getElementById('userAvatar').textContent = initials;
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('notFoundAvatar').textContent = initials;
+            document.getElementById('notFoundEmail').textContent = user.email;
+            document.getElementById('verifiedBadge').style.display = 'inline-flex';
+
+            // Fetch staff profile
+            staffProfile = await fetchStaffProfile(user.email);
+
+            if (staffProfile) {
+                populateForm(staffProfile);
+                // If we just linked Notion via OAuth, show a success message
+                if (hadPendingLink) {
+                    showMessage(`Notion account linked${notionUserName ? ': ' + notionUserName : ''}! Don't forget to save.`, 'success');
+                }
+                showView('profileView');
+            } else {
+                showView('notFoundView');
+            }
+        });
+
+        // ============================================
+        // MICROSOFT SIGN IN
+        // ============================================
+        document.getElementById('msSignInBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('msSignInBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Signing in...';
+
+            try {
+                const provider = new firebase.auth.OAuthProvider('microsoft.com');
+                provider.setCustomParameters({
+                    tenant: 'common',
+                    prompt: 'select_account'
+                });
+                await auth.signInWithPopup(provider);
+            } catch (e) {
+                console.error('Sign in error:', e);
+                let msg = 'Sign in failed. Please try again.';
+                if (e.code === 'auth/popup-closed-by-user') msg = 'Sign in cancelled';
+                if (e.code === 'auth/popup-blocked') msg = 'Please allow popups for this site';
+                showMessage(msg, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 21 21" fill="none"><rect width="10" height="10" fill="#F25022"/><rect x="11" width="10" height="10" fill="#7FBA00"/><rect y="11" width="10" height="10" fill="#00A4EF"/><rect x="11" y="11" width="10" height="10" fill="#FFB900"/></svg> Sign in with Microsoft';
+            }
+        });
+
+        // ============================================
+        // SIGN OUT
+        // ============================================
+        document.getElementById('signOutLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.signOut();
+        });
+        document.getElementById('signOutLink2').addEventListener('click', (e) => {
+            e.preventDefault();
+            auth.signOut();
+        });
+    </script>
+</body>
+</html>
