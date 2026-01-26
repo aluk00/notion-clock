@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Library | DMG</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --ink: #111827;
+            --ink-sub: #6B7280;
+            --ink-muted: #9CA3AF;
+            --border: #E5E7EB;
+            --white: #FFFFFF;
+            --surface: #F9FAFB;
+            --dmg-blue: #21A0D8;
+            --success: #22C55E;
+            --amber: #F59E0B;
+            --purple: #8B5CF6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--white);
+            color: var(--ink);
+            height: 100vh;
+            max-height: 600px; /* Notion widget constraint */
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        /* --- Animation --- */
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        /* --- Container --- */
+        .widget-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            background: var(--white);
+            gap: 12px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dot-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 5px);
+            gap: 3px;
+        }
+        .dot-grid span {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--dmg-blue);
+        }
+        .dot-grid span:nth-child(1) { animation: pulse 2s ease-in-out 0s infinite; }
+        .dot-grid span:nth-child(2) { animation: pulse 2s ease-in-out 0.3s infinite; }
+        .dot-grid span:nth-child(3) { animation: pulse 2s ease-in-out 0.9s infinite; }
+        .dot-grid span:nth-child(4) { animation: pulse 2s ease-in-out 0.6s infinite; }
+
+        .header-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        .search-box {
+            flex: 1;
+            max-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px 8px 32px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: inherit;
+            background: var(--surface);
+            transition: all 0.15s;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--dmg-blue);
+            background: var(--white);
+        }
+        .search-box svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            color: var(--ink-muted);
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+        }
+        .view-btn {
+            padding: 6px 10px;
+            border: 1px solid var(--border);
+            background: var(--white);
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-sub);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .view-btn.active {
+            background: var(--dmg-blue);
+            border-color: var(--dmg-blue);
+            color: white;
+        }
+        .view-btn:hover:not(.active) {
+            border-color: var(--ink-muted);
+        }
+
+        /* --- Breadcrumb --- */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 18px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            min-height: 38px;
+        }
+        .breadcrumb-item {
+            color: var(--ink-sub);
+            cursor: pointer;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+        .breadcrumb-item:hover { color: var(--dmg-blue); }
+        .breadcrumb-item.current {
+            color: var(--ink);
+            font-weight: 600;
+            cursor: default;
+        }
+        .breadcrumb-sep {
+            color: var(--ink-muted);
+            font-size: 10px;
+        }
+
+        /* --- Content Area --- */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        .content::-webkit-scrollbar { width: 5px; }
+        .content::-webkit-scrollbar-track { background: transparent; }
+        .content::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 10px; }
+
+        /* --- Section --- */
+        .section {
+            margin-bottom: 16px;
+        }
+        .section:last-child { margin-bottom: 0; }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 6px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-sub);
+            cursor: pointer;
+            user-select: none;
+        }
+        .section-header svg {
+            width: 12px;
+            height: 12px;
+            transition: transform 0.2s;
+        }
+        .section-header.collapsed svg {
+            transform: rotate(-90deg);
+        }
+        .section-count {
+            background: var(--surface);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .section-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 8px;
+        }
+        .section-header.collapsed + .section-content {
+            display: none;
+        }
+
+        /* --- Folder / Project Card --- */
+        .folder-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 10px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: center;
+        }
+        .folder-card:hover {
+            border-color: var(--dmg-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .folder-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .folder-icon svg {
+            width: 36px;
+            height: 36px;
+        }
+        .folder-icon.client svg { color: var(--dmg-blue); }
+        .folder-icon.active svg { color: var(--success); }
+        .folder-icon.pipeline svg { color: var(--amber); }
+        .folder-icon.completed svg { color: var(--purple); }
+
+        .folder-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink);
+            line-height: 1.3;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .folder-meta {
+            font-size: 10px;
+            color: var(--ink-muted);
+        }
+
+        /* --- Project List Item (inside client folder) --- */
+        .project-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .project-item:hover {
+            border-color: var(--dmg-blue);
+            background: rgba(33, 160, 216, 0.03);
+        }
+
+        .project-item .folder-icon {
+            width: 28px;
+            height: 28px;
+        }
+        .project-item .folder-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .project-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .project-info .name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .project-info .meta {
+            font-size: 10px;
+            color: var(--ink-muted);
+            margin-top: 2px;
+        }
+
+        .project-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .status-active { background: rgba(34, 197, 94, 0.1); color: var(--success); }
+        .status-pipeline { background: rgba(245, 158, 11, 0.1); color: var(--amber); }
+        .status-completed { background: rgba(139, 92, 246, 0.1); color: var(--purple); }
+
+        /* --- Empty State --- */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--ink-sub);
+        }
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            color: var(--ink-muted);
+            margin-bottom: 12px;
+        }
+        .empty-state p {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* --- Loading State --- */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 12px;
+        }
+        .loading-state .dot-grid {
+            transform: scale(1.5);
+        }
+        .loading-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container">
+        <div class="header">
+            <div class="header-left">
+                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                <span class="header-title">Project Library</span>
+            </div>
+            <div class="search-box">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search clients or projects...">
+            </div>
+            <div class="view-toggle">
+                <button class="view-btn active" data-view="active">Active</button>
+                <button class="view-btn" data-view="pipeline">Pipeline</button>
+                <button class="view-btn" data-view="all">All</button>
+            </div>
+        </div>
+
+        <div class="breadcrumb" id="breadcrumb">
+            <span class="breadcrumb-item current">All Clients</span>
+        </div>
+
+        <div class="content" id="content">
+            <div class="loading-state">
+                <div class="dot-grid"><span></span><span></span><span></span><span></span></div>
+                <div class="loading-text">Loading projects...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const API_URL = 'https://createnotionproject-223535956454.us-central1.run.app';
+
+        // --- STATE ---
+        let allProjects = [];
+        let currentView = 'active'; // 'active', 'pipeline', 'all'
+        let currentClient = null; // null = root level (all clients)
+        let searchTerm = '';
+
+        // --- ICONS ---
+        const ICONS = {
+            folder: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg>`,
+            folderOpen: `<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><path d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2H4z" opacity="0.3"/><path d="M2.5 10.5A1.5 1.5 0 0 1 4 9h16a1.5 1.5 0 0 1 1.45 1.88l-2 8A1.5 1.5 0 0 1 18 20H4a1.5 1.5 0 0 1-1.45-1.12l-1.5-6A1.5 1.5 0 0 1 2.5 10.5z"/></svg>`,
+            project: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.06-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.38a1.5 1.5 0 0 1-1.06-.44z"/></svg>`,
+            chevron: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/></svg>`,
+            empty: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.06-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.38a1.5 1.5 0 0 1-1.06-.44z"/></svg>`
+        };
+
+        // --- HELPERS ---
+        function getProjectStatus(project) {
+            const stage = (project.dealStage || '').toLowerCase();
+
+            // Active = Won/In Production
+            if (stage.includes('won') || stage.includes('production') || stage.includes('complete')) {
+                if (stage.includes('complete')) return 'completed';
+                return 'active';
+            }
+
+            // Pipeline = Brief sent, awaiting decision (not won, not lost)
+            if (stage.includes('brief') || stage.includes('pitch') || stage.includes('proposal') || stage.includes('pending')) {
+                return 'pipeline';
+            }
+
+            // Treat anything else with a client as pipeline
+            if (project.client) return 'pipeline';
+
+            return 'other';
+        }
+
+        function groupByClient(projects) {
+            const groups = {};
+            projects.forEach(p => {
+                const client = p.client || 'Unknown Client';
+                if (!groups[client]) {
+                    groups[client] = [];
+                }
+                groups[client].push(p);
+            });
+            return groups;
+        }
+
+        function matchesSearch(project, term) {
+            if (!term) return true;
+            const lower = term.toLowerCase();
+            return (project.title || '').toLowerCase().includes(lower) ||
+                   (project.client || '').toLowerCase().includes(lower);
+        }
+
+        function filterProjects(projects) {
+            return projects.filter(p => {
+                // Search filter
+                if (!matchesSearch(p, searchTerm)) return false;
+
+                // View filter
+                const status = getProjectStatus(p);
+                if (currentView === 'active') return status === 'active';
+                if (currentView === 'pipeline') return status === 'pipeline';
+                return status !== 'other'; // 'all' shows active + pipeline + completed
+            });
+        }
+
+        // --- RENDERING ---
+        function renderBreadcrumb() {
+            const breadcrumb = document.getElementById('breadcrumb');
+            if (!currentClient) {
+                breadcrumb.innerHTML = '<span class="breadcrumb-item current">All Clients</span>';
+            } else {
+                breadcrumb.innerHTML = `
+                    <span class="breadcrumb-item" onclick="navigateToRoot()">All Clients</span>
+                    <span class="breadcrumb-sep">›</span>
+                    <span class="breadcrumb-item current">${currentClient}</span>
+                `;
+            }
+        }
+
+        function renderClientFolders() {
+            const filtered = filterProjects(allProjects);
+            const grouped = groupByClient(filtered);
+            const clients = Object.keys(grouped).sort();
+
+            if (clients.length === 0) {
+                return `
+                    <div class="empty-state">
+                        ${ICONS.empty}
+                        <p>No ${currentView === 'all' ? '' : currentView + ' '}projects found</p>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="section">
+                    <div class="section-content">
+                        ${clients.map(client => {
+                            const projects = grouped[client];
+                            const hasActive = projects.some(p => getProjectStatus(p) === 'active');
+                            const iconClass = hasActive ? 'active' : 'pipeline';
+                            return `
+                                <div class="folder-card" onclick="openClient('${client.replace(/'/g, "\\'")}')">
+                                    <div class="folder-icon ${iconClass}">${ICONS.folder}</div>
+                                    <div class="folder-name">${client}</div>
+                                    <div class="folder-meta">${projects.length} project${projects.length !== 1 ? 's' : ''}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProjectList(client) {
+            const clientProjects = filterProjects(allProjects).filter(p => p.client === client);
+
+            // Group by status
+            const active = clientProjects.filter(p => getProjectStatus(p) === 'active');
+            const pipeline = clientProjects.filter(p => getProjectStatus(p) === 'pipeline');
+            const completed = clientProjects.filter(p => getProjectStatus(p) === 'completed');
+
+            if (clientProjects.length === 0) {
+                return `
+                    <div class="empty-state">
+                        ${ICONS.empty}
+                        <p>No projects found for ${client}</p>
+                    </div>
+                `;
+            }
+
+            let html = '';
+
+            if (active.length > 0) {
+                html += renderProjectSection('Active Projects', active, 'active');
+            }
+            if (pipeline.length > 0) {
+                html += renderProjectSection('Pipeline', pipeline, 'pipeline');
+            }
+            if (completed.length > 0) {
+                html += renderProjectSection('Completed', completed, 'completed');
+            }
+
+            return html;
+        }
+
+        function renderProjectSection(title, projects, statusType) {
+            return `
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection(this)">
+                        ${ICONS.chevron}
+                        ${title}
+                        <span class="section-count">${projects.length}</span>
+                    </div>
+                    <div class="section-content" style="grid-template-columns: 1fr;">
+                        ${projects.map(p => `
+                            <div class="project-item" onclick="openProject('${p.id}')">
+                                <div class="folder-icon ${statusType}">${ICONS.project}</div>
+                                <div class="project-info">
+                                    <div class="name">${p.title || 'Untitled'}</div>
+                                    <div class="meta">${p.dealStage || 'No status'}</div>
+                                </div>
+                                <span class="project-status status-${statusType}">${statusType}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function render() {
+            const content = document.getElementById('content');
+            renderBreadcrumb();
+
+            if (currentClient) {
+                content.innerHTML = renderProjectList(currentClient);
+            } else {
+                content.innerHTML = renderClientFolders();
+            }
+        }
+
+        // --- NAVIGATION ---
+        function navigateToRoot() {
+            currentClient = null;
+            render();
+        }
+
+        function openClient(client) {
+            currentClient = client;
+            render();
+        }
+
+        function openProject(projectId) {
+            // Open project detail page
+            window.open(`project-detail.html?id=${projectId}`, '_blank');
+        }
+
+        function toggleSection(header) {
+            header.classList.toggle('collapsed');
+        }
+
+        // --- EVENT HANDLERS ---
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentView = btn.dataset.view;
+                currentClient = null; // Reset to root when changing view
+                render();
+            });
+        });
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            searchTerm = e.target.value;
+            currentClient = null; // Reset to root when searching
+            render();
+        });
+
+        // --- FETCH DATA ---
+        async function fetchProjects() {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 15000);
+
+                const res = await fetch(`${API_URL}/projects`, { signal: controller.signal });
+                clearTimeout(timeout);
+
+                if (!res.ok) throw new Error('API error');
+
+                const data = await res.json();
+
+                // Extract projects from the response
+                allProjects = (data.projects || data || []).map(p => ({
+                    id: p.id,
+                    title: p.title || p.name || 'Untitled',
+                    client: p.client || null,
+                    dealStage: p.dealStage || p.status || null,
+                    dueDate: p.dueDate || null,
+                    briefLink: p.briefLink || null,
+                    driveFolder: p.driveFolder || null
+                }));
+
+                render();
+            } catch (err) {
+                console.error('Failed to fetch projects:', err);
+                document.getElementById('content').innerHTML = `
+                    <div class="empty-state">
+                        ${ICONS.empty}
+                        <p>Failed to load projects. Check your connection.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // --- INIT ---
+        fetchProjects();
+    </script>
+</body>
+</html>
