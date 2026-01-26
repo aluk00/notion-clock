@@ -353,34 +353,38 @@
             <div class="card">
                 <div class="card-header">
                     <div class="card-icon blue">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
                     </div>
                     <div>
-                        <div class="card-title">Sign in to continue</div>
-                        <div class="card-subtitle">Use your work email account</div>
+                        <div class="card-title">Sign in with email</div>
+                        <div class="card-subtitle">We'll send you a magic link</div>
                     </div>
                 </div>
                 <p style="font-size: 13px; color: var(--ink-sub); margin-bottom: 20px; line-height: 1.6;">
-                    Sign in to verify your identity. Use the same email that's in the Staff Directory.
+                    Enter your work email and we'll send you a link to sign in. No password needed.
                 </p>
-                <button class="btn" id="googleSignInBtn" style="background: #fff; color: #333; border: 1px solid var(--border); width: 100%; margin-bottom: 12px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    Sign in with Google
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Work Email</label>
+                    <input type="email" class="form-input" id="emailInput" placeholder="you@mailonline.co.uk">
+                </div>
+                <button class="btn btn-primary" id="sendLinkBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    Send sign-in link
                 </button>
-                <button class="btn btn-dark" id="msSignInBtn">
-                    <svg width="20" height="20" viewBox="0 0 21 21" fill="none">
-                        <rect width="10" height="10" fill="#F25022"/>
-                        <rect x="11" width="10" height="10" fill="#7FBA00"/>
-                        <rect y="11" width="10" height="10" fill="#00A4EF"/>
-                        <rect x="11" y="11" width="10" height="10" fill="#FFB900"/>
-                    </svg>
-                    Sign in with Microsoft
-                </button>
+            </div>
+        </div>
+
+        <!-- EMAIL SENT VIEW -->
+        <div id="emailSentView" class="view">
+            <div class="card" style="text-align: center; padding: 40px 24px;">
+                <div style="width: 64px; height: 64px; background: var(--dmg-blue-soft); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--dmg-blue)" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+                </div>
+                <h2 style="font-size: 20px; font-weight: 700; color: var(--ink); margin-bottom: 8px;">Check your inbox</h2>
+                <p style="font-size: 14px; color: var(--ink-sub); margin-bottom: 8px;">We sent a sign-in link to:</p>
+                <p style="font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 24px;" id="sentToEmail">email@example.com</p>
+                <p style="font-size: 13px; color: var(--ink-sub); line-height: 1.6;">Click the link in the email to sign in. The link expires in 1 hour.</p>
+                <button class="btn btn-secondary" style="margin-top: 24px;" onclick="showView('loginView')">Use a different email</button>
             </div>
         </div>
 
@@ -1038,6 +1042,9 @@
         // ============================================
         // AUTH STATE
         // ============================================
+        // Check for email link sign-in on page load
+        handleEmailLinkSignIn();
+
         auth.onAuthStateChanged(async (user) => {
             // First, handle OAuth callback if present (before auth check)
             await handleOAuthCallback();
@@ -1084,56 +1091,93 @@
         });
 
         // ============================================
-        // GOOGLE SIGN IN
+        // EMAIL LINK SIGN IN
         // ============================================
-        document.getElementById('googleSignInBtn').addEventListener('click', async () => {
-            const btn = document.getElementById('googleSignInBtn');
+        const EMAIL_LINK_URL = window.location.origin + window.location.pathname;
+
+        document.getElementById('sendLinkBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('sendLinkBtn');
+            const emailInput = document.getElementById('emailInput');
+            const email = emailInput.value.trim().toLowerCase();
+
+            // Validate email
+            if (!email || !email.includes('@')) {
+                showMessage('Please enter a valid email address', 'error');
+                return;
+            }
+
             btn.disabled = true;
-            btn.innerHTML = '<div class="spinner" style="border-color: rgba(0,0,0,0.2); border-top-color: #333;"></div> Signing in...';
+            btn.innerHTML = '<div class="spinner"></div> Sending...';
+
+            const actionCodeSettings = {
+                url: EMAIL_LINK_URL,
+                handleCodeInApp: true
+            };
 
             try {
-                const provider = new firebase.auth.GoogleAuthProvider();
-                provider.setCustomParameters({
-                    prompt: 'select_account'
-                });
-                await auth.signInWithPopup(provider);
+                await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+                // Save email for when user clicks the link
+                window.localStorage.setItem('emailForSignIn', email);
+                // Show success view
+                document.getElementById('sentToEmail').textContent = email;
+                showView('emailSentView');
             } catch (e) {
-                console.error('Google sign in error:', e);
-                let msg = 'Sign in failed. Please try again.';
-                if (e.code === 'auth/popup-closed-by-user') msg = 'Sign in cancelled';
-                if (e.code === 'auth/popup-blocked') msg = 'Please allow popups for this site';
-                if (e.code === 'auth/unauthorized-domain') msg = 'This domain is not authorized for Google sign-in. Contact admin.';
+                console.error('Send link error:', e);
+                let msg = 'Failed to send sign-in link. Please try again.';
+                if (e.code === 'auth/invalid-email') msg = 'Invalid email address';
+                if (e.code === 'auth/quota-exceeded') msg = 'Too many requests. Please wait a few minutes.';
                 showMessage(msg, 'error');
                 btn.disabled = false;
-                btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Sign in with Google';
+                btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg> Send sign-in link';
             }
         });
 
-        // ============================================
-        // MICROSOFT SIGN IN
-        // ============================================
-        document.getElementById('msSignInBtn').addEventListener('click', async () => {
-            const btn = document.getElementById('msSignInBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner"></div> Signing in...';
-
-            try {
-                const provider = new firebase.auth.OAuthProvider('microsoft.com');
-                provider.setCustomParameters({
-                    tenant: 'common',
-                    prompt: 'select_account'
-                });
-                await auth.signInWithPopup(provider);
-            } catch (e) {
-                console.error('Sign in error:', e);
-                let msg = 'Sign in failed. Please try again.';
-                if (e.code === 'auth/popup-closed-by-user') msg = 'Sign in cancelled';
-                if (e.code === 'auth/popup-blocked') msg = 'Please allow popups for this site';
-                showMessage(msg, 'error');
-                btn.disabled = false;
-                btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 21 21" fill="none"><rect width="10" height="10" fill="#F25022"/><rect x="11" width="10" height="10" fill="#7FBA00"/><rect y="11" width="10" height="10" fill="#00A4EF"/><rect x="11" y="11" width="10" height="10" fill="#FFB900"/></svg> Sign in with Microsoft';
+        // Allow pressing Enter to submit
+        document.getElementById('emailInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('sendLinkBtn').click();
             }
         });
+
+        // Handle email link sign-in (when user clicks the link from email)
+        async function handleEmailLinkSignIn() {
+            if (!firebase.auth().isSignInWithEmailLink(window.location.href)) {
+                return false;
+            }
+
+            showView('loadingView');
+            document.querySelector('#loadingView p').textContent = 'Completing sign-in...';
+
+            let email = window.localStorage.getItem('emailForSignIn');
+            if (!email) {
+                // User opened link on different device - ask for email
+                email = window.prompt('Please enter your email to confirm sign-in:');
+            }
+
+            if (!email) {
+                showMessage('Email is required to complete sign-in', 'error');
+                showView('loginView');
+                return false;
+            }
+
+            try {
+                await auth.signInWithEmailLink(email, window.location.href);
+                window.localStorage.removeItem('emailForSignIn');
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return true;
+            } catch (e) {
+                console.error('Email link sign-in error:', e);
+                let msg = 'Sign-in failed. The link may have expired.';
+                if (e.code === 'auth/invalid-action-code') msg = 'This link has expired or already been used. Please request a new one.';
+                if (e.code === 'auth/invalid-email') msg = 'Email mismatch. Please use the same email you requested the link for.';
+                showMessage(msg, 'error');
+                showView('loginView');
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return false;
+            }
+        }
 
         // ============================================
         // SIGN OUT
