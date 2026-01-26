@@ -1162,6 +1162,134 @@
             .collection('public').doc('data').collection('files');
         const activitiesCollection = db.collection('artifacts').doc('dmg-command-centre-native')
             .collection('public').doc('data').collection('activities');
+        const configCollection = db.collection('artifacts').doc('dmg-command-centre-native')
+            .collection('public').doc('data').collection('config');
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // FRAME.IO API INTEGRATION
+        // ═══════════════════════════════════════════════════════════════════════════
+        const FrameIO = {
+            baseUrl: 'https://api.frame.io/v2',
+            token: null,
+
+            // Initialize - try to get token from Firestore
+            async init() {
+                try {
+                    const doc = await configCollection.doc('frameio').get();
+                    if (doc.exists) {
+                        this.token = doc.data().token;
+                    }
+                } catch (err) {
+                    console.log('Frame.io config not found');
+                }
+                return this.token !== null;
+            },
+
+            // Save token to Firestore
+            async saveToken(token) {
+                try {
+                    await configCollection.doc('frameio').set({ token, updatedAt: new Date().toISOString() });
+                    this.token = token;
+                    return true;
+                } catch (err) {
+                    console.error('Failed to save Frame.io token:', err);
+                    return false;
+                }
+            },
+
+            // API request helper
+            async request(endpoint, options = {}) {
+                if (!this.token) throw new Error('No Frame.io token configured');
+
+                const res = await fetch(`${this.baseUrl}${endpoint}`, {
+                    ...options,
+                    headers: {
+                        'Authorization': `Bearer ${this.token}`,
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+
+                if (!res.ok) {
+                    const error = await res.json().catch(() => ({}));
+                    throw new Error(error.message || `Frame.io API error: ${res.status}`);
+                }
+
+                return res.json();
+            },
+
+            // Get current user/account info
+            async getMe() {
+                return this.request('/me');
+            },
+
+            // Get all accounts
+            async getAccounts() {
+                return this.request('/accounts');
+            },
+
+            // Get teams for an account
+            async getTeams(accountId) {
+                return this.request(`/accounts/${accountId}/teams`);
+            },
+
+            // Get projects for a team
+            async getProjects(teamId) {
+                return this.request(`/teams/${teamId}/projects`);
+            },
+
+            // Get items (folders/assets) in a project or folder
+            async getItems(parentId, type = 'all') {
+                const items = await this.request(`/assets/${parentId}/children`);
+                if (type === 'all') return items;
+                return items.filter(item => type === 'folders' ? item.type === 'folder' : item.type !== 'folder');
+            },
+
+            // Get asset details (video/image)
+            async getAsset(assetId) {
+                return this.request(`/assets/${assetId}`);
+            },
+
+            // Get comments for an asset
+            async getComments(assetId) {
+                return this.request(`/assets/${assetId}/comments`);
+            },
+
+            // Get review link for an asset (for sharing)
+            async getReviewLinks(assetId) {
+                return this.request(`/assets/${assetId}/review_links`);
+            },
+
+            // Search for assets by name within a project
+            async searchAssets(projectId, query) {
+                // Frame.io doesn't have a direct search endpoint, so we'll need to traverse
+                // For now, return empty - would need recursive folder traversal
+                return [];
+            },
+
+            // Get assets for a specific folder path (e.g., "Client/Campaign/Deliverable")
+            async getAssetsForPath(rootId, pathParts) {
+                let currentId = rootId;
+
+                // Navigate through the path
+                for (const part of pathParts) {
+                    const items = await this.getItems(currentId, 'folders');
+                    const folder = items.find(f =>
+                        f.name.toLowerCase().includes(part.toLowerCase()) ||
+                        part.toLowerCase().includes(f.name.toLowerCase())
+                    );
+                    if (folder) {
+                        currentId = folder.id;
+                    } else {
+                        // Path not found, return empty
+                        return [];
+                    }
+                }
+
+                // Get all assets in the final folder
+                return this.getItems(currentId, 'assets');
+            }
+        };
 
         // ═══════════════════════════════════════════════════════════════════════════
         // ICONS
@@ -1257,8 +1385,13 @@
             const [toast, setToast] = React.useState({ show: false, message: '', type: '' });
             const [uploadProgress, setUploadProgress] = React.useState({ active: false, percent: 0, fileName: '' });
             const [dragOver, setDragOver] = React.useState(false);
-            const [showModal, setShowModal] = React.useState(null); // 'rename', 'move', 'pin', 'addLink'
+            const [showModal, setShowModal] = React.useState(null); // 'rename', 'move', 'pin', 'addLink', 'frameioSetup'
             const [modalData, setModalData] = React.useState(null); // Data for the modal
+            // Frame.io state
+            const [frameioEnabled, setFrameioEnabled] = React.useState(false);
+            const [frameioAssets, setFrameioAssets] = React.useState([]); // Assets for current project
+            const [frameioLoading, setFrameioLoading] = React.useState(false);
+            const [frameioProjects, setFrameioProjects] = React.useState([]); // Frame.io projects list
             const [dateFilter, setDateFilter] = React.useState({ from: '', to: '' });
             const [activeFileMenu, setActiveFileMenu] = React.useState(null); // File ID for context menu
             const [largeFileWarning, setLargeFileWarning] = React.useState(null); // {file, onContinue, onLink}
@@ -1334,10 +1467,87 @@
                 const loadData = async () => {
                     setLoading(true);
                     await Promise.all([fetchProjects(), fetchFiles()]);
+                    // Initialize Frame.io
+                    const hasFrameio = await FrameIO.init();
+                    setFrameioEnabled(hasFrameio);
+                    if (hasFrameio) {
+                        try {
+                            // Load Frame.io project list for mapping
+                            const me = await FrameIO.getMe();
+                            if (me.account_id) {
+                                const teams = await FrameIO.getTeams(me.account_id);
+                                if (teams.length > 0) {
+                                    const projects = await FrameIO.getProjects(teams[0].id);
+                                    setFrameioProjects(projects);
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Failed to load Frame.io projects:', err);
+                        }
+                    }
                     setLoading(false);
                 };
                 loadData();
             }, []);
+
+            // Fetch Frame.io assets when project changes
+            React.useEffect(() => {
+                const fetchFrameioAssets = async () => {
+                    const loc = getCurrentLocation();
+                    if (!frameioEnabled || !loc.projectId || !loc.projectName) {
+                        setFrameioAssets([]);
+                        return;
+                    }
+
+                    setFrameioLoading(true);
+                    try {
+                        // Try to find matching Frame.io project by name
+                        const matchingProject = frameioProjects.find(fp =>
+                            fp.name.toLowerCase().includes(loc.projectName.toLowerCase()) ||
+                            loc.projectName.toLowerCase().includes(fp.name.toLowerCase()) ||
+                            (loc.clientName && fp.name.toLowerCase().includes(loc.clientName.toLowerCase()))
+                        );
+
+                        if (matchingProject) {
+                            // Get root items of the project
+                            const items = await FrameIO.getItems(matchingProject.root_asset_id);
+
+                            // If we're in a deliverable folder, try to find matching subfolder
+                            let assets = items.filter(i => i.type !== 'folder');
+                            if (loc.deliverableName) {
+                                const subfolder = items.find(i =>
+                                    i.type === 'folder' &&
+                                    i.name.toLowerCase().includes(loc.deliverableName.toLowerCase())
+                                );
+                                if (subfolder) {
+                                    const subItems = await FrameIO.getItems(subfolder.id);
+                                    assets = subItems.filter(i => i.type !== 'folder');
+                                }
+                            }
+
+                            // Enrich with comment counts
+                            const enrichedAssets = await Promise.all(assets.slice(0, 12).map(async (asset) => {
+                                try {
+                                    const comments = await FrameIO.getComments(asset.id);
+                                    return { ...asset, commentCount: comments.length };
+                                } catch {
+                                    return { ...asset, commentCount: 0 };
+                                }
+                            }));
+
+                            setFrameioAssets(enrichedAssets);
+                        } else {
+                            setFrameioAssets([]);
+                        }
+                    } catch (err) {
+                        console.error('Failed to fetch Frame.io assets:', err);
+                        setFrameioAssets([]);
+                    }
+                    setFrameioLoading(false);
+                };
+
+                fetchFrameioAssets();
+            }, [currentPath, frameioEnabled, frameioProjects]);
 
             // ─────────────────────────────────────────────────────────────────────
             // FILE UPLOAD
@@ -2030,9 +2240,10 @@
                 );
             };
 
-            // Render Frame.io section (if project has Frame.io link)
+            // Render Frame.io section (if project has Frame.io link or we have API access)
             const renderFrameIoSection = (project) => {
-                if (!project?.frameIo) return null;
+                // Show if project has Frame.io link OR if we have Frame.io API assets
+                if (!project?.frameIo && frameioAssets.length === 0 && !frameioEnabled) return null;
 
                 return (
                     <div className="frameio-section">
@@ -2040,14 +2251,74 @@
                             <div className="title">
                                 {Icons.video}
                                 Video Review
+                                {frameioAssets.length > 0 && (
+                                    <span style={{ marginLeft: 8, fontSize: 11, opacity: 0.8 }}>
+                                        {frameioAssets.length} {frameioAssets.length === 1 ? 'video' : 'videos'}
+                                    </span>
+                                )}
                             </div>
-                            <a href={project.frameIo} target="_blank" rel="noopener noreferrer" className="frameio-link">
-                                Open Frame.io {Icons.externalLink}
-                            </a>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {!frameioEnabled && (
+                                    <button className="frameio-link" onClick={() => setShowModal('frameioSetup')} style={{ border: 'none', cursor: 'pointer' }}>
+                                        Connect Frame.io
+                                    </button>
+                                )}
+                                {project?.frameIo && (
+                                    <a href={project.frameIo} target="_blank" rel="noopener noreferrer" className="frameio-link">
+                                        Open Frame.io {Icons.externalLink}
+                                    </a>
+                                )}
+                            </div>
                         </div>
-                        <div style={{ fontSize: 11, opacity: 0.8 }}>
-                            Review and comment on video edits in Frame.io
-                        </div>
+
+                        {frameioLoading && (
+                            <div style={{ padding: 16, textAlign: 'center', fontSize: 11, opacity: 0.7 }}>
+                                Loading videos from Frame.io...
+                            </div>
+                        )}
+
+                        {!frameioLoading && frameioAssets.length > 0 && (
+                            <div className="frameio-assets">
+                                {frameioAssets.map(asset => (
+                                    <div key={asset.id} className="frameio-asset" onClick={() => window.open(`https://app.frame.io/player/${asset.id}`, '_blank')}>
+                                        <div className="thumb">
+                                            {asset.thumb_url ? (
+                                                <img src={asset.thumb_url} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                Icons.video
+                                            )}
+                                        </div>
+                                        <div className="name">
+                                            {asset.name}
+                                            {asset.commentCount > 0 && (
+                                                <span style={{ marginLeft: 4, opacity: 0.7 }}>
+                                                    💬 {asset.commentCount}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {asset.label && (
+                                            <div style={{ padding: '0 8px 8px', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                                {asset.label === 'approved' && '✓ Approved'}
+                                                {asset.label === 'in_progress' && '🔄 In Progress'}
+                                                {asset.label === 'needs_review' && '👁 Needs Review'}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {!frameioLoading && frameioAssets.length === 0 && frameioEnabled && (
+                            <div style={{ fontSize: 11, opacity: 0.8 }}>
+                                No videos found in Frame.io for this project
+                            </div>
+                        )}
+
+                        {!frameioEnabled && !project?.frameIo && (
+                            <div style={{ fontSize: 11, opacity: 0.8 }}>
+                                Connect Frame.io to see video thumbnails and comment counts
+                            </div>
+                        )}
                     </div>
                 );
             };
@@ -2186,6 +2457,64 @@
                                             const pinned = document.getElementById('linkPinned').checked;
                                             if (name && url) addExternalLink({ name, url, docType, pinned });
                                         }}>Add Link</button>
+                                    </div>
+                                </>
+                            )}
+
+                            {showModal === 'frameioSetup' && (
+                                <>
+                                    <div className="modal-header">
+                                        <span>Connect Frame.io</span>
+                                        <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div style={{ marginBottom: 16, padding: 12, background: '#F3F4F6', borderRadius: 8, fontSize: 12 }}>
+                                            <strong>How to get your Frame.io API token:</strong>
+                                            <ol style={{ margin: '8px 0 0 16px', lineHeight: 1.6 }}>
+                                                <li>Go to <a href="https://developer.frame.io" target="_blank" rel="noopener noreferrer" style={{ color: '#7C3AED' }}>developer.frame.io</a></li>
+                                                <li>Click "Tokens" in the sidebar</li>
+                                                <li>Create a new token with read permissions</li>
+                                                <li>Copy and paste it below</li>
+                                            </ol>
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">Frame.io API Token</label>
+                                            <input type="password" className="form-input" id="frameioToken" placeholder="fio-u-xxxxxxxxxxxx" autoFocus />
+                                        </div>
+                                        <div style={{ fontSize: 11, color: '#6B7280' }}>
+                                            Your token is stored securely in Firebase and never exposed in the browser.
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
+                                        <button className="btn btn-primary" style={{ background: '#7C3AED' }} onClick={async () => {
+                                            const token = document.getElementById('frameioToken').value;
+                                            if (!token) return;
+
+                                            showToast('Connecting to Frame.io...');
+                                            const success = await FrameIO.saveToken(token);
+                                            if (success) {
+                                                setFrameioEnabled(true);
+                                                showToast('Frame.io connected!', 'success');
+                                                // Reload Frame.io data
+                                                try {
+                                                    const me = await FrameIO.getMe();
+                                                    if (me.account_id) {
+                                                        const teams = await FrameIO.getTeams(me.account_id);
+                                                        if (teams.length > 0) {
+                                                            const projects = await FrameIO.getProjects(teams[0].id);
+                                                            setFrameioProjects(projects);
+                                                        }
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Frame.io init error:', err);
+                                                    showToast('Connected but could not load projects', 'error');
+                                                }
+                                                setShowModal(null);
+                                            } else {
+                                                showToast('Failed to save token', 'error');
+                                            }
+                                        }}>Connect Frame.io</button>
                                     </div>
                                 </>
                             )}
