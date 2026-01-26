@@ -984,6 +984,189 @@
         .notion-mini-link:hover {
             color: var(--dmg-blue);
         }
+
+        /* Work Summary Section (Layer 2/3) */
+        .work-summary {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 16px;
+            background: var(--surface-alt);
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+        .work-summary-icon {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+        .work-summary-text {
+            flex: 1;
+        }
+        .work-summary-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ink);
+            margin-bottom: 4px;
+        }
+        .work-summary-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--ink-sub);
+        }
+
+        /* Work Info Grid */
+        .work-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .work-info-item {
+            padding: 12px;
+            background: var(--surface-alt);
+            border-radius: 8px;
+        }
+        .work-info-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+        .work-info-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .work-info-value.overdue { color: var(--danger); }
+        .work-info-value.soon { color: var(--warning); }
+
+        /* Parent Context */
+        .parent-context {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: var(--surface-alt);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .parent-context-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink-muted);
+            text-transform: uppercase;
+        }
+        .parent-context-link {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--dmg-blue);
+            text-decoration: none;
+        }
+        .parent-context-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Output Section */
+        .output-section {
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, white 100%);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+        .output-section-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--success);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 12px;
+        }
+        .output-field {
+            display: flex;
+            gap: 8px;
+        }
+        .output-input {
+            flex: 1;
+            padding: 12px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: inherit;
+            color: var(--ink);
+        }
+        .output-input:focus {
+            outline: none;
+            border-color: var(--success);
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+        }
+        .output-save-btn {
+            padding: 12px 20px;
+            background: var(--success);
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .output-save-btn:hover {
+            background: #1aa34a;
+        }
+        .output-view-link {
+            display: inline-block;
+            margin-top: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--success);
+            text-decoration: none;
+        }
+        .output-view-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Work Actions */
+        .work-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .work-action-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ink);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .work-action-btn:hover {
+            border-color: var(--dmg-blue);
+            color: var(--dmg-blue);
+        }
+        .work-action-btn.mark-complete {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+        .work-action-btn.mark-complete:hover {
+            background: #1aa34a;
+        }
+        .work-action-btn.secondary {
+            background: var(--surface-alt);
+        }
     </style>
 </head>
 <body>
@@ -1068,6 +1251,84 @@
             } catch (e) {
                 console.error('Update error:', e);
                 alert('Failed to save link. Please try again.');
+            }
+        }
+
+        // Save output link (for Layer 2/3 items)
+        async function saveOutputLink() {
+            const linkInput = document.getElementById('output-link');
+            const url = linkInput.value.trim();
+
+            if (!url) {
+                alert('Please enter a link');
+                return;
+            }
+
+            // Validate URL
+            try {
+                new URL(url);
+            } catch (e) {
+                alert('Please enter a valid URL');
+                return;
+            }
+
+            try {
+                // Try to save as liveLink first, fallback to frameIoLink
+                const res = await fetch(`${API_URL}/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        frameIoLink: url  // Using frameIoLink as the output field
+                    })
+                });
+
+                if (res.ok) {
+                    project.frameIoLink = url;
+                    alert('Output link saved!');
+                    render();
+                } else {
+                    throw new Error('Failed to save');
+                }
+            } catch (e) {
+                console.error('Save error:', e);
+                alert('Failed to save link. Please try again.');
+            }
+        }
+
+        // Mark item as complete
+        async function markItemComplete() {
+            if (!confirm('Mark this item as complete?')) return;
+
+            try {
+                // Update status based on item type
+                const updateData = {};
+
+                // Try to update the most relevant status field
+                if (project.creativeWorkflowStatus !== undefined) {
+                    updateData.creativeWorkflowStatus = 'Complete';
+                }
+                if (project.productionWorkflowStatus !== undefined) {
+                    updateData.productionWorkflowStatus = 'Complete';
+                }
+                // Also try a generic status field
+                updateData.status = 'Complete';
+
+                const res = await fetch(`${API_URL}/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (res.ok) {
+                    alert('Marked as complete!');
+                    // Reload to show updated status
+                    loadProject();
+                } else {
+                    throw new Error('Failed to update');
+                }
+            } catch (e) {
+                console.error('Update error:', e);
+                alert('Failed to mark complete. Please try again.');
             }
         }
 
@@ -1496,6 +1757,100 @@
                     <!-- Main Content -->
                     <div class="content-grid">
                         <div class="main-column">
+                            <!-- LAYER 2/3: MY WORK SECTION - What you need to do -->
+                            ${itemLayer >= 2 ? `
+                                <div class="card" style="border: 2px solid ${layer.color}; background: linear-gradient(135deg, ${layer.color}08 0%, white 100%);">
+                                    <div class="card-header" style="background: ${layer.color}10; border-bottom-color: ${layer.color}30;">
+                                        <div class="card-title" style="color: ${layer.color};">
+                                            <div class="card-dot" style="background: ${layer.color}"></div>
+                                            ${itemLayer === 2 ? 'Deliverable Details' : 'Your Task'}
+                                        </div>
+                                        ${p.status || p.creativeWorkflowStatus || p.productionWorkflowStatus ? `
+                                            <span class="badge" style="background: ${layer.color}15; color: ${layer.color};">
+                                                ${p.status || p.creativeWorkflowStatus || p.productionWorkflowStatus || 'Pending'}
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- What is this? -->
+                                        <div class="work-summary">
+                                            <div class="work-summary-icon">${itemLayer === 2 ? '🎬' : '✅'}</div>
+                                            <div class="work-summary-text">
+                                                <div class="work-summary-title">${escapeHtml(p.title) || 'Untitled'}</div>
+                                                <div class="work-summary-meta">
+                                                    ${p.format ? `<span>${escapeHtml(p.format)}</span>` : ''}
+                                                    ${p.format && p.channel ? '<span>•</span>' : ''}
+                                                    ${p.channel ? `<span>${escapeHtml(p.channel)}</span>` : ''}
+                                                    ${p.discipline ? `<span style="color: ${layer.color}; font-weight: 700;">${escapeHtml(p.discipline)}</span>` : ''}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Key Info Grid -->
+                                        <div class="work-info-grid">
+                                            <div class="work-info-item">
+                                                <div class="work-info-label">Due Date</div>
+                                                <div class="work-info-value ${isOverdue(p.dueDate) ? 'overdue' : isDueSoon(p.dueDate) ? 'soon' : ''}">${formatDate(p.dueDate) || 'Not set'}</div>
+                                            </div>
+                                            ${formatPerson(p.assignedTo) ? `
+                                                <div class="work-info-item">
+                                                    <div class="work-info-label">Assigned To</div>
+                                                    <div class="work-info-value">${escapeHtml(formatPerson(p.assignedTo))}</div>
+                                                </div>
+                                            ` : ''}
+                                            ${p.effortScore || p.effortPts ? `
+                                                <div class="work-info-item">
+                                                    <div class="work-info-label">Effort (pts)</div>
+                                                    <div class="work-info-value">${p.effortScore || p.effortPts || 0}</div>
+                                                </div>
+                                            ` : ''}
+                                            ${p.feedbackStatus ? `
+                                                <div class="work-info-item">
+                                                    <div class="work-info-label">Feedback</div>
+                                                    <div class="work-info-value">${escapeHtml(p.feedbackStatus)}</div>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+
+                                        <!-- Parent Context -->
+                                        ${hasParentLink ? `
+                                            <div class="parent-context">
+                                                <div class="parent-context-label">Part of:</div>
+                                                <a href="project-detail.html?id=${parentProject.id}" class="parent-context-link">
+                                                    📁 ${escapeHtml(parentProject.title || 'Parent Project')}
+                                                </a>
+                                            </div>
+                                        ` : ''}
+
+                                        <!-- OUTPUT SECTION - Where to put your work -->
+                                        <div class="output-section">
+                                            <div class="output-section-title">📤 Your Output</div>
+                                            <div class="output-field">
+                                                <input type="url" id="output-link" class="output-input" placeholder="Paste your work link here (Frame.io, Google Drive, etc.)..." value="${p.liveLink || p.frameIoLink || ''}">
+                                                <button class="output-save-btn" onclick="saveOutputLink()">Save</button>
+                                            </div>
+                                            ${p.liveLink || p.frameIoLink ? `
+                                                <a href="${p.liveLink || p.frameIoLink}" target="_blank" class="output-view-link">
+                                                    View current output →
+                                                </a>
+                                            ` : ''}
+                                        </div>
+
+                                        <!-- Action Buttons -->
+                                        <div class="work-actions">
+                                            <button class="work-action-btn mark-complete" onclick="markItemComplete()">
+                                                <span>✓</span> Mark Complete
+                                            </button>
+                                            ${p.url ? `
+                                                <a href="${p.url}" target="_blank" class="work-action-btn secondary">
+                                                    Edit in Notion
+                                                </a>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : ''}
+
                             <!-- Expense Tracking -->
                             <div class="card">
                                 <div class="card-header">
