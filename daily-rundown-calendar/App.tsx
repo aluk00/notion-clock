@@ -115,7 +115,7 @@ const App: React.FC = () => {
 
   return (
     <div className="p-4 font-sans text-ink">
-      <div className="bg-white rounded-2xl border border-border overflow-hidden max-w-[1400px] mx-auto transition-all duration-300 hover:shadow-xl">
+      <div className="bg-white rounded-2xl border border-border overflow-hidden w-full transition-all duration-300 hover:shadow-xl">
         {/* Header */}
         <div className="px-4 py-3 border-b border-border flex items-center gap-4 bg-white sticky top-0 z-10">
           <DotGrid />
@@ -147,14 +147,14 @@ const App: React.FC = () => {
 
         {/* Content */}
         {loading ? (
-          <div className="min-h-[400px] flex flex-col items-center justify-center gap-4 text-ink-sub">
+          <div className="min-h-[280px] flex flex-col items-center justify-center gap-4 text-ink-sub">
              <DotGrid />
              <span className="text-[10px] font-bold uppercase tracking-widest">Syncing Ecosystem...</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-gray-100">
             {weekData.map((day, i) => (
-              <div key={day.dateKey} className="min-h-[200px] md:min-h-[600px] flex flex-col">
+              <div key={day.dateKey} className="min-h-[200px] md:min-h-[320px] flex flex-col">
                 {/* Day Header */}
                 <div className={`p-3 text-center border-b border-gray-50 transition-colors ${isToday(day.date) ? 'bg-editorial/5' : 'bg-bg-soft'}`}>
                   <div className="text-[9px] font-bold uppercase text-ink-sub tracking-widest mb-0.5">
