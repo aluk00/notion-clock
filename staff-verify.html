@@ -701,16 +701,25 @@
             const status = document.getElementById('notionStatus');
             const display = document.getElementById('notionUserIdDisplay');
 
-            if (notionUserId) {
+            // Ensure notionUserId is a string (could be object from API)
+            let userId = notionUserId;
+            if (userId && typeof userId === 'object') {
+                // Handle case where it's an object with an id property
+                userId = userId.id || JSON.stringify(userId);
+                notionUserId = userId; // Normalize it
+            }
+
+            if (userId && typeof userId === 'string') {
                 linked.style.display = 'block';
                 unlinked.style.display = 'none';
                 status.className = 'status-badge success';
                 status.textContent = 'Linked';
                 // Show name if available, otherwise show truncated ID
+                const truncatedId = userId.length > 8 ? userId.substring(0, 8) + '...' : userId;
                 if (notionUserName) {
-                    display.textContent = `${notionUserName} (${notionUserId.substring(0, 8)}...)`;
+                    display.textContent = `${notionUserName} (${truncatedId})`;
                 } else {
-                    display.textContent = `ID: ${notionUserId.substring(0, 8)}...`;
+                    display.textContent = `ID: ${truncatedId}`;
                 }
             } else {
                 linked.style.display = 'none';
@@ -867,9 +876,19 @@
         // FETCH STAFF PROFILE
         // ============================================
         async function fetchStaffProfile(email) {
+            const TIMEOUT_MS = 10000; // 10 second timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
             try {
-                const response = await fetch(`${API_URL}/staff-directory?email=${encodeURIComponent(email)}`);
-                if (!response.ok) throw new Error('API error');
+                const response = await fetch(`${API_URL}/staff-directory?email=${encodeURIComponent(email)}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`API returned ${response.status}`);
+                }
 
                 const data = await response.json();
                 if (data.staff && data.staff.length > 0) {
@@ -877,7 +896,15 @@
                 }
                 return null;
             } catch (e) {
+                clearTimeout(timeoutId);
                 console.error('Error fetching staff profile:', e);
+
+                // Show user-friendly error message
+                if (e.name === 'AbortError') {
+                    showMessage('Profile fetch timed out. The server may be slow or unavailable.', 'error');
+                } else {
+                    showMessage(`Failed to load profile: ${e.message}`, 'error');
+                }
                 return null;
             }
         }
@@ -1026,16 +1053,23 @@
             document.getElementById('verifiedBadge').style.display = 'inline-flex';
 
             // Fetch staff profile
-            staffProfile = await fetchStaffProfile(user.email);
+            try {
+                staffProfile = await fetchStaffProfile(user.email);
 
-            if (staffProfile) {
-                populateForm(staffProfile);
-                // If we just linked Notion via OAuth, show a success message
-                if (hadPendingLink) {
-                    showMessage(`Notion account linked${notionUserName ? ': ' + notionUserName : ''}! Don't forget to save.`, 'success');
+                if (staffProfile) {
+                    populateForm(staffProfile);
+                    // If we just linked Notion via OAuth, show a success message
+                    if (hadPendingLink) {
+                        showMessage(`Notion account linked${notionUserName ? ': ' + notionUserName : ''}! Don't forget to save.`, 'success');
+                    }
+                    showView('profileView');
+                } else {
+                    // Profile not found - could be new user or API returned empty
+                    showView('notFoundView');
                 }
-                showView('profileView');
-            } else {
+            } catch (e) {
+                console.error('Error in auth flow:', e);
+                showMessage('Something went wrong loading your profile. Try refreshing the page.', 'error');
                 showView('notFoundView');
             }
         });
