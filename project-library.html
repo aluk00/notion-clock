@@ -1607,6 +1607,47 @@
             };
 
             // ─────────────────────────────────────────────────────────────────────
+            // PROJECT CATEGORIZATION - determines Active/Pipeline/Archive
+            // Checks BOTH status1 AND dealStage, prioritizes archive conditions
+            // ─────────────────────────────────────────────────────────────────────
+            const getProjectCategory = (project) => {
+                const status1 = (project.status1 || '').toLowerCase();
+                const dealStage = (project.dealStage || '').toLowerCase();
+                const combined = `${status1} ${dealStage}`;
+
+                // Archive conditions checked FIRST (most specific)
+                if (combined.includes('complete') ||
+                    combined.includes('cancelled') ||
+                    combined.includes('lost') ||
+                    combined.includes('on hold')) {
+                    return 'archive';
+                }
+
+                // Active conditions
+                if (status1.includes('active') ||
+                    combined.includes('deal agreed') ||
+                    combined.includes('in progress') ||
+                    combined.includes('in production')) {
+                    return 'active';
+                }
+
+                // Pipeline conditions
+                if (combined.includes('pipeline') ||
+                    combined.includes('brief') ||
+                    combined.includes('pitch') ||
+                    combined.includes('proposal')) {
+                    return 'pipeline';
+                }
+
+                // Default to pipeline if uncategorized
+                return 'pipeline';
+            };
+
+            const getProjectsByCategory = (category) => {
+                return projects.filter(p => getProjectCategory(p) === category);
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
             // DATA FETCHING
             // ─────────────────────────────────────────────────────────────────────
 
@@ -2189,14 +2230,20 @@
             const navigateTo = (type, id, name) => {
                 if (type === 'root') {
                     setCurrentPath([]);
+                } else if (type === 'status') {
+                    setCurrentPath([{ type: 'status', id, name }]);
                 } else if (type === 'client') {
-                    setCurrentPath([{ type: 'client', id: name, name }]);
+                    // Preserve status level, add client
+                    const statusPath = currentPath.find(p => p.type === 'status');
+                    setCurrentPath([statusPath, { type: 'client', id: name, name }].filter(Boolean));
                 } else if (type === 'project') {
+                    // Preserve status and client levels, add project
+                    const statusPath = currentPath.find(p => p.type === 'status');
                     const clientPath = currentPath.find(p => p.type === 'client');
-                    setCurrentPath([clientPath, { type: 'project', id, name }].filter(Boolean));
+                    setCurrentPath([statusPath, clientPath, { type: 'project', id, name }].filter(Boolean));
                 } else if (type === 'deliverable') {
-                    // Keep client and project, add deliverable
-                    const filtered = currentPath.filter(p => p.type === 'client' || p.type === 'project');
+                    // Keep status, client and project, add deliverable
+                    const filtered = currentPath.filter(p => p.type === 'status' || p.type === 'client' || p.type === 'project');
                     setCurrentPath([...filtered, { type: 'deliverable', id, name }]);
                 } else if (type === 'subfolder') {
                     // Keep everything up to deliverable, add subfolder
@@ -2384,96 +2431,88 @@
                     );
                 }
 
-                // Root level - show projects by status (Active/Pipeline/Archive)
+                // ═══════════════════════════════════════════════════════════════
+                // LEVEL 0: ROOT - Show three status folder icons (SharePoint style)
+                // ═══════════════════════════════════════════════════════════════
                 if (currentPath.length === 0) {
-                    // Filter projects by status
-                    const getStatusProjects = () => {
-                        return projects.filter(p => {
-                            const status = (p.status1 || p.dealStage || '').toLowerCase();
-                            if (statusFilter === 'active') {
-                                return status.includes('active') || status.includes('deal agreed') || status.includes('in progress');
-                            } else if (statusFilter === 'pipeline') {
-                                return status.includes('pipeline') || status.includes('brief') || status.includes('pitch');
-                            } else if (statusFilter === 'archive') {
-                                return status.includes('complete') || status.includes('cancelled') || status.includes('lost');
-                            }
-                            return true;
-                        });
-                    };
+                    const statusFolders = [
+                        { id: 'active', name: 'Active', icon: '📁', color: '#22c55e' },
+                        { id: 'pipeline', name: 'Pipeline', icon: '📁', color: '#3b82f6' },
+                        { id: 'archive', name: 'Archive', icon: '📁', color: '#6b7280' }
+                    ];
 
-                    const filteredProjects = getStatusProjects();
+                    return (
+                        <div style={{ padding: '40px 20px' }}>
+                            <div style={{ textAlign: 'center', marginBottom: 32 }}>
+                                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>Project Library</div>
+                                <div style={{ fontSize: 13, color: 'var(--ink-muted)' }}>Click a folder to browse projects by status</div>
+                            </div>
+                            <div className="folder-grid" style={{ justifyContent: 'center', gap: 24 }}>
+                                {statusFolders.map(folder => {
+                                    const count = getProjectsByCategory(folder.id).length;
+                                    return (
+                                        <div key={folder.id}
+                                             className="folder-card"
+                                             onClick={() => setCurrentPath([{ type: 'status', id: folder.id, name: folder.name }])}
+                                             style={{
+                                                 width: 160,
+                                                 height: 140,
+                                                 display: 'flex',
+                                                 flexDirection: 'column',
+                                                 alignItems: 'center',
+                                                 justifyContent: 'center',
+                                                 cursor: 'pointer',
+                                                 borderColor: folder.color,
+                                                 borderWidth: 2
+                                             }}>
+                                            <svg width="48" height="48" viewBox="0 0 24 24" fill={folder.color} style={{ marginBottom: 12 }}>
+                                                <path d="M10 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z"/>
+                                            </svg>
+                                            <div className="folder-name" style={{ fontSize: 15, fontWeight: 600 }}>{folder.name}</div>
+                                            <div className="folder-meta" style={{ fontSize: 13 }}>{count} project{count !== 1 ? 's' : ''}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // LEVEL 1: STATUS - Show clients grouped within this status
+                // ═══════════════════════════════════════════════════════════════
+                const currentStatus = currentPath.find(p => p.type === 'status');
+                const currentClient = currentPath.find(p => p.type === 'client');
+                const currentProject = currentPath.find(p => p.type === 'project');
+
+                if (currentStatus && !currentClient) {
+                    const statusProjects = getProjectsByCategory(currentStatus.id);
                     const groupedByClient = {};
-                    filteredProjects.forEach(p => {
-                        const client = p.client || 'Unknown';
+                    statusProjects.forEach(p => {
+                        const client = p.client || 'Unknown Client';
                         if (!groupedByClient[client]) groupedByClient[client] = [];
                         groupedByClient[client].push(p);
                     });
                     const clients = Object.keys(groupedByClient).sort();
 
-                    const statusLabels = {
-                        active: 'Active Projects',
-                        pipeline: 'Pipeline',
-                        archive: 'Archive'
-                    };
-
                     return (
                         <>
-                            {/* Status Tabs */}
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
-                                {['active', 'pipeline', 'archive'].map(status => (
-                                    <button key={status}
-                                            onClick={() => setStatusFilter(status)}
-                                            style={{
-                                                padding: '8px 16px',
-                                                border: 'none',
-                                                borderRadius: 6,
-                                                fontSize: 13,
-                                                fontWeight: 600,
-                                                cursor: 'pointer',
-                                                background: statusFilter === status ? 'var(--dmg-blue)' : 'var(--surface)',
-                                                color: statusFilter === status ? 'white' : 'var(--ink-sub)'
-                                            }}>
-                                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                                        <span style={{ marginLeft: 6, opacity: 0.7 }}>
-                                            ({projects.filter(p => {
-                                                const s = (p.status1 || p.dealStage || '').toLowerCase();
-                                                if (status === 'active') return s.includes('active') || s.includes('deal agreed');
-                                                if (status === 'pipeline') return s.includes('pipeline') || s.includes('brief') || s.includes('pitch');
-                                                if (status === 'archive') return s.includes('complete') || s.includes('cancelled');
-                                                return false;
-                                            }).length})
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Projects grouped by client */}
                             {clients.length > 0 ? (
-                                clients.map(client => (
-                                    <div key={client} className="file-section" style={{ marginBottom: 20 }}>
-                                        <div className="file-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div className="folder-grid">
+                                    {clients.map(client => (
+                                        <div key={client}
+                                             className="folder-card"
+                                             onClick={() => setCurrentPath([...currentPath, { type: 'client', id: client, name: client }])}
+                                             style={{ cursor: 'pointer' }}>
                                             {Icons.folder}
-                                            {client}
-                                            <span style={{ fontWeight: 400, opacity: 0.6 }}>({groupedByClient[client].length})</span>
+                                            <div className="folder-name">{client}</div>
+                                            <div className="folder-meta">{groupedByClient[client].length} project{groupedByClient[client].length !== 1 ? 's' : ''}</div>
                                         </div>
-                                        <div className="folder-grid">
-                                            {groupedByClient[client].map(p => (
-                                                <div key={p.id} className="folder-card project"
-                                                     onClick={() => {
-                                                         navigateTo('client', p.client, p.client);
-                                                         setTimeout(() => navigateTo('project', p.id, p.title), 0);
-                                                     }}>
-                                                    {Icons.folder}
-                                                    <div className="folder-name">{p.title}</div>
-                                                    <div className="folder-meta">{p.dealStage || p.status1 || 'No status'}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))
+                                    ))}
+                                </div>
                             ) : (
                                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-muted)' }}>
-                                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>No {statusFilter} projects</div>
+                                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>No {currentStatus.name.toLowerCase()} projects</div>
                                     <div style={{ fontSize: 12 }}>Projects will appear here based on their status in Notion</div>
                                 </div>
                             )}
@@ -2481,23 +2520,30 @@
                     );
                 }
 
-                // Client level - show projects
-                const currentClient = currentPath.find(p => p.type === 'client');
-                const currentProject = currentPath.find(p => p.type === 'project');
-
+                // ═══════════════════════════════════════════════════════════════
+                // LEVEL 2: CLIENT - Show projects for this client within status
+                // ═══════════════════════════════════════════════════════════════
                 if (currentClient && !currentProject) {
-                    const clientProjects = projects.filter(p => p.client === currentClient.name);
+                    // Filter by both status and client
+                    const clientProjects = getProjectsByCategory(currentStatus?.id || 'active')
+                        .filter(p => p.client === currentClient.name);
 
                     return (
                         <div className="folder-grid">
-                            {clientProjects.map(p => (
-                                <div key={p.id} className="folder-card project"
-                                     onClick={() => navigateTo('project', p.id, p.title)}>
-                                    {Icons.folder}
-                                    <div className="folder-name">{p.title}</div>
-                                    <div className="folder-meta">{p.dealStage || 'No status'}</div>
+                            {clientProjects.length > 0 ? (
+                                clientProjects.map(p => (
+                                    <div key={p.id} className="folder-card project"
+                                         onClick={() => setCurrentPath([...currentPath, { type: 'project', id: p.id, name: p.title }])}>
+                                        {Icons.folder}
+                                        <div className="folder-name">{p.title}</div>
+                                        <div className="folder-meta">{p.dealStage || p.status1 || 'No status'}</div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-muted)' }}>
+                                    <div style={{ fontSize: 14 }}>No projects for this client</div>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     );
                 }
@@ -3396,14 +3442,16 @@
                 const grouped = groupProjectsByClient();
 
                 // Count projects by status
-                const countByStatus = (status) => {
-                    return projects.filter(p => {
-                        const s = (p.status1 || p.dealStage || '').toLowerCase();
-                        if (status === 'active') return s.includes('active') || s.includes('deal agreed') || s.includes('in progress');
-                        if (status === 'pipeline') return s.includes('pipeline') || s.includes('brief') || s.includes('pitch');
-                        if (status === 'archive') return s.includes('complete') || s.includes('cancelled') || s.includes('lost');
-                        return false;
-                    }).length;
+                // Helper to check if a status is currently active in path
+                const isStatusActive = (status) => {
+                    const statusInPath = currentPath.find(p => p.type === 'status');
+                    return statusInPath?.id === status;
+                };
+
+                // Navigate to status folder
+                const goToStatus = (status, label) => {
+                    setSearchQuery('');
+                    setCurrentPath([{ type: 'status', id: status, name: label }]);
                 };
 
                 return (
@@ -3426,23 +3474,23 @@
                         <div className="sidebar-nav">
                             <div className="nav-section">
                                 <div className="nav-section-title">Projects</div>
-                                <div className={`nav-item ${currentPath.length === 0 && statusFilter === 'active' ? 'active' : ''}`}
-                                     onClick={() => { setSearchQuery(''); setStatusFilter('active'); navigateTo('root'); }}>
+                                <div className={`nav-item ${isStatusActive('active') ? 'active' : ''}`}
+                                     onClick={() => goToStatus('active', 'Active')}>
                                     {Icons.star}
                                     Active
-                                    <span className="count">{countByStatus('active')}</span>
+                                    <span className="count">{getProjectsByCategory('active').length}</span>
                                 </div>
-                                <div className={`nav-item ${currentPath.length === 0 && statusFilter === 'pipeline' ? 'active' : ''}`}
-                                     onClick={() => { setSearchQuery(''); setStatusFilter('pipeline'); navigateTo('root'); }}>
+                                <div className={`nav-item ${isStatusActive('pipeline') ? 'active' : ''}`}
+                                     onClick={() => goToStatus('pipeline', 'Pipeline')}>
                                     {Icons.clock}
                                     Pipeline
-                                    <span className="count">{countByStatus('pipeline')}</span>
+                                    <span className="count">{getProjectsByCategory('pipeline').length}</span>
                                 </div>
-                                <div className={`nav-item ${currentPath.length === 0 && statusFilter === 'archive' ? 'active' : ''}`}
-                                     onClick={() => { setSearchQuery(''); setStatusFilter('archive'); navigateTo('root'); }}>
+                                <div className={`nav-item ${isStatusActive('archive') ? 'active' : ''}`}
+                                     onClick={() => goToStatus('archive', 'Archive')}>
                                     {Icons.folder}
                                     Archive
-                                    <span className="count">{countByStatus('archive')}</span>
+                                    <span className="count">{getProjectsByCategory('archive').length}</span>
                                 </div>
                             </div>
 
@@ -3450,8 +3498,15 @@
                                 <div className="nav-section-title">Clients</div>
                                 {Object.keys(grouped).sort().slice(0, 12).map(client => (
                                     <div key={client}
-                                         className={`nav-item ${currentPath[0]?.name === client ? 'active' : ''}`}
-                                         onClick={() => { setSearchQuery(''); navigateTo('client', client, client); }}>
+                                         className={`nav-item ${currentPath.find(p => p.type === 'client')?.name === client ? 'active' : ''}`}
+                                         onClick={() => {
+                                             setSearchQuery('');
+                                             // Navigate to Active > Client by default
+                                             setCurrentPath([
+                                                 { type: 'status', id: 'active', name: 'Active' },
+                                                 { type: 'client', id: client, name: client }
+                                             ]);
+                                         }}>
                                         {Icons.folder}
                                         {client}
                                         <span className="count">{grouped[client].length}</span>
