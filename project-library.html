@@ -1595,6 +1595,10 @@
             const [frameioAssets, setFrameioAssets] = React.useState([]); // Assets for current project
             const [frameioLoading, setFrameioLoading] = React.useState(false);
             const [frameioProjects, setFrameioProjects] = React.useState([]); // Frame.io projects list
+            // Daily Rundown integration
+            const [rundownItems, setRundownItems] = React.useState([]);
+            // Move/Rename/Delete state
+            const [selectedFile, setSelectedFile] = React.useState(null); // For rename/move/delete operations
             const [dateFilter, setDateFilter] = React.useState({ from: '', to: '' });
             const [activeFileMenu, setActiveFileMenu] = React.useState(null); // File ID for context menu
             const [largeFileWarning, setLargeFileWarning] = React.useState(null); // {file, onContinue, onLink}
@@ -1604,6 +1608,47 @@
             const showToast = (message, type = '') => {
                 setToast({ show: true, message, type });
                 setTimeout(() => setToast({ show: false, message: '', type: '' }), 3000);
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // PROJECT CATEGORIZATION - determines Active/Pipeline/Archive
+            // Checks BOTH status1 AND dealStage, prioritizes archive conditions
+            // ─────────────────────────────────────────────────────────────────────
+            const getProjectCategory = (project) => {
+                const status1 = (project.status1 || '').toLowerCase();
+                const dealStage = (project.dealStage || '').toLowerCase();
+                const combined = `${status1} ${dealStage}`;
+
+                // Archive conditions checked FIRST (most specific)
+                if (combined.includes('complete') ||
+                    combined.includes('cancelled') ||
+                    combined.includes('lost') ||
+                    combined.includes('on hold')) {
+                    return 'archive';
+                }
+
+                // Active conditions
+                if (status1.includes('active') ||
+                    combined.includes('deal agreed') ||
+                    combined.includes('in progress') ||
+                    combined.includes('in production')) {
+                    return 'active';
+                }
+
+                // Pipeline conditions
+                if (combined.includes('pipeline') ||
+                    combined.includes('brief') ||
+                    combined.includes('pitch') ||
+                    combined.includes('proposal')) {
+                    return 'pipeline';
+                }
+
+                // Default to pipeline if uncategorized
+                return 'pipeline';
+            };
+
+            const getProjectsByCategory = (category) => {
+                return projects.filter(p => getProjectCategory(p) === category);
             };
 
             // ─────────────────────────────────────────────────────────────────────
@@ -1623,6 +1668,7 @@
                         client: p.client || 'Unknown Client',
                         status1: p.status1 || null,
                         dealStage: p.dealStage || null,
+                        vertical: p.vertical || null,
                         team: p.team || [],
                         creativeLead: p.creativeLead || null,
                         salesLead: p.salesLead || null,
@@ -1637,6 +1683,19 @@
                 } catch (err) {
                     console.error('Failed to fetch projects:', err);
                     showToast('Failed to load projects', 'error');
+                }
+            };
+
+            // Fetch today's Daily Rundown items
+            const fetchRundown = async () => {
+                try {
+                    const today = new Date().toISOString().split('T')[0];
+                    const res = await fetch(`${CONFIG.API_URL}/rundown?date=${today}`);
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    setRundownItems(data.items || []);
+                } catch (err) {
+                    console.log('Rundown fetch skipped:', err.message);
                 }
             };
 
@@ -1670,7 +1729,7 @@
             React.useEffect(() => {
                 const loadData = async () => {
                     setLoading(true);
-                    await Promise.all([fetchProjects(), fetchFiles()]);
+                    await Promise.all([fetchProjects(), fetchFiles(), fetchRundown()]);
                     // Initialize Frame.io
                     const hasFrameio = await FrameIO.init();
                     setFrameioEnabled(hasFrameio);
@@ -1816,12 +1875,74 @@
 
             // Upload to Firebase Storage
             // ─────────────────────────────────────────────────────────────────────
-            // FOLDER CREATION
+            // FOLDER CREATION - Context-aware
             // ─────────────────────────────────────────────────────────────────────
-            const createFolder = async (folderName) => {
+
+            // Determine what type of folder can be created at current location
+            const getCreateOptions = () => {
+                const statusPath = currentPath.find(p => p.type === 'status');
+                const clientPath = currentPath.find(p => p.type === 'client');
+                const projectPath = currentPath.find(p => p.type === 'project');
+                const deliverablePath = currentPath.find(p => p.type === 'deliverable');
+                const subfolderPath = currentPath.find(p => p.type === 'subfolder');
+
+                // At root or status level - can't create
+                if (!clientPath) {
+                    return { canCreate: false, message: 'Navigate to a client folder to create items' };
+                }
+
+                // At client level - can create Project
+                if (clientPath && !projectPath) {
+                    return {
+                        canCreate: true,
+                        level: 'client',
+                        options: [
+                            { id: 'project', label: 'New Project', description: 'Creates a new project in Notion Master Ledger', icon: '📁', syncsToNotion: true }
+                        ]
+                    };
+                }
+
+                // At project level - can create Deliverable or Filing folder
+                if (projectPath && !deliverablePath) {
+                    return {
+                        canCreate: true,
+                        level: 'project',
+                        options: [
+                            { id: 'deliverable', label: 'New Deliverable/Episode', description: 'Creates in Notion with PARENT ITEM link to project', icon: '📄', syncsToNotion: true },
+                            { id: 'filing', label: 'Filing Folder', description: 'Local organization only (does not sync to Notion)', icon: '📂', syncsToNotion: false }
+                        ]
+                    };
+                }
+
+                // At deliverable level - can create Task or Filing folder
+                if (deliverablePath && !subfolderPath) {
+                    return {
+                        canCreate: true,
+                        level: 'deliverable',
+                        options: [
+                            { id: 'task', label: 'New Task', description: 'Creates Layer 3 task in Notion (Edit, Thumbnail, etc.)', icon: '✅', syncsToNotion: true },
+                            { id: 'filing', label: 'Filing Folder', description: 'Local organization only', icon: '📂', syncsToNotion: false }
+                        ]
+                    };
+                }
+
+                // At subfolder level - can only create filing folders
+                return {
+                    canCreate: true,
+                    level: 'subfolder',
+                    options: [
+                        { id: 'filing', label: 'Filing Folder', description: 'Local organization only', icon: '📂', syncsToNotion: false }
+                    ]
+                };
+            };
+
+            // Create folder/item based on type
+            const createFolder = async (folderName, folderType = 'filing') => {
                 const currentLocation = getCurrentLocation();
-                if (!currentLocation.projectId) {
-                    showToast('Navigate to a project to create folders', 'error');
+                const createOptions = getCreateOptions();
+
+                if (!createOptions.canCreate) {
+                    showToast(createOptions.message, 'error');
                     return;
                 }
 
@@ -1829,10 +1950,118 @@
                     const timestamp = Date.now();
                     const user = getCurrentUser();
 
+                    // ═══════════════════════════════════════════════════════════════
+                    // CREATE PROJECT (at client level)
+                    // ═══════════════════════════════════════════════════════════════
+                    if (folderType === 'project') {
+                        const clientName = currentPath.find(p => p.type === 'client')?.name;
+                        const res = await fetch(`${CONFIG.API_URL}/projects`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: folderName,
+                                client: clientName,
+                                dealStage: 'Pipeline'  // Default to Pipeline
+                            })
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.error || 'Failed to create project');
+
+                        await logActivity({
+                            type: 'project_create',
+                            action: 'created project',
+                            projectName: folderName,
+                            clientName
+                        });
+
+                        showToast(`Project "${folderName}" created in Notion`, 'success');
+                        await fetchProjects();
+                        setShowModal(null);
+                        setModalData(null);
+                        return;
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // CREATE DELIVERABLE (at project level)
+                    // ═══════════════════════════════════════════════════════════════
+                    if (folderType === 'deliverable') {
+                        const projectId = currentPath.find(p => p.type === 'project')?.id;
+                        // Create in Notion with PARENT ITEM relation
+                        const res = await fetch(`${CONFIG.API_URL}/projects`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: folderName,
+                                parentItemId: projectId,  // Links via PARENT ITEM relation
+                                status: 'Not started'
+                            })
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.error || 'Failed to create deliverable');
+
+                        await logActivity({
+                            type: 'deliverable_create',
+                            action: 'created deliverable',
+                            deliverableName: folderName,
+                            ...currentLocation
+                        });
+
+                        showToast(`Deliverable "${folderName}" created in Notion`, 'success');
+                        await fetchProjects();
+                        setShowModal(null);
+                        setModalData(null);
+                        return;
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // CREATE TASK (at deliverable level)
+                    // ═══════════════════════════════════════════════════════════════
+                    if (folderType === 'task') {
+                        const deliverableId = currentPath.find(p => p.type === 'deliverable')?.id;
+                        // Determine discipline from name
+                        let discipline = 'Editor';
+                        const nameLower = folderName.toLowerCase();
+                        if (nameLower.includes('thumbnail') || nameLower.includes('graphic') || nameLower.includes('design')) {
+                            discipline = 'Design';
+                        } else if (nameLower.includes('social') || nameLower.includes('post')) {
+                            discipline = 'Social';
+                        }
+
+                        const res = await fetch(`${CONFIG.API_URL}/projects`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: folderName,
+                                parentItemId: deliverableId,
+                                discipline: discipline,
+                                status: 'Not started'
+                            })
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.error || 'Failed to create task');
+
+                        await logActivity({
+                            type: 'task_create',
+                            action: 'created task',
+                            taskName: folderName,
+                            ...currentLocation
+                        });
+
+                        showToast(`Task "${folderName}" created in Notion`, 'success');
+                        await fetchProjects();
+                        setShowModal(null);
+                        setModalData(null);
+                        return;
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // CREATE FILING FOLDER (local only - Firebase)
+                    // ═══════════════════════════════════════════════════════════════
                     const folderDoc = {
                         name: folderName,
                         type: 'folder',
                         isFolder: true,
+                        isLocalOnly: true,  // Does NOT sync to Notion
                         clientName: currentLocation.clientName,
                         projectId: currentLocation.projectId,
                         projectName: currentLocation.projectName,
@@ -2189,14 +2418,20 @@
             const navigateTo = (type, id, name) => {
                 if (type === 'root') {
                     setCurrentPath([]);
+                } else if (type === 'status') {
+                    setCurrentPath([{ type: 'status', id, name }]);
                 } else if (type === 'client') {
-                    setCurrentPath([{ type: 'client', id: name, name }]);
+                    // Preserve status level, add client
+                    const statusPath = currentPath.find(p => p.type === 'status');
+                    setCurrentPath([statusPath, { type: 'client', id: name, name }].filter(Boolean));
                 } else if (type === 'project') {
+                    // Preserve status and client levels, add project
+                    const statusPath = currentPath.find(p => p.type === 'status');
                     const clientPath = currentPath.find(p => p.type === 'client');
-                    setCurrentPath([clientPath, { type: 'project', id, name }].filter(Boolean));
+                    setCurrentPath([statusPath, clientPath, { type: 'project', id, name }].filter(Boolean));
                 } else if (type === 'deliverable') {
-                    // Keep client and project, add deliverable
-                    const filtered = currentPath.filter(p => p.type === 'client' || p.type === 'project');
+                    // Keep status, client and project, add deliverable
+                    const filtered = currentPath.filter(p => p.type === 'status' || p.type === 'client' || p.type === 'project');
                     setCurrentPath([...filtered, { type: 'deliverable', id, name }]);
                 } else if (type === 'subfolder') {
                     // Keep everything up to deliverable, add subfolder
@@ -2384,96 +2619,134 @@
                     );
                 }
 
-                // Root level - show projects by status (Active/Pipeline/Archive)
+                // ═══════════════════════════════════════════════════════════════
+                // LEVEL 0: ROOT - Show three status folder icons (SharePoint style)
+                // ═══════════════════════════════════════════════════════════════
                 if (currentPath.length === 0) {
-                    // Filter projects by status
-                    const getStatusProjects = () => {
-                        return projects.filter(p => {
-                            const status = (p.status1 || p.dealStage || '').toLowerCase();
-                            if (statusFilter === 'active') {
-                                return status.includes('active') || status.includes('deal agreed') || status.includes('in progress');
-                            } else if (statusFilter === 'pipeline') {
-                                return status.includes('pipeline') || status.includes('brief') || status.includes('pitch');
-                            } else if (statusFilter === 'archive') {
-                                return status.includes('complete') || status.includes('cancelled') || status.includes('lost');
-                            }
-                            return true;
-                        });
-                    };
+                    const statusFolders = [
+                        {
+                            id: 'active',
+                            name: 'Active',
+                            icon: Icons.star,
+                            gradient: 'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)',
+                            iconColor: '#059669',
+                            hoverBorder: '#22C55E'
+                        },
+                        {
+                            id: 'pipeline',
+                            name: 'Pipeline',
+                            icon: Icons.clock,
+                            gradient: 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+                            iconColor: '#D97706',
+                            hoverBorder: '#F59E0B'
+                        },
+                        {
+                            id: 'archive',
+                            name: 'Archive',
+                            icon: Icons.folder,
+                            gradient: 'linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)',
+                            iconColor: '#6B7280',
+                            hoverBorder: '#9CA3AF'
+                        }
+                    ];
 
-                    const filteredProjects = getStatusProjects();
+                    return (
+                        <div style={{ padding: '40px 20px' }}>
+                            <div style={{ textAlign: 'center', marginBottom: 40 }}>
+                                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>Project Library</div>
+                                <div style={{ fontSize: 13, color: 'var(--ink-muted)' }}>Click a folder to browse projects by status</div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap' }}>
+                                {statusFolders.map(folder => {
+                                    const count = getProjectsByCategory(folder.id).length;
+                                    return (
+                                        <div key={folder.id}
+                                             className={`status-folder ${folder.id}`}
+                                             onClick={() => setCurrentPath([{ type: 'status', id: folder.id, name: folder.name }])}
+                                             style={{
+                                                 display: 'flex',
+                                                 flexDirection: 'column',
+                                                 alignItems: 'center',
+                                                 gap: 12,
+                                                 padding: '32px 24px',
+                                                 background: 'var(--white)',
+                                                 border: '2px solid var(--border)',
+                                                 borderRadius: 16,
+                                                 cursor: 'pointer',
+                                                 transition: 'all 0.2s',
+                                                 minWidth: 160
+                                             }}
+                                             onMouseEnter={(e) => {
+                                                 e.currentTarget.style.transform = 'translateY(-4px)';
+                                                 e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)';
+                                                 e.currentTarget.style.borderColor = folder.hoverBorder;
+                                             }}
+                                             onMouseLeave={(e) => {
+                                                 e.currentTarget.style.transform = 'translateY(0)';
+                                                 e.currentTarget.style.boxShadow = 'none';
+                                                 e.currentTarget.style.borderColor = 'var(--border)';
+                                             }}>
+                                            <div style={{
+                                                width: 64,
+                                                height: 64,
+                                                borderRadius: 16,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                background: folder.gradient,
+                                                color: folder.iconColor
+                                            }}>
+                                                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                                                    {folder.id === 'active' && <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>}
+                                                    {folder.id === 'pipeline' && <><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/><polyline points="12 6 12 12 16 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>}
+                                                    {folder.id === 'archive' && <path d="M10 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z"/>}
+                                                </svg>
+                                            </div>
+                                            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>{folder.name}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{count} project{count !== 1 ? 's' : ''}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // LEVEL 1: STATUS - Show clients grouped within this status
+                // ═══════════════════════════════════════════════════════════════
+                const currentStatus = currentPath.find(p => p.type === 'status');
+                const currentClient = currentPath.find(p => p.type === 'client');
+                const currentProject = currentPath.find(p => p.type === 'project');
+
+                if (currentStatus && !currentClient) {
+                    const statusProjects = getProjectsByCategory(currentStatus.id);
                     const groupedByClient = {};
-                    filteredProjects.forEach(p => {
-                        const client = p.client || 'Unknown';
+                    statusProjects.forEach(p => {
+                        const client = p.client || 'Unknown Client';
                         if (!groupedByClient[client]) groupedByClient[client] = [];
                         groupedByClient[client].push(p);
                     });
                     const clients = Object.keys(groupedByClient).sort();
 
-                    const statusLabels = {
-                        active: 'Active Projects',
-                        pipeline: 'Pipeline',
-                        archive: 'Archive'
-                    };
-
                     return (
                         <>
-                            {/* Status Tabs */}
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>
-                                {['active', 'pipeline', 'archive'].map(status => (
-                                    <button key={status}
-                                            onClick={() => setStatusFilter(status)}
-                                            style={{
-                                                padding: '8px 16px',
-                                                border: 'none',
-                                                borderRadius: 6,
-                                                fontSize: 13,
-                                                fontWeight: 600,
-                                                cursor: 'pointer',
-                                                background: statusFilter === status ? 'var(--dmg-blue)' : 'var(--surface)',
-                                                color: statusFilter === status ? 'white' : 'var(--ink-sub)'
-                                            }}>
-                                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                                        <span style={{ marginLeft: 6, opacity: 0.7 }}>
-                                            ({projects.filter(p => {
-                                                const s = (p.status1 || p.dealStage || '').toLowerCase();
-                                                if (status === 'active') return s.includes('active') || s.includes('deal agreed');
-                                                if (status === 'pipeline') return s.includes('pipeline') || s.includes('brief') || s.includes('pitch');
-                                                if (status === 'archive') return s.includes('complete') || s.includes('cancelled');
-                                                return false;
-                                            }).length})
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Projects grouped by client */}
                             {clients.length > 0 ? (
-                                clients.map(client => (
-                                    <div key={client} className="file-section" style={{ marginBottom: 20 }}>
-                                        <div className="file-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div className="folder-grid">
+                                    {clients.map(client => (
+                                        <div key={client}
+                                             className="folder-card"
+                                             onClick={() => setCurrentPath([...currentPath, { type: 'client', id: client, name: client }])}
+                                             style={{ cursor: 'pointer' }}>
                                             {Icons.folder}
-                                            {client}
-                                            <span style={{ fontWeight: 400, opacity: 0.6 }}>({groupedByClient[client].length})</span>
+                                            <div className="folder-name">{client}</div>
+                                            <div className="folder-meta">{groupedByClient[client].length} project{groupedByClient[client].length !== 1 ? 's' : ''}</div>
                                         </div>
-                                        <div className="folder-grid">
-                                            {groupedByClient[client].map(p => (
-                                                <div key={p.id} className="folder-card project"
-                                                     onClick={() => {
-                                                         navigateTo('client', p.client, p.client);
-                                                         setTimeout(() => navigateTo('project', p.id, p.title), 0);
-                                                     }}>
-                                                    {Icons.folder}
-                                                    <div className="folder-name">{p.title}</div>
-                                                    <div className="folder-meta">{p.dealStage || p.status1 || 'No status'}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))
+                                    ))}
+                                </div>
                             ) : (
                                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-muted)' }}>
-                                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>No {statusFilter} projects</div>
+                                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>No {currentStatus.name.toLowerCase()} projects</div>
                                     <div style={{ fontSize: 12 }}>Projects will appear here based on their status in Notion</div>
                                 </div>
                             )}
@@ -2481,23 +2754,30 @@
                     );
                 }
 
-                // Client level - show projects
-                const currentClient = currentPath.find(p => p.type === 'client');
-                const currentProject = currentPath.find(p => p.type === 'project');
-
+                // ═══════════════════════════════════════════════════════════════
+                // LEVEL 2: CLIENT - Show projects for this client within status
+                // ═══════════════════════════════════════════════════════════════
                 if (currentClient && !currentProject) {
-                    const clientProjects = projects.filter(p => p.client === currentClient.name);
+                    // Filter by both status and client
+                    const clientProjects = getProjectsByCategory(currentStatus?.id || 'active')
+                        .filter(p => p.client === currentClient.name);
 
                     return (
                         <div className="folder-grid">
-                            {clientProjects.map(p => (
-                                <div key={p.id} className="folder-card project"
-                                     onClick={() => navigateTo('project', p.id, p.title)}>
-                                    {Icons.folder}
-                                    <div className="folder-name">{p.title}</div>
-                                    <div className="folder-meta">{p.dealStage || 'No status'}</div>
+                            {clientProjects.length > 0 ? (
+                                clientProjects.map(p => (
+                                    <div key={p.id} className="folder-card project"
+                                         onClick={() => setCurrentPath([...currentPath, { type: 'project', id: p.id, name: p.title }])}>
+                                        {Icons.folder}
+                                        <div className="folder-name">{p.title}</div>
+                                        <div className="folder-meta">{p.dealStage || p.status1 || 'No status'}</div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-muted)' }}>
+                                    <div style={{ fontSize: 14 }}>No projects for this client</div>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     );
                 }
@@ -3314,50 +3594,467 @@
                                 </>
                             )}
 
-                            {showModal === 'newFolder' && (
+                            {showModal === 'newFolder' && (() => {
+                                const createOptions = getCreateOptions();
+                                // Use modalData to store selected type
+                                const selectedType = modalData?.selectedType || createOptions.options?.[0]?.id || 'filing';
+                                const setSelectedType = (type) => setModalData({ ...modalData, selectedType: type });
+
+                                return (
+                                    <>
+                                        <div className="modal-header">
+                                            <span>Create New Item</span>
+                                            <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                        </div>
+                                        <div className="modal-body">
+                                            {!createOptions.canCreate ? (
+                                                <div style={{ padding: 20, textAlign: 'center', color: 'var(--ink-muted)' }}>
+                                                    {createOptions.message}
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {/* Type Selection */}
+                                                    {createOptions.options.length > 1 && (
+                                                        <div className="form-group">
+                                                            <label className="form-label">What would you like to create?</label>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                                {createOptions.options.map(opt => (
+                                                                    <label key={opt.id}
+                                                                           style={{
+                                                                               display: 'flex',
+                                                                               alignItems: 'flex-start',
+                                                                               gap: 12,
+                                                                               padding: 12,
+                                                                               background: selectedType === opt.id ? '#EFF6FF' : '#F9FAFB',
+                                                                               border: selectedType === opt.id ? '2px solid var(--dmg-blue)' : '1px solid #E5E7EB',
+                                                                               borderRadius: 8,
+                                                                               cursor: 'pointer',
+                                                                               transition: 'all 0.15s'
+                                                                           }}
+                                                                           onClick={() => setSelectedType(opt.id)}>
+                                                                        <input type="radio" name="folderType" checked={selectedType === opt.id} onChange={() => setSelectedType(opt.id)}
+                                                                               style={{ marginTop: 2 }} />
+                                                                        <div>
+                                                                            <div style={{ fontWeight: 600, fontSize: 13 }}>
+                                                                                <span style={{ marginRight: 6 }}>{opt.icon}</span>
+                                                                                {opt.label}
+                                                                                {opt.syncsToNotion && (
+                                                                                    <span style={{ marginLeft: 8, fontSize: 10, background: '#DBEAFE', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4 }}>
+                                                                                        Syncs to Notion
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{opt.description}</div>
+                                                                        </div>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Name Input */}
+                                                    <div className="form-group" style={{ marginTop: createOptions.options.length > 1 ? 16 : 0 }}>
+                                                        <label className="form-label">
+                                                            {selectedType === 'project' ? 'Project Name' :
+                                                             selectedType === 'deliverable' ? 'Deliverable/Episode Name' :
+                                                             selectedType === 'task' ? 'Task Name' : 'Folder Name'}
+                                                        </label>
+                                                        <input type="text" className="form-input" id="newFolderName"
+                                                               placeholder={
+                                                                   selectedType === 'project' ? 'e.g. Brand Campaign Q1' :
+                                                                   selectedType === 'deliverable' ? 'e.g. Episode 1, Hero Video' :
+                                                                   selectedType === 'task' ? 'e.g. Edit, Thumbnail, Social Cut' :
+                                                                   'e.g. Drafts, Client Feedback'
+                                                               }
+                                                               autoFocus
+                                                               onKeyDown={(e) => {
+                                                                   if (e.key === 'Enter') {
+                                                                       const name = e.target.value.trim();
+                                                                       if (name) createFolder(name, selectedType);
+                                                                   }
+                                                               }} />
+                                                    </div>
+
+                                                    {/* Quick Suggestions for filing folders */}
+                                                    {selectedType === 'filing' && (
+                                                        <div style={{ marginTop: 12, padding: 12, background: '#F3F4F6', borderRadius: 8, fontSize: 12, color: '#6B7280' }}>
+                                                            <strong style={{ color: '#374151' }}>Quick Suggestions:</strong>
+                                                            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                                                                {['Drafts', 'Finals', 'Client Feedback', 'Assets', 'References', 'Archive'].map(suggestion => (
+                                                                    <button key={suggestion}
+                                                                            onClick={() => { document.getElementById('newFolderName').value = suggestion; }}
+                                                                            style={{
+                                                                                padding: '4px 10px',
+                                                                                background: 'white',
+                                                                                border: '1px solid #E5E7EB',
+                                                                                borderRadius: 4,
+                                                                                fontSize: 11,
+                                                                                cursor: 'pointer'
+                                                                            }}>
+                                                                        {suggestion}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Task suggestions */}
+                                                    {selectedType === 'task' && (
+                                                        <div style={{ marginTop: 12, padding: 12, background: '#F3F4F6', borderRadius: 8, fontSize: 12, color: '#6B7280' }}>
+                                                            <strong style={{ color: '#374151' }}>Common Tasks:</strong>
+                                                            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                                                                {['Edit', 'Thumbnail', 'Social Cut', 'Graphics', 'Script', 'Review'].map(suggestion => (
+                                                                    <button key={suggestion}
+                                                                            onClick={() => { document.getElementById('newFolderName').value = suggestion; }}
+                                                                            style={{
+                                                                                padding: '4px 10px',
+                                                                                background: 'white',
+                                                                                border: '1px solid #E5E7EB',
+                                                                                borderRadius: 4,
+                                                                                fontSize: 11,
+                                                                                cursor: 'pointer'
+                                                                            }}>
+                                                                        {suggestion}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                        <div className="modal-footer">
+                                            <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
+                                            {createOptions.canCreate && (
+                                                <button className="btn btn-primary" onClick={() => {
+                                                    const name = document.getElementById('newFolderName').value.trim();
+                                                    if (name) createFolder(name, selectedType);
+                                                }}>
+                                                    {selectedType === 'project' ? 'Create Project' :
+                                                     selectedType === 'deliverable' ? 'Create Deliverable' :
+                                                     selectedType === 'task' ? 'Create Task' : 'Create Folder'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                            })()}
+
+                            {/* ═══════════════════════════════════════════════════════════
+                                RENAME FILE/FOLDER MODAL
+                            ═══════════════════════════════════════════════════════════ */}
+                            {showModal === 'rename' && modalData && (
                                 <>
                                     <div className="modal-header">
-                                        <span>Create New Folder</span>
+                                        <span>Rename {modalData.isFolder ? 'Folder' : 'File'}</span>
                                         <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
                                     </div>
                                     <div className="modal-body">
                                         <div className="form-group">
-                                            <label className="form-label">Folder Name</label>
-                                            <input type="text" className="form-input" id="newFolderName" placeholder="e.g. Drafts, Client Feedback, Finals" autoFocus
-                                                   onKeyDown={(e) => { if (e.key === 'Enter') createFolder(e.target.value); }} />
-                                        </div>
-                                        <div style={{ marginTop: 12, padding: 12, background: '#F3F4F6', borderRadius: 8, fontSize: 12, color: '#6B7280' }}>
-                                            <strong style={{ color: '#374151' }}>Quick Suggestions:</strong>
-                                            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                                                {['Drafts', 'Finals', 'Client Feedback', 'Assets', 'References', 'Archive'].map(suggestion => (
-                                                    <button key={suggestion}
-                                                            onClick={() => { document.getElementById('newFolderName').value = suggestion; }}
-                                                            style={{
-                                                                padding: '4px 10px',
-                                                                background: 'white',
-                                                                border: '1px solid #E5E7EB',
-                                                                borderRadius: 4,
-                                                                fontSize: 11,
-                                                                cursor: 'pointer'
-                                                            }}>
-                                                        {suggestion}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                            <label className="form-label">New Name</label>
+                                            <input type="text" className="form-input" id="renameName"
+                                                   defaultValue={modalData.name}
+                                                   autoFocus
+                                                   onKeyDown={(e) => {
+                                                       if (e.key === 'Enter') {
+                                                           const newName = e.target.value.trim();
+                                                           if (newName && newName !== modalData.name) {
+                                                               renameItem(modalData.id, newName, modalData.isFolder);
+                                                           }
+                                                       }
+                                                   }} />
                                         </div>
                                     </div>
                                     <div className="modal-footer">
                                         <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
                                         <button className="btn btn-primary" onClick={() => {
-                                            const name = document.getElementById('newFolderName').value.trim();
-                                            if (name) createFolder(name);
-                                        }}>Create Folder</button>
+                                            const newName = document.getElementById('renameName').value.trim();
+                                            if (newName && newName !== modalData.name) {
+                                                renameItem(modalData.id, newName, modalData.isFolder);
+                                            }
+                                        }}>Rename</button>
                                     </div>
                                 </>
                             )}
+
+                            {/* ═══════════════════════════════════════════════════════════
+                                DELETE FILE/FOLDER MODAL
+                            ═══════════════════════════════════════════════════════════ */}
+                            {showModal === 'delete' && modalData && (
+                                <>
+                                    <div className="modal-header">
+                                        <span>Delete {modalData.isFolder ? 'Folder' : 'File'}</span>
+                                        <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                                            <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--danger)' }}>
+                                                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" strokeLinecap="round" strokeLinejoin="round"/>
+                                                </svg>
+                                            </div>
+                                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>
+                                                Are you sure you want to delete "{modalData.name}"?
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
+                                                {modalData.isNotionItem
+                                                    ? 'This will archive the item in Notion. It can be restored later.'
+                                                    : 'This action cannot be undone.'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
+                                        <button className="btn" style={{ background: 'var(--danger)', color: 'white', borderColor: 'var(--danger)' }}
+                                                onClick={() => deleteItem(modalData.id, modalData.isFolder, modalData.isNotionItem)}>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ═══════════════════════════════════════════════════════════
+                                MOVE FILE MODAL WITH FOLDER TREE PICKER
+                            ═══════════════════════════════════════════════════════════ */}
+                            {showModal === 'move' && modalData && (() => {
+                                // Use modalData to store move target state
+                                const moveTarget = modalData.moveTarget || null;
+                                const setMoveTarget = (target) => setModalData({ ...modalData, moveTarget: target });
+
+                                // Build folder tree from projects
+                                const buildFolderTree = () => {
+                                    const currentLocation = getCurrentLocation();
+                                    // Get projects in current status category or all active
+                                    const projectsToShow = getProjectsByCategory('active').slice(0, 20);
+
+                                    return projectsToShow.map(p => ({
+                                        id: p.id,
+                                        name: p.title,
+                                        type: 'project',
+                                        client: p.client,
+                                        // Add default subfolders
+                                        subfolders: [
+                                            { id: 'script', name: 'Script', type: 'subfolder' },
+                                            { id: 'production', name: 'Production', type: 'subfolder' },
+                                            { id: 'edits', name: 'Edits', type: 'subfolder' },
+                                            { id: 'graphics', name: 'Graphics', type: 'subfolder' }
+                                        ]
+                                    }));
+                                };
+
+                                const folderTree = buildFolderTree();
+                                const expandedProjects = modalData.expandedProjects || [];
+                                const setExpandedProjects = (fn) => {
+                                    const newExpanded = typeof fn === 'function' ? fn(expandedProjects) : fn;
+                                    setModalData({ ...modalData, expandedProjects: newExpanded });
+                                };
+
+                                const toggleExpand = (projectId) => {
+                                    setExpandedProjects(prev =>
+                                        prev.includes(projectId)
+                                            ? prev.filter(id => id !== projectId)
+                                            : [...prev, projectId]
+                                    );
+                                };
+
+                                return (
+                                    <>
+                                        <div className="modal-header">
+                                            <span>Move "{modalData.name}" to...</span>
+                                            <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                        </div>
+                                        <div className="modal-body" style={{ maxHeight: 400, overflow: 'auto' }}>
+                                            <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginBottom: 12 }}>
+                                                Select a destination folder:
+                                            </div>
+                                            {folderTree.map(project => (
+                                                <div key={project.id} style={{ marginBottom: 4 }}>
+                                                    <div
+                                                        onClick={() => toggleExpand(project.id)}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 8,
+                                                            padding: '8px 12px',
+                                                            background: moveTarget?.projectId === project.id && !moveTarget?.subfolder ? '#EFF6FF' : 'transparent',
+                                                            borderRadius: 6,
+                                                            cursor: 'pointer',
+                                                            fontSize: 13
+                                                        }}>
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                                             style={{ transform: expandedProjects.includes(project.id) ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.15s' }}>
+                                                            <polyline points="9 18 15 12 9 6"/>
+                                                        </svg>
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--success)">
+                                                            <path d="M10 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z"/>
+                                                        </svg>
+                                                        <span style={{ fontWeight: 500 }}>{project.name}</span>
+                                                        <span style={{ fontSize: 11, color: 'var(--ink-muted)' }}>({project.client})</span>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setMoveTarget({ projectId: project.id, projectName: project.name }); }}
+                                                            style={{
+                                                                marginLeft: 'auto',
+                                                                padding: '2px 8px',
+                                                                fontSize: 10,
+                                                                background: moveTarget?.projectId === project.id && !moveTarget?.subfolder ? 'var(--dmg-blue)' : 'var(--surface)',
+                                                                color: moveTarget?.projectId === project.id && !moveTarget?.subfolder ? 'white' : 'var(--ink-sub)',
+                                                                border: 'none',
+                                                                borderRadius: 4,
+                                                                cursor: 'pointer'
+                                                            }}>
+                                                            Select
+                                                        </button>
+                                                    </div>
+                                                    {expandedProjects.includes(project.id) && (
+                                                        <div style={{ marginLeft: 32, borderLeft: '1px solid var(--border)', paddingLeft: 12 }}>
+                                                            {project.subfolders.map(sf => (
+                                                                <div
+                                                                    key={sf.id}
+                                                                    onClick={() => setMoveTarget({ projectId: project.id, projectName: project.name, subfolder: sf.id, subfolderName: sf.name })}
+                                                                    style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 8,
+                                                                        padding: '6px 12px',
+                                                                        background: moveTarget?.subfolder === sf.id && moveTarget?.projectId === project.id ? '#EFF6FF' : 'transparent',
+                                                                        borderRadius: 6,
+                                                                        cursor: 'pointer',
+                                                                        fontSize: 12
+                                                                    }}>
+                                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--dmg-blue)">
+                                                                        <path d="M10 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z"/>
+                                                                    </svg>
+                                                                    <span>{sf.name}</span>
+                                                                    {moveTarget?.subfolder === sf.id && moveTarget?.projectId === project.id && (
+                                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--dmg-blue)" style={{ marginLeft: 'auto' }}>
+                                                                            <polyline points="20 6 9 17 4 12" fill="none" stroke="currentColor" strokeWidth="2"/>
+                                                                        </svg>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="modal-footer">
+                                            <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
+                                            <button className="btn btn-primary"
+                                                    disabled={!moveTarget}
+                                                    onClick={() => {
+                                                        if (moveTarget) {
+                                                            moveItem(modalData.id, moveTarget);
+                                                        }
+                                                    }}>
+                                                Move Here
+                                            </button>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 );
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // RENAME ITEM FUNCTION
+            // ─────────────────────────────────────────────────────────────────────
+            const renameItem = async (id, newName, isFolder) => {
+                try {
+                    // Update in Firebase
+                    await filesCollection.doc(id).update({ name: newName });
+                    await logActivity({
+                        type: 'rename',
+                        action: 'renamed',
+                        fileName: newName,
+                        ...getCurrentLocation()
+                    });
+                    showToast(`Renamed to "${newName}"`, 'success');
+                    await fetchFiles();
+                    setShowModal(null);
+                    setModalData(null);
+                } catch (err) {
+                    console.error('Rename error:', err);
+                    showToast('Failed to rename', 'error');
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // DELETE ITEM FUNCTION
+            // ─────────────────────────────────────────────────────────────────────
+            const deleteItem = async (id, isFolder, isNotionItem) => {
+                try {
+                    if (isNotionItem) {
+                        // Archive in Notion (soft delete)
+                        await fetch(`${CONFIG.API_URL}/projects/${id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ archived: true })
+                        });
+                        await fetchProjects();
+                    } else {
+                        // Delete from Firebase
+                        const fileDoc = await filesCollection.doc(id).get();
+                        if (fileDoc.exists) {
+                            const data = fileDoc.data();
+                            // Delete from storage if it has a path
+                            if (data.path) {
+                                try {
+                                    await firebase.storage().ref(data.path).delete();
+                                } catch (e) {
+                                    console.log('Storage delete skipped:', e.message);
+                                }
+                            }
+                        }
+                        await filesCollection.doc(id).delete();
+                        await fetchFiles();
+                    }
+
+                    await logActivity({
+                        type: 'delete',
+                        action: 'deleted',
+                        fileName: modalData?.name,
+                        ...getCurrentLocation()
+                    });
+
+                    showToast('Deleted successfully', 'success');
+                    setShowModal(null);
+                    setModalData(null);
+                } catch (err) {
+                    console.error('Delete error:', err);
+                    showToast('Failed to delete', 'error');
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // MOVE ITEM FUNCTION
+            // ─────────────────────────────────────────────────────────────────────
+            const moveItem = async (id, target) => {
+                try {
+                    await filesCollection.doc(id).update({
+                        projectId: target.projectId,
+                        projectName: target.projectName,
+                        subfolder: target.subfolder || null,
+                        subfolderName: target.subfolderName || null
+                    });
+
+                    await logActivity({
+                        type: 'move',
+                        action: 'moved',
+                        fileName: modalData?.name,
+                        projectId: target.projectId,
+                        projectName: target.projectName
+                    });
+
+                    showToast(`Moved to ${target.projectName}${target.subfolderName ? ' › ' + target.subfolderName : ''}`, 'success');
+                    await fetchFiles();
+                    setShowModal(null);
+                    setModalData(null);
+                } catch (err) {
+                    console.error('Move error:', err);
+                    showToast('Failed to move', 'error');
+                }
             };
 
             const renderActivityFeed = () => (
@@ -3396,14 +4093,16 @@
                 const grouped = groupProjectsByClient();
 
                 // Count projects by status
-                const countByStatus = (status) => {
-                    return projects.filter(p => {
-                        const s = (p.status1 || p.dealStage || '').toLowerCase();
-                        if (status === 'active') return s.includes('active') || s.includes('deal agreed') || s.includes('in progress');
-                        if (status === 'pipeline') return s.includes('pipeline') || s.includes('brief') || s.includes('pitch');
-                        if (status === 'archive') return s.includes('complete') || s.includes('cancelled') || s.includes('lost');
-                        return false;
-                    }).length;
+                // Helper to check if a status is currently active in path
+                const isStatusActive = (status) => {
+                    const statusInPath = currentPath.find(p => p.type === 'status');
+                    return statusInPath?.id === status;
+                };
+
+                // Navigate to status folder
+                const goToStatus = (status, label) => {
+                    setSearchQuery('');
+                    setCurrentPath([{ type: 'status', id: status, name: label }]);
                 };
 
                 return (
@@ -3426,23 +4125,23 @@
                         <div className="sidebar-nav">
                             <div className="nav-section">
                                 <div className="nav-section-title">Projects</div>
-                                <div className={`nav-item ${currentPath.length === 0 && statusFilter === 'active' ? 'active' : ''}`}
-                                     onClick={() => { setSearchQuery(''); setStatusFilter('active'); navigateTo('root'); }}>
+                                <div className={`nav-item ${isStatusActive('active') ? 'active' : ''}`}
+                                     onClick={() => goToStatus('active', 'Active')}>
                                     {Icons.star}
                                     Active
-                                    <span className="count">{countByStatus('active')}</span>
+                                    <span className="count">{getProjectsByCategory('active').length}</span>
                                 </div>
-                                <div className={`nav-item ${currentPath.length === 0 && statusFilter === 'pipeline' ? 'active' : ''}`}
-                                     onClick={() => { setSearchQuery(''); setStatusFilter('pipeline'); navigateTo('root'); }}>
+                                <div className={`nav-item ${isStatusActive('pipeline') ? 'active' : ''}`}
+                                     onClick={() => goToStatus('pipeline', 'Pipeline')}>
                                     {Icons.clock}
                                     Pipeline
-                                    <span className="count">{countByStatus('pipeline')}</span>
+                                    <span className="count">{getProjectsByCategory('pipeline').length}</span>
                                 </div>
-                                <div className={`nav-item ${currentPath.length === 0 && statusFilter === 'archive' ? 'active' : ''}`}
-                                     onClick={() => { setSearchQuery(''); setStatusFilter('archive'); navigateTo('root'); }}>
+                                <div className={`nav-item ${isStatusActive('archive') ? 'active' : ''}`}
+                                     onClick={() => goToStatus('archive', 'Archive')}>
                                     {Icons.folder}
                                     Archive
-                                    <span className="count">{countByStatus('archive')}</span>
+                                    <span className="count">{getProjectsByCategory('archive').length}</span>
                                 </div>
                             </div>
 
@@ -3450,8 +4149,15 @@
                                 <div className="nav-section-title">Clients</div>
                                 {Object.keys(grouped).sort().slice(0, 12).map(client => (
                                     <div key={client}
-                                         className={`nav-item ${currentPath[0]?.name === client ? 'active' : ''}`}
-                                         onClick={() => { setSearchQuery(''); navigateTo('client', client, client); }}>
+                                         className={`nav-item ${currentPath.find(p => p.type === 'client')?.name === client ? 'active' : ''}`}
+                                         onClick={() => {
+                                             setSearchQuery('');
+                                             // Navigate to Active > Client by default
+                                             setCurrentPath([
+                                                 { type: 'status', id: 'active', name: 'Active' },
+                                                 { type: 'client', id: client, name: client }
+                                             ]);
+                                         }}>
                                         {Icons.folder}
                                         {client}
                                         <span className="count">{grouped[client].length}</span>
@@ -3487,12 +4193,19 @@
                         <div className="main-header">
                             {renderBreadcrumb()}
                             <div className="header-actions">
+                                {/* Show New button at client level (to create projects) and below */}
+                                {(currentPath.find(p => p.type === 'client') || getCurrentLocation().projectId) && (
+                                    <button className="btn btn-secondary" onClick={() => { setModalData(null); setShowModal('newFolder'); }}>
+                                        {Icons.plus}
+                                        {currentPath.find(p => p.type === 'client') && !currentPath.find(p => p.type === 'project')
+                                            ? 'New Project'
+                                            : currentPath.find(p => p.type === 'project') && !currentPath.find(p => p.type === 'deliverable')
+                                                ? 'New'
+                                                : 'New Folder'}
+                                    </button>
+                                )}
                                 {getCurrentLocation().projectId && (
                                     <>
-                                        <button className="btn btn-secondary" onClick={() => setShowModal('newFolder')}>
-                                            {Icons.plus}
-                                            New Folder
-                                        </button>
                                         <button className="btn btn-secondary" onClick={() => setShowModal('addLink')}>
                                             {Icons.link}
                                             Add Link
