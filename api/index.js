@@ -13,7 +13,7 @@ const notion = new Client({ auth: process.env.NOTION_API_KEY });
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
 const COMMERCIAL_SNAPSHOT_DB = process.env.NOTION_COMMERCIAL_SNAPSHOT;
-const STAFF_DB = process.env.NOTION_STAFF_DB;
+const STAFF_DB = process.env.NOTION_STAFF_DIR_DB;
 
 // Slack API token (optional - for user lookup)
 const SLACK_TOKEN = process.env.SLACK_BOT_TOKEN;
@@ -992,7 +992,7 @@ app.get('/staff-directory', async (req, res) => {
         if (!STAFF_DB) {
             return res.status(400).json({
                 success: false,
-                error: 'Staff DB not configured. Add NOTION_STAFF_DB env variable.'
+                error: 'Staff DB not configured. Add NOTION_STAFF_DIR_DB env variable.'
             });
         }
 
