@@ -654,27 +654,29 @@ app.get('/deliverables', async (req, res) => {
 
 // ============================================
 // GET /deliverables/project/:projectId
-// Get deliverables linked to a specific project
+// Get sub-items (deliverables) linked to a specific project
+// Uses PROJECTS_DB with PARENT ITEM relation (Single Master Ledger)
 // ============================================
 app.get('/deliverables/project/:projectId', async (req, res) => {
     try {
-        if (!DELIVERABLES_DB) {
-            return res.status(400).json({ success: false, error: 'Deliverables DB not configured' });
+        if (!PROJECTS_DB) {
+            return res.status(400).json({ success: false, error: 'Projects DB not configured' });
         }
-        
+
         const { projectId } = req.params;
-        
+
+        // Query the Master Ledger for items where PARENT ITEM contains this project
         const response = await notion.databases.query({
-            database_id: DELIVERABLES_DB,
+            database_id: PROJECTS_DB,
             filter: {
-                property: 'CAMPAIGN',
+                property: 'PARENT ITEM',
                 relation: {
                     contains: projectId
                 }
             },
             sorts: [{ property: 'DUE DATE', direction: 'ascending' }]
         });
-        
+
         const deliverables = response.results.map(page => {
             const props = page.properties;
             return {
@@ -697,7 +699,7 @@ app.get('/deliverables/project/:projectId', async (req, res) => {
                 notes: parseProperty(props['NOTES'])
             };
         });
-        
+
         res.json({ success: true, deliverables, count: deliverables.length, projectId });
     } catch (error) {
         console.error('Error fetching project deliverables:', error);
