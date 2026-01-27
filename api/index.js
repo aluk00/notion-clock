@@ -669,6 +669,84 @@ app.post('/projects', async (req, res) => {
 });
 
 // ============================================
+// PATCH /projects/:id/status - Quick status update endpoint
+// Accepts raw Notion property names for direct updates
+// Used by the quick status action feature in Project Library
+// ============================================
+app.patch('/projects/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { properties, action, note } = req.body;
+
+        // Log for debugging
+        console.log(`PATCH /projects/${id}/status`);
+        console.log('Status action:', action);
+        console.log('Properties to update:', JSON.stringify(properties, null, 2));
+
+        if (!properties || Object.keys(properties).length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'No properties provided'
+            });
+        }
+
+        // Build Notion properties from raw property names
+        // Supports select, status, and text property types
+        const notionProperties = {};
+
+        for (const [key, value] of Object.entries(properties)) {
+            if (value === null) {
+                // Clear the property
+                notionProperties[key] = { select: null };
+            } else {
+                // Try to determine property type from the property name
+                // Status properties in Notion
+                const statusProps = ['PROJECT STATUS', 'CREATIVE WORKFLOW STATUS', 'PRODUCTION WORKFLOW STATUS', 'SOCIAL WORKFLOW STATUS'];
+
+                if (statusProps.includes(key.toUpperCase())) {
+                    // Check if it's a status or select field using the cache
+                    const propTypes = await getProjectPropertyTypes();
+                    const propType = propTypes[key];
+                    if (propType === 'status') {
+                        notionProperties[key] = { status: { name: value } };
+                    } else {
+                        notionProperties[key] = { select: { name: value } };
+                    }
+                } else {
+                    // Default to select for most status-like fields
+                    notionProperties[key] = { select: { name: value } };
+                }
+            }
+        }
+
+        console.log('Built Notion properties:', JSON.stringify(notionProperties, null, 2));
+
+        const response = await notion.pages.update({
+            page_id: id,
+            properties: notionProperties
+        });
+
+        console.log('Notion status update successful for page:', id);
+
+        res.json({
+            success: true,
+            message: 'Status updated',
+            action: action || 'status_change',
+            updatedProperties: Object.keys(properties)
+        });
+    } catch (error) {
+        console.error('Error updating project status:', error);
+        console.error('Project ID:', req.params.id);
+        console.error('Request body:', req.body);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            code: error.code || 'UNKNOWN'
+        });
+    }
+});
+
+// ============================================
 // GET /deliverables - List all deliverables
 // ============================================
 app.get('/deliverables', async (req, res) => {
@@ -1532,6 +1610,7 @@ app.get('/', (req, res) => {
             'GET /projects/:id',
             'GET /projects/:id/subitems',
             'PATCH /projects/:id',
+            'PATCH /projects/:id/status',
             'POST /projects',
             'GET /deliverables',
             'GET /deliverables/project/:projectId',

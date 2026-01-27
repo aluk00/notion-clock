@@ -379,6 +379,94 @@
             color: var(--ink-muted);
         }
 
+        /* Quick Status Button - Lightning Bolt */
+        .quick-status-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 6px;
+            background: var(--dmg-blue);
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.15s;
+            z-index: 10;
+        }
+        .folder-card:hover .quick-status-btn {
+            opacity: 1;
+        }
+        .quick-status-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(33, 160, 216, 0.4);
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-badge.clickable {
+            cursor: pointer;
+        }
+        .status-badge.clickable:hover {
+            filter: brightness(0.95);
+        }
+
+        /* Status Action Modal Styles */
+        .action-group {
+            margin-bottom: 16px;
+        }
+        .action-group-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #9CA3AF;
+            margin-bottom: 8px;
+        }
+        .action-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.1s;
+        }
+        .action-item:hover {
+            background: #F9FAFB;
+        }
+        .action-item.selected {
+            background: rgba(33, 160, 216, 0.1);
+            border-color: #21A0D8;
+        }
+        .action-item.suggested {
+            background: rgba(34, 197, 94, 0.05);
+        }
+        .suggested-tag {
+            margin-left: auto;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #22C55E;
+            color: white;
+        }
+
         /* File List */
         .file-section {
             margin-bottom: 20px;
@@ -1599,6 +1687,8 @@
             const [rundownItems, setRundownItems] = React.useState([]);
             // Move/Rename/Delete state
             const [selectedFile, setSelectedFile] = React.useState(null); // For rename/move/delete operations
+            // Status Action Modal state - Quick status update feature
+            const [statusModal, setStatusModal] = React.useState({ show: false, item: null, layer: 1 });
             const [dateFilter, setDateFilter] = React.useState({ from: '', to: '' });
             const [activeFileMenu, setActiveFileMenu] = React.useState(null); // File ID for context menu
             const [largeFileWarning, setLargeFileWarning] = React.useState(null); // {file, onContinue, onLink}
@@ -1652,6 +1742,301 @@
             };
 
             // ─────────────────────────────────────────────────────────────────────
+            // STATUS ACTION DEFINITIONS - Quick status update feature
+            // Maps human-readable events to correct Notion property updates
+            // ─────────────────────────────────────────────────────────────────────
+
+            const PROJECT_STATUS_ACTIONS = {
+                pipeline: [
+                    {
+                        id: 'brief_received',
+                        label: 'Brief just came in',
+                        icon: '📋',
+                        updates: {
+                            'DEAL STAGE': 'Brief Received',
+                            'STATUS 1': 'Pipeline',
+                            'PROJECT STATUS': 'Not started',
+                            'CREATIVE WORKFLOW STATUS': 'To Be Briefed',
+                            'PRODUCTION WORKFLOW STATUS': 'Not Started'
+                        }
+                    },
+                    {
+                        id: 'started_response',
+                        label: 'Started working on response',
+                        icon: '✏️',
+                        updates: {
+                            'DEAL STAGE': 'Brief Received',
+                            'STATUS 1': 'Pipeline',
+                            'PROJECT STATUS': 'In progress',
+                            'CREATIVE WORKFLOW STATUS': 'In Progress',
+                            'PRODUCTION WORKFLOW STATUS': 'Not Started'
+                        }
+                    },
+                    {
+                        id: 'sent_to_sales',
+                        label: 'Sent response to sales',
+                        icon: '📤',
+                        updates: {
+                            'DEAL STAGE': 'Brief Received',
+                            'STATUS 1': 'Pipeline',
+                            'PROJECT STATUS': 'In progress',
+                            'CREATIVE WORKFLOW STATUS': 'Sales Review',
+                            'PRODUCTION WORKFLOW STATUS': 'Not Started'
+                        }
+                    },
+                    {
+                        id: 'pitch_sent',
+                        label: 'Sales sent pitch to client',
+                        icon: '📧',
+                        updates: {
+                            'DEAL STAGE': 'Pitch Sent',
+                            'STATUS 1': 'Pipeline',
+                            'PROJECT STATUS': 'In progress',
+                            'CREATIVE WORKFLOW STATUS': 'Creative Response Sent',
+                            'PRODUCTION WORKFLOW STATUS': 'Not Started'
+                        }
+                    }
+                ],
+                active: [
+                    {
+                        id: 'deal_won',
+                        label: 'We won! (Deal agreed)',
+                        icon: '🎉',
+                        updates: {
+                            'DEAL STAGE': 'Deal Agreed',
+                            'STATUS 1': 'Active',
+                            'PROJECT STATUS': 'Not started',
+                            'CREATIVE WORKFLOW STATUS': 'To Be Briefed',
+                            'PRODUCTION WORKFLOW STATUS': 'Not Started'
+                        }
+                    },
+                    {
+                        id: 'kicked_off',
+                        label: 'Kicked off production',
+                        icon: '🎬',
+                        updates: {
+                            'DEAL STAGE': 'Deal Agreed',
+                            'STATUS 1': 'Active',
+                            'PROJECT STATUS': 'In progress',
+                            'CREATIVE WORKFLOW STATUS': 'In Progress',
+                            'PRODUCTION WORKFLOW STATUS': 'In Production'
+                        }
+                    },
+                    {
+                        id: 'internal_review',
+                        label: 'Ready for internal review',
+                        icon: '👀',
+                        updates: {
+                            'DEAL STAGE': 'Deal Agreed',
+                            'STATUS 1': 'Active',
+                            'PROJECT STATUS': 'In progress',
+                            'CREATIVE WORKFLOW STATUS': 'Internal Review',
+                            'PRODUCTION WORKFLOW STATUS': 'In Production'
+                        }
+                    },
+                    {
+                        id: 'sent_to_client',
+                        label: 'Sent to client for feedback',
+                        icon: '📨',
+                        updates: {
+                            'DEAL STAGE': 'Deal Agreed',
+                            'STATUS 1': 'Active',
+                            'PROJECT STATUS': 'In progress',
+                            'CREATIVE WORKFLOW STATUS': 'Client Feedback / Revisions',
+                            'PRODUCTION WORKFLOW STATUS': 'Stakeholder Review'
+                        }
+                    },
+                    {
+                        id: 'client_feedback',
+                        label: 'Client feedback received, making changes',
+                        icon: '🔄',
+                        updates: {
+                            'DEAL STAGE': 'Deal Agreed',
+                            'STATUS 1': 'Active',
+                            'PROJECT STATUS': 'In progress',
+                            'CREATIVE WORKFLOW STATUS': 'In Progress',
+                            'PRODUCTION WORKFLOW STATUS': 'In Production'
+                        }
+                    },
+                    {
+                        id: 'client_approved',
+                        label: 'Client approved',
+                        icon: '✅',
+                        updates: {
+                            'DEAL STAGE': 'Deal Agreed',
+                            'STATUS 1': 'Active',
+                            'PROJECT STATUS': 'In progress',
+                            'CREATIVE WORKFLOW STATUS': 'Complete',
+                            'PRODUCTION WORKFLOW STATUS': 'Scheduled / Ready to Post'
+                        }
+                    },
+                    {
+                        id: 'scheduled',
+                        label: 'Scheduled for go-live',
+                        icon: '📅',
+                        updates: {
+                            'DEAL STAGE': 'Deal Agreed',
+                            'STATUS 1': 'Active',
+                            'PROJECT STATUS': 'In progress',
+                            'CREATIVE WORKFLOW STATUS': 'Complete',
+                            'PRODUCTION WORKFLOW STATUS': 'Scheduled / Ready to Post'
+                        }
+                    },
+                    {
+                        id: 'live',
+                        label: "We're live!",
+                        icon: '🚀',
+                        updates: {
+                            'DEAL STAGE': 'Campaign Complete',
+                            'STATUS 1': 'Complete',
+                            'PROJECT STATUS': 'Completed',
+                            'CREATIVE WORKFLOW STATUS': 'Complete',
+                            'PRODUCTION WORKFLOW STATUS': 'Live'
+                        }
+                    }
+                ],
+                closed: [
+                    {
+                        id: 'lost',
+                        label: 'We lost this one',
+                        icon: '😔',
+                        updates: {
+                            'STATUS 1': 'Cancelled',
+                            'CREATIVE WORKFLOW STATUS': 'Complete'
+                        }
+                    },
+                    {
+                        id: 'cancelled',
+                        label: 'Project cancelled',
+                        icon: '🛑',
+                        updates: {
+                            'STATUS 1': 'Cancelled',
+                            'PROJECT STATUS': 'Completed',
+                            'CREATIVE WORKFLOW STATUS': 'Complete'
+                        }
+                    },
+                    {
+                        id: 'on_hold',
+                        label: 'Put on hold',
+                        icon: '⏸️',
+                        updates: {
+                            'STATUS 1': 'On Hold'
+                        }
+                    }
+                ]
+            };
+
+            const DELIVERABLE_STATUS_ACTIONS = {
+                planning: [
+                    { id: 'not_started', label: 'Not started', icon: '📝', updates: { 'STATUS': 'Not started' } },
+                    { id: 'briefed', label: 'Briefed / Assigned', icon: '📋', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'Briefed' } },
+                    { id: 'script_progress', label: 'Script in progress', icon: '✏️', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'Script' } },
+                    { id: 'script_approved', label: 'Script approved', icon: '✅', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'Script Approved' } }
+                ],
+                production: [
+                    { id: 'shoot_scheduled', label: 'Shoot scheduled', icon: '📅', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'Shoot Scheduled' } },
+                    { id: 'shooting', label: 'In production (shooting)', icon: '🎥', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'In Production' } },
+                    { id: 'in_edit', label: 'In edit', icon: '✂️', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'In Edit' } },
+                    { id: 'internal_review', label: 'Internal review', icon: '👀', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'Internal Review' } }
+                ],
+                delivery: [
+                    { id: 'sent_to_client', label: 'Sent to client', icon: '📨', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'Client Review' } },
+                    { id: 'client_revisions', label: 'Client revisions', icon: '🔄', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'Revisions' } },
+                    { id: 'approved', label: 'Client approved', icon: '✅', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'Approved' } },
+                    { id: 'scheduled', label: 'Scheduled', icon: '📅', updates: { 'STATUS': 'In progress', 'EDIT STATUS': 'Scheduled' } },
+                    { id: 'live', label: 'Live', icon: '🚀', updates: { 'STATUS': 'Complete', 'EDIT STATUS': 'Live' } }
+                ]
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // DERIVED STATUS DISPLAY - Show ONE status badge instead of 5 properties
+            // ─────────────────────────────────────────────────────────────────────
+
+            const getDisplayStatus = (item, layer = 1) => {
+                if (layer === 1) {
+                    const s1 = (item.status1 || '').toLowerCase();
+                    const cw = (item.creativeWorkflowStatus || item.creativeWorkflow || '').toLowerCase();
+                    const pw = (item.productionWorkflowStatus || item.productionWorkflow || '').toLowerCase();
+                    const ds = (item.dealStage || '').toLowerCase();
+
+                    if (s1.includes('complete') || ds.includes('campaign complete')) return { label: 'Complete', color: '#22C55E', icon: '✅' };
+                    if (s1.includes('cancelled')) return { label: 'Cancelled', color: '#6B7280', icon: '🛑' };
+                    if (s1.includes('hold')) return { label: 'On Hold', color: '#F59E0B', icon: '⏸️' };
+
+                    if (s1.includes('active')) {
+                        if (pw.includes('live')) return { label: 'Live', color: '#22C55E', icon: '🚀' };
+                        if (pw.includes('scheduled')) return { label: 'Ready to Post', color: '#06B6D4', icon: '📅' };
+                        if (cw.includes('client feedback') || cw.includes('revisions')) return { label: 'With Client', color: '#8B5CF6', icon: '📨' };
+                        if (cw.includes('internal review')) return { label: 'Internal Review', color: '#F59E0B', icon: '👀' };
+                        if (pw.includes('production')) return { label: 'In Production', color: '#21A0D8', icon: '🎬' };
+                        return { label: 'Active', color: '#22C55E', icon: '✅' };
+                    }
+
+                    if (s1.includes('pipeline')) {
+                        if (cw.includes('creative response sent')) return { label: 'Pitch Sent', color: '#8B5CF6', icon: '📧' };
+                        if (cw.includes('sales review')) return { label: 'With Sales', color: '#F59E0B', icon: '📤' };
+                        if (cw.includes('in progress')) return { label: 'Working on Response', color: '#21A0D8', icon: '✏️' };
+                        return { label: 'Brief Received', color: '#6B7280', icon: '📋' };
+                    }
+
+                    return { label: 'Unknown', color: '#9CA3AF', icon: '❓' };
+                } else {
+                    // Layer 2 - Deliverables
+                    const status = (item.status || '').toLowerCase();
+                    const editStatus = (item.editStatus || '').toLowerCase();
+
+                    if (status.includes('complete') || editStatus.includes('live')) return { label: 'Live', color: '#22C55E', icon: '🚀' };
+                    if (editStatus.includes('scheduled')) return { label: 'Scheduled', color: '#06B6D4', icon: '📅' };
+                    if (editStatus.includes('approved')) return { label: 'Approved', color: '#22C55E', icon: '✅' };
+                    if (editStatus.includes('revision')) return { label: 'Revisions', color: '#F59E0B', icon: '🔄' };
+                    if (editStatus.includes('client')) return { label: 'With Client', color: '#8B5CF6', icon: '📨' };
+                    if (editStatus.includes('internal')) return { label: 'Internal Review', color: '#F59E0B', icon: '👀' };
+                    if (editStatus.includes('edit')) return { label: 'In Edit', color: '#21A0D8', icon: '✂️' };
+                    if (editStatus.includes('production') || editStatus.includes('shoot')) return { label: 'In Production', color: '#21A0D8', icon: '🎥' };
+                    if (editStatus.includes('script')) return { label: 'Script', color: '#EC4899', icon: '✏️' };
+                    if (status.includes('not started')) return { label: 'Not Started', color: '#9CA3AF', icon: '📝' };
+
+                    return { label: 'In Progress', color: '#21A0D8', icon: '🔄' };
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // SMART SUGGESTIONS - Suggest likely next action based on current status
+            // ─────────────────────────────────────────────────────────────────────
+
+            const getSuggestedActions = (item, layer = 1) => {
+                const status = getDisplayStatus(item, layer);
+
+                if (layer === 1) {
+                    const map = {
+                        'Brief Received': ['started_response'],
+                        'Working on Response': ['sent_to_sales'],
+                        'With Sales': ['pitch_sent'],
+                        'Pitch Sent': ['deal_won', 'lost'],
+                        'Active': ['kicked_off'],
+                        'In Production': ['internal_review'],
+                        'Internal Review': ['sent_to_client'],
+                        'With Client': ['client_feedback', 'client_approved'],
+                        'Ready to Post': ['live']
+                    };
+                    return map[status.label] || [];
+                } else {
+                    const map = {
+                        'Not Started': ['briefed'],
+                        'Briefed': ['script_progress'],
+                        'Script': ['script_approved'],
+                        'In Production': ['in_edit'],
+                        'In Edit': ['internal_review'],
+                        'Internal Review': ['sent_to_client'],
+                        'With Client': ['approved'],
+                        'Approved': ['scheduled'],
+                        'Scheduled': ['live']
+                    };
+                    return map[status.label] || [];
+                }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
             // DATA FETCHING
             // ─────────────────────────────────────────────────────────────────────
 
@@ -1697,6 +2082,101 @@
                 } catch (err) {
                     console.log('Rundown fetch skipped:', err.message);
                 }
+            };
+
+            // ─────────────────────────────────────────────────────────────────────
+            // STATUS UPDATE - Quick status action handler
+            // ─────────────────────────────────────────────────────────────────────
+
+            const updateProjectStatus = async (item, action, note = null) => {
+                try {
+                    // Call the API to update Notion properties
+                    const res = await fetch(`${CONFIG.API_URL}/projects/${item.id}/status`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            properties: action.updates,
+                            action: action.label,
+                            note: note
+                        })
+                    });
+
+                    if (!res.ok) {
+                        const error = await res.json();
+                        throw new Error(error.error || 'Failed to update status');
+                    }
+
+                    // Log activity to Firebase
+                    await logStatusChange(item, action, note);
+
+                    // Refresh projects
+                    await fetchProjects();
+
+                    showToast(`Updated to "${action.label}"`, 'success');
+                    setStatusModal({ show: false, item: null, layer: 1 });
+                } catch (err) {
+                    console.error('Status update failed:', err);
+                    showToast('Failed to update status: ' + err.message, 'error');
+                }
+            };
+
+            // Log status change to Firebase activity feed
+            const logStatusChange = async (item, action, note = null) => {
+                try {
+                    const currentUser = getCurrentUser();
+                    const previousStatus = getDisplayStatus(item, statusModal.layer || 1);
+
+                    await activitiesCollection.add({
+                        type: 'status_change',
+                        action: action.label,
+                        actionId: action.id,
+                        itemId: item.id,
+                        itemTitle: item.title || item.name,
+                        itemType: (statusModal.layer || 1) === 1 ? 'project' : 'deliverable',
+                        projectId: item.projectId || item.id,
+                        projectName: item.projectName || item.title,
+                        previousStatus: previousStatus.label,
+                        newStatus: action.label,
+                        propertiesChanged: Object.keys(action.updates),
+                        note: note,
+                        user: {
+                            name: currentUser?.name || 'Unknown',
+                            initials: currentUser?.initials || '?'
+                        },
+                        timestamp: new Date().toISOString()
+                    });
+                } catch (err) {
+                    console.error('Failed to log status change:', err);
+                }
+            };
+
+            // Get current user from Firebase auth or local storage
+            const getCurrentUser = () => {
+                const auth = firebase.auth();
+                if (auth.currentUser) {
+                    return {
+                        name: auth.currentUser.displayName || auth.currentUser.email,
+                        initials: (auth.currentUser.displayName || auth.currentUser.email || 'U').substring(0, 2).toUpperCase()
+                    };
+                }
+                // Fallback to local storage or default
+                const stored = localStorage.getItem('dmg_user');
+                if (stored) {
+                    try {
+                        return JSON.parse(stored);
+                    } catch (e) {}
+                }
+                return { name: 'Unknown User', initials: 'U' };
+            };
+
+            // Open status modal for a project/deliverable
+            const openStatusModal = (item, layer = 1) => {
+                setStatusModal({ show: true, item, layer });
+            };
+
+            // Close status modal
+            const closeStatusModal = () => {
+                setStatusModal({ show: false, item: null, layer: 1 });
             };
 
             // Fetch files from Firebase
@@ -2512,8 +2992,13 @@
             // RENDER HELPERS
             // ─────────────────────────────────────────────────────────────────────
             const renderBreadcrumb = () => {
+                // Find if we're inside a project to show status badge
+                const projectPath = currentPath.find(p => p.type === 'project');
+                const project = projectPath ? projects.find(p => p.id === projectPath.id) : null;
+                const projectStatus = project ? getDisplayStatus(project, 1) : null;
+
                 return (
-                    <div className="breadcrumb">
+                    <div className="breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span className={`breadcrumb-item ${currentPath.length === 0 ? 'current' : ''}`}
                               onClick={() => navigateTo('root')}>
                             Projects
@@ -2527,6 +3012,43 @@
                                 </span>
                             </React.Fragment>
                         ))}
+                        {/* Clickable Status Badge when inside a project */}
+                        {project && projectStatus && (
+                            <span
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setModalData(null);
+                                    openStatusModal(project, 1);
+                                }}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '3px 10px',
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    background: `${projectStatus.color}15`,
+                                    color: projectStatus.color,
+                                    border: `1px solid ${projectStatus.color}30`,
+                                    marginLeft: 8,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = `${projectStatus.color}25`;
+                                    e.currentTarget.style.transform = 'scale(1.02)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = `${projectStatus.color}15`;
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                                title="Click to update status">
+                                <span>{projectStatus.icon}</span>
+                                <span>{projectStatus.label}</span>
+                                <span style={{ fontSize: 8, marginLeft: 2 }}>▼</span>
+                            </span>
+                        )}
                     </div>
                 );
             };
@@ -2765,14 +3287,64 @@
                     return (
                         <div className="folder-grid">
                             {clientProjects.length > 0 ? (
-                                clientProjects.map(p => (
-                                    <div key={p.id} className="folder-card project"
-                                         onClick={() => setCurrentPath([...currentPath, { type: 'project', id: p.id, name: p.title }])}>
-                                        {Icons.folder}
-                                        <div className="folder-name">{p.title}</div>
-                                        <div className="folder-meta">{p.dealStage || p.status1 || 'No status'}</div>
-                                    </div>
-                                ))
+                                clientProjects.map(p => {
+                                    const status = getDisplayStatus(p, 1);
+                                    return (
+                                        <div key={p.id} className="folder-card project"
+                                             onClick={() => setCurrentPath([...currentPath, { type: 'project', id: p.id, name: p.title }])}
+                                             style={{ position: 'relative' }}>
+                                            {/* Quick Status Button - Lightning Bolt */}
+                                            <button
+                                                className="quick-status-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setModalData(null); // Reset modal data
+                                                    openStatusModal(p, 1);
+                                                }}
+                                                title="Update status"
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: 8,
+                                                    right: 8,
+                                                    width: 24,
+                                                    height: 24,
+                                                    border: 'none',
+                                                    borderRadius: 6,
+                                                    background: 'var(--dmg-blue)',
+                                                    color: 'white',
+                                                    fontSize: 12,
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    opacity: 0,
+                                                    transition: 'all 0.15s',
+                                                    zIndex: 10
+                                                }}>
+                                                ⚡
+                                            </button>
+                                            {Icons.folder}
+                                            <div className="folder-name">{p.title}</div>
+                                            {/* Status Badge */}
+                                            <div style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 4,
+                                                padding: '2px 8px',
+                                                borderRadius: 6,
+                                                fontSize: 10,
+                                                fontWeight: 600,
+                                                background: `${status.color}15`,
+                                                color: status.color,
+                                                border: `1px solid ${status.color}30`,
+                                                marginTop: 4
+                                            }}>
+                                                <span>{status.icon}</span>
+                                                <span>{status.label}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })
                             ) : (
                                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-muted)' }}>
                                     <div style={{ fontSize: 14 }}>No projects for this client</div>
@@ -3950,6 +4522,172 @@
                                             </button>
                                         </div>
                                     </>
+                                );
+                            })()}
+
+                            {/* ═══════════════════════════════════════════════════════════
+                                STATUS ACTION MODAL - Quick status update
+                            ═══════════════════════════════════════════════════════════ */}
+                            {statusModal.show && statusModal.item && (() => {
+                                const item = statusModal.item;
+                                const layer = statusModal.layer || 1;
+                                const currentStatus = getDisplayStatus(item, layer);
+                                const suggestions = getSuggestedActions(item, layer);
+                                const actions = layer === 1 ? PROJECT_STATUS_ACTIONS : DELIVERABLE_STATUS_ACTIONS;
+
+                                // Use modalData to store selected action and note
+                                const selectedAction = modalData?.selectedAction || null;
+                                const setSelectedAction = (actionId) => setModalData({ ...modalData, selectedAction: actionId });
+                                const statusNote = modalData?.statusNote || '';
+                                const setStatusNote = (note) => setModalData({ ...modalData, statusNote: note });
+                                const statusLoading = modalData?.statusLoading || false;
+                                const setStatusLoading = (loading) => setModalData({ ...modalData, statusLoading: loading });
+
+                                // Find action object by ID
+                                const findAction = (actionId) => {
+                                    for (const cat of Object.values(actions)) {
+                                        const found = cat.find(a => a.id === actionId);
+                                        if (found) return found;
+                                    }
+                                    return null;
+                                };
+
+                                const handleUpdate = async () => {
+                                    if (!selectedAction) return;
+                                    setStatusLoading(true);
+                                    const actionObj = findAction(selectedAction);
+                                    if (actionObj) {
+                                        await updateProjectStatus(item, actionObj, statusNote || null);
+                                    }
+                                    setStatusLoading(false);
+                                };
+
+                                const renderActionGroup = (name, items, emoji) => (
+                                    <div className="action-group" style={{ marginBottom: 16 }}>
+                                        <div className="action-group-title" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9CA3AF', marginBottom: 8 }}>
+                                            {emoji} {name}
+                                        </div>
+                                        {items.map(action => (
+                                            <div key={action.id}
+                                                 className={`action-item ${selectedAction === action.id ? 'selected' : ''}`}
+                                                 onClick={() => setSelectedAction(action.id)}
+                                                 style={{
+                                                     display: 'flex',
+                                                     alignItems: 'center',
+                                                     gap: 10,
+                                                     padding: '10px 12px',
+                                                     borderRadius: 8,
+                                                     cursor: 'pointer',
+                                                     border: selectedAction === action.id ? '2px solid #21A0D8' : '2px solid transparent',
+                                                     background: selectedAction === action.id ? 'rgba(33, 160, 216, 0.1)' : (suggestions.includes(action.id) ? 'rgba(34, 197, 94, 0.05)' : 'transparent'),
+                                                     transition: 'all 0.1s'
+                                                 }}
+                                                 onMouseEnter={(e) => { if (selectedAction !== action.id) e.currentTarget.style.background = '#F9FAFB'; }}
+                                                 onMouseLeave={(e) => { if (selectedAction !== action.id) e.currentTarget.style.background = suggestions.includes(action.id) ? 'rgba(34, 197, 94, 0.05)' : 'transparent'; }}>
+                                                <span style={{ fontSize: 16 }}>{action.icon}</span>
+                                                <span style={{ fontSize: 13 }}>{action.label}</span>
+                                                {suggestions.includes(action.id) && (
+                                                    <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', padding: '2px 6px', borderRadius: 4, background: '#22C55E', color: 'white' }}>
+                                                        Suggested
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+
+                                return (
+                                    <div className="modal-overlay show" onClick={closeStatusModal} style={{ zIndex: 10001 }}>
+                                        <div className="modal" onClick={e => e.stopPropagation()} style={{ width: 480, maxWidth: '95vw' }}>
+                                            <div className="modal-header">
+                                                <div>
+                                                    <span style={{ fontWeight: 700 }}>Update: {item.title || item.name}</span>
+                                                    <div style={{ fontSize: 12, marginTop: 4, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        Current:
+                                                        <span style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 4,
+                                                            padding: '2px 8px',
+                                                            borderRadius: 6,
+                                                            fontSize: 11,
+                                                            fontWeight: 600,
+                                                            background: `${currentStatus.color}15`,
+                                                            color: currentStatus.color,
+                                                            border: `1px solid ${currentStatus.color}30`
+                                                        }}>
+                                                            <span>{currentStatus.icon}</span>
+                                                            <span>{currentStatus.label}</span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <button className="modal-close" onClick={closeStatusModal}>{Icons.x}</button>
+                                            </div>
+
+                                            <div className="modal-body" style={{ maxHeight: 400, overflowY: 'auto' }}>
+                                                {suggestions.length > 0 && (
+                                                    <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+                                                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#22C55E', marginBottom: 8 }}>
+                                                            💡 SUGGESTED NEXT STEP
+                                                        </div>
+                                                        {Object.values(actions).flat().filter(a => suggestions.includes(a.id)).map(action => (
+                                                            <div key={action.id}
+                                                                 className="action-item"
+                                                                 onClick={() => setSelectedAction(action.id)}
+                                                                 style={{
+                                                                     display: 'flex',
+                                                                     alignItems: 'center',
+                                                                     gap: 10,
+                                                                     padding: '10px 12px',
+                                                                     borderRadius: 8,
+                                                                     cursor: 'pointer',
+                                                                     border: selectedAction === action.id ? '2px solid #21A0D8' : '2px solid transparent',
+                                                                     background: selectedAction === action.id ? 'rgba(33, 160, 216, 0.1)' : 'transparent'
+                                                                 }}>
+                                                                <span style={{ fontSize: 16 }}>{action.icon}</span>
+                                                                <span style={{ fontSize: 13, fontWeight: 500 }}>{action.label}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {layer === 1 ? (
+                                                    <>
+                                                        {renderActionGroup('PIPELINE', actions.pipeline, '📥')}
+                                                        {renderActionGroup('ACTIVE', actions.active, '✅')}
+                                                        {renderActionGroup('CLOSED', actions.closed, '❌')}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        {renderActionGroup('PLANNING', actions.planning, '📋')}
+                                                        {renderActionGroup('PRODUCTION', actions.production, '🎬')}
+                                                        {renderActionGroup('DELIVERY', actions.delivery, '📤')}
+                                                    </>
+                                                )}
+
+                                                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #E5E7EB' }}>
+                                                    <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6, display: 'block' }}>
+                                                        📝 Add note (optional)
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-input"
+                                                        placeholder="e.g. Client asked for minor copy changes"
+                                                        value={statusNote}
+                                                        onChange={e => setStatusNote(e.target.value)}
+                                                        style={{ fontSize: 13 }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="modal-footer">
+                                                <button className="btn btn-secondary" onClick={closeStatusModal}>Cancel</button>
+                                                <button className="btn btn-primary" onClick={handleUpdate} disabled={!selectedAction || statusLoading}>
+                                                    {statusLoading ? 'Updating...' : 'Update Status'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 );
                             })()}
                         </div>
