@@ -13,6 +13,10 @@ const notion = new Client({ auth: process.env.NOTION_API_KEY });
 const PROJECTS_DB = process.env.NOTION_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
 const COMMERCIAL_SNAPSHOT_DB = process.env.NOTION_COMMERCIAL_SNAPSHOT;
+const STAFF_DB = process.env.NOTION_STAFF_DB;
+
+// Slack API token (optional - for user lookup)
+const SLACK_TOKEN = process.env.SLACK_BOT_TOKEN;
 
 // ============================================
 // HELPER: Parse Notion properties
@@ -962,7 +966,7 @@ app.patch('/deliverables/:id', async (req, res) => {
 app.get('/staff', async (req, res) => {
     try {
         const response = await notion.users.list();
-        
+
         const users = response.results
             .filter(user => user.type === 'person')
             .map(user => ({
@@ -971,10 +975,188 @@ app.get('/staff', async (req, res) => {
                 email: user.person?.email || null,
                 avatarUrl: user.avatar_url
             }));
-        
+
         res.json({ success: true, users, count: users.length });
     } catch (error) {
         console.error('Error fetching users:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// GET /staff-directory - List staff from Staff Database
+// Returns full staff details for team assignment dropdowns
+// ============================================
+app.get('/staff-directory', async (req, res) => {
+    try {
+        if (!STAFF_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Staff DB not configured. Add NOTION_STAFF_DB env variable.'
+            });
+        }
+
+        // Query staff database - only active staff
+        const response = await notion.databases.query({
+            database_id: STAFF_DB,
+            page_size: 100,
+            filter: {
+                property: 'STATUS',
+                select: {
+                    equals: 'Active'
+                }
+            },
+            sorts: [{ property: 'FULL NAME', direction: 'ascending' }]
+        });
+
+        const staff = response.results.map(page => {
+            const props = page.properties;
+            return {
+                id: page.id,
+                notionPageId: page.id,
+                name: parseProperty(props['FULL NAME']),
+                firstName: parseProperty(props['FIRST NAME']),
+                lastName: parseProperty(props['LAST NAME']),
+                email: parseProperty(props['EMAIL']),
+                team: parseProperty(props['TEAM']),
+                role: parseProperty(props['ROLE']),
+                secondaryRoles: parseProperty(props['SECONDARY ROLE(S)']),
+                seniority: parseProperty(props['SENIORITY']),
+                status: parseProperty(props['STATUS']),
+                employmentType: parseProperty(props['EMPLOYMENT TYPE']),
+                slackId: parseProperty(props['SLACK ID']),
+                notionUserId: parseProperty(props['NOTION USER'])?.[0]?.id || null,
+                isCreator: parseProperty(props['IS CREATOR']),
+                isEditor: parseProperty(props['IS EDITOR']),
+                isProducer: parseProperty(props['IS PRODUCER']),
+                maxHoursPerWeek: parseProperty(props['MAX HOURS PER WEEK']),
+                lineManager: parseProperty(props['LINE MANAGER (DROPDOWN)'])
+            };
+        });
+
+        res.json({
+            success: true,
+            staff,
+            count: staff.length,
+            teams: [...new Set(staff.map(s => s.team).filter(Boolean))].sort(),
+            roles: [...new Set(staff.map(s => s.role).filter(Boolean))].sort()
+        });
+    } catch (error) {
+        console.error('Error fetching staff directory:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// GET /staff-directory/by-role/:role - Filter staff by role
+// ============================================
+app.get('/staff-directory/by-role/:role', async (req, res) => {
+    try {
+        if (!STAFF_DB) {
+            return res.status(400).json({ success: false, error: 'Staff DB not configured' });
+        }
+
+        const { role } = req.params;
+
+        const response = await notion.databases.query({
+            database_id: STAFF_DB,
+            page_size: 100,
+            filter: {
+                and: [
+                    { property: 'STATUS', select: { equals: 'Active' } },
+                    { property: 'ROLE', select: { equals: role } }
+                ]
+            },
+            sorts: [{ property: 'FULL NAME', direction: 'ascending' }]
+        });
+
+        const staff = response.results.map(page => {
+            const props = page.properties;
+            return {
+                id: page.id,
+                name: parseProperty(props['FULL NAME']),
+                email: parseProperty(props['EMAIL']),
+                team: parseProperty(props['TEAM']),
+                role: parseProperty(props['ROLE']),
+                seniority: parseProperty(props['SENIORITY']),
+                slackId: parseProperty(props['SLACK ID']),
+                notionUserId: parseProperty(props['NOTION USER'])?.[0]?.id || null
+            };
+        });
+
+        res.json({ success: true, staff, count: staff.length, role });
+    } catch (error) {
+        console.error('Error fetching staff by role:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// GET /slack/users - List Slack users for ID lookup
+// ============================================
+app.get('/slack/users', async (req, res) => {
+    try {
+        if (!SLACK_TOKEN) {
+            return res.status(400).json({
+                success: false,
+                error: 'Slack token not configured. Add SLACK_BOT_TOKEN env variable.'
+            });
+        }
+
+        const response = await fetch('https://slack.com/api/users.list', {
+            headers: {
+                'Authorization': `Bearer ${SLACK_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (!data.ok) {
+            throw new Error(data.error || 'Slack API error');
+        }
+
+        // Filter to real users (not bots, not deleted)
+        const users = data.members
+            .filter(u => !u.is_bot && !u.deleted && u.id !== 'USLACKBOT')
+            .map(u => ({
+                id: u.id,
+                name: u.real_name || u.name,
+                displayName: u.profile?.display_name || u.name,
+                email: u.profile?.email || null,
+                avatar: u.profile?.image_72 || null,
+                title: u.profile?.title || null
+            }));
+
+        res.json({ success: true, users, count: users.length });
+    } catch (error) {
+        console.error('Error fetching Slack users:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// POST /staff-directory/:id/slack - Update staff Slack ID
+// ============================================
+app.patch('/staff-directory/:id/slack', async (req, res) => {
+    try {
+        if (!STAFF_DB) {
+            return res.status(400).json({ success: false, error: 'Staff DB not configured' });
+        }
+
+        const { id } = req.params;
+        const { slackId } = req.body;
+
+        await notion.pages.update({
+            page_id: id,
+            properties: {
+                'SLACK ID': { rich_text: slackId ? [{ text: { content: slackId } }] : [] }
+            }
+        });
+
+        res.json({ success: true, message: 'Slack ID updated' });
+    } catch (error) {
+        console.error('Error updating Slack ID:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1603,7 +1785,11 @@ app.get('/', (req, res) => {
         databases: {
             projects: PROJECTS_DB ? 'configured' : 'missing',
             deliverables: DELIVERABLES_DB ? 'configured' : 'missing',
-            commercialSnapshot: COMMERCIAL_SNAPSHOT_DB ? 'configured' : 'missing'
+            commercialSnapshot: COMMERCIAL_SNAPSHOT_DB ? 'configured' : 'missing',
+            staff: STAFF_DB ? 'configured' : 'missing'
+        },
+        integrations: {
+            slack: SLACK_TOKEN ? 'configured' : 'not configured'
         },
         endpoints: [
             'GET /projects',
@@ -1618,6 +1804,10 @@ app.get('/', (req, res) => {
             'POST /deliverables/bulk',
             'PATCH /deliverables/:id',
             'GET /staff',
+            'GET /staff-directory',
+            'GET /staff-directory/by-role/:role',
+            'PATCH /staff-directory/:id/slack',
+            'GET /slack/users',
             'GET /capacity',
             'GET /commercial-snapshot',
             'GET /commercial-snapshot/:id',
