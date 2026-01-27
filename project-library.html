@@ -1857,12 +1857,74 @@
 
             // Upload to Firebase Storage
             // ─────────────────────────────────────────────────────────────────────
-            // FOLDER CREATION
+            // FOLDER CREATION - Context-aware
             // ─────────────────────────────────────────────────────────────────────
-            const createFolder = async (folderName) => {
+
+            // Determine what type of folder can be created at current location
+            const getCreateOptions = () => {
+                const statusPath = currentPath.find(p => p.type === 'status');
+                const clientPath = currentPath.find(p => p.type === 'client');
+                const projectPath = currentPath.find(p => p.type === 'project');
+                const deliverablePath = currentPath.find(p => p.type === 'deliverable');
+                const subfolderPath = currentPath.find(p => p.type === 'subfolder');
+
+                // At root or status level - can't create
+                if (!clientPath) {
+                    return { canCreate: false, message: 'Navigate to a client folder to create items' };
+                }
+
+                // At client level - can create Project
+                if (clientPath && !projectPath) {
+                    return {
+                        canCreate: true,
+                        level: 'client',
+                        options: [
+                            { id: 'project', label: 'New Project', description: 'Creates a new project in Notion Master Ledger', icon: '📁', syncsToNotion: true }
+                        ]
+                    };
+                }
+
+                // At project level - can create Deliverable or Filing folder
+                if (projectPath && !deliverablePath) {
+                    return {
+                        canCreate: true,
+                        level: 'project',
+                        options: [
+                            { id: 'deliverable', label: 'New Deliverable/Episode', description: 'Creates in Notion with PARENT ITEM link to project', icon: '📄', syncsToNotion: true },
+                            { id: 'filing', label: 'Filing Folder', description: 'Local organization only (does not sync to Notion)', icon: '📂', syncsToNotion: false }
+                        ]
+                    };
+                }
+
+                // At deliverable level - can create Task or Filing folder
+                if (deliverablePath && !subfolderPath) {
+                    return {
+                        canCreate: true,
+                        level: 'deliverable',
+                        options: [
+                            { id: 'task', label: 'New Task', description: 'Creates Layer 3 task in Notion (Edit, Thumbnail, etc.)', icon: '✅', syncsToNotion: true },
+                            { id: 'filing', label: 'Filing Folder', description: 'Local organization only', icon: '📂', syncsToNotion: false }
+                        ]
+                    };
+                }
+
+                // At subfolder level - can only create filing folders
+                return {
+                    canCreate: true,
+                    level: 'subfolder',
+                    options: [
+                        { id: 'filing', label: 'Filing Folder', description: 'Local organization only', icon: '📂', syncsToNotion: false }
+                    ]
+                };
+            };
+
+            // Create folder/item based on type
+            const createFolder = async (folderName, folderType = 'filing') => {
                 const currentLocation = getCurrentLocation();
-                if (!currentLocation.projectId) {
-                    showToast('Navigate to a project to create folders', 'error');
+                const createOptions = getCreateOptions();
+
+                if (!createOptions.canCreate) {
+                    showToast(createOptions.message, 'error');
                     return;
                 }
 
@@ -1870,10 +1932,118 @@
                     const timestamp = Date.now();
                     const user = getCurrentUser();
 
+                    // ═══════════════════════════════════════════════════════════════
+                    // CREATE PROJECT (at client level)
+                    // ═══════════════════════════════════════════════════════════════
+                    if (folderType === 'project') {
+                        const clientName = currentPath.find(p => p.type === 'client')?.name;
+                        const res = await fetch(`${CONFIG.API_URL}/projects`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: folderName,
+                                client: clientName,
+                                dealStage: 'Pipeline'  // Default to Pipeline
+                            })
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.error || 'Failed to create project');
+
+                        await logActivity({
+                            type: 'project_create',
+                            action: 'created project',
+                            projectName: folderName,
+                            clientName
+                        });
+
+                        showToast(`Project "${folderName}" created in Notion`, 'success');
+                        await fetchProjects();
+                        setShowModal(null);
+                        setModalData(null);
+                        return;
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // CREATE DELIVERABLE (at project level)
+                    // ═══════════════════════════════════════════════════════════════
+                    if (folderType === 'deliverable') {
+                        const projectId = currentPath.find(p => p.type === 'project')?.id;
+                        // Create in Notion with PARENT ITEM relation
+                        const res = await fetch(`${CONFIG.API_URL}/projects`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: folderName,
+                                parentItemId: projectId,  // Links via PARENT ITEM relation
+                                status: 'Not started'
+                            })
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.error || 'Failed to create deliverable');
+
+                        await logActivity({
+                            type: 'deliverable_create',
+                            action: 'created deliverable',
+                            deliverableName: folderName,
+                            ...currentLocation
+                        });
+
+                        showToast(`Deliverable "${folderName}" created in Notion`, 'success');
+                        await fetchProjects();
+                        setShowModal(null);
+                        setModalData(null);
+                        return;
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // CREATE TASK (at deliverable level)
+                    // ═══════════════════════════════════════════════════════════════
+                    if (folderType === 'task') {
+                        const deliverableId = currentPath.find(p => p.type === 'deliverable')?.id;
+                        // Determine discipline from name
+                        let discipline = 'Editor';
+                        const nameLower = folderName.toLowerCase();
+                        if (nameLower.includes('thumbnail') || nameLower.includes('graphic') || nameLower.includes('design')) {
+                            discipline = 'Design';
+                        } else if (nameLower.includes('social') || nameLower.includes('post')) {
+                            discipline = 'Social';
+                        }
+
+                        const res = await fetch(`${CONFIG.API_URL}/projects`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: folderName,
+                                parentItemId: deliverableId,
+                                discipline: discipline,
+                                status: 'Not started'
+                            })
+                        });
+                        const data = await res.json();
+                        if (!data.success) throw new Error(data.error || 'Failed to create task');
+
+                        await logActivity({
+                            type: 'task_create',
+                            action: 'created task',
+                            taskName: folderName,
+                            ...currentLocation
+                        });
+
+                        showToast(`Task "${folderName}" created in Notion`, 'success');
+                        await fetchProjects();
+                        setShowModal(null);
+                        setModalData(null);
+                        return;
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // CREATE FILING FOLDER (local only - Firebase)
+                    // ═══════════════════════════════════════════════════════════════
                     const folderDoc = {
                         name: folderName,
                         type: 'folder',
                         isFolder: true,
+                        isLocalOnly: true,  // Does NOT sync to Notion
                         clientName: currentLocation.clientName,
                         projectId: currentLocation.projectId,
                         projectName: currentLocation.projectName,
@@ -3360,47 +3530,151 @@
                                 </>
                             )}
 
-                            {showModal === 'newFolder' && (
-                                <>
-                                    <div className="modal-header">
-                                        <span>Create New Folder</span>
-                                        <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
-                                    </div>
-                                    <div className="modal-body">
-                                        <div className="form-group">
-                                            <label className="form-label">Folder Name</label>
-                                            <input type="text" className="form-input" id="newFolderName" placeholder="e.g. Drafts, Client Feedback, Finals" autoFocus
-                                                   onKeyDown={(e) => { if (e.key === 'Enter') createFolder(e.target.value); }} />
+                            {showModal === 'newFolder' && (() => {
+                                const createOptions = getCreateOptions();
+                                // Use modalData to store selected type
+                                const selectedType = modalData?.selectedType || createOptions.options?.[0]?.id || 'filing';
+                                const setSelectedType = (type) => setModalData({ ...modalData, selectedType: type });
+
+                                return (
+                                    <>
+                                        <div className="modal-header">
+                                            <span>Create New Item</span>
+                                            <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
                                         </div>
-                                        <div style={{ marginTop: 12, padding: 12, background: '#F3F4F6', borderRadius: 8, fontSize: 12, color: '#6B7280' }}>
-                                            <strong style={{ color: '#374151' }}>Quick Suggestions:</strong>
-                                            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                                                {['Drafts', 'Finals', 'Client Feedback', 'Assets', 'References', 'Archive'].map(suggestion => (
-                                                    <button key={suggestion}
-                                                            onClick={() => { document.getElementById('newFolderName').value = suggestion; }}
-                                                            style={{
-                                                                padding: '4px 10px',
-                                                                background: 'white',
-                                                                border: '1px solid #E5E7EB',
-                                                                borderRadius: 4,
-                                                                fontSize: 11,
-                                                                cursor: 'pointer'
-                                                            }}>
-                                                        {suggestion}
-                                                    </button>
-                                                ))}
-                                            </div>
+                                        <div className="modal-body">
+                                            {!createOptions.canCreate ? (
+                                                <div style={{ padding: 20, textAlign: 'center', color: 'var(--ink-muted)' }}>
+                                                    {createOptions.message}
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    {/* Type Selection */}
+                                                    {createOptions.options.length > 1 && (
+                                                        <div className="form-group">
+                                                            <label className="form-label">What would you like to create?</label>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                                {createOptions.options.map(opt => (
+                                                                    <label key={opt.id}
+                                                                           style={{
+                                                                               display: 'flex',
+                                                                               alignItems: 'flex-start',
+                                                                               gap: 12,
+                                                                               padding: 12,
+                                                                               background: selectedType === opt.id ? '#EFF6FF' : '#F9FAFB',
+                                                                               border: selectedType === opt.id ? '2px solid var(--dmg-blue)' : '1px solid #E5E7EB',
+                                                                               borderRadius: 8,
+                                                                               cursor: 'pointer',
+                                                                               transition: 'all 0.15s'
+                                                                           }}
+                                                                           onClick={() => setSelectedType(opt.id)}>
+                                                                        <input type="radio" name="folderType" checked={selectedType === opt.id} onChange={() => setSelectedType(opt.id)}
+                                                                               style={{ marginTop: 2 }} />
+                                                                        <div>
+                                                                            <div style={{ fontWeight: 600, fontSize: 13 }}>
+                                                                                <span style={{ marginRight: 6 }}>{opt.icon}</span>
+                                                                                {opt.label}
+                                                                                {opt.syncsToNotion && (
+                                                                                    <span style={{ marginLeft: 8, fontSize: 10, background: '#DBEAFE', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4 }}>
+                                                                                        Syncs to Notion
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{opt.description}</div>
+                                                                        </div>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Name Input */}
+                                                    <div className="form-group" style={{ marginTop: createOptions.options.length > 1 ? 16 : 0 }}>
+                                                        <label className="form-label">
+                                                            {selectedType === 'project' ? 'Project Name' :
+                                                             selectedType === 'deliverable' ? 'Deliverable/Episode Name' :
+                                                             selectedType === 'task' ? 'Task Name' : 'Folder Name'}
+                                                        </label>
+                                                        <input type="text" className="form-input" id="newFolderName"
+                                                               placeholder={
+                                                                   selectedType === 'project' ? 'e.g. Brand Campaign Q1' :
+                                                                   selectedType === 'deliverable' ? 'e.g. Episode 1, Hero Video' :
+                                                                   selectedType === 'task' ? 'e.g. Edit, Thumbnail, Social Cut' :
+                                                                   'e.g. Drafts, Client Feedback'
+                                                               }
+                                                               autoFocus
+                                                               onKeyDown={(e) => {
+                                                                   if (e.key === 'Enter') {
+                                                                       const name = e.target.value.trim();
+                                                                       if (name) createFolder(name, selectedType);
+                                                                   }
+                                                               }} />
+                                                    </div>
+
+                                                    {/* Quick Suggestions for filing folders */}
+                                                    {selectedType === 'filing' && (
+                                                        <div style={{ marginTop: 12, padding: 12, background: '#F3F4F6', borderRadius: 8, fontSize: 12, color: '#6B7280' }}>
+                                                            <strong style={{ color: '#374151' }}>Quick Suggestions:</strong>
+                                                            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                                                                {['Drafts', 'Finals', 'Client Feedback', 'Assets', 'References', 'Archive'].map(suggestion => (
+                                                                    <button key={suggestion}
+                                                                            onClick={() => { document.getElementById('newFolderName').value = suggestion; }}
+                                                                            style={{
+                                                                                padding: '4px 10px',
+                                                                                background: 'white',
+                                                                                border: '1px solid #E5E7EB',
+                                                                                borderRadius: 4,
+                                                                                fontSize: 11,
+                                                                                cursor: 'pointer'
+                                                                            }}>
+                                                                        {suggestion}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Task suggestions */}
+                                                    {selectedType === 'task' && (
+                                                        <div style={{ marginTop: 12, padding: 12, background: '#F3F4F6', borderRadius: 8, fontSize: 12, color: '#6B7280' }}>
+                                                            <strong style={{ color: '#374151' }}>Common Tasks:</strong>
+                                                            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                                                                {['Edit', 'Thumbnail', 'Social Cut', 'Graphics', 'Script', 'Review'].map(suggestion => (
+                                                                    <button key={suggestion}
+                                                                            onClick={() => { document.getElementById('newFolderName').value = suggestion; }}
+                                                                            style={{
+                                                                                padding: '4px 10px',
+                                                                                background: 'white',
+                                                                                border: '1px solid #E5E7EB',
+                                                                                borderRadius: 4,
+                                                                                fontSize: 11,
+                                                                                cursor: 'pointer'
+                                                                            }}>
+                                                                        {suggestion}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div className="modal-footer">
-                                        <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
-                                        <button className="btn btn-primary" onClick={() => {
-                                            const name = document.getElementById('newFolderName').value.trim();
-                                            if (name) createFolder(name);
-                                        }}>Create Folder</button>
-                                    </div>
-                                </>
-                            )}
+                                        <div className="modal-footer">
+                                            <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>Cancel</button>
+                                            {createOptions.canCreate && (
+                                                <button className="btn btn-primary" onClick={() => {
+                                                    const name = document.getElementById('newFolderName').value.trim();
+                                                    if (name) createFolder(name, selectedType);
+                                                }}>
+                                                    {selectedType === 'project' ? 'Create Project' :
+                                                     selectedType === 'deliverable' ? 'Create Deliverable' :
+                                                     selectedType === 'task' ? 'Create Task' : 'Create Folder'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 );
@@ -3542,12 +3816,19 @@
                         <div className="main-header">
                             {renderBreadcrumb()}
                             <div className="header-actions">
+                                {/* Show New button at client level (to create projects) and below */}
+                                {(currentPath.find(p => p.type === 'client') || getCurrentLocation().projectId) && (
+                                    <button className="btn btn-secondary" onClick={() => { setModalData(null); setShowModal('newFolder'); }}>
+                                        {Icons.plus}
+                                        {currentPath.find(p => p.type === 'client') && !currentPath.find(p => p.type === 'project')
+                                            ? 'New Project'
+                                            : currentPath.find(p => p.type === 'project') && !currentPath.find(p => p.type === 'deliverable')
+                                                ? 'New'
+                                                : 'New Folder'}
+                                    </button>
+                                )}
                                 {getCurrentLocation().projectId && (
                                     <>
-                                        <button className="btn btn-secondary" onClick={() => setShowModal('newFolder')}>
-                                            {Icons.plus}
-                                            New Folder
-                                        </button>
                                         <button className="btn btn-secondary" onClick={() => setShowModal('addLink')}>
                                             {Icons.link}
                                             Add Link
