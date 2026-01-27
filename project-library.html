@@ -951,6 +951,12 @@
             border-radius: 8px;
             margin-bottom: 16px;
         }
+        .date-filter svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            color: var(--ink-sub);
+        }
         .date-filter label {
             font-size: 11px;
             font-weight: 600;
@@ -2141,12 +2147,25 @@
                     if (!currentDeliverable && !currentSubfolder) {
                         // Get deliverables from Notion (Layer 2)
                         const deliverables = project?.deliverables || [];
+                        // Get files uploaded directly to this project (not in a deliverable)
+                        const projectFiles = files.filter(f =>
+                            f.projectId === currentProject.id && !f.deliverableId
+                        );
 
                         return (
                             <>
+                                {/* Upload Zone - Always show at project level */}
+                                {renderUploadZone()}
+
                                 {/* Key Documents Section */}
                                 <div className="file-section">
-                                    <div className="file-section-title">Key Documents</div>
+                                    <div className="file-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        Key Documents
+                                        <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}
+                                                onClick={() => { setModalData({ type: 'keyDoc' }); setShowModal('addLink'); }}>
+                                            {Icons.plus} Add Link
+                                        </button>
+                                    </div>
                                     <div className="file-list">
                                         {project?.briefLink && (
                                             <a href={project.briefLink} target="_blank" rel="noopener noreferrer"
@@ -2156,7 +2175,7 @@
                                                     <div className="file-name">Brief</div>
                                                     <div className="file-meta">Project brief document</div>
                                                 </div>
-                                                <div style={{ marginLeft: 'auto' }}>{Icons.externalLink}</div>
+                                                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', color: 'var(--ink-muted)' }}>{Icons.externalLink}</div>
                                             </a>
                                         )}
                                         {project?.responseLink && (
@@ -2167,7 +2186,7 @@
                                                     <div className="file-name">Creative Response</div>
                                                     <div className="file-meta">Response to brief • Google Doc</div>
                                                 </div>
-                                                <div style={{ marginLeft: 'auto' }}>{Icons.externalLink}</div>
+                                                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', color: 'var(--ink-muted)' }}>{Icons.externalLink}</div>
                                             </a>
                                         )}
                                         {project?.driveFolder && (
@@ -2178,15 +2197,37 @@
                                                     <div className="file-name">Google Drive</div>
                                                     <div className="file-meta">Project folder</div>
                                                 </div>
-                                                <div style={{ marginLeft: 'auto' }}>{Icons.externalLink}</div>
+                                                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', color: 'var(--ink-muted)' }}>{Icons.externalLink}</div>
                                             </a>
                                         )}
-                                        {!project?.briefLink && !project?.responseLink && (
-                                            <div className="file-item" style={{ opacity: 0.6 }}>
-                                                <div className="file-icon other">{Icons.file}</div>
+                                        {project?.frameIo && (
+                                            <a href={project.frameIo} target="_blank" rel="noopener noreferrer"
+                                               className="file-item" style={{ textDecoration: 'none' }}>
+                                                <div className="file-icon video">{Icons.video}</div>
                                                 <div className="file-info">
-                                                    <div className="file-name" style={{ fontStyle: 'italic' }}>No documents linked yet</div>
-                                                    <div className="file-meta">Add Brief/Response links in Notion</div>
+                                                    <div className="file-name">Frame.io</div>
+                                                    <div className="file-meta">Video review & collaboration</div>
+                                                </div>
+                                                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', color: 'var(--ink-muted)' }}>{Icons.externalLink}</div>
+                                            </a>
+                                        )}
+                                        {/* Show pinned/key files from uploads */}
+                                        {files.filter(f => f.projectId === currentProject.id && f.pinned).map(file => (
+                                            <div key={file.id} className="file-item" onClick={() => window.open(file.url, '_blank')} style={{ cursor: 'pointer' }}>
+                                                <div className={`file-icon ${getFileType(file.name, file.type)}`}>{Icons.file}</div>
+                                                <div className="file-info">
+                                                    <div className="file-name">{file.name}</div>
+                                                    <div className="file-meta">Uploaded by {file.uploadedBy?.name || 'Unknown'}</div>
+                                                </div>
+                                                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', color: 'var(--amber)' }}>{Icons.starFilled}</div>
+                                            </div>
+                                        ))}
+                                        {!project?.briefLink && !project?.responseLink && !project?.driveFolder && files.filter(f => f.projectId === currentProject.id && f.pinned).length === 0 && (
+                                            <div className="file-item" style={{ opacity: 0.5, border: '1px dashed var(--border)' }}>
+                                                <div className="file-icon other" style={{ background: 'transparent' }}>{Icons.plus}</div>
+                                                <div className="file-info">
+                                                    <div className="file-name" style={{ color: 'var(--ink-muted)' }}>No key documents yet</div>
+                                                    <div className="file-meta">Click "Add Link" or upload & pin files</div>
                                                 </div>
                                             </div>
                                         )}
@@ -2198,27 +2239,45 @@
 
                                 {/* Deliverables Folder */}
                                 <div className="file-section">
-                                    <div className="file-section-title">Deliverables</div>
-                                    {deliverables.length > 0 ? (
-                                        <div className="folder-grid">
-                                            {deliverables.map(d => (
-                                                <div key={d.id || d.name} className="folder-card deliverable"
-                                                     onClick={() => navigateTo('deliverable', d.id || d.name, d.title || d.name)}>
-                                                    {Icons.folder}
-                                                    <div className="folder-name">{d.title || d.name}</div>
-                                                    <div className="folder-meta">
-                                                        {files.filter(f => f.deliverableId === d.id).length} files
-                                                    </div>
+                                    <div className="file-section-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        Deliverables
+                                        <button className="btn btn-secondary" style={{ padding: '4px 10px', fontSize: 11 }}
+                                                onClick={() => showToast('Add deliverables in Notion (Layer 2)', '')}>
+                                            {Icons.plus} Add in Notion
+                                        </button>
+                                    </div>
+                                    <div className="folder-grid">
+                                        {deliverables.map(d => (
+                                            <div key={d.id || d.name} className="folder-card deliverable"
+                                                 onClick={() => navigateTo('deliverable', d.id || d.name, d.title || d.name)}>
+                                                {Icons.folder}
+                                                <div className="folder-name">{d.title || d.name}</div>
+                                                <div className="folder-meta">
+                                                    {files.filter(f => f.deliverableId === (d.id || d.name)).length} files
                                                 </div>
-                                            ))}
+                                            </div>
+                                        ))}
+                                        {deliverables.length === 0 && (
+                                            <div className="folder-card" style={{ opacity: 0.5, border: '1px dashed var(--border)', background: 'transparent' }}
+                                                 onClick={() => showToast('Add deliverables in Notion (Layer 2)', '')}>
+                                                <div style={{ color: 'var(--ink-muted)' }}>{Icons.plus}</div>
+                                                <div className="folder-name" style={{ color: 'var(--ink-muted)' }}>Add Deliverable</div>
+                                                <div className="folder-meta">In Notion Layer 2</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Project Files - files uploaded to project level */}
+                                <div className="file-section">
+                                    <div className="file-section-title">Project Files ({projectFiles.length})</div>
+                                    {projectFiles.length > 0 ? (
+                                        <div className="file-list">
+                                            {projectFiles.map(f => renderFileItem(f))}
                                         </div>
                                     ) : (
-                                        <div className="file-item" style={{ opacity: 0.6 }}>
-                                            <div className="file-icon other">{Icons.folder}</div>
-                                            <div className="file-info">
-                                                <div className="file-name" style={{ fontStyle: 'italic' }}>No deliverables yet</div>
-                                                <div className="file-meta">Add episodes/deliverables in Notion (Layer 2)</div>
-                                            </div>
+                                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--ink-muted)', fontSize: 12 }}>
+                                            Drop files above to upload to this project
                                         </div>
                                     )}
                                 </div>
@@ -2982,7 +3041,6 @@
 
                         <div className="content-area">
                             <div className="file-browser">
-                                {renderDateFilter()}
                                 {renderPinnedSection()}
                                 {renderFolderGrid()}
                             </div>
