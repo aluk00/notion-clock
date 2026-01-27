@@ -1136,7 +1136,7 @@ app.get('/slack/users', async (req, res) => {
 });
 
 // ============================================
-// POST /staff-directory/:id/slack - Update staff Slack ID
+// PATCH /staff-directory/:id/slack - Update staff Slack ID
 // ============================================
 app.patch('/staff-directory/:id/slack', async (req, res) => {
     try {
@@ -1157,6 +1157,131 @@ app.patch('/staff-directory/:id/slack', async (req, res) => {
         res.json({ success: true, message: 'Slack ID updated' });
     } catch (error) {
         console.error('Error updating Slack ID:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================
+// POST /staff-directory/sync-slack - Bulk sync Slack IDs by email
+// Matches Slack users to Staff DB by email and updates SLACK ID field
+// ============================================
+app.post('/staff-directory/sync-slack', async (req, res) => {
+    try {
+        if (!STAFF_DB) {
+            return res.status(400).json({ success: false, error: 'Staff DB not configured' });
+        }
+        if (!SLACK_TOKEN) {
+            return res.status(400).json({ success: false, error: 'Slack token not configured' });
+        }
+
+        console.log('Starting Slack ID sync...');
+
+        // Step 1: Get all Slack users
+        const slackResponse = await fetch('https://slack.com/api/users.list', {
+            headers: {
+                'Authorization': `Bearer ${SLACK_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        const slackData = await slackResponse.json();
+
+        if (!slackData.ok) {
+            throw new Error('Slack API error: ' + (slackData.error || 'Unknown'));
+        }
+
+        // Build email → Slack ID map
+        const slackByEmail = {};
+        slackData.members
+            .filter(u => !u.is_bot && !u.deleted && u.profile?.email)
+            .forEach(u => {
+                slackByEmail[u.profile.email.toLowerCase()] = {
+                    id: u.id,
+                    name: u.real_name || u.name,
+                    displayName: u.profile.display_name
+                };
+            });
+
+        console.log(`Found ${Object.keys(slackByEmail).length} Slack users with emails`);
+
+        // Step 2: Get all staff from Notion
+        const staffResponse = await notion.databases.query({
+            database_id: STAFF_DB,
+            page_size: 100,
+            filter: {
+                property: 'STATUS',
+                select: { equals: 'Active' }
+            }
+        });
+
+        const results = {
+            matched: [],
+            notFound: [],
+            alreadySet: [],
+            errors: []
+        };
+
+        // Step 3: Match and update
+        for (const page of staffResponse.results) {
+            const props = page.properties;
+            const name = parseProperty(props['FULL NAME']);
+            const email = parseProperty(props['EMAIL'])?.toLowerCase();
+            const existingSlackId = parseProperty(props['SLACK ID']);
+
+            if (!email) {
+                results.notFound.push({ name, reason: 'No email in Notion' });
+                continue;
+            }
+
+            const slackUser = slackByEmail[email];
+
+            if (!slackUser) {
+                results.notFound.push({ name, email, reason: 'No matching Slack user' });
+                continue;
+            }
+
+            if (existingSlackId) {
+                results.alreadySet.push({ name, email, slackId: existingSlackId });
+                continue;
+            }
+
+            // Update Notion with Slack ID
+            try {
+                await notion.pages.update({
+                    page_id: page.id,
+                    properties: {
+                        'SLACK ID': { rich_text: [{ text: { content: slackUser.id } }] }
+                    }
+                });
+                results.matched.push({
+                    name,
+                    email,
+                    slackId: slackUser.id,
+                    slackName: slackUser.name
+                });
+                console.log(`✓ Updated ${name}: ${slackUser.id}`);
+            } catch (err) {
+                results.errors.push({ name, error: err.message });
+                console.error(`✗ Failed to update ${name}:`, err.message);
+            }
+
+            // Small delay to avoid rate limits
+            await new Promise(r => setTimeout(r, 100));
+        }
+
+        console.log('Slack ID sync complete');
+
+        res.json({
+            success: true,
+            summary: {
+                matched: results.matched.length,
+                notFound: results.notFound.length,
+                alreadySet: results.alreadySet.length,
+                errors: results.errors.length
+            },
+            details: results
+        });
+    } catch (error) {
+        console.error('Error syncing Slack IDs:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -1807,6 +1932,7 @@ app.get('/', (req, res) => {
             'GET /staff-directory',
             'GET /staff-directory/by-role/:role',
             'PATCH /staff-directory/:id/slack',
+            'POST /staff-directory/sync-slack',
             'GET /slack/users',
             'GET /capacity',
             'GET /commercial-snapshot',
