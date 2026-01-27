@@ -1348,6 +1348,136 @@
 
                 // Get all assets in the final folder
                 return this.getItems(currentId, 'assets');
+            },
+
+            // ═══════════════════════════════════════════════════════════════
+            // UPLOAD FUNCTIONALITY
+            // ═══════════════════════════════════════════════════════════════
+
+            // Create a folder in Frame.io
+            async createFolder(parentId, name) {
+                return this.request(`/assets/${parentId}/children`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: name,
+                        type: 'folder'
+                    })
+                });
+            },
+
+            // Create or get folder path (creates folders if they don't exist)
+            async ensureFolderPath(rootId, pathParts) {
+                let currentId = rootId;
+
+                for (const part of pathParts) {
+                    const items = await this.getItems(currentId, 'folders');
+                    let folder = items.find(f => f.name.toLowerCase() === part.toLowerCase());
+
+                    if (!folder) {
+                        // Create the folder
+                        folder = await this.createFolder(currentId, part);
+                    }
+                    currentId = folder.id;
+                }
+
+                return currentId;
+            },
+
+            // Upload a file to Frame.io
+            async uploadFile(file, parentId, onProgress) {
+                // Step 1: Create asset placeholder
+                const asset = await this.request(`/assets/${parentId}/children`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: file.name,
+                        type: 'file',
+                        filetype: file.type || 'application/octet-stream',
+                        filesize: file.size
+                    })
+                });
+
+                if (!asset.upload_urls || asset.upload_urls.length === 0) {
+                    throw new Error('No upload URLs returned from Frame.io');
+                }
+
+                // Step 2: Upload file in chunks
+                const chunkSize = 50 * 1024 * 1024; // 50MB chunks (Frame.io recommendation)
+                const totalChunks = asset.upload_urls.length;
+                let uploadedBytes = 0;
+
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * chunkSize;
+                    const end = Math.min(start + chunkSize, file.size);
+                    const chunk = file.slice(start, end);
+
+                    // Upload chunk
+                    const uploadRes = await fetch(asset.upload_urls[i], {
+                        method: 'PUT',
+                        body: chunk,
+                        headers: {
+                            'Content-Type': file.type || 'application/octet-stream',
+                            'x-amz-acl': 'private'
+                        }
+                    });
+
+                    if (!uploadRes.ok) {
+                        throw new Error(`Failed to upload chunk ${i + 1}/${totalChunks}`);
+                    }
+
+                    uploadedBytes += chunk.size;
+                    if (onProgress) {
+                        onProgress((uploadedBytes / file.size) * 100);
+                    }
+                }
+
+                // Return the created asset
+                return asset;
+            },
+
+            // Upload file to a project, creating folder structure if needed
+            async uploadToProject(file, projectRootId, folderPath, onProgress) {
+                // Ensure folder path exists
+                const folderId = folderPath.length > 0
+                    ? await this.ensureFolderPath(projectRootId, folderPath)
+                    : projectRootId;
+
+                // Upload the file
+                return this.uploadFile(file, folderId, onProgress);
+            },
+
+            // Find or create a project folder matching the Notion project name
+            async getOrCreateProjectFolder(projectName, clientName) {
+                try {
+                    const me = await this.getMe();
+                    if (!me.account_id) throw new Error('No account found');
+
+                    const teams = await this.getTeams(me.account_id);
+                    if (teams.length === 0) throw new Error('No teams found');
+
+                    const projects = await this.getProjects(teams[0].id);
+
+                    // Try to find matching project
+                    let frameioProject = projects.find(fp =>
+                        fp.name.toLowerCase().includes(projectName.toLowerCase()) ||
+                        projectName.toLowerCase().includes(fp.name.toLowerCase()) ||
+                        (clientName && fp.name.toLowerCase().includes(clientName.toLowerCase()))
+                    );
+
+                    // If no match, create a new project
+                    if (!frameioProject) {
+                        frameioProject = await this.request(`/teams/${teams[0].id}/projects`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                name: `${clientName} - ${projectName}`
+                            })
+                        });
+                    }
+
+                    return frameioProject;
+                } catch (err) {
+                    console.error('Error finding/creating Frame.io project:', err);
+                    throw err;
+                }
             }
         };
 
@@ -1613,7 +1743,108 @@
             // ─────────────────────────────────────────────────────────────────────
             // FILE UPLOAD
             // ─────────────────────────────────────────────────────────────────────
-            const handleFileUpload = async (fileList) => {
+            // Check if file should go to Frame.io (video files)
+            const isVideoFile = (file) => {
+                const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'mxf', 'prproj', 'aep'];
+                const ext = file.name.split('.').pop().toLowerCase();
+                return videoExts.includes(ext) || file.type.startsWith('video/');
+            };
+
+            // Upload to Frame.io
+            const uploadToFrameIO = async (file, currentLocation) => {
+                try {
+                    // Find or create Frame.io project
+                    const frameioProject = await FrameIO.getOrCreateProjectFolder(
+                        currentLocation.projectName,
+                        currentLocation.clientName
+                    );
+
+                    // Build folder path within Frame.io project
+                    const folderPath = [];
+                    if (currentLocation.deliverableName) folderPath.push(currentLocation.deliverableName);
+                    if (currentLocation.subfolder) folderPath.push(currentLocation.subfolder);
+
+                    // Upload file
+                    const asset = await FrameIO.uploadToProject(
+                        file,
+                        frameioProject.root_asset_id,
+                        folderPath,
+                        (percent) => setUploadProgress({ active: true, percent, fileName: file.name + ' → Frame.io' })
+                    );
+
+                    // Also save reference in Firestore for our widget
+                    const timestamp = Date.now();
+                    const user = getCurrentUser();
+                    const fileDoc = {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        url: `https://app.frame.io/player/${asset.id}`,
+                        frameioAssetId: asset.id,
+                        isFrameio: true,
+                        clientName: currentLocation.clientName,
+                        projectId: currentLocation.projectId,
+                        projectName: currentLocation.projectName,
+                        deliverableId: currentLocation.deliverableId || null,
+                        deliverableName: currentLocation.deliverableName || 'General',
+                        subfolder: currentLocation.subfolder || null,
+                        uploadedBy: user,
+                        uploadedAt: new Date().toISOString()
+                    };
+
+                    await filesCollection.doc(timestamp.toString()).set(fileDoc);
+
+                    return asset;
+                } catch (err) {
+                    console.error('Frame.io upload error:', err);
+                    throw err;
+                }
+            };
+
+            // Upload to Firebase Storage
+            const uploadToFirebase = async (file, currentLocation) => {
+                const timestamp = Date.now();
+                const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+                const storagePath = `projects/${currentLocation.clientName}/${currentLocation.projectName}/${currentLocation.deliverableName || 'General'}/${timestamp}_${safeName}`;
+
+                const storageRef = storage.ref(storagePath);
+                const uploadTask = storageRef.put(file);
+
+                return new Promise((resolve, reject) => {
+                    uploadTask.on('state_changed',
+                        (snapshot) => {
+                            const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                            setUploadProgress({ active: true, percent, fileName: file.name });
+                        },
+                        reject,
+                        async () => {
+                            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+
+                            const user = getCurrentUser();
+                            const fileDoc = {
+                                name: file.name,
+                                type: file.type,
+                                size: file.size,
+                                path: storagePath,
+                                url: downloadURL,
+                                clientName: currentLocation.clientName,
+                                projectId: currentLocation.projectId,
+                                projectName: currentLocation.projectName,
+                                deliverableId: currentLocation.deliverableId || null,
+                                deliverableName: currentLocation.deliverableName || 'General',
+                                subfolder: currentLocation.subfolder || null,
+                                uploadedBy: user,
+                                uploadedAt: new Date().toISOString()
+                            };
+
+                            await filesCollection.doc(timestamp.toString()).set(fileDoc);
+                            resolve(fileDoc);
+                        }
+                    );
+                });
+            };
+
+            const handleFileUpload = async (fileList, forceDestination = null) => {
                 const currentLocation = getCurrentLocation();
                 if (!currentLocation.projectId) {
                     showToast('Navigate to a project folder to upload files', 'error');
@@ -1623,75 +1854,43 @@
                 const uploadFiles = Array.from(fileList);
 
                 for (const file of uploadFiles) {
-                    // Validate
-                    if (file.size > CONFIG.MAX_FILE_SIZE) {
-                        showToast(`${file.name} is too large (max 100MB)`, 'error');
+                    // Validate size (Frame.io supports larger files)
+                    const maxSize = frameioEnabled ? 5 * 1024 * 1024 * 1024 : CONFIG.MAX_FILE_SIZE; // 5GB for Frame.io
+                    if (file.size > maxSize) {
+                        showToast(`${file.name} is too large (max ${frameioEnabled ? '5GB' : '500MB'})`, 'error');
                         continue;
                     }
 
                     try {
                         setUploadProgress({ active: true, percent: 0, fileName: file.name });
 
-                        // Create storage path
-                        const timestamp = Date.now();
-                        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-                        const storagePath = `projects/${currentLocation.clientName}/${currentLocation.projectName}/${currentLocation.deliverableName || 'General'}/${timestamp}_${safeName}`;
+                        // Decide where to upload: Frame.io for videos if enabled, Firebase otherwise
+                        const useFrameIO = forceDestination === 'frameio' ||
+                            (forceDestination !== 'firebase' && frameioEnabled && isVideoFile(file));
 
-                        // Upload to Firebase Storage
-                        const storageRef = storage.ref(storagePath);
-                        const uploadTask = storageRef.put(file);
+                        if (useFrameIO) {
+                            await uploadToFrameIO(file, currentLocation);
+                            showToast(`${file.name} uploaded to Frame.io`, 'success');
+                        } else {
+                            await uploadToFirebase(file, currentLocation);
+                            showToast(`${file.name} uploaded successfully`, 'success');
+                        }
 
-                        await new Promise((resolve, reject) => {
-                            uploadTask.on('state_changed',
-                                (snapshot) => {
-                                    const percent = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                                    setUploadProgress({ active: true, percent, fileName: file.name });
-                                },
-                                reject,
-                                async () => {
-                                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-
-                                    // Save file metadata to Firestore
-                                    const user = getCurrentUser();
-                                    const fileDoc = {
-                                        name: file.name,
-                                        type: file.type,
-                                        size: file.size,
-                                        path: storagePath,
-                                        url: downloadURL,
-                                        clientId: currentLocation.clientName,
-                                        clientName: currentLocation.clientName,
-                                        projectId: currentLocation.projectId,
-                                        projectName: currentLocation.projectName,
-                                        deliverableId: currentLocation.deliverableId || null,
-                                        deliverableName: currentLocation.deliverableName || 'General',
-                                        subfolder: currentLocation.subfolder || null,
-                                        uploadedBy: user,
-                                        uploadedAt: new Date().toISOString()
-                                    };
-
-                                    await filesCollection.doc(timestamp.toString()).set(fileDoc);
-
-                                    // Log activity
-                                    await logActivity({
-                                        type: 'file_upload',
-                                        action: 'uploaded',
-                                        fileName: file.name,
-                                        fileType: getFileType(file.name, file.type),
-                                        ...currentLocation
-                                    });
-
-                                    resolve();
-                                }
-                            );
+                        // Log activity
+                        await logActivity({
+                            type: 'file_upload',
+                            action: 'uploaded',
+                            fileName: file.name,
+                            fileType: getFileType(file.name, file.type),
+                            destination: useFrameIO ? 'Frame.io' : 'Firebase',
+                            ...currentLocation
                         });
 
-                        showToast(`${file.name} uploaded successfully`, 'success');
-                        await fetchFiles(); // Refresh file list
+                        await fetchFiles();
 
                     } catch (err) {
                         console.error('Upload error:', err);
-                        showToast(`Failed to upload ${file.name}`, 'error');
+                        showToast(`Failed to upload ${file.name}: ${err.message}`, 'error');
                     } finally {
                         setUploadProgress({ active: false, percent: 0, fileName: '' });
                     }
@@ -2038,7 +2237,20 @@
                              }}>
                             {Icons.upload}
                             <div className="upload-zone-title">Drop files here or click to upload</div>
-                            <div className="upload-zone-hint">Videos, PSDs, PDFs, images up to 100MB</div>
+                            <div className="upload-zone-hint">
+                                {frameioEnabled ? (
+                                    <>Videos → Frame.io • Other files → Firebase • Up to 5GB</>
+                                ) : (
+                                    <>Videos, PSDs, PDFs, images • Up to 500MB</>
+                                )}
+                            </div>
+                            {frameioEnabled && (
+                                <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                                    <span style={{ fontSize: 10, padding: '3px 8px', background: '#7C3AED', color: 'white', borderRadius: 4, fontWeight: 600 }}>
+                                        Frame.io Connected
+                                    </span>
+                                </div>
+                            )}
                             <input type="file" ref={fileInputRef} multiple style={{ display: 'none' }}
                                    onChange={(e) => handleFileUpload(e.target.files)} />
                         </div>
