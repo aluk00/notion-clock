@@ -1815,6 +1815,207 @@ app.get('/daily-rundown', async (req, res) => {
     }
 });
 
+// POST /process-daily-rundown - Process and compile today's daily rundown
+// Called by Make.com to trigger daily rundown compilation
+app.post('/process-daily-rundown', async (req, res) => {
+    try {
+        console.log('POST /process-daily-rundown - Processing daily rundown');
+
+        if (!COMMERCIAL_SNAPSHOT_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Commercial Snapshot DB not configured'
+            });
+        }
+
+        if (!DELIVERABLES_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Deliverables DB not configured'
+            });
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const processed = {
+            date: today,
+            deliverables: [],
+            snapshotsCreated: 0,
+            snapshotsUpdated: 0,
+            errors: []
+        };
+
+        // Query deliverables that are due today or have activity today
+        const deliverables = await notion.databases.query({
+            database_id: DELIVERABLES_DB,
+            filter: {
+                or: [
+                    {
+                        property: 'Due',
+                        date: { equals: today }
+                    },
+                    {
+                        property: 'Internal Due Date',
+                        date: { equals: today }
+                    }
+                ]
+            },
+            page_size: 100
+        });
+
+        console.log(`Found ${deliverables.results.length} deliverables for today`);
+
+        // Process each deliverable
+        for (const deliverable of deliverables.results) {
+            try {
+                const props = deliverable.properties;
+                const title = parseProperty(props['Name']) || parseProperty(props['Title']) || 'Untitled';
+                const status = parseProperty(props['Status']) || parseProperty(props['Creative Workflow Status']);
+                const parentProject = parseProperty(props['PARENT ITEM']) || parseProperty(props['Project']);
+
+                processed.deliverables.push({
+                    id: deliverable.id,
+                    title,
+                    status,
+                    url: deliverable.url
+                });
+
+                // Check if snapshot already exists for this deliverable today
+                const existingSnapshot = await notion.databases.query({
+                    database_id: COMMERCIAL_SNAPSHOT_DB,
+                    filter: {
+                        and: [
+                            {
+                                property: 'Snapshot Date',
+                                date: { equals: today }
+                            },
+                            {
+                                property: 'Record',
+                                relation: { contains: deliverable.id }
+                            }
+                        ]
+                    },
+                    page_size: 1
+                });
+
+                if (existingSnapshot.results.length > 0) {
+                    // Update existing snapshot
+                    await notion.pages.update({
+                        page_id: existingSnapshot.results[0].id,
+                        properties: {
+                            'Status Tag': { select: { name: status || 'In Progress' } },
+                            'Details': { rich_text: [{ text: { content: `Auto-updated at ${new Date().toISOString()}` } }] }
+                        }
+                    });
+                    processed.snapshotsUpdated++;
+                } else {
+                    // Create new snapshot entry
+                    await notion.pages.create({
+                        parent: { database_id: COMMERCIAL_SNAPSHOT_DB },
+                        properties: {
+                            'Record': { relation: [{ id: deliverable.id }] },
+                            'Snapshot Date': { date: { start: today } },
+                            'Headline': { title: [{ text: { content: title } }] },
+                            'Section': { select: { name: 'Deliverables' } },
+                            'Item Type': { select: { name: 'Deliverable' } },
+                            'Status Tag': status ? { select: { name: status } } : undefined
+                        }
+                    });
+                    processed.snapshotsCreated++;
+                }
+            } catch (itemError) {
+                console.error(`Error processing deliverable ${deliverable.id}:`, itemError.message);
+                processed.errors.push({
+                    id: deliverable.id,
+                    error: itemError.message
+                });
+            }
+        }
+
+        console.log(`Daily rundown processed: ${processed.snapshotsCreated} created, ${processed.snapshotsUpdated} updated`);
+
+        res.json({
+            success: true,
+            message: 'Daily rundown processed successfully',
+            processed
+        });
+    } catch (error) {
+        console.error('Error processing daily rundown:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// POST /process-deal-agreed - Process projects with Deal Stage = "Agreed"
+// Called by Make.com to process newly agreed deals (Master Ledger updates)
+app.post('/process-deal-agreed', async (req, res) => {
+    try {
+        console.log('POST /process-deal-agreed - Processing agreed deals');
+
+        if (!PROJECTS_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Projects DB not configured'
+            });
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const processed = {
+            date: today,
+            projects: [],
+            updated: 0,
+            errors: []
+        };
+
+        // Query projects with Deal Stage = "Agreed"
+        const projects = await notion.databases.query({
+            database_id: PROJECTS_DB,
+            filter: {
+                property: 'DEAL STAGE',
+                select: { equals: 'Agreed' }
+            },
+            page_size: 100
+        });
+
+        console.log(`Found ${projects.results.length} agreed deals`);
+
+        // Process each agreed project
+        for (const project of projects.results) {
+            try {
+                const props = project.properties;
+                const title = parseProperty(props['Project']) || parseProperty(props['Name']) || 'Untitled';
+                const client = parseProperty(props['Client / Partner']) || parseProperty(props['Client']);
+                const dealValue = parseProperty(props['Deal Value']);
+
+                processed.projects.push({
+                    id: project.id,
+                    title,
+                    client,
+                    dealValue,
+                    url: project.url
+                });
+
+                processed.updated++;
+            } catch (itemError) {
+                console.error(`Error processing project ${project.id}:`, itemError.message);
+                processed.errors.push({
+                    id: project.id,
+                    error: itemError.message
+                });
+            }
+        }
+
+        console.log(`Deal agreed processed: ${processed.updated} projects found`);
+
+        res.json({
+            success: true,
+            message: 'Deal agreed processing completed',
+            processed
+        });
+    } catch (error) {
+        console.error('Error processing deal agreed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // GET /daily-rundown/week - Get current week's snapshot items
 app.get('/daily-rundown/week', async (req, res) => {
     try {
