@@ -10,9 +10,9 @@ app.use(express.json());
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
 // Database IDs from environment
-const PROJECTS_DB = process.env.NOTION_PROJECTS_DB;
+const PROJECTS_DB = process.env.NOTION_MASTER_PROJECTS_DB;
 const DELIVERABLES_DB = process.env.NOTION_DELIVERABLES_DB;
-const COMMERCIAL_SNAPSHOT_DB = process.env.NOTION_COMMERCIAL_SNAPSHOT;
+const COMMERCIAL_SNAPSHOT_DB = process.env.NOTION_COMMERCIAL_SNAPSHOT_DB;
 const STAFF_DB = process.env.NOTION_STAFF_DIR_DB;
 
 // Slack API token (optional - for user lookup)
