@@ -1944,6 +1944,78 @@ app.post('/process-daily-rundown', async (req, res) => {
     }
 });
 
+// POST /process-deal-agreed - Process projects with Deal Stage = "Agreed"
+// Called by Make.com to process newly agreed deals (Master Ledger updates)
+app.post('/process-deal-agreed', async (req, res) => {
+    try {
+        console.log('POST /process-deal-agreed - Processing agreed deals');
+
+        if (!PROJECTS_DB) {
+            return res.status(400).json({
+                success: false,
+                error: 'Projects DB not configured'
+            });
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const processed = {
+            date: today,
+            projects: [],
+            updated: 0,
+            errors: []
+        };
+
+        // Query projects with Deal Stage = "Agreed"
+        const projects = await notion.databases.query({
+            database_id: PROJECTS_DB,
+            filter: {
+                property: 'DEAL STAGE',
+                select: { equals: 'Agreed' }
+            },
+            page_size: 100
+        });
+
+        console.log(`Found ${projects.results.length} agreed deals`);
+
+        // Process each agreed project
+        for (const project of projects.results) {
+            try {
+                const props = project.properties;
+                const title = parseProperty(props['Project']) || parseProperty(props['Name']) || 'Untitled';
+                const client = parseProperty(props['Client / Partner']) || parseProperty(props['Client']);
+                const dealValue = parseProperty(props['Deal Value']);
+
+                processed.projects.push({
+                    id: project.id,
+                    title,
+                    client,
+                    dealValue,
+                    url: project.url
+                });
+
+                processed.updated++;
+            } catch (itemError) {
+                console.error(`Error processing project ${project.id}:`, itemError.message);
+                processed.errors.push({
+                    id: project.id,
+                    error: itemError.message
+                });
+            }
+        }
+
+        console.log(`Deal agreed processed: ${processed.updated} projects found`);
+
+        res.json({
+            success: true,
+            message: 'Deal agreed processing completed',
+            processed
+        });
+    } catch (error) {
+        console.error('Error processing deal agreed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // GET /daily-rundown/week - Get current week's snapshot items
 app.get('/daily-rundown/week', async (req, res) => {
     try {
