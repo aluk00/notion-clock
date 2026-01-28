@@ -2524,9 +2524,15 @@
                 const deliverablePath = currentPath.find(p => p.type === 'deliverable');
                 const subfolderPath = currentPath.find(p => p.type === 'subfolder');
 
-                // At root or status level - can't create
+                // At root or status level - can create new project
                 if (!clientPath) {
-                    return { canCreate: false, message: 'Navigate to a client folder to create items' };
+                    return {
+                        canCreate: true,
+                        level: 'root',
+                        options: [
+                            { id: 'project', label: 'New Project', description: 'Creates a new project in Notion Master Ledger', icon: '📁', syncsToNotion: true, requiresClient: true }
+                        ]
+                    };
                 }
 
                 // At client level - can create Project
@@ -2575,7 +2581,7 @@
             };
 
             // Create folder/item based on type
-            const createFolder = async (folderName, folderType = 'filing') => {
+            const createFolder = async (folderName, folderType = 'filing', options = {}) => {
                 const currentLocation = getCurrentLocation();
                 const createOptions = getCreateOptions();
 
@@ -2589,10 +2595,17 @@
                     const user = getCurrentUser();
 
                     // ═══════════════════════════════════════════════════════════════
-                    // CREATE PROJECT (at client level)
+                    // CREATE PROJECT (from root, status, or client level)
                     // ═══════════════════════════════════════════════════════════════
                     if (folderType === 'project') {
-                        const clientName = currentPath.find(p => p.type === 'client')?.name;
+                        // Client can come from options (when creating from root/status) or from currentPath
+                        const clientName = options.clientName || currentPath.find(p => p.type === 'client')?.name;
+
+                        if (!clientName) {
+                            showToast('Please select a client for the project', 'error');
+                            return;
+                        }
+
                         const res = await fetch(`${CONFIG.API_URL}/projects`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -2614,8 +2627,14 @@
 
                         showToast(`Project "${folderName}" created in Notion`, 'success');
                         await fetchProjects();
-                        setShowModal(null);
-                        setModalData(null);
+
+                        // Ask if user wants to create deliverables
+                        setShowModal('addDeliverables');
+                        setModalData({
+                            projectId: data.project?.id,
+                            projectName: folderName,
+                            clientName: clientName
+                        });
                         return;
                     }
 
@@ -4511,6 +4530,42 @@
                                                         </div>
                                                     )}
 
+                                                    {/* Client Selection (when creating project from root/status) */}
+                                                    {(() => {
+                                                        const selectedOption = createOptions.options.find(o => o.id === selectedType);
+                                                        if (selectedOption?.requiresClient) {
+                                                            // Get all unique clients from all projects
+                                                            const allClients = [...new Set(projects.map(p => p.client).filter(Boolean))].sort();
+                                                            const selectedClient = modalData?.selectedClient || '';
+                                                            return (
+                                                                <div className="form-group" style={{ marginTop: createOptions.options.length > 1 ? 16 : 0 }}>
+                                                                    <label className="form-label">Client</label>
+                                                                    <select
+                                                                        className="form-input"
+                                                                        value={selectedClient}
+                                                                        onChange={(e) => setModalData({ ...modalData, selectedClient: e.target.value })}
+                                                                        style={{ padding: '8px 12px' }}>
+                                                                        <option value="">Select a client...</option>
+                                                                        {allClients.map(client => (
+                                                                            <option key={client} value={client}>{client}</option>
+                                                                        ))}
+                                                                        <option value="__new__">+ Add New Client</option>
+                                                                    </select>
+                                                                    {selectedClient === '__new__' && (
+                                                                        <input
+                                                                            type="text"
+                                                                            className="form-input"
+                                                                            placeholder="Enter new client name"
+                                                                            style={{ marginTop: 8 }}
+                                                                            id="newClientName"
+                                                                            autoFocus />
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+
                                                     {/* Name Input */}
                                                     <div className="form-group" style={{ marginTop: createOptions.options.length > 1 ? 16 : 0 }}>
                                                         <label className="form-label">
@@ -4525,11 +4580,26 @@
                                                                    selectedType === 'task' ? 'e.g. Edit, Thumbnail, Social Cut' :
                                                                    'e.g. Drafts, Client Feedback'
                                                                }
-                                                               autoFocus
+                                                               autoFocus={!createOptions.options.find(o => o.id === selectedType)?.requiresClient}
                                                                onKeyDown={(e) => {
                                                                    if (e.key === 'Enter') {
                                                                        const name = e.target.value.trim();
-                                                                       if (name) createFolder(name, selectedType);
+                                                                       if (name) {
+                                                                           const selectedOption = createOptions.options.find(o => o.id === selectedType);
+                                                                           if (selectedOption?.requiresClient) {
+                                                                               let clientName = modalData?.selectedClient;
+                                                                               if (clientName === '__new__') {
+                                                                                   clientName = document.getElementById('newClientName')?.value?.trim();
+                                                                               }
+                                                                               if (!clientName) {
+                                                                                   showToast('Please select a client', 'error');
+                                                                                   return;
+                                                                               }
+                                                                               createFolder(name, selectedType, { clientName });
+                                                                           } else {
+                                                                               createFolder(name, selectedType);
+                                                                           }
+                                                                       }
                                                                    }
                                                                }} />
                                                     </div>
@@ -4587,7 +4657,24 @@
                                             {createOptions.canCreate && (
                                                 <button className="btn btn-primary" onClick={() => {
                                                     const name = document.getElementById('newFolderName').value.trim();
-                                                    if (name) createFolder(name, selectedType);
+                                                    if (!name) {
+                                                        showToast('Please enter a name', 'error');
+                                                        return;
+                                                    }
+                                                    const selectedOption = createOptions.options.find(o => o.id === selectedType);
+                                                    if (selectedOption?.requiresClient) {
+                                                        let clientName = modalData?.selectedClient;
+                                                        if (clientName === '__new__') {
+                                                            clientName = document.getElementById('newClientName')?.value?.trim();
+                                                        }
+                                                        if (!clientName) {
+                                                            showToast('Please select a client', 'error');
+                                                            return;
+                                                        }
+                                                        createFolder(name, selectedType, { clientName });
+                                                    } else {
+                                                        createFolder(name, selectedType);
+                                                    }
                                                 }}>
                                                     {selectedType === 'project' ? 'Create Project' :
                                                      selectedType === 'deliverable' ? 'Create Deliverable' :
@@ -4671,6 +4758,173 @@
                                     </div>
                                 </>
                             )}
+
+                            {/* ═══════════════════════════════════════════════════════════
+                                ADD DELIVERABLES MODAL (after project creation)
+                            ═══════════════════════════════════════════════════════════ */}
+                            {showModal === 'addDeliverables' && modalData && (() => {
+                                const deliverableNames = modalData.deliverables || [''];
+                                const setDeliverableNames = (names) => setModalData({ ...modalData, deliverables: names });
+
+                                const addDeliverable = () => {
+                                    setDeliverableNames([...deliverableNames, '']);
+                                };
+
+                                const updateDeliverable = (index, value) => {
+                                    const updated = [...deliverableNames];
+                                    updated[index] = value;
+                                    setDeliverableNames(updated);
+                                };
+
+                                const removeDeliverable = (index) => {
+                                    if (deliverableNames.length > 1) {
+                                        setDeliverableNames(deliverableNames.filter((_, i) => i !== index));
+                                    }
+                                };
+
+                                const createDeliverables = async () => {
+                                    const validNames = deliverableNames.filter(n => n.trim());
+                                    if (validNames.length === 0) {
+                                        setShowModal(null);
+                                        setModalData(null);
+                                        return;
+                                    }
+
+                                    try {
+                                        for (const name of validNames) {
+                                            const res = await fetch(`${CONFIG.API_URL}/projects`, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    title: name.trim(),
+                                                    parentItemId: modalData.projectId,
+                                                    status: 'Not started'
+                                                })
+                                            });
+                                            const data = await res.json();
+                                            if (!data.success) {
+                                                showToast(`Failed to create "${name}": ${data.error}`, 'error');
+                                            }
+                                        }
+                                        showToast(`Created ${validNames.length} deliverable(s)`, 'success');
+                                        await fetchProjects();
+                                    } catch (err) {
+                                        showToast(`Error: ${err.message}`, 'error');
+                                    }
+
+                                    setShowModal(null);
+                                    setModalData(null);
+                                };
+
+                                return (
+                                    <>
+                                        <div className="modal-header">
+                                            <span>Add Deliverables to "{modalData.projectName}"</span>
+                                            <button className="modal-close" onClick={() => { setShowModal(null); setModalData(null); }}>{Icons.x}</button>
+                                        </div>
+                                        <div className="modal-body">
+                                            <div style={{ marginBottom: 16 }}>
+                                                <div style={{ fontSize: 13, color: 'var(--ink-muted)', marginBottom: 12 }}>
+                                                    Would you like to add deliverables/episodes to this project? You can skip this and add them later.
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                    {deliverableNames.map((name, index) => (
+                                                        <div key={index} style={{ display: 'flex', gap: 8 }}>
+                                                            <input
+                                                                type="text"
+                                                                className="form-input"
+                                                                placeholder={`Deliverable ${index + 1} (e.g. Episode 1, Hero Video)`}
+                                                                value={name}
+                                                                onChange={(e) => updateDeliverable(index, e.target.value)}
+                                                                autoFocus={index === 0}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter' && index === deliverableNames.length - 1) {
+                                                                        addDeliverable();
+                                                                    }
+                                                                }}
+                                                                style={{ flex: 1 }} />
+                                                            {deliverableNames.length > 1 && (
+                                                                <button
+                                                                    onClick={() => removeDeliverable(index)}
+                                                                    style={{
+                                                                        background: 'none',
+                                                                        border: '1px solid #E5E7EB',
+                                                                        borderRadius: 6,
+                                                                        padding: '8px 10px',
+                                                                        cursor: 'pointer',
+                                                                        color: 'var(--ink-muted)'
+                                                                    }}>
+                                                                    {Icons.x}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <button
+                                                    onClick={addDeliverable}
+                                                    style={{
+                                                        marginTop: 12,
+                                                        background: 'none',
+                                                        border: '1px dashed #D1D5DB',
+                                                        borderRadius: 6,
+                                                        padding: '8px 16px',
+                                                        color: 'var(--dmg-blue)',
+                                                        cursor: 'pointer',
+                                                        fontSize: 12,
+                                                        width: '100%',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: 6
+                                                    }}>
+                                                    {Icons.plus} Add Another Deliverable
+                                                </button>
+                                            </div>
+
+                                            {/* Quick Suggestions */}
+                                            <div style={{ padding: 12, background: '#F3F4F6', borderRadius: 8, fontSize: 12, color: '#6B7280' }}>
+                                                <strong style={{ color: '#374151' }}>Quick Add:</strong>
+                                                <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                                                    {['Episode 1', 'Episode 2', 'Hero Video', 'Trailer', 'Social Cut', 'Behind the Scenes'].map(suggestion => (
+                                                        <button key={suggestion}
+                                                                onClick={() => {
+                                                                    // Add to first empty slot or create new
+                                                                    const emptyIndex = deliverableNames.findIndex(n => !n.trim());
+                                                                    if (emptyIndex >= 0) {
+                                                                        updateDeliverable(emptyIndex, suggestion);
+                                                                    } else {
+                                                                        setDeliverableNames([...deliverableNames, suggestion]);
+                                                                    }
+                                                                }}
+                                                                style={{
+                                                                    padding: '4px 10px',
+                                                                    background: 'white',
+                                                                    border: '1px solid #E5E7EB',
+                                                                    borderRadius: 4,
+                                                                    fontSize: 11,
+                                                                    cursor: 'pointer'
+                                                                }}>
+                                                            {suggestion}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="modal-footer">
+                                            <button className="btn btn-secondary" onClick={() => { setShowModal(null); setModalData(null); }}>
+                                                Skip for Now
+                                            </button>
+                                            <button className="btn btn-primary" onClick={createDeliverables}>
+                                                {deliverableNames.filter(n => n.trim()).length > 0
+                                                    ? `Create ${deliverableNames.filter(n => n.trim()).length} Deliverable(s)`
+                                                    : 'Done'}
+                                            </button>
+                                        </div>
+                                    </>
+                                );
+                            })()}
 
                             {/* ═══════════════════════════════════════════════════════════
                                 MOVE FILE MODAL WITH FOLDER TREE PICKER
@@ -5132,9 +5386,30 @@
 
                 return (
                     <div className="sidebar">
-                        <div className="sidebar-header">
+                        <div className="sidebar-header" onClick={() => setCurrentPath([])} style={{ cursor: 'pointer' }} title="Go to home">
                             <div className="dot-grid"><span/><span/><span/><span/></div>
                             <span className="sidebar-title">Project Library</span>
+                            {currentPath.length > 0 && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setCurrentPath([]); }}
+                                    style={{
+                                        marginLeft: 'auto',
+                                        background: 'var(--dmg-blue)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: 6,
+                                        padding: '4px 8px',
+                                        fontSize: 10,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 4
+                                    }}
+                                    title="Go to home">
+                                    {Icons.home} Home
+                                </button>
+                            )}
                         </div>
 
                         <div className="sidebar-search">
@@ -5218,17 +5493,19 @@
                         <div className="main-header">
                             {renderBreadcrumb()}
                             <div className="header-actions">
-                                {/* Show New button at client level (to create projects) and below */}
-                                {(currentPath.find(p => p.type === 'client') || getCurrentLocation().projectId) && (
-                                    <button className="btn btn-secondary" onClick={() => { setModalData(null); setShowModal('newFolder'); }}>
-                                        {Icons.plus}
-                                        {currentPath.find(p => p.type === 'client') && !currentPath.find(p => p.type === 'project')
+                                {/* Always show a create button */}
+                                <button className="btn btn-secondary" onClick={() => { setModalData(null); setShowModal('newFolder'); }}>
+                                    {Icons.plus}
+                                    {currentPath.length === 0
+                                        ? 'New Project'
+                                        : currentPath.find(p => p.type === 'status') && !currentPath.find(p => p.type === 'client')
                                             ? 'New Project'
-                                            : currentPath.find(p => p.type === 'project') && !currentPath.find(p => p.type === 'deliverable')
-                                                ? 'New'
-                                                : 'New Folder'}
-                                    </button>
-                                )}
+                                            : currentPath.find(p => p.type === 'client') && !currentPath.find(p => p.type === 'project')
+                                                ? 'New Project'
+                                                : currentPath.find(p => p.type === 'project') && !currentPath.find(p => p.type === 'deliverable')
+                                                    ? 'New Asset'
+                                                    : 'New Folder'}
+                                </button>
                                 {getCurrentLocation().projectId && (
                                     <>
                                         <button className="btn btn-secondary" onClick={() => setShowModal('addLink')}>
