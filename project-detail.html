@@ -898,7 +898,7 @@
         /* Project Resources Grid */
         .resource-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
         }
         .resource-btn {
@@ -949,6 +949,179 @@
             position: absolute;
             bottom: 4px;
             right: 6px;
+        }
+        .resource-actions {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            display: flex;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .resource-btn:hover .resource-actions {
+            opacity: 1;
+        }
+        .resource-action-btn {
+            width: 20px;
+            height: 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            padding: 0;
+            transition: all 0.1s ease;
+        }
+        .resource-action-btn.edit-btn {
+            background: rgba(33, 160, 216, 0.1);
+            color: var(--dmg-blue);
+        }
+        .resource-action-btn.edit-btn:hover {
+            background: rgba(33, 160, 216, 0.25);
+        }
+        .resource-action-btn.delete-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+        .resource-action-btn.delete-btn:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        /* Latest Files Section */
+        .latest-files-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .latest-file-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 11px;
+            transition: all 0.15s ease;
+        }
+        .latest-file-item:hover {
+            border-color: var(--dmg-blue);
+            background: rgba(33, 160, 216, 0.03);
+        }
+        .latest-file-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .latest-file-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .latest-file-name {
+            font-weight: 600;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .latest-file-date {
+            font-size: 9px;
+            color: var(--ink-muted);
+            margin-top: 2px;
+        }
+        .latest-file-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .latest-file-actions a,
+        .latest-file-actions button {
+            width: 26px;
+            height: 26px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            text-decoration: none;
+            color: var(--ink-sub);
+            transition: all 0.1s ease;
+        }
+        .latest-file-actions a:hover {
+            border-color: var(--dmg-blue);
+            color: var(--dmg-blue);
+        }
+        .latest-file-actions button:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+        .files-empty {
+            text-align: center;
+            padding: 20px;
+            font-size: 11px;
+            color: var(--ink-muted);
+        }
+        .files-upload-zone {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-muted);
+            transition: all 0.15s ease;
+            margin-top: 8px;
+        }
+        .files-upload-zone:hover {
+            border-color: var(--dmg-blue);
+            color: var(--dmg-blue);
+            background: rgba(33, 160, 216, 0.03);
+        }
+
+        /* Slack link with edit/delete */
+        .slack-link-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .slack-link-btn {
+            flex: 1;
+        }
+        .slack-action-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+        .slack-action-btn.edit {
+            background: rgba(97, 31, 105, 0.1);
+            color: #611f69;
+        }
+        .slack-action-btn.edit:hover {
+            background: rgba(97, 31, 105, 0.2);
+        }
+        .slack-action-btn.delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+        .slack-action-btn.delete:hover {
+            background: rgba(239, 68, 68, 0.2);
         }
 
         /* Slack Button */
@@ -1020,37 +1193,30 @@
         let subitems = [];
         let deliverables = [];
         let expenses = [];
+        let projectFiles = [];
         let itemLayer = 1; // 1 = Project, 2 = Episode, 3 = Task
 
-        // Generate Slack channel name from client and title
-        function generateSlackChannel(client, title) {
-            if (!client && !title) return 'general';
-            const base = (client || title || '').toLowerCase()
-                .replace(/[^a-z0-9\s-]/g, '')
-                .replace(/\s+/g, '-')
-                .substring(0, 20);
-            const month = new Date().toLocaleDateString('en-GB', { month: '2-digit' });
-            const year = new Date().getFullYear().toString().slice(-2);
-            return `${base}-${month}${year}`;
-        }
-
-        // Prompt user to add a missing link
+        // Prompt user to add or edit a link
         async function promptAddLink(fieldName, fieldLabel) {
-            const url = prompt(`Enter ${fieldLabel} URL:`);
-            if (!url) return;
+            const currentValue = project[fieldName] || '';
+            const url = prompt(`Enter ${fieldLabel} URL:`, currentValue);
+            if (url === null) return; // cancelled
+            if (url === currentValue) return; // no change
 
-            // Validate URL
-            try {
-                new URL(url);
-            } catch (e) {
-                alert('Please enter a valid URL');
-                return;
+            // Allow empty string to clear, otherwise validate
+            if (url && url.trim()) {
+                try {
+                    new URL(url.trim());
+                } catch (e) {
+                    alert('Please enter a valid URL');
+                    return;
+                }
             }
 
             // Update in Notion via API
             try {
                 const updateData = {};
-                updateData[fieldName] = url;
+                updateData[fieldName] = url.trim() || null;
 
                 const res = await fetch(`${API_URL}/projects/${projectId}`, {
                     method: 'PATCH',
@@ -1059,8 +1225,7 @@
                 });
 
                 if (res.ok) {
-                    // Update local data and re-render
-                    project[fieldName] = url;
+                    project[fieldName] = url.trim() || null;
                     render();
                 } else {
                     throw new Error('Failed to update');
@@ -1068,6 +1233,193 @@
             } catch (e) {
                 console.error('Update error:', e);
                 alert('Failed to save link. Please try again.');
+            }
+        }
+
+        // Delete a link (set to null in Notion)
+        async function deleteLink(fieldName, fieldLabel) {
+            if (!confirm(`Remove ${fieldLabel} link?`)) return;
+
+            try {
+                const updateData = {};
+                updateData[fieldName] = null;
+
+                const res = await fetch(`${API_URL}/projects/${projectId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (res.ok) {
+                    project[fieldName] = null;
+                    render();
+                } else {
+                    throw new Error('Failed to delete');
+                }
+            } catch (e) {
+                console.error('Delete error:', e);
+                alert('Failed to remove link. Please try again.');
+            }
+        }
+
+        // Load project files from Firebase Storage
+        async function loadProjectFiles() {
+            try {
+                const storageRef = storage.ref(`project_files/${projectId}`);
+                const result = await storageRef.listAll();
+
+                const files = await Promise.all(result.items.map(async (itemRef) => {
+                    const url = await itemRef.getDownloadURL();
+                    const metadata = await itemRef.getMetadata();
+                    return {
+                        name: itemRef.name,
+                        fullPath: itemRef.fullPath,
+                        url: url,
+                        size: metadata.size,
+                        contentType: metadata.contentType,
+                        updated: metadata.updated
+                    };
+                }));
+
+                // Sort by most recent first
+                files.sort((a, b) => new Date(b.updated) - new Date(a.updated));
+                projectFiles = files;
+            } catch (e) {
+                console.warn('Could not load project files:', e);
+                projectFiles = [];
+            }
+        }
+
+        // Upload a file to Firebase Storage for this project
+        async function uploadProjectFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            // 25MB limit
+            if (file.size > 25 * 1024 * 1024) {
+                alert('File too large. Maximum size is 25MB.');
+                input.value = '';
+                return;
+            }
+
+            // Sanitise filename: keep alphanumeric, dots, hyphens, underscores
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const timestamp = Date.now();
+            const storagePath = `project_files/${projectId}/${timestamp}_${safeName}`;
+            const storageRef = storage.ref(storagePath);
+
+            try {
+                const uploadLabel = document.getElementById('uploadLabel');
+                if (uploadLabel) {
+                    uploadLabel.textContent = 'Uploading...';
+                    uploadLabel.style.pointerEvents = 'none';
+                }
+
+                await storageRef.put(file);
+                await loadProjectFiles();
+                render();
+            } catch (e) {
+                console.error('Upload error:', e);
+                alert('Failed to upload file: ' + e.message);
+            } finally {
+                input.value = '';
+            }
+        }
+
+        // Delete a file from Firebase Storage
+        async function deleteProjectFile(fullPath, fileName) {
+            if (!confirm(`Delete "${fileName}"?`)) return;
+
+            try {
+                const fileRef = storage.ref(fullPath);
+                await fileRef.delete();
+                await loadProjectFiles();
+                render();
+            } catch (e) {
+                console.error('Delete file error:', e);
+                alert('Failed to delete file: ' + e.message);
+            }
+        }
+
+        // Rename a project file in Firebase Storage (copy + delete)
+        async function renameProjectFile(fullPath, currentName) {
+            const ext = currentName.includes('.') ? '.' + currentName.split('.').pop() : '';
+            const baseName = currentName.includes('.') ? currentName.substring(0, currentName.lastIndexOf('.')) : currentName;
+            // Strip timestamp prefix for display
+            const displayBase = baseName.replace(/^\d+_/, '');
+
+            const newName = prompt('Rename file:', displayBase);
+            if (!newName || newName === displayBase) return;
+
+            // Sanitise
+            const safeName = newName.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const timestamp = Date.now();
+            const newPath = `project_files/${projectId}/${timestamp}_${safeName}${ext}`;
+
+            try {
+                // Firebase Storage doesn't support rename, so we download + re-upload + delete
+                const oldRef = storage.ref(fullPath);
+                const url = await oldRef.getDownloadURL();
+                const response = await fetch(url);
+                const blob = await response.blob();
+
+                const newRef = storage.ref(newPath);
+                await newRef.put(blob);
+                await oldRef.delete();
+
+                await loadProjectFiles();
+                render();
+            } catch (e) {
+                console.error('Rename error:', e);
+                alert('Failed to rename file: ' + e.message);
+            }
+        }
+
+        // Get file type icon from content type or extension
+        function getFileIcon(name, contentType) {
+            if (contentType?.startsWith('image/')) return '🖼️';
+            if (contentType?.startsWith('video/')) return '🎬';
+            if (contentType?.includes('pdf')) return '📄';
+            if (contentType?.includes('word') || name.endsWith('.docx') || name.endsWith('.doc')) return '📝';
+            if (contentType?.includes('sheet') || contentType?.includes('excel') || name.endsWith('.xlsx')) return '📊';
+            if (contentType?.includes('presentation') || name.endsWith('.pptx')) return '📊';
+            return '📎';
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (!bytes) return '';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // Get display name (strip timestamp prefix)
+        function getDisplayName(name) {
+            return name.replace(/^\d+_/, '');
+        }
+
+        // Render a resource button with edit/delete actions
+        function renderResourceBtn(value, fieldName, fieldLabel, icon, shortLabel) {
+            if (value) {
+                return `
+                    <a href="${value}" target="_blank" rel="noopener noreferrer" class="resource-btn" onclick="event.stopPropagation();">
+                        <div class="resource-actions">
+                            <button class="resource-action-btn edit-btn" onclick="event.preventDefault(); event.stopPropagation(); promptAddLink('${fieldName}', '${fieldLabel}');" title="Edit link">✏️</button>
+                            <button class="resource-action-btn delete-btn" onclick="event.preventDefault(); event.stopPropagation(); deleteLink('${fieldName}', '${fieldLabel}');" title="Remove link">×</button>
+                        </div>
+                        <span class="resource-icon">${icon}</span>
+                        <span class="resource-label">${shortLabel}</span>
+                    </a>
+                `;
+            } else {
+                return `
+                    <a href="#" class="resource-btn empty" onclick="event.preventDefault(); promptAddLink('${fieldName}', '${fieldLabel}');">
+                        <span class="resource-icon">${icon}</span>
+                        <span class="resource-label">${shortLabel}</span>
+                        <span class="resource-add">+ Add</span>
+                    </a>
+                `;
             }
         }
 
@@ -1173,8 +1525,8 @@
                     deliverables = [];
                 }
 
-                // Load expenses from Firebase
-                await loadExpenses();
+                // Load expenses and project files from Firebase
+                await Promise.all([loadExpenses(), loadProjectFiles()]);
 
                 render();
                 const layerLabel = itemLayer === 1 ? 'Project' : itemLayer === 2 ? 'Episode' : 'Task';
@@ -1734,53 +2086,80 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="resource-grid">
-                                        <!-- Brief Document -->
-                                        <a href="${p.briefLink || '#'}" target="_blank" class="resource-btn ${p.briefLink ? '' : 'empty'}" ${!p.briefLink ? 'onclick="event.preventDefault(); promptAddLink(\'briefLink\', \'Brief Document\');"' : ''}>
-                                            <span class="resource-icon">📋</span>
-                                            <span class="resource-label">Brief</span>
-                                            ${!p.briefLink ? '<span class="resource-add">+ Add</span>' : ''}
-                                        </a>
-
-                                        <!-- Creative Response -->
-                                        <a href="${p.creativeResponseLink || '#'}" target="_blank" class="resource-btn ${p.creativeResponseLink ? '' : 'empty'}" ${!p.creativeResponseLink ? 'onclick="event.preventDefault(); promptAddLink(\'creativeResponseLink\', \'Response Doc\');"' : ''}>
-                                            <span class="resource-icon">🎨</span>
-                                            <span class="resource-label">Response</span>
-                                            ${!p.creativeResponseLink ? '<span class="resource-add">+ Add</span>' : ''}
-                                        </a>
-
-                                        <!-- Frame.io -->
-                                        <a href="${p.frameIoLink || '#'}" target="_blank" class="resource-btn ${p.frameIoLink ? '' : 'empty'}" ${!p.frameIoLink ? 'onclick="event.preventDefault(); promptAddLink(\'frameIoLink\', \'Frame.io Link\');"' : ''}>
-                                            <span class="resource-icon">🎬</span>
-                                            <span class="resource-label">Frame.io</span>
-                                            ${!p.frameIoLink ? '<span class="resource-add">+ Add</span>' : ''}
-                                        </a>
-
-                                        <!-- Drive Folder -->
-                                        <a href="${p.driveFolder || '#'}" target="_blank" class="resource-btn ${p.driveFolder ? '' : 'empty'}" ${!p.driveFolder ? 'onclick="event.preventDefault(); promptAddLink(\'driveFolder\', \'Drive Folder\');"' : ''}>
-                                            <span class="resource-icon">📁</span>
-                                            <span class="resource-label">Drive</span>
-                                            ${!p.driveFolder ? '<span class="resource-add">+ Add</span>' : ''}
-                                        </a>
+                                        ${renderResourceBtn(p.briefLink, 'briefLink', 'Brief Document', '📋', 'Brief')}
+                                        ${renderResourceBtn(p.creativeResponseLink, 'creativeResponseLink', 'Response Doc', '🎨', 'Response')}
+                                        ${renderResourceBtn(p.frameIoLink, 'frameIoLink', 'Frame.io Link', '🎬', 'Frame.io')}
+                                        ${renderResourceBtn(p.driveFolder, 'driveFolder', 'Drive Folder', '📁', 'Drive')}
+                                        ${renderResourceBtn(p.sharePointFolder, 'sharePointFolder', 'SharePoint Folder', '🗂️', 'SharePoint')}
                                     </div>
 
-                                    <!-- Slack Channel -->
+                                    <!-- Slack Channel Link -->
                                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
-                                        <a href="https://dmgmedia.slack.com/app_redirect?channel=${generateSlackChannel(p.client, p.title)}" target="_blank" class="slack-link-btn">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
-                                            <span>Open Slack: #${generateSlackChannel(p.client, p.title)}</span>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                        </a>
+                                        ${p.slackChannelLink ? `
+                                            <div class="slack-link-row">
+                                                <a href="${p.slackChannelLink}" target="_blank" rel="noopener noreferrer" class="slack-link-btn">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
+                                                    <span>Open Slack Channel</span>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                                </a>
+                                                <button class="slack-action-btn edit" onclick="event.preventDefault(); promptAddLink('slackChannelLink', 'Slack Channel')" title="Edit">✏️</button>
+                                                <button class="slack-action-btn delete" onclick="event.preventDefault(); deleteLink('slackChannelLink', 'Slack Channel')" title="Remove">×</button>
+                                            </div>
+                                        ` : `
+                                            <button onclick="promptAddLink('slackChannelLink', 'Slack Channel')" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 16px; background: linear-gradient(135deg, rgba(97,31,105,0.1) 0%, rgba(74,21,75,0.05) 100%); border: 2px dashed rgba(97,31,105,0.3); border-radius: 10px; color: #611f69; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease;">
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color: #611f69;"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
+                                                <span>+ Add Slack Channel Link</span>
+                                            </button>
+                                        `}
                                     </div>
 
                                     <!-- Notion Link -->
                                     ${p.url ? `
                                         <div style="margin-top: 8px;">
-                                            <a href="${p.url}" target="_blank" class="notion-mini-link">
+                                            <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="notion-mini-link">
                                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                                                 Edit in Notion
                                             </a>
                                         </div>
                                     ` : ''}
+                                </div>
+                            </div>
+
+                            <!-- Latest Files -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <div class="card-title">
+                                        <div class="card-dot" style="background: var(--production)"></div>
+                                        Latest Files
+                                    </div>
+                                    <span class="card-count">${projectFiles.length}</span>
+                                </div>
+                                <div class="card-body">
+                                    ${projectFiles.length > 0 ? `
+                                        <div class="latest-files-list">
+                                            ${projectFiles.slice(0, 10).map(f => `
+                                                <div class="latest-file-item">
+                                                    <span class="latest-file-icon">${getFileIcon(f.name, f.contentType)}</span>
+                                                    <div class="latest-file-info">
+                                                        <div class="latest-file-name" title="${escapeHtml(getDisplayName(f.name))}">${escapeHtml(getDisplayName(f.name))}</div>
+                                                        <div class="latest-file-date">${formatFileSize(f.size)} · ${new Date(f.updated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                                                    </div>
+                                                    <div class="latest-file-actions">
+                                                        <a href="${f.url}" target="_blank" rel="noopener noreferrer" title="Open">↗</a>
+                                                        <button onclick="renameProjectFile('${escapeHtml(f.fullPath)}', '${escapeHtml(f.name)}')" title="Rename">✏️</button>
+                                                        <button onclick="deleteProjectFile('${escapeHtml(f.fullPath)}', '${escapeHtml(getDisplayName(f.name))}')" title="Delete">×</button>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : `
+                                        <div class="files-empty">No files uploaded yet</div>
+                                    `}
+                                    <label class="files-upload-zone" id="uploadLabel">
+                                        <input type="file" style="display:none" onchange="uploadProjectFile(this)">
+                                        <span>📎</span>
+                                        <span>Upload file (max 25MB)</span>
+                                    </label>
                                 </div>
                             </div>
 
