@@ -95,7 +95,7 @@ export interface ProjectsByStatus {
 
 // Status configuration for Commercial Snapshot widget
 export const COMMERCIAL_STATUS_CONFIG = {
-    dealStages: ['Prospecting', 'Proposal', 'Contracting', 'Won', 'Lost', 'Campaign Complete'],
+    dealStages: ['Brief Received', 'In Progress', 'Pitch Sent', 'Deal Agreed', 'Campaign Complete', 'Closed Lost'],
     workflowStatuses: ['Briefing', 'Concepting', 'In Production', 'Review', 'Approved', 'Live'],
     priorityLevels: ['High', 'Medium', 'Low'],
     outcomes: ['Won', 'Lost', 'Cancelled', 'On Hold']

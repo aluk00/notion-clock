@@ -1975,12 +1975,12 @@ app.post('/process-deal-agreed', async (req, res) => {
             errors: []
         };
 
-        // Query projects with Deal Stage = "Agreed"
+        // Query projects with Deal Stage = "Deal Agreed"
         const projects = await notion.databases.query({
             database_id: PROJECTS_DB,
             filter: {
                 property: 'DEAL STAGE',
-                select: { equals: 'Agreed' }
+                select: { equals: 'Deal Agreed' }
             },
             page_size: 100
         });
