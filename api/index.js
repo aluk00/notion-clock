@@ -233,6 +233,12 @@ async function buildProjectProperties(data) {
     if (data.driveFolder !== undefined) {
         props['DRIVE FOLDER'] = { url: data.driveFolder || null };
     }
+    if (data.sharePointFolder !== undefined) {
+        props['SHAREPOINT FOLDER'] = { url: data.sharePointFolder || null };
+    }
+    if (data.slackChannelLink !== undefined) {
+        props['SLACK CHANNEL LINK'] = { url: data.slackChannelLink || null };
+    }
 
     // People fields (require Notion user IDs)
     if (data.salesLeadId) {
@@ -405,6 +411,8 @@ app.get('/projects', async (req, res) => {
                 creativeResponseLink: parseProperty(props['CREATIVE RESPONSE LINK']),
                 frameIoLink: parseProperty(props['FRAME.IO LINK']),
                 driveFolder: parseProperty(props['DRIVE FOLDER']),
+                sharePointFolder: parseProperty(props['SHAREPOINT FOLDER']),
+                slackChannelLink: parseProperty(props['SLACK CHANNEL LINK']),
                 responseTypeNeeded: parseProperty(props['RESPONSE TYPE NEEDED']),
                 // People
                 salesLead: parseProperty(props['SALES LEAD']),
@@ -490,6 +498,8 @@ app.get('/projects/:id', async (req, res) => {
             creativeResponseLink: parseProperty(props['CREATIVE RESPONSE LINK']),
             frameIoLink: parseProperty(props['FRAME.IO LINK']),
             driveFolder: parseProperty(props['DRIVE FOLDER']),
+            sharePointFolder: parseProperty(props['SHAREPOINT FOLDER']),
+            slackChannelLink: parseProperty(props['SLACK CHANNEL LINK']),
             responseTypeNeeded: parseProperty(props['RESPONSE TYPE NEEDED']),
             // People
             salesLead: parseProperty(props['SALES LEAD']),
