@@ -1302,20 +1302,57 @@
                 return;
             }
 
+            // Ensure user is authenticated before uploading
+            if (!auth.currentUser) {
+                try {
+                    await auth.signInAnonymously();
+                } catch (authErr) {
+                    alert('Authentication failed. Please refresh the page and try again.');
+                    input.value = '';
+                    return;
+                }
+            }
+
             // Sanitise filename: keep alphanumeric, dots, hyphens, underscores
             const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
             const timestamp = Date.now();
             const storagePath = `project_files/${projectId}/${timestamp}_${safeName}`;
             const storageRef = storage.ref(storagePath);
 
+            const uploadLabel = document.getElementById('uploadLabel');
+
             try {
-                const uploadLabel = document.getElementById('uploadLabel');
                 if (uploadLabel) {
-                    uploadLabel.textContent = 'Uploading...';
                     uploadLabel.style.pointerEvents = 'none';
                 }
 
-                await storageRef.put(file);
+                const uploadTask = storageRef.put(file);
+
+                await new Promise((resolve, reject) => {
+                    // Timeout after 5 minutes
+                    const timeout = setTimeout(() => {
+                        uploadTask.cancel();
+                        reject(new Error('Upload timed out. Please check your connection and try again.'));
+                    }, 5 * 60 * 1000);
+
+                    uploadTask.on('state_changed',
+                        (snapshot) => {
+                            const percent = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                            if (uploadLabel) {
+                                uploadLabel.innerHTML = `<span>📎</span><span>Uploading ${file.name}... ${percent}%</span>`;
+                            }
+                        },
+                        (error) => {
+                            clearTimeout(timeout);
+                            reject(error);
+                        },
+                        () => {
+                            clearTimeout(timeout);
+                            resolve();
+                        }
+                    );
+                });
+
                 await loadProjectFiles();
                 render();
             } catch (e) {
@@ -1323,6 +1360,10 @@
                 alert('Failed to upload file: ' + e.message);
             } finally {
                 input.value = '';
+                if (uploadLabel) {
+                    uploadLabel.innerHTML = '<span>📎</span><span>Upload file (max 25MB)</span>';
+                    uploadLabel.style.pointerEvents = '';
+                }
             }
         }
 
